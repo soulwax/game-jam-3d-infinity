@@ -481,7 +481,9 @@ reason key and optional recovery pose. Each tick, the pure resolver:
 
 1. filters by enabled state, room/visibility, reach and camera-facing cone;
 2. ray/sweeps against the same house/physics proxies used by interaction;
-3. sorts by explicit priority, normalized angular error, distance, then stable ID;
+3. sorts by explicit semantic priority, nearest line-of-sight hit distance,
+   normalized angular error, then stable ID, so an off-centre prop cannot beat the
+   watched surface;
 4. applies enter/leave hysteresis so adjacent props do not flicker; and
 5. emits one renderer-neutral `InteractionFocusSnapshot` or none.
 
@@ -502,16 +504,17 @@ mesh rigid bodies remain deferred. Story/corroborator objects are either fixed o
 have explicit recovery/persistence rules and can never be thrown into an unwinnable
 state.
 
-Each physical body declares stable placement/model IDs, simple compound box/sphere/
-capsule/approved convex shapes, mass kg, centre of mass, friction, restitution,
+Each physical body declares stable placement/model IDs, sphere, capsule, or compound
+box shapes (at most four boxes for a dynamic body), mass kg, centre of mass, friction, restitution,
 linear/angular damping, sleep thresholds, collision/query masks, carry-distance
 bounds, spring/force/torque/throw clamps, impact material, persistence class and an
 in-bounds recovery transform. Dimensions and mass are authored facts or recorded
 proposals approved by the physics integrator; they are never inferred silently from
-render triangles.
+render triangles. An approved convex proxy is static-query-only in v1.
 
-The pure kernel uses a fixed 60 Hz tick, bounded accumulator/substeps, swept motion
-for carried/thrown bodies, stable-ID broadphase/contact ordering, fixed solver
+The pure kernel runs exactly once on the existing canonical **120 Hz game tick**—it
+does not add a second accumulator or hidden phase. It uses swept motion for carried/
+thrown bodies, stable-ID broadphase/contact ordering, fixed solver
 iterations, finite clamps, sleeping, and one active carry constraint. A carried body
 continues colliding with the house/player/other physical props, cannot be pulled
 through a wall or camera, drops safely when the constraint stretches/occludes, and
@@ -524,7 +527,10 @@ The target collection is **40–80 deliberately movable props**, plus authored d
 drawers and levers. Only the current room and adjacent visible cell activate; at most
 24 non-sleeping free bodies are budgeted in the representative view. Saves store
 sparse, quantized deltas for moved persistent bodies (pose, velocity, sleep and
-constraint-free state) keyed by stable ID; cosmetic-reset bodies say so explicitly.
+constraint-free state) keyed by stable ID plus body-schema/default-transform digest;
+cosmetic-reset bodies say so explicitly. Saving while held performs a zero-impulse
+safe drop on the save tick, emits `physics.carryReleasedForSave`, and never serializes
+a live carry constraint.
 Loading rejects unknown/non-finite/out-of-bounds state and restores an authored safe
 pose. Replay/scenario reports hash physics state but never serialize GPU/audio handles.
 
@@ -1408,16 +1414,17 @@ fixtures rather than rewriting historical bytes.
 | `L-GAM00-HOUSE` | GAM-00 | W | `L-GAM00-CODEC`, `L-GAM00-DOMAIN` | `lib/house/state.dart`, focused save-v2 house fixture | Exact authored ID sets, overrides and mantle history round-trip; missing/extra IDs and emitted geometry fail. |
 | `L-GAM00-SESSION` | GAM-00 | I | `L-GAM00-STORE`, `L-GAM00-PRESENTATION`, `L-GAM00-EVENT`, `L-GAM00-HOUSE` | `lib/game/session.dart`, focused session-v2 integration test | Fresh/save/restore snapshots match; all existing Q15/session/stand-in/Q24 tests stay green. |
 | `L-GAM00-GATE` | GAM-00 | I | `L-GAM00-SESSION` | Gate record/evidence only | Exact save/session suite passes twice; removed-field/reordered-event/runtime-handle mutants fail. |
-| `L-PHY00-SHAPES` | PHY-00 | W | — | New `lib/physics/shapes.dart`, focused finite/overlap/sweep tests | Box/sphere/capsule/approved-convex compounds validate finite local poses/bounds and swept intersections without render meshes. |
+| `L-PHY00-SHAPES` | PHY-00 | W | — | New `lib/physics/shapes.dart`, focused finite/overlap/sweep tests | Sphere/capsule/dynamic compounds of ≤4 boxes validate finite poses/bounds/sweeps; convex is static-query-only and render meshes are forbidden. |
 | `L-PHY00-BROADPHASE` | PHY-00 | W | `L-PHY00-SHAPES` | New `lib/physics/broadphase.dart`, focused cell/order tests | Stable-ID spatial cells emit the same unique candidate pairs independent of insertion/map order. |
-| `L-PHY00-SOLVER` | PHY-00 | W | `L-PHY00-BROADPHASE` | New `lib/physics/solver.dart`, focused contact/energy tests | Fixed 60 Hz contacts use fixed iterations, finite clamps/friction/restitution and bounded energy with deterministic ordering. |
+| `L-PHY00-SOLVER` | PHY-00 | W | `L-PHY00-BROADPHASE` | New `lib/physics/solver.dart`, focused contact/energy tests | One step per canonical 120 Hz tick uses fixed iterations, finite clamps/friction/restitution and bounded energy with deterministic ordering. |
 | `L-PHY00-JOINTS` | PHY-00 | W | `L-PHY00-SOLVER` | New `lib/physics/joints.dart`, focused hinge/slider/lever-limit tests | Constrained bodies respect authored axes/limits and cannot gain energy or cross a blocked house proxy. |
 | `L-PHY00-CARRY` | PHY-00 | W | `L-PHY00-SOLVER` | New `lib/physics/carry_constraint.dart`, focused grab/drop/throw tests | One spring carry anchor obeys reach/force/torque/distance/throw clamps, swept collision and safe blocked release. |
 | `L-PHY00-GATE` | PHY-00 | I | `L-PHY00-JOINTS`, `L-PHY00-CARRY` | Physics kernel gate fragment/evidence only | Frame-partition, insertion-order, anti-tunnelling, sleep/wake, limit and mutation suites pass with zero non-finite state. |
 | `L-INP01-ACTIONS` | INP-01 | W | — | New `lib/engine/input_actions.dart`, focused action-edge tests | Remappable move/look/run/crouch/jump/use/grab/drop/rotate/range/throw/cancel actions emit one stable edge/held/value stream. |
 | `L-INP01-PROFILE` | INP-01 | W | `L-INP01-ACTIONS` | New `lib/engine/control_profile.dart`, binding schema/tests | Mouse/keyboard/controller defaults and hold/toggle/accessibility alternatives validate with no required mouse-only action or duplicate chord. |
+| `L-INP01-SAMPLER` | INP-01 | I | `L-INP01-ACTIONS` | `lib/engine/input.dart`, focused RAF/fixed-tick/focus tests | Mouse delta and action edges are consumed exactly once across 120 Hz substeps; focus loss/pointer unlock clears held state; debug shader reload cannot steal context-bound `R`. |
 | `L-INP01-FOCUS` | INP-01 | W | — | New `lib/sim/interaction_focus.dart`, focus/LOS/hysteresis tests | Reach+cone+visibility+proxy filtering and priority/angle/distance/ID ordering emit exactly one stable focus snapshot or none. |
-| `L-INP01-PROMPT` | INP-01 | I | `L-INP01-PROFILE`, `L-INP01-FOCUS` | `lib/ui/prompt.dart`, focused semantic/highlight model tests | Prompt uses current binding, icon/text/state/reason and non-color semantic cue; unavailable/disabled/high-contrast cases remain truthful. |
+| `L-INP01-PROMPT` | INP-01 | I | `L-INP01-PROFILE`, `L-INP01-SAMPLER`, `L-INP01-FOCUS` | `lib/ui/prompt.dart`, focused semantic/highlight model tests | Prompt uses current binding, icon/text/state/reason and non-color semantic cue; unavailable/disabled/high-contrast cases remain truthful. |
 | `L-INP01-GATE` | INP-01 | I | `L-INP01-PROMPT` | Input/focus gate fragment/evidence only | Keyboard, mouse and controller traces agree at action level; occlusion/tie/flicker/binding/semantic mutants fail. |
 | `L-DECQ24-DIAGRAM` | DEC-Q24-00 | O | — | Decision artifacts only, no code | For each unresolved beat, diagram observable event, mundane explanation, data/save/collision/render/detail consequences. |
 | `L-DECQ24-COMPARE` | DEC-Q24-00 | O | `L-DECQ24-DIAGRAM` | Decision comparison only | Options explicitly score deniability, recognizability, canonical-geometry risk, art rebuild and testability. |
@@ -1446,7 +1453,7 @@ fixtures rather than rewriting historical bytes.
 | `L-GAM09-GATE` | GAM-09 | I | `L-GAM09-SESSION` | Aggregate pure/save mutation evidence only | Removing a field/event/config or reordering a feature fails; all prior session/save suites remain green. |
 | `L-PHY01-BODY-SCHEMA` | PHY-01 | W | — | New `lib/game/physics_body.dart`, body/profile fixtures | Static/pickup/hinge/slider/lever records require stable IDs, simple shapes, mass/material/damping/sleep/carry/impact/persistence/recovery facts. |
 | `L-PHY01-WORLD` | PHY-01 | W | `L-PHY01-BODY-SCHEMA` | New `lib/game/physics_world.dart`, focused activation/contact tests | Current+adjacent cell activation, max-awake policy and sorted events wrap PHY-00 without renderer/audio/session handles. |
-| `L-PHY01-STATE` | PHY-01 | I | `L-PHY01-WORLD` | New `lib/game/physics_state.dart`, `lib/game/save.dart`, migration/recovery tests | Sparse quantized moved-body deltas round-trip; unknown/non-finite/out-of-bounds bodies reject or recover to authored pose. |
+| `L-PHY01-STATE` | PHY-01 | I | `L-PHY01-WORLD` | New `lib/game/physics_state.dart`, `lib/game/save.dart`, migration/recovery tests | Sparse quantized deltas plus schema/default-transform digest round-trip; save-held safely drops/emits event; unknown/non-finite/out-of-bounds state rejects or recovers. |
 | `L-PHY01-GATE` | PHY-01 | I | `L-PHY01-STATE` | Physics state/save gate fragment/evidence only | Fresh/move/sleep/throw/save/resume/recovery hashes match and old save fixtures remain immutable/green. |
 | `L-PHY02-PROFILE` | PHY-02 | W | — | `assets/house/physics.schema.json`, initial profile fixtures | Interaction and body data validate class-specific fields, query masks, carry/joint limits, persistence and recovery. |
 | `L-PHY02-ROOM` | PHY-02 | W | `L-PHY02-PROFILE` | One `assets/house/rooms/{room}/physics/{shard}.json` with ≤4 bound proxy placements | Assigned proxy props/doors/drawers/levers have honest modes, simple shapes and no story/route hazard. |
@@ -1525,11 +1532,21 @@ R seam. Feature-presentation workers own separate modules and scenario inputs on
 | `L-GAM08B-VIDEO` | GAM-08B | W | — | New `lib/presentation/tape.dart`, isolated video A/B scenario | Chroma/jitter/noise/dropout/ghosting are individually switchable and mostly-clean defaults match pure weights. |
 | `L-GAM08B-AUDIO` | GAM-08B | W | — | New tape-audio command mapper, focused pure/WebAudio command test | Bandwidth/wow/hiss commands derive only from audio weights, update on state events and honor mute/reduced motion. |
 | `L-GAM08B-GATE` | GAM-08B | I | `L-GAM08B-VIDEO`, `L-GAM08B-AUDIO` | Browser/audio artifacts and cost report only | Fair tracking heartbeat, video/audio restraint, switches, comfort and measured resource/frame cost pass. |
+| `L-PHY03-PROP` | PHY-03 | W | — | One immutable `assets/house/physics.d/{model-or-group}.json` for ≤4 final placements | Final model bounds/mass/material/proxy/socket/persistence/recovery facts match accepted source and authored transforms without widening routes. |
+| `L-PHY03-MERGE` | PHY-03 | I | `ALL(L-PHY03-PROP)` | `assets/house/physics.json`, exact-set/body-digest report | Exactly 70–110 pickable placements plus authored joints resolve once; all initial PHY-02 proxy IDs migrate or retain an explicit fixed reason. |
+| `L-PHY03-HIGHLIGHT` | PHY-03 | W | `L-PHY03-MERGE` | New `lib/presentation/interaction_highlight.dart`, pure mapping/resource test | Focus snapshot maps to restrained rim/value/icon state with stable shared resources, no through-wall cue and zero per-object frame allocation. |
+| `L-PHY03-IMPACT` | PHY-03 | W | `L-PHY03-MERGE` | New `lib/presentation/physics_audio.dart`, pure semantic-command test | Quantized impact/material events map to bounded logical audio commands with cooldown/priority and no solver/WebAudio coupling. |
+| `L-PHY03-GATE` | PHY-03 | I | `L-PHY03-HIGHLIGHT`, `L-PHY03-IMPACT` | Final physics/presentation gate fragment only | Final body digest, highlight mapping, impact mapping, resource ownership and old proxy migration pass before scene aggregation. |
 | `L-INT05-STATIC` | INT-05 | W | — | New `lib/presentation/static_scene.dart`, focused batching/resource test | House architecture/furniture share model/material handles, portal-cull by room and allocate nothing per frame. |
 | `L-INT05-TRANSIENT` | INT-05 | W | — | New `lib/presentation/transient_scene.dart`, focused event-lifetime test | Visitors/particles/short effects are event-driven, bounded, released and absent from save/domain state. |
 | `L-INT05-LIGHT` | INT-05 | W | — | New `lib/presentation/light_scene.dart`, focused light/material cap test | Day/gas/weather/rupture lights/material variants obey stable IDs, finite caps and no duplicate simulation. |
 | `L-INT05-DIAGNOSTICS` | INT-05 | W | — | Pixeldart resource diagnostics adapter, 600-frame scenario | Public counts explain every live target/program/buffer/texture and stay flat across steady representative frames. |
 | `L-INT05-MAIN` | INT-05 | I | `L-INT05-STATIC`, `L-INT05-TRANSIENT`, `L-INT05-LIGHT`, `L-INT05-DIAGNOSTICS` | `web/main.dart`, representative Days 1–3 pixeldart source/package scenarios | Full scene/event/presentation aggregation passes with stable resources, no unexplained allocation and no audio coupling. |
+| `L-PHY04-FOCUS` | PHY-04 | I | — | Ignored real-input focus/highlight artifacts only | Near/far, cone edge, occluded, competing, disabled, high-contrast and text-only cases select/render the same target truthfully. |
+| `L-PHY04-MANIPULATE` | PHY-04 | I | — | Ignored grab/rotate/range/drop/throw/door/drawer artifacts only | Mouse and keyboard/controller alternatives exercise all actions without clipping, stuck state, repeated edge or accidental debug command. |
+| `L-PHY04-STATE` | PHY-04 | I | — | Ignored fixed-tick/save/recovery artifacts only | Frame partition, save-held drop, reload, room transition, Q24 rebuild and out-of-bounds recovery preserve exact body/story/route state. |
+| `L-PHY04-PERF` | PHY-04 | I | — | Named-hardware 600-frame physics/resource evidence only | 70–110 authored pickables with ≤24 awake meet solver/allocation/draw/resource budgets in representative dense views. |
+| `L-PHY04-GATE` | PHY-04 | I | `L-PHY04-FOCUS`, `L-PHY04-MANIPULATE`, `L-PHY04-STATE`, `L-PHY04-PERF` | Physics/controls acceptance evidence only | Source/package, legacy/next, input alternatives, save/replay, audio/highlight, route safety and performance fingerprint one build. |
 | `L-INT06A-PREVIEW` | INT-06A | I | — | Preview selector/docs/diagnostic scenario only | Legacy remains default; next preview is documented, observable and frozen at one candidate SHA/build. |
 | `L-INT06B-SWITCH` | INT-06B | O | — | Backend default selector only in isolated commit | Next becomes default; legacy query/deployment rollback remains; no feature/refactor rides the switch. |
 | `L-INT06B-MATRIX1` | INT-06B | O | `L-INT06B-SWITCH` | Evidence only | First unchanged-scope full RC matrix passes source/package/save/art/audio/a11y/perf. |
