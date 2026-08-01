@@ -60,10 +60,10 @@ register in §5 remains authoritative if the snapshot and a row ever disagree.
 
 | Field | Current dispatch truth |
 | --- | --- |
-| Planning packet | `CTL-01` is **LANDED–VERIFY** locally; preserve the uncommitted root/docs changes until their separate repository commits and a clean extraction rerun make the cutover durable. |
+| Planning packet | Initial cutover commits exist at root `f7a151d` and docs `35b919f`; this implementation-depth pass now modifies those tracked packets. `CTL-01` remains **LANDED–VERIFY** until the new delta is separately committed and the clean extraction gate reruns. |
 | Active implementation | `REN-03A` is the only active code packet: five modified files in `external/pixeldart`, based on `9ffedf4`. |
 | Do-not-touch set | The five paths listed in §3 and lease `LEASE-RP3-A`; never reset, format wholesale, or absorb them into another packet. |
-| Next root control action | Close `CTL-01`'s durability gate, then run `CTL-03` to create ignored in-workspace worktrees for lanes C and G and record their base SHAs. |
+| Next root control action | Review/commit this root/docs depth delta separately, close `CTL-01` with a clean extraction proof, then run `CTL-03` and record its new base SHAs. |
 | Parallel start after `CTL-03` | `AUT-01`/`BLD-01` in the tooling queue, `AST-01A` in lane C, and `GAM-00` in lane G. The orchestrator admits only one active writer per lease. |
 | Renderer queue | Finish `REN-03A`; run `BASE-04`; then serialize `REN-03B`, `REN-03C`, and `REN-04` through `REN-08`. |
 | Asset strategy | Finish the tracked catalogue/licence foundation, write the room bill of materials, scout 150+ candidates in disjoint fragments, curate 80–120, then harden the bulk converter against the selected collection. |
@@ -150,12 +150,28 @@ material cases, texture layouts, pivots, and model complexity the tools must han
 
 #### Visual and density target
 
-- Scout at least **150 credible candidates**; approve roughly **80–120 reusable
-  models** and author **250–400 placements** across the eight rooms.
+- Scout at least **320 credible 3D candidates** plus **50–80 open painting/print/
+  map/paper images**; approve roughly **160–220 reusable 3D models** plus **30–48
+  art images**. The shipped 3D set should contain roughly 45–65 architectural/
+  exterior kit definitions, 45–65 furniture/fixture definitions, and 70–90 decor,
+  tool, vessel, textile, paper, and movable-prop definitions. Image records and
+  reusable frame models are separate; art textures never inflate the 3D count.
+- Author **500–750 active interior furnishing/decor/frame placements**, **220–340
+  active architectural-kit instances**, and **150–240 active exterior/context
+  placements**. The resulting **870–1,330 active authored placements** are a
+  composition target, not permission to render everything at once: room/portal
+  visibility, exterior cells, LOD/importance and measured budgets remain mandatory.
 - Build a modular late-Victorian architectural kit: skirting, dado/picture rails,
   cornices, ceiling roses, architraves, thresholds, window reveals/sills, fireplace
   and chimney-breast pieces, alcoves, stair strings, newels, balusters, handrails,
   panelling, and deliberate wall/floor transitions.
+- Remodel the whole visible envelope: all house elevations, roof/chimneys, gutters/
+  downpipes, foundations, front steps/porch, cellar light wells, back/service yard,
+  coal access, drains, railings/gates, boundary walls, paths, planting, street
+  furniture, neighboring roof/facade silhouettes, and the deliberately visible
+  opposite-house window/interior vignette. Interior thresholds, reveals, cupboard/
+  drawer insides, wall thickness, ceiling transitions and service details receive
+  the same care as room-centre furniture.
 - Give each major room one focal composition, 5–12 furniture-scale pieces, and
   15–35 small dressing placements. Reuse is expected; obvious repetition and
   evenly sprayed clutter are not.
@@ -206,22 +222,38 @@ The machine source of truth must live in the game repository, not ignored `tmp/`
 
 ```text
 assets/catalog/schema.json
-assets/catalog/candidates/architecture.json
-assets/catalog/candidates/furniture.json
-assets/catalog/candidates/decor.json
-assets/catalog/candidates/clutter.json
+assets/catalog/candidates/<category>/<batch-id>.json
+assets/catalog/inspections/<category>/<batch-id>.json
+assets/catalog/amendments/<candidate-id>/<nn>.json
+assets/catalog/evidence/<candidate-id>/source.json
+assets/catalog/room_bom/<room-id>.json
+assets/catalog/selection/proposals/<batch-id>.json
 assets/catalog/accepted.json
-assets/catalog/room_bom.json
+assets/runtime-manifest.d/<domain>.json
+assets/house/schema.json
+assets/house/kits/<family-id>.json
+assets/house/rooms/<room-id>/base.json
+assets/house/rooms/<room-id>/dress/<layer-id>.json
+assets/house/exterior/<cell-id>/<layer-id>.json
+assets/house/verification/routes.json
+assets/house/verification/targets.json
+assets/house/verification/cameras/<room-or-exterior-cell>.json
 assets-src/models/<stable-id>/...
 assets-src/art/<stable-id>/...
 web/res/models/<stable-id>/*.qmsh
 web/res/models/<stable-id>/model.json
+web/res/models/<stable-id>/textures/<content-hash>.*
 web/res/textures/art/<stable-id>.*
 ```
 
-Candidate fragments are deliberately disjoint write leases, so three scouts can
-work in parallel: architecture/structure, furniture/fixtures, and decor/clutter.
-The asset lead alone promotes entries into `accepted.json`.
+Candidate discovery, inspection overlay, BOM, selection-proposal, kit-family, and
+room-placement fragments are deliberately disjoint write leases. A scout owns one
+immutable discovery batch and never opens a shared category file; a later inspector
+owns the matching immutable overlay, not the discovery bytes. Validators fold base
+records, overlays, and explicit amendments in normalized-path/event order and emit
+merged views only under ignored `build/catalog/`; generated merges are never hand-
+edited or used as status. The asset lead alone promotes entries into `accepted.json`
+in one serial integration leaf.
 
 Every candidate record carries at least:
 
@@ -232,8 +264,42 @@ archiveMember, sourceFormat, units, upAxis, triangleCount, materialCount,
 textureFiles/resolutions, previewUrl, proposedUse, status, rejectionReason
 ```
 
-The catalogue validator rejects duplicate IDs/URLs/hashes, missing original source
-pages, unapproved licences, unpinned bytes, unknown formats, path traversal,
+Candidate state is progressive and machine-checked across immutable events.
+`discovered` requires the
+original item/licence pages, creator, exact licence marker, proposed use, and room/
+period tags; `inspected` additionally requires pinned source bytes, SHA-256, archive
+member, format/axis/units, geometry/material/texture metadata, and bundled-term
+review plus a hard-screen result. A unique immutable score-proposal event folds an
+inspected hard-screen pass to `eligible` or `rejected`; scouts never claim
+eligibility. `accepted` is valid only when `accepted.json` names an eligible record
+and the lead records a selection reason. `rejected` always keeps a normalized reason
+code plus note. Null
+technical fields are allowed only before `inspected`; the strict shipped audit
+rejects any accepted record that is not fully inspected and pinned.
+
+Stable identity is source-derived, not invented from a local filename. A source
+package may lawfully contain many candidate members:
+
+```text
+packageId = <provider>-<provider-object-id-or-slug>-<first-8-sha256(canonical-page-url)>
+id        = <packageId>-<first-8-sha256(normalized-archive-member-or-root)>
+sourceKey = <canonical-page-url>#<normalized-archive-member-or-root>
+```
+
+The global validator rejects duplicate base `id`, `sourceKey`, or `(archive SHA,
+member)`. Repeated page URL/download hash is allowed only under the identical
+`packageId` with byte-identical package/licence metadata and distinct normalized
+members; conflicting package declarations fail. Inspection/amendment events target
+one existing base ID and never redeclare identity; sequence numbers are contiguous
+and `supersedes` names the immediately prior event. A handed-off fragment is
+immutable, and the old value remains auditable. Raw fetch bytes use
+`.asset-cache/sha256/<first-2>/<sha256>` and per-hash lock files under
+`.asset-cache/locks/`; a unique partial is hash-checked then atomically renamed.
+There is no shared mutable fetch-state JSON.
+
+The catalogue validator rejects duplicate member identities, conflicting package
+metadata, missing original source pages, unapproved licences, unpinned bytes,
+unknown formats, path traversal,
 non-finite metadata, missing bundled texture licences, and accepted entries with no
 room or architectural purpose.
 
@@ -245,6 +311,34 @@ Y-up orientation, pivot, material split, normals, UVs, and modification record.
 A clean production build must not require Blender, a logged-in marketplace, a
 network request, or anything under `tmp/`.
 
+The normalized directory contract is exact:
+
+```text
+assets-src/models/<id>/source.json
+assets-src/models/<id>/model.obj
+assets-src/models/<id>/materials.json
+assets-src/models/<id>/normalization.json
+assets-src/models/<id>/textures/<content-hash>.<ext>
+```
+
+`source.json` pins package/member/licence/input hashes. `normalization.json` pins
+importer/version, units, axis/handedness, category pivot policy (`floorCenter`,
+`wallBack`, `openingOrigin`, or explicit preserved point), transforms, triangulation,
+normal generation, material/texture edits, and output hashes. OBJ is deterministic,
+triangulated, finite and stable-ordered; winding/normals follow any handedness
+change. Units/axis are never guessed. Decimation, baking or topology repair is never
+automatic: it is a separately recorded deterministic transform with tool/version and
+before/after metrics, or the asset is rejected.
+
+`materials.json` reduces source materials to the accepted pixeldart contract:
+base-colour texture/factor, emissive factor, `opaque|mask|blend`, alpha cutoff,
+double-sided flag and stable part key. Unsupported PBR/normal/metallic channels are
+explicitly baked, dropped with approved rationale, or rejected. Base-colour/emissive
+images are sRGB, data is linear; EXIF/ancillary timestamps are stripped; dimensions
+are deterministic 64–128 px with 256 absolute maximum unless PERF-01 records a
+specific exception. Sampling is point/NEAREST with **no mipmaps**, matching the PS1
+art contract. Every emitted texture uses content-addressed names.
+
 The bulk producer consumes normalized OBJ plus material/texture sidecars and emits
 pixeldart's existing QMSH/model contracts. Do **not** add a new legacy
 `lib/engine/mesh_asset.dart`. One multi-material model becomes multiple QMSH mesh
@@ -255,7 +349,8 @@ renderer mesh files.
 Framed art is two assets, not a baked mystery mesh: a reusable frame model plus a
 catalogued CC0/approved image derivative. A deterministic art step applies the
 recorded crop/rotation/colour-space/downscale settings, preserves aspect ratio,
-emits content-hashed texture bytes/mips, and records source/output hashes. It never
+emits one content-hashed point-sampled texture with no mipmaps, and records source/
+output hashes. It never
 scrapes an arbitrary search thumbnail or makes the museum page itself a build input.
 
 QMSH v1 is the pilot path. Before bulk conversion, measure expanded source bytes,
@@ -268,6 +363,7 @@ The planned tool contract is:
 
 ```text
 dart run tools/models.dart catalog --check
+dart run tools/models.dart acquire --inspection <fragment>
 dart run tools/models.dart fetch --missing
 dart run tools/models.dart normalize --check
 dart run tools/models.dart convert --changed
@@ -277,8 +373,14 @@ dart run tools/models.dart house --check
 dart run tools/models.dart report --json build/model-report.json
 ```
 
-`fetch` is the only networked command. Every check/build/release command is offline
-and consumes pinned tracked inputs or the verified hash cache. `convert --changed`
+`acquire` and `fetch` are the only networked commands. `acquire` is the one-time
+quarantine transition for an unpinned discovered URL: enforce byte/archive/member/
+decompression limits, download to a unique partial, compute the hash, validate
+media/archive structure and member paths, atomically CAS-ingest, and emit an
+immutable inspection event. It never makes output eligible by itself. Subsequent
+`fetch` requires the already recorded hash and refuses byte drift. Every check/build/
+release command is offline and consumes pinned tracked inputs or the verified hash
+cache. `convert --changed`
 uses content hashes and atomic replacement; two cold conversions must produce the
 same bytes, paths, model descriptors, and report.
 
@@ -289,8 +391,25 @@ same bytes, paths, model descriptors, and report.
 - Decorative architecture and placements are authored room-locally in validated
   data. Each record names a stable ID, model key, local transform, material variant,
   visibility group, collision policy, interaction tag if any, and importance/LOD.
-- Collision is explicit: `solidProxy`, `softBlocker`, `nonBlocking`, or
-  `interactionOnly`. Runtime triangle soup never silently becomes collision.
+- A framed-art wall placement additionally names `artId`, reusable `frameModelKey`,
+  exact derivative SHA/path, normalized crop, `contain|cover` fit, visible aspect,
+  wall anchor and inset. It resolves to one active placement/material instance; the
+  source image and frame remain separately licensed/catalogued assets.
+- Collision is explicit and machine-enforced. `solidProxy` requires one or more
+  finite box/capsule/convex proxy shapes, blocks player sweeps and route navigation,
+  reserves placement occupancy, and occludes interaction rays unless the hit is the
+  target. `softBlocker` reserves visitor/prop/authoring occupancy and adds route cost
+  but does not stop the player capsule or an interaction ray. `nonBlocking` is
+  render-only and participates in none of those queries. `interactionOnly` never
+  blocks movement/navigation but contributes exactly one named interaction target
+  and cannot occlude another target. Runtime triangle soup never silently becomes
+  collision, navigation, or physics.
+- A proxy record names stable ID, owner placement, `box|capsule|convex`, local pose,
+  full extents/radius/height, query masks and optional support sockets. A socket names
+  stable ID, `floor|wall|surface|inside|hand`, local pose, clearance shape/extents,
+  allowed tags, capacity, and `exclusive|shared` occupancy. Occupancy is derived in
+  sorted placement-ID order; duplicate or unsupported claims fail instead of moving
+  an existing object.
 - Structural additions such as a chimney breast or alcove that genuinely change
   walkable space require canonical simple bounds and the same query path for
   collision, interaction, rendering, light, and audio.
@@ -307,6 +426,116 @@ draws/triangles/materials/texture bytes per room pair, and generate fixed-camera
 contact sheets plus per-model turntables. Art approval uses those artifacts; CI
 uses deterministic metadata and semantic probes rather than vendor-fragile golden
 pixels alone.
+
+The enumerable verification inputs are tracked before fan-out. `routes.json` names
+every portal traversal in both directions, both stair directions, room-to-room and
+front/back/cellar-threshold routes, Q24 variants, ordered waypoints and the canonical
+player-controller dimensions (`radius`, `totalHeight`, `segmentHeight`, `stepHeight`,
+`maxSlope`, `skinWidth`, and source symbol). `targets.json` names every door, shutter,
+mantle, journal, wireless, bed, visitor, examined object, pickable prop and recovery
+pose with reach/line-of-sight rules. Fixed camera files cover every wall, focal point,
+portal, stair, facade elevation, yard/context cell and opposite-house vignette. The
+validator reads the actual player-controller constants and rejects a duplicated or
+stale dimension. ART-03 freezes these matrices; ART-05 consumes them and writes only
+ignored result shards.
+
+Count reports use one formula everywhere. A **3D model** is one shipped model
+descriptor regardless of mesh/material parts; a mesh part is never another model.
+An **active placement** is one base-variant runtime instance. A frame plus its image
+is one active placement but two separately licensed assets. Architectural-kit
+instances, inactive Q24 alternatives and seeded-equivalent alternatives are reported
+in separate columns and never inflate the 500–750 interior furnishing count. Reports
+also state the maximum simultaneously active/visible variant set, not the sum of all
+mutually exclusive states.
+
+### Amnesia-like controls, watched-object affordance, and physical props
+
+The control feel follows the direct-manipulation grammar documented in the
+[Amnesia: The Dark Descent manual](https://cdn.akamai.steamstatic.com/steam/apps/239200/manuals/Manual.pdf?t=1670246309),
+without copying its fiction, tuning, or UI. Controls are action IDs, fully remappable,
+and prompts always render the active binding rather than hard-coded key names.
+
+| Action | Default mouse/keyboard behavior | Required alternate |
+| --- | --- | --- |
+| Move/look | `W/A/S/D`, pointer-locked mouse; `Shift` run; `Ctrl` crouch; `Space` jump only where the canonical controller permits | Arrow/controller axes, sensitivity/invert options, reduced head motion |
+| Focus/use | Centre gaze on an in-range, unobscured target; press left mouse for one-shot use/examine | `E` and controller action; toggle/hold choice |
+| Grab/carry/drop | Hold left mouse on a `pickup` target; release for a gentle drop | Toggle-grab accessibility mode with explicit drop action |
+| Rotate held object | Hold `R` or middle mouse and move mouse | Keyboard/controller yaw/pitch/roll actions |
+| Carry distance | Mouse wheel adjusts within the object's min/max range | Bound keyboard/controller near/far actions |
+| Throw | Right mouse while carrying releases one clamped forward impulse | Bound keyboard/controller throw; separate from cancel |
+| Door/drawer/lever | Hold left mouse and move along the constrained hinge/slider/lever axis; release to stop | Digital open/close steps and toggle mode |
+| Cancel/recover | `Esc` closes UI; explicit cancel releases manipulation without an impulse | Remappable controller/back action |
+
+No default binding may make a required story action mouse-only. Hints may introduce
+the grammar once, but the persistent affordance is quiet and diegetic enough for the
+horror tone. Jump, run and crouch do not silently change existing canonical movement
+measurements; if the current controller lacks one, INP-01 records it disabled rather
+than inventing geometry assumptions.
+
+#### Watched-object focus and highlight contract
+
+“Watched” means the deterministic focus winner, not every object inside a sphere.
+Each interactable declares stable ID, `examine|use|pickup|hinge|slider|lever`, maximum
+reach, focus cone, line-of-sight mask, priority, prompt key, highlight class, blocked
+reason key and optional recovery pose. Each tick, the pure resolver:
+
+1. filters by enabled state, room/visibility, reach and camera-facing cone;
+2. ray/sweeps against the same house/physics proxies used by interaction;
+3. sorts by explicit priority, normalized angular error, distance, then stable ID;
+4. applies enter/leave hysteresis so adjacent props do not flicker; and
+5. emits one renderer-neutral `InteractionFocusSnapshot` or none.
+
+The focused object is highlighted only while close enough and unobscured. The
+default is a restrained warm rim/value lift plus a small icon/bound prompt; it cannot
+be a full-screen flash, color-only cue, through-wall silhouette, emissive blowout, or
+extra material/program allocation per object per frame. `unavailable` targets may
+show the prompt plus reason but never look usable. Text/icon/outline strength,
+high-contrast mode and highlight disable are independent accessibility settings;
+disabling the visual highlight leaves a semantic prompt and focus diagnostics.
+
+#### Bounded deterministic physics contract
+
+This is a small-prop/door manipulation system, not a general destructible world or
+combat engine. Authored modes are `static`, `pickup`, `hinge`, `slider`, `lever`, and
+`kinematicInteractable`; breakage, ragdolls, character damage and arbitrary triangle-
+mesh rigid bodies remain deferred. Story/corroborator objects are either fixed or
+have explicit recovery/persistence rules and can never be thrown into an unwinnable
+state.
+
+Each physical body declares stable placement/model IDs, simple compound box/sphere/
+capsule/approved convex shapes, mass kg, centre of mass, friction, restitution,
+linear/angular damping, sleep thresholds, collision/query masks, carry-distance
+bounds, spring/force/torque/throw clamps, impact material, persistence class and an
+in-bounds recovery transform. Dimensions and mass are authored facts or recorded
+proposals approved by the physics integrator; they are never inferred silently from
+render triangles.
+
+The pure kernel uses a fixed 60 Hz tick, bounded accumulator/substeps, swept motion
+for carried/thrown bodies, stable-ID broadphase/contact ordering, fixed solver
+iterations, finite clamps, sleeping, and one active carry constraint. A carried body
+continues colliding with the house/player/other physical props, cannot be pulled
+through a wall or camera, drops safely when the constraint stretches/occludes, and
+cannot launch the player. Throw impulse is clamped from camera forward plus bounded
+player velocity; mass changes carry lag/movement penalty without changing reach.
+Impacts emit renderer/audio-neutral events with body/material/other ID and quantized
+severity. They do not directly call WebAudio or renderer APIs.
+
+The target collection is **40–80 deliberately movable props**, plus authored doors,
+drawers and levers. Only the current room and adjacent visible cell activate; at most
+24 non-sleeping free bodies are budgeted in the representative view. Saves store
+sparse, quantized deltas for moved persistent bodies (pose, velocity, sleep and
+constraint-free state) keyed by stable ID; cosmetic-reset bodies say so explicitly.
+Loading rejects unknown/non-finite/out-of-bounds state and restores an authored safe
+pose. Replay/scenario reports hash physics state but never serialize GPU/audio handles.
+
+Automation must prove focus tie-breaking/hysteresis/occlusion, grab/drop/rotate/range,
+door and drawer limits, wall/camera anti-clipping, swept high-speed collision,
+sleep/wake, bounded energy, impact-event thresholds, sparse save/resume equality,
+out-of-bounds recovery, story-route preservation and fixed-step frame-partition
+equivalence. Browser scenarios use real pointer lock, mouse buttons/wheel and keyboard
+alternates; mutation fixtures remove one proxy, clamp, save field, highlight cue or
+recovery pose and must fail. Named-hardware evidence records awake bodies, contacts,
+solver time, allocations and renderer resource deltas over 600 frames.
 
 ### Conditional or deferred scope
 
@@ -342,6 +571,13 @@ The patch introduces RP-3's feature-group vocabulary and parameterized post-chai
 inputs. It is a partial first landing, not accepted RP-3. This snapshot describes
 the state from which the plan was cut; it is refreshed through recorded evidence,
 not silently edited into an undated claim after every working-tree change.
+
+**Post-cutover continuation checkpoint — 2026-08-01:** the initial planning packet
+was committed as game `f7a151d` (`MASTERPLAN.md`, `tools/card.dart`) and docs
+`35b919f` (`PLAN.md`, `TODO.md`). The current micro-agent optimization pass is a new
+tracked working-tree delta in those same files. Pixeldart remains at `9ffedf4` with
+exactly the same five modified RP-3 paths. This checkpoint updates dispatch truth;
+it does not promote `CTL-01` until the new delta is committed and clean-replayed.
 
 ### What is proven now
 
@@ -435,14 +671,18 @@ is bounded and its evidence can be promoted without rereading a transcript.
 | Role | Repository/worktree | Exclusive responsibility |
 | --- | --- | --- |
 | **O — orchestrator/integrator** | Primary game worktree | Canonical status and decisions, lease admission, convergence merges, gitlinks/locks, `dist/**`, compact evidence promotion, and release. |
-| **R — renderer** | Existing `external/pixeldart` checkout until RP-3 is checkpointed | Pixeldart RP packets, then renderer-facing game adapters. RP-3 through RP-8 are one serialized integration queue because their demo, pipeline, and lifecycle surfaces overlap. |
-| **C — content/assets/audio** | `_worktrees/game-c` after `CTL-03` | Asset catalogue/provenance, model normalization/QMSH production, room dressing data, SFX, VO, and generated manifests. Candidate fragments may have temporary subleases. |
-| **G — game/verification** | `_worktrees/game-g` after `CTL-03` | Save/domain state, scenarios, content consumers, weather/rupture/tape/audio event contracts, UI/accessibility, plan/gate tooling, and browser diagnostics. |
+| **R — renderer** | Existing `external/pixeldart` integration checkout after RP-3 is checkpointed | Pixeldart RP packets, then renderer-facing game adapters. RP-3 through RP-8 remain one serialized integration queue because their demo, pipeline, and lifecycle surfaces overlap. |
+| **C — content/assets/audio** | Coordinator integration branch in `_worktrees/game-c` after `CTL-03` | Asset catalogue/provenance, model normalization/QMSH production, room/exterior dressing data, SFX, VO, and generated manifests. |
+| **G — game/verification** | Coordinator integration branch in `_worktrees/game-g` after `CTL-03` | Save/domain/physics/input state, scenarios, content consumers, weather/rupture/tape/audio event contracts, UI/accessibility, plan/gate tooling, and browser diagnostics. |
 
-The worktree directories stay ignored and inside this workspace. C and G do not
-initialize or alter their own pixeldart checkout unless O explicitly hands them an
-integration packet. If worktrees cannot be created safely, lanes edit in sequence;
-shared-root writes or commits are never treated as isolated.
+The coordinator worktrees are merge queues, not shared worker sandboxes. Every
+materialized `W` or `I` mutation leaf receives its own ignored
+`_worktrees/<lane>/<packet-id>` worktree and branch at the recorded parent-integration
+SHA. For a pixeldart packet, Git creates the leaf worktree from the pixeldart repo at
+that path; it never copies the dirty submodule checkout. C and G do not initialize or
+alter pixeldart unless O explicitly routes a packet there. If a leaf worktree cannot
+be created and preflighted safely, that lane runs sequentially; shared index, HEAD,
+or dirty state is never described as parallel isolation.
 
 ### Hot-file ownership and handoffs
 
@@ -452,14 +692,15 @@ shared-root writes or commits are never treated as isolated.
 | `dist/**`, `.githooks/**`, lockfiles, gitlinks, `_worktrees/**` metadata | O only. Only O rebuilds/stages generated release output on the integration tree. |
 | `external/pixeldart/**` | R through `REN-08`; explicit temporary handoff to C for `INT-02`, then back to R. |
 | `external/pixeldart/web/renderer_test/main.dart`, `lib/rendering/passes/pipeline_builder.dart` | Never parallel. One renderer packet owns both or neither. |
-| `assets/catalog/**`, `assets-src/**`, `web/res/models/**`, asset/manifests/model/TTS tools | C. O owns the final manifest/dist convergence commit. |
-| `assets/catalog/candidates/architecture.json` | C-architecture scout sublease only. |
-| `assets/catalog/candidates/furniture.json` | C-furniture/fixtures scout sublease only. |
-| `assets/catalog/candidates/decor.json`, `clutter.json` | C-decor/clutter scout sublease only. |
-| `lib/game/**`, `lib/sim/**`, non-presentation `lib/house/**`, `lib/engine/audio.dart` | G until the domain snapshot is frozen. |
+| `assets/catalog/**`, `assets/house/**`, `assets-src/**`, `web/res/models/**`, asset/manifests/model/TTS tools | C. O owns the final manifest/dist convergence commit. |
+| `assets/catalog/candidates/<category>/<batch-id>.json`, matching `inspections/**`, `amendments/**`, evidence | One C leaf owns one immutable bound fragment and only enumerated evidence prefixes; discovery and inspection never rewrite each other. |
+| `assets/catalog/room_bom/<room-id>.json`, `assets/house/rooms/<room-id>/**` | One C room sublease per exact room; shared schema/cameras/index output remains with the C integrator. |
+| `assets/catalog/accepted.json`, generated merged catalogue/manifests | C lead/integrator only after fragments pass; workers never append to/regenerate aggregates. Each schema has one dedicated foundation `W` lease, then freezes. Domain integrators write unique `assets/runtime-manifest.d/<domain>.json`; only O/build compiles `web/res/manifest.json`. |
+| `lib/game/session.dart` | Serial G queue only: `GAM-00` → `GAM-09` → `CNT-01`; feature/audio workers otherwise use new modules/events and never reopen it. |
+| Other `lib/game/**`, `lib/sim/**`, non-presentation `lib/house/**`, `lib/engine/audio.dart` | G until the domain snapshot is frozen; `lib/engine/audio.dart` has exactly one runtime writer in `AUD-03B`. |
 | New `lib/presentation/**`, `lib/house/emitter.dart`, renderer adapters | R after the explicit `INT-01` handoff. |
-| `web/main.dart` | G through browser/UI baseline; O records a handoff to R before renderer integration. |
-| `lib/config.dart` | G; R consumes typed immutable configuration snapshots rather than editing it concurrently. |
+| `web/main.dart` | Serial queue: `AUT-06` diagnostics → `CNT-01` content → `AUD-03B` audio → `GAM-07` final UI → `ACC-01A` freeze → `INT-00` G→R handoff → renderer integration. |
+| `lib/config.dart` | `GAM-09` is the sole feature-default writer; R consumes its frozen typed immutable configuration and never edits it concurrently. |
 
 One active lease owns a path prefix. O refuses a claim if the expected base SHA is
 stale, a dirty path overlaps, or a prefix intersects an existing lease. Leases do
@@ -468,16 +709,22 @@ release, or owner intervention.
 
 ### Commit and convergence protocol
 
-1. A lane starts from a recorded SHA and changes only its leased paths. It does not
+1. A leaf starts from its recorded parent-integration SHA in its private worktree and
+   changes only its leased paths. It does not
    rebuild/stage `dist`, edit the master, bump the gitlink, or fold unrelated dirt
    into its commit.
-2. A handoff contains task ID, base/result SHA, exact changed paths, commands and
-   results, artifact hashes, exact gate proved, adjacent scope not proved, and any
-   blocker. Candidate feature evidence may be dirty; acceptance evidence may not.
+2. Every code/data mutation leaf creates one packet-authorized signed feature commit
+   (`git commit -S`) and a handoff containing task/attempt IDs, base/result commit and
+   tree, exact changed paths, commands/results, artifact hashes, exact gate proved,
+   adjacent scope not proved, and any blocker. Candidate feature evidence may be
+   dirty; acceptance evidence may not.
    The sole exception is a state-inventory control gate such as `CTL-02`, whose
    measured object is the dirty-path set itself; it proves preservation only, never
-   implementation correctness.
-3. O merges isolated feature commits → shared seams/adapters → generated manifests
+   implementation correctness. A read-only/evidence-only `O` leaf records
+   `resultCommit: null` and cannot smuggle a dirty patch.
+3. The lane coordinator imports signed leaf commits in leaf-DAG order, verifies the
+   commit parent/diff/tree manifest, reruns the leaf gate, and advances the recorded
+   parent-integration SHA. O then merges isolated feature commits → shared seams/adapters → generated manifests
    and output → pixeldart gitlink/locks → aggregate verification → compact evidence
    and status. Generated output never hides source conflicts.
 4. After a schema/save/interface change, O reruns affected downstream gates even
@@ -497,17 +744,24 @@ bounded packets and the verifier proves that it can fail.
 ```text
 dart run tools/plan.dart validate
 dart run tools/plan.dart next --lane C --json
-dart run tools/plan.dart dispatch ART-01A
-dart run tools/plan.dart claim ART-01A --owner <id> --write <prefix> --expect-sha <sha>
+dart run tools/plan.dart leaves ART-01A --json
+dart run tools/plan.dart dispatch ART-01A --leaf L-ART01A-DISCOVER --bind batch=arch-trim-surfaces-01
+dart run tools/plan.dart claim ART-01A --leaf L-ART01A-DISCOVER --bind batch=arch-trim-surfaces-01 --owner <id> --expect-sha <sha> --expect-master <revision>
+dart run tools/plan.dart handoff ART-01A --leaf L-ART01A-DISCOVER --result <handoff.json>
 dart run tools/plan.dart accept ART-01A --evidence <EV-id>
 ```
 
-It validates IDs, statuses, dependencies, cycles, decisions, ready-state truth,
-accepted evidence, active lease fields, and path-prefix overlap. `claim` uses an OS
-file lock plus compare-and-swap of the master content digest. `dispatch` prints only
-the ground rules, selected row, direct dependency evidence/decisions, exact paths
-and gates, relevant card/design sections, dirty overlap, first command, and stop
-rules. Core validation works without `tmp`; card enrichment reads `tmp` or
+It validates IDs, statuses, dependencies, cycles, decision reverse edges, ready-state truth,
+accepted evidence, active lease fields, leaf recipes/bindings, and path-prefix
+overlap. `claim` uses an OS file lock plus compare-and-swap of the whole-file
+`masterRevision` and repository SHA, performs the bounded lease edit, then returns a
+per-lease `leaseRevision`, stable `specDigest`, private worktree and monotonic
+`attemptId`. Recipe placeholders must be fully bound to normalized
+repository-relative paths before claim; a wildcard or unresolved token is rejected.
+`dispatch` prints only the ground rules, selected parent and leaf, direct dependency
+evidence/decisions, exact read/write/deny sets and gates, relevant card/design
+extracts, dirty overlap, first command, numbered procedure, and stop/handoff rules.
+Core validation works without `tmp`; card enrichment reads `tmp` or
 `QUARANTINE_DOCS_DIR` and otherwise gives one checkout instruction.
 
 `tools/verify.dart` is the only aggregate runner:
@@ -518,11 +772,14 @@ dart run tools/verify.dart --profile quick|full|release|renderer|browser [--only
 
 It executes direct argument arrays, never shell-composed strings. Full/release
 profiles continue independent gates and return nonzero if any fail; `--fail-fast`
-is local-only. `tools/verify/gates.json` is a versioned implementation DAG—not a
-second status board—with stable gate ID, cwd/repository, argv, dependencies,
-profiles, input globs, timeout, retry class, exact/nonzero discovery expectations,
-artifacts, and master task IDs. Root and pixeldart tests are discovered in sorted
-order and exact-set checked so zero or silently omitted tests fail.
+is local-only. Parent integrators author one disjoint
+`tools/verify/gates.d/<task-id>.json` fragment. AUT-02 deterministically validates/
+sorts those fragments into `tools/verify/gates.json`; the aggregate is generated and
+never hand-edited. The resulting versioned implementation DAG—not a second status
+board—carries stable gate ID, cwd/repository, argv, dependencies, profiles, input
+globs, timeout, retry class, exact/nonzero discovery expectations, artifacts, and
+master task IDs. Root and pixeldart tests are discovered in sorted order and exact-
+set checked so zero or silently omitted tests fail.
 
 Each run writes ignored detail under `test-results/verify/<run-id>/`: `run.json`,
 crash-resumable `events.ndjson`, `summary.json`/`.md`, `junit.xml`, environment,
@@ -539,10 +796,76 @@ malformed/cyclic plan, stale claim CAS, lease overlap, missing/extra/mutated dis
 wrong browser build, console error, dark frame, and software-adapter rejection. A
 verifier that has not proved it can reject bad fixtures is not an acceptance gate.
 
+#### Bounded closed-loop automation
+
+`tools/autopilot.dart` is a safe coordinator, not an autonomous product owner. It
+turns already-admitted recipes into parallel work without granting broader authority:
+
+```text
+dart run tools/autopilot.dart inventory --json
+dart run tools/autopilot.dart batch --lane C --max-workers 6 --budget budgets/asset-authoring.json
+dart run tools/autopilot.dart prepare <batch-id>
+dart run tools/autopilot.dart collect <batch-id>
+dart run tools/autopilot.dart converge <parent> --proposal
+dart run tools/autopilot.dart audit --orphans --stale --leases --worktrees
+dart run tools/autopilot.dart gc --verified-only --dry-run
+```
+
+The loop is deliberately finite:
+
+1. **Inventory:** validate the master, repositories, leases, direct evidence, input
+   digests and machine-generated gap reports. No valid gap means no packet.
+2. **Select:** choose a deterministic maximal set of dependency-ready `W` leaves
+   whose exact write sets and hot-file queues are disjoint. Fairness order is
+   priority, oldest ready timestamp, parent ID, leaf ID; fixed `--max-workers`, wall-
+   clock, byte, network/provider and attempt budgets prevent runaway fan-out.
+3. **Prepare:** under the plan lock, CAS each claim, mint attempt IDs, create/private-
+   preflight worktrees and emit self-contained NDJSON packets. Partial preparation
+   rolls back only worktrees/claims created by that batch.
+4. **Execute externally:** the agent runner consumes packets. The repository tool
+   never invents credentials, accepts terms, chooses art/product policy or bypasses a
+   stop condition merely to keep the queue full.
+5. **Collect:** schema/path/commit/tree/artifact/spec-validate every immutable attempt,
+   quarantine invalid returns, and produce a stable integration proposal. A failed
+   shard leaves siblings usable.
+6. **Converge:** in a fresh temporary integration worktree, cherry-pick valid commits
+   in leaf-DAG order, compile unique fragments, rerun focused gates after each import
+   and the parent gate at the end. Conflict or red gate stops before the coordinator
+   branch. Only an O-approved command advances the integration branch/status/evidence.
+7. **Learn mechanically:** accepted reports emit typed gap inputs—never prose tasks.
+   Asset BOM holes, rejected formats, unfilled sockets, route failures, content IDs,
+   VO units and test discovery become new deterministic shard bindings until the
+   explicit quota/gate closes. Three identical blocker signatures trip a circuit
+   breaker and require one named unblock condition.
+8. **Retire safely:** after commit import and evidence hash verification, list owned
+   clean leaf branches/worktrees as GC candidates. `--verified-only` refuses active,
+   dirty, unmerged, unknown-path or preservation worktrees; deletion remains a
+   separately logged O action.
+
+Asset authoring gets its own automated funnel. BOMs generate normalized query
+manifests; provider adapters may use only documented anonymous/search/download APIs
+whose terms permit automation. Results are immutable URL/licence snapshots, then
+CAS acquisition performs size/archive/path/hash checks, metadata inspection produces
+hard-screen events, and deterministic previews expose scale/material/style problems.
+The machine proposes duplicate groups, pivots, material reduction, LODs and simple
+collision/physics proxies; a human curator accepts art fit, licence meaning and proxy
+safety. Pinned Blender/converter containers may run one-time authoring transforms,
+but tracked normalized source remains sufficient for every offline release build.
+Contact sheets, route/target sweeps, socket occupancy, visible-set resource budgets,
+Q24 rebuilds and physics recovery are regenerated from tracked matrices on every
+relevant input change.
+
+Automation invariants are mutation-tested: same inputs produce identical packet IDs,
+worktree paths, generated fragments, build bytes and reports; missing/extra/stale/
+duplicate shards fail; provider/network errors obey the retry table; a changed source
+hash never repins itself; no command reads ignored historical docs for machine truth;
+and no generated green result may edit its own expectation, master status or budget.
+
 ### Canonical build, browser, and CI methods
 
 - One tracked graph owns enforced locks, text, legacy and pixeldart shaders,
-  QMSH/models, strict assets/VO, compilation, static copy, and a no-timestamp
+  QMSH/models, deterministic sorted runtime-manifest fragment compilation, strict
+  assets/VO, compilation, static copy, and a no-timestamp
   `build-manifest.json` of sorted path/size/SHA. `tools/build.dart` becomes a thin
   wrapper or is retired; ignored `tmp/**`, global `webdev`, network access, and
   “latest stable” fallbacks are forbidden in release mode.
@@ -589,6 +912,141 @@ verifier that has not proved it can reject bad fixtures is not an acceptance gat
   canonical geometry without a decision, runtime handles in saves, generated
   drift, secret exposure, or any request to erase unrelated user work.
 
+### Small-agent execution layer
+
+The register remains outcome-sized; the recipes below make each outcome executable
+by agents with very little context. A **parent task** owns readiness and acceptance.
+A **leaf recipe** owns one bounded implementation move. A **materialized leaf** is a
+recipe whose variables, repository, base SHA, reads, writes, denies, commands, and
+expected artifacts have been resolved by O. Recipes are not a second status board.
+Their live state exists only as an active lease and a returned handoff; the parent
+stays **ACTIVE** until its aggregate gate passes.
+
+#### Leaf classes and sizing
+
+| Class | May be delegated to a small agent? | Contract |
+| --- | --- | --- |
+| `W` worker | Yes | One behavior/data batch, one repository/worktree, normally 1–3 production paths plus 1–3 focused test/fixture paths, no shared aggregate or architectural decision. |
+| `I` integrator | Only to the lane integrator | Serial shared seam, CLI/export barrel, generated aggregate, `web/main.dart`, renderer demo/pipeline/lifecycle, manifest, lock/gitlink, or parent-wide gate. |
+| `O` owner/control | No ordinary worker | Decision, lease/worktree/status/evidence, release output, deploy, or destructive/irreversible transition. |
+
+The path/line figures are dispatch-sizing signals, not product quality or acceptance
+budgets. If a worker leaf is likely to exceed six changed paths or roughly 250
+logical changed lines, O splits it unless a named invariant makes the change
+indivisible. A worker never widens its own packet. It returns `needs-split` or
+`spec-drift` with the exact reason.
+
+#### Mandatory materialized packet
+
+Every dispatch is self-contained and prints these fields in this order:
+
+```text
+schemaVersion, packetId, attemptId, parentTask, leafRecipe, class, owner, lane
+repository, worktree, baseSha, masterRevisionAtClaim, leaseRevision, specDigest
+dependencyEvidence[]
+bindings{}, requiredReads[], writeExact[], createExact[], denyPrefixes[]
+invariants[], numberedSteps[], firstCommand, testCommands[]
+gate, expectedArtifacts[], completionAssertions[], stopConditions[]
+handoffPath, resultMode: signedCommit|evidenceOnly, expires: never
+```
+
+`writeExact`/`createExact` contain normalized repository-relative files or private
+new-directory prefixes. They never contain an unbound placeholder, `..`, drive
+letter, symlink escape, broad repository root, or ambiguous glob. Reads are not
+writes. The packet includes only direct evidence and exact excerpts needed by the
+leaf; an ordinary worker does not load this whole master or unrelated design/history
+sections. `specDigest` hashes the selected parent row, recipe, resolved bindings/
+paths, direct dependency evidence/decisions, required excerpts and gate. Unrelated
+claims, evidence, or lease-table edits do not change it. `masterRevisionAtClaim` is
+used only for the claim CAS; a worker later checks its own stable lease revision plus
+recomputed spec digest.
+
+#### Worker algorithm
+
+1. Run the printed preflight: confirm private worktree/HEAD/lease revision/spec digest, list dirty files,
+   prove every dirty path is inside the lease or predeclared preservation set, and
+   confirm every dependency evidence ID exists.
+2. Read only `requiredReads`. Restate the expected observable in the handoff scratch
+   file before editing. If source contradicts the packet, stop as `spec-drift`.
+3. Add or select the smallest focused failing assertion/fixture when the leaf changes
+   behavior. Data-only scouting instead validates the empty skeleton before filling
+   it. Never weaken an existing assertion to obtain green.
+4. Implement the numbered steps in order. After each production path, run the
+   cheapest named focused check. Do not format or generate outside the lease.
+5. Run every `testCommands` entry exactly once for deterministic failures. Apply only
+   the retry classes in §4; capture stdout/stderr and artifact hashes.
+6. Run a diff audit: exact changed-path set, no deny-prefix change, no unrelated
+   whitespace, no secret/absolute path/timestamp, and no unexplained generated byte.
+7. For a mutation leaf, create the required packet-authorized signed feature commit,
+   calculate its exact changed-tree manifest hash, then atomically write
+   `test-results/handoffs/<parent>/<packet-id>/attempts/<attempt-id>.json`. An
+   evidence-only leaf writes the same immutable attempt record with no commit. Stop.
+   Do not merge, update the master, regenerate shared output, move a gitlink, or
+   claim acceptance.
+
+#### Machine handoff and parent aggregation
+
+The ignored handoff JSON contains:
+
+```text
+schemaVersion, packetId, attemptId, parentTask, leafRecipe, class, owner, lane,
+repository, worktree, bindings{}, baseSha, leaseRevision, specDigest,
+resultCommit, resultTree, changedTreeSha256, changedPaths[],
+commands[{argv,cwd,exitCode,durationMs}],
+artifacts[{path,sha256,size}], assertions[], gateResult, proves[],
+doesNotProve[], findings[], blocker, suggestedNextLeaf
+```
+
+`tools/plan.dart handoff` rejects a result when its parent/leaf/attempt/bindings differ
+from the active lease, changed paths exceed the resolved set, the base/lease/spec is
+stale, the signed commit/tree/path manifest differs, a command or required artifact
+is absent, or the result claims parent-level acceptance. O validates and imports leaf
+commits in dependency order, then verifies the post-import tree manifest. An `I` leaf
+then runs the parent aggregate gate against the merged SHA. Only that gate produces
+promotable `EV-*` evidence and allows the parent row to become **ACCEPTED**.
+
+#### Collision-free fan-out and automatic sharding
+
+- Repeated work writes **immutable fragments**, never a shared append target:
+  catalogue batches, room BOMs, source evidence, VO render batches, model pilot
+  reports, room placement files, scenario fixtures, and screenshots each get a
+  bound stable ID and private path. A serial integrator validates and merges them.
+- `tools/plan.dart leaves TASK --json` expands deterministic recipe families from
+  tracked inputs such as room IDs, BOM gaps, selected model IDs, visitor/day units,
+  and test files. It sorts by normalized ID, emits the same packet IDs for the same
+  input digest, and refuses duplicate output paths.
+- Default shard sizes are four discovery/inspection records, **one** normalized or
+  converted model, two art derivatives, four VO clips, one ≤3-piece architectural
+  kit workset, one room layer, one scenario fixture, or one UI surface. O may bind a
+  smaller shard; any larger exception must be class `I` with a named indivisible
+  invariant and cannot be silently assigned to a tiny worker.
+- A failed shard does not poison siblings. Deterministic/content/licence failure is
+  fixed in a new monotonic attempt (`<packet-id>-a0001`, `a0002`, …) of the same
+  stable packet ID; attempt files are immutable and any `current` index is generated.
+  Infrastructure-only retry also keeps every attempt. Aggregation refuses a missing,
+  duplicate, extra, stale, or differently fingerprinted shard.
+- `tools/plan.dart next --leaf --lane <lane>` selects only leaves whose parent is
+  admitted and whose leaf prerequisites are present. Multiple worker subleases may
+  coexist within or across ACTIVE parents when their exact leases/private worktrees
+  are disjoint. Lane integrators and their coordinator import queue remain serial and
+  ordered; the parent coordinator and one later aggregate integrator remain named.
+
+#### Tiny-agent prohibitions
+
+Unless the packet class is `I` or `O` and says otherwise, a leaf agent does not:
+
+- choose product/art/licence/performance/save-schema policy or resolve a decision;
+- edit `MASTERPLAN.md`, `tmp/**`, `dist/**`, lockfiles, gitlinks, shared manifests,
+  shared generated indexes, `web/main.dart`, or pixeldart's shared demo/pipeline;
+- launch a browser/server, access a marketplace account, deploy, delete/move broad
+  paths, change canonical geometry, or modify the active five-file RP-3 patch;
+- add dependencies, invent public interfaces, refactor adjacent code, or convert a
+  discovered asset whose licence/source-byte state has not reached `eligible`.
+
+The orchestrator treats a clean, precise stop as useful evidence. It never asks a
+small agent to “finish the rest,” “fix whatever breaks,” or infer a write set from a
+large parent row.
+
 ### Optimized waves and convergence points
 
 ```text
@@ -604,15 +1062,16 @@ W1 PARALLEL PRODUCTION
   R: REN-04 -> REN-05 -> REN-06 -> REN-07 -> REN-08  (serialized)
   C: ART-00 -> ART-01A | ART-01B | ART-01C -> ART-01D
      -> AST-02A -> AST-02B; ART-02 -> ART-03; AST-03; AUD-01 -> AUD-02
-  G: GAM-06; GAM-03A | GAM-04A | GAM-05A | GAM-08A | CNT-01 -> CNT-02
-     GAM-07 | ACC-01A after BASE-03
+  G: GAM-03A | GAM-04A | GAM-05A | GAM-08A -> GAM-09; GAM-06 runner kernel
+     CNT-01 pure leaves in parallel; after GAM-09, CNT-01 join -> CNT-02 -> GAM-10
+     CNT-01 -> AUD-03B -> GAM-07 -> ACC-01A (last G/C entrypoint baseline)
   O/owner: DEC-Q24-00 -> DEC-Q24-17 | DEC-Q24-18 | DEC-Q24-20
   CONVERGENCE B: renderer M1, curated asset set, frozen domain snapshots
 
 W2 ADAPTERS AND HOUSE
   O: INT-00 entrypoint handoff; R: INT-01; C/R handoff: INT-02; R: INT-03 -> INT-04
   C: ART-04 after INT-03; G/R: GAM-03B | GAM-04B | GAM-05B | GAM-08B after INT-04
-  R: INT-05 -> INT-06A; G/C: AUD-03B; ART-05A; GAM-02 -> ART-05B
+  R: INT-05 -> INT-06A; G/C: ART-05A; GAM-02 -> ART-05B
   CONVERGENCE C: next-renderer preview, furnished-house and content gates
 
 W3 ACCEPT AND RETIRE
@@ -631,8 +1090,475 @@ matrices. No new feature grows it except a release-blocking baseline repair.
 
 This is the only live status register. Detailed historical cards in `tmp/TODO.md`
 remain requirements where they do not conflict with this table. Each row maps to
-one gate ID; detailed commands will live in `tools/verify/gates.json`, and card
-references are printed by `tools/plan.dart dispatch`.
+one gate ID; detailed commands live in disjoint `tools/verify/gates.d/*.json`
+fragments and their deterministic generated `gates.json`, and card references are
+printed by `tools/plan.dart dispatch`.
+
+### Leaf recipe catalogue
+
+This catalogue is the implementation-depth layer, not a second backlog. Backticked
+`L-*` IDs are recipe IDs and therefore must not be parsed as canonical task rows.
+`—` means no additional leaf prerequisite after the parent is admitted;
+`ALL(recipe)` means every deterministic expansion of that recipe; `SAME(recipe)`
+means the expansion with the identical binding map; `TASK(task)` is an explicit
+acceptance-only convergence prerequisite that does not block earlier leaves;
+multiple expressions are comma-separated. Braced variables are recipe parameters
+and must be bound to exact values/paths before claim. The last leaf of each parent
+is normally class `I` and owns its aggregate gate.
+
+The dispatcher expands the probe into direct argv. Default leaf gates are:
+
+```text
+ROOT-DART: git diff --check; format --output=none --set-exit-if-changed only leased
+           Dart paths; dart analyze; run the one focused Dart test.
+PIX-DART:  the same from external/pixeldart, then the named renderer test.
+DATA:      validate the empty/synthetic bad fixture, validate the completed exact
+           fragment, then rerun with one required field/hash/reference mutated.
+PYTHON:    run the named unittest module with network/provider calls disabled.
+BROWSER:   no worker launch; the integrator invokes the named AUT-06 scenario via
+           tools/verify and verifies expected build/backend/artifact fingerprints.
+PARENT:    run the canonical G-* gate, exact changed-path check, and handoff import.
+```
+
+Materialization substitutes concrete paths/tests/scenarios; the shorthands are
+never literal shell strings. Whole-repository formatting is forbidden for a leaf.
+Whole-repository analyze/read-only aggregate checks are allowed when named and may
+not expand the write lease.
+
+Mixed-parent routing is explicit so `next --lane` never guesses. A single-lane
+parent derives lane/repository from its register row. Every recipe under a mixed row
+must match exactly one selector below; zero or multiple matches fail validation.
+The leaf lease—not the parent status row—owns its exact base/worktree/repository.
+
+| Parent | Leaf selector(s) | Lane/repository |
+| --- | --- | --- |
+| CTL-01 | `L-CTL01-DOC-CHECK`, `L-CTL01-DOC-COMMIT` | O/docs |
+| CTL-01 | `L-CTL01-ROOT-COMMIT`, `L-CTL01-CLEAN-PROOF` | O/game |
+| AUT-07 | `L-AUT07-*` | O/game |
+| DOC-01 | `L-DOC01-ROOT`, `L-DOC01-GATE` | O/game |
+| DOC-01 | `L-DOC01-RENDERER` | O/pixeldart |
+| DOC-01 | `L-DOC01-ASSET-AUDIO` | O/docs |
+| PERF-01 | `L-PERF01-FIXTURE`, `L-PERF01-MEASURE` | G/game |
+| PERF-01 | `L-PERF01-RATIFY` | O/game |
+| REN-00 | no recipes; already accepted | R/pixeldart |
+| ART-03 | `L-ART03-ROOM-BASE`, `L-ART03-HOUSE-BASE` | C/game |
+| ART-03 | `L-ART03-ROOM-BOUNDS`, `L-ART03-VERIFY-MATRIX`, `L-ART03-GATE` | G/game |
+| ART-04 | `L-ART04-BULK-MODELS`, `L-ART04-ART-*`, `L-ART04-ROOM-*`, `L-ART04-EXTERIOR-*`, `L-ART04-MERGE` | C/game |
+| ART-04 | `L-ART04-COLLISION`, `L-ART04-GATE` | G/game |
+| ART-05A | `L-ART05A-*` | G/game |
+| ART-05B | `L-ART05B-OVERRIDE` | C/game |
+| ART-05B | `L-ART05B-GATE` | G/game |
+| AUD-03B | `L-AUD03B-CONTENT-MAP` | C/game |
+| AUD-03B | `L-AUD03B-ENGINE`, `L-AUD03B-WIRE`, `L-AUD03B-BROWSER` | G/game |
+| AST-01B | `L-AST01B-*` | O/game |
+| DEC-Q24-00 | `L-DECQ24-*` | O/game |
+| GAM-03B | `L-GAM03B-MODULE` | R/game |
+| GAM-03B | `L-GAM03B-GATE` | G/game |
+| GAM-04B | `L-GAM04B-MODULE` | R/game |
+| GAM-04B | `L-GAM04B-GATE` | G/game |
+| GAM-05B | `L-GAM05B-MODULE` | R/game |
+| GAM-05B | `L-GAM05B-GATE` | G/game |
+| GAM-08B | `L-GAM08B-VIDEO` | R/game |
+| GAM-08B | `L-GAM08B-AUDIO`, `L-GAM08B-GATE` | G/game |
+| INT-02 | `L-INT02-DESCRIPTOR`, `L-INT02-CACHE`, `L-INT02-LIFECYCLE`, `L-INT02-BROWSER` | R/pixeldart |
+| INT-02 | `L-INT02-HANDBACK` | O/game |
+| INT-06A | `L-INT06A-PREVIEW` | R/game |
+| INT-06A | `L-INT06A-FREEZE` | O/game |
+| INT-06C | `L-INT06C-DELETE` | R/game |
+| INT-06C | `L-INT06C-GATE` | O/game |
+| ACC-01B | `L-ACC01B-*` | G/game |
+| ACC-03 | `L-ACC03-*` | G/game |
+| REL-03 | `L-REL03-*` | O/game |
+
+#### W0 control, automation, build, and baseline recipes
+
+| Leaf recipe | Parent | Class | After | Write/create boundary | Exact completion probe |
+| --- | --- | --- | --- | --- | --- |
+| `L-CTL01-DOC-CHECK` | CTL-01 | O | — | Planning files already leased by `RESERVE-O`; no feature path | Master/register/card/link/diff validators pass; record root/docs dirty sets. |
+| `L-CTL01-DOC-COMMIT` | CTL-01 | O | `L-CTL01-DOC-CHECK` | Docs repo `PLAN.md`, `TODO.md` only | Signed docs commit contains only reviewed planning diff; capture SHA. |
+| `L-CTL01-ROOT-COMMIT` | CTL-01 | O | `L-CTL01-DOC-COMMIT` | Root `MASTERPLAN.md`, `tools/card.dart` only | Signed root commit excludes RP-3/unrelated dirt; record root and separate ignored-docs SHAs as an evidence pair, not a nonexistent gitlink. |
+| `L-CTL01-CLEAN-PROOF` | CTL-01 | O | `L-CTL01-ROOT-COMMIT` | Evidence scratch only | Clean root works without docs; paired docs checkout enriches cards; plan/card/link/table/DAG checks emit `EV-PLAN-*`. |
+| `L-CTL03-PREFLIGHT` | CTL-03 | O | — | `.gitignore` only if `_worktrees/` is not already ignored | Resolve absolute targets, branch names and base SHA; prove neither target exists or overlaps dirt. |
+| `L-CTL03-C-WORKTREE` | CTL-03 | O | `L-CTL03-PREFLIGHT` | `_worktrees/game-c/**` metadata via Git only | Worktree/branch HEAD equals base; no copied dirty file; root discovery excludes it. |
+| `L-CTL03-G-WORKTREE` | CTL-03 | O | `L-CTL03-PREFLIGHT` | `_worktrees/game-g/**` metadata via Git only | Same proof as C with a distinct branch/path. |
+| `L-CTL03-LEAF-FACTORY` | CTL-03 | O | `L-CTL03-C-WORKTREE`, `L-CTL03-G-WORKTREE` | `tools/worktrees.dart`, focused path/branch/cleanup fixtures | Create one disposable private leaf worktree at an expected SHA, refuse collision/escape/dirty reuse, then retire only the verified owned path. |
+| `L-CTL03-GATE` | CTL-03 | O | `L-CTL03-LEAF-FACTORY` | Evidence scratch only | Recursive analyze/test/build sees each intended repo once; coordinator bases/branches and disposable leaf lifecycle are recorded. |
+| `L-AUT01-MODEL` | AUT-01 | W | — | `tools/plan/model.dart`, `tools/plan/test_model.dart` | Parse/serialize every allowed status, task, decision, evidence, recipe and lease value losslessly. |
+| `L-AUT01-PARSE` | AUT-01 | W | `L-AUT01-MODEL` | `tools/plan/parser.dart`, `tools/plan/test_parser.dart`, private parser fixtures | Valid master yields exact sets; malformed headings/tables/columns/IDs fail with line numbers. |
+| `L-AUT01-VALIDATE` | AUT-01 | W | `L-AUT01-PARSE` | `tools/plan/validate.dart`, `tools/plan/test_validate.dart`, private semantic fixtures | Mutation suite catches duplicate/unknown/cycle/false-ready/evidence-free accepted/bad leaf grammar. |
+| `L-AUT01-LEASE` | AUT-01 | W | `L-AUT01-MODEL` | `tools/plan/lease.dart`, `tools/plan/test_lease.dart`, private lease fixtures | Windows/case/slash-equivalent overlaps, escapes, stale SHA/digest and lock contention all fail. |
+| `L-AUT01-EXPAND` | AUT-01 | W | `L-AUT01-PARSE` | `tools/plan/expand.dart`, focused deterministic shard/binding fixtures | `leaves` expands tracked domains to stable packet IDs, exact paths and one routing row; duplicate/unbound/ambiguous output fails. |
+| `L-AUT01-NEXT` | AUT-01 | W | `L-AUT01-VALIDATE`, `L-AUT01-EXPAND` | `tools/plan/scheduler.dart`, focused readiness/fairness fixtures | `next` returns only dependency-ready, nonoverlapping routed leaves in deterministic priority/age/ID order and cannot deadlock disjoint ACTIVE parents. |
+| `L-AUT01-DISPATCH` | AUT-01 | W | `L-AUT01-EXPAND`, `L-AUT01-LEASE` | `tools/plan/dispatch.dart`, `tools/plan/test_dispatch.dart`, golden packet fixtures | Bound packet has no placeholder/glob, contains only authoritative required reads/direct context, and round-trips JSON deterministically. |
+| `L-AUT01-CLAIM` | AUT-01 | I | `L-AUT01-NEXT`, `L-AUT01-LEASE` | `tools/plan/claim.dart`, CAS/attempt/worktree fixtures | `claim` CASes master+repo, mints stable lease/spec plus monotonic attempt, creates private worktree, and loses cleanly under contention. |
+| `L-AUT01-HANDOFF` | AUT-01 | W | `L-AUT01-LEASE` | `tools/plan/handoff.dart`, `tools/plan/test_handoff.dart` | Reject extra path, stale lease/spec, overwritten attempt, unsigned/wrong tree, absent command/artifact and parent-acceptance claim. |
+| `L-AUT01-ACCEPT` | AUT-01 | I | `L-AUT01-HANDOFF`, `L-AUT01-VALIDATE` | `tools/plan/promote.dart`, focused evidence/demotion fixtures | `accept` proposes only exact merged gate evidence; dependency mutation demotes affected downstream rows and no worker edits status. |
+| `L-AUT01-CLI` | AUT-01 | I | `L-AUT01-NEXT`, `L-AUT01-DISPATCH`, `L-AUT01-CLAIM`, `L-AUT01-HANDOFF`, `L-AUT01-ACCEPT` | `tools/plan.dart`, `tools/plan/test_all.dart` | All documented commands and exit codes pass; `validate` accepts the committed master and deterministic probes need no redundant rerun unless their gate says so. |
+| `L-AUT02-GATE-MODEL` | AUT-02 | W | — | `tools/verify/gate.dart`, `tools/verify/gates.schema.json`, `tools/verify/test_gate.dart`, schema fixtures | Reject bad cwd/argv/dependency/profile/input/retry/discovery/artifact/task fields and graph cycles. |
+| `L-AUT02-EXECUTOR` | AUT-02 | W | `L-AUT02-GATE-MODEL` | `tools/verify/executor.dart`, `tools/verify/test_executor.dart`, process fixtures | Direct argv pass/fail/timeout/kill/cleanup classification works without shell composition. |
+| `L-AUT02-FINGERPRINT` | AUT-02 | W | `L-AUT02-GATE-MODEL` | `tools/verify/fingerprint.dart`, `tools/verify/test_fingerprint.dart` | Stable sorted input/tool/repo/spec fingerprints change on every mutation and omit secrets. |
+| `L-AUT02-RESUME` | AUT-02 | W | `L-AUT02-EXECUTOR`, `L-AUT02-FINGERPRINT` | `tools/verify/resume.dart`, `tools/verify/test_resume.dart` | Killed run resumes only matching PASS nodes; stale definitions/inputs rerun. |
+| `L-AUT02-DISCOVERY` | AUT-02 | W | `L-AUT02-GATE-MODEL` | `tools/verify/discovery.dart`, `tools/verify/test_discovery.dart` | Sorted exact/minimum sets reject zero, missing, duplicate and unexpected tests/assets/clips. |
+| `L-AUT02-REPORT` | AUT-02 | W | `L-AUT02-EXECUTOR`, `L-AUT02-FINGERPRINT` | `tools/verify/report.dart`, `tools/verify/test_report.dart` | Crash-safe NDJSON, JSON/Markdown/JUnit and artifact SHA output validate against their schemas. |
+| `L-AUT02-GRAPH` | AUT-02 | I | `L-AUT02-RESUME`, `L-AUT02-DISCOVERY`, `L-AUT02-REPORT` | `tools/verify.dart`, seed `tools/verify/gates.d/*.json`, generated `gates.json`, `tools/verify/test_all.dart` | Fragment compiler rejects duplicate IDs/outputs/cycles; quick/full profiles continue, skip truthfully and resume. |
+| `L-BLD01-LOCKS` | BLD-01 | O | — | `pubspec.lock`, `.gitignore`, pinned toolchain config only | `dart pub get --enforce-lockfile` works; no ignored lock or floating compiler/tool fallback remains. |
+| `L-BLD01-GRAPH` | BLD-01 | W | — | `tools/build/graph.dart`, `tools/build/test_graph.dart` | Graph includes locks, text, both shader trees, assets/models/VO, compile/static/manifest in stable order. |
+| `L-BLD01-GENERATORS` | BLD-01 | W | `L-BLD01-GRAPH` | `tools/build/generators.dart`, `tools/build/test_generators.dart` | Missing/stale/non-idempotent text, shader, model, asset or VO output fails offline. |
+| `L-BLD01-TREE` | BLD-01 | W | `L-BLD01-GRAPH` | `tools/build/artifact_tree.dart`, `tools/build/test_artifact_tree.dart` | Exact path/size/SHA comparison catches missing/extra/mutated file, map and stale app. |
+| `L-BLD01-CACHE-HOOK` | BLD-01 | O | `L-BLD01-GRAPH` | `vercel.json`, `.githooks/pre-commit`, narrow build config | Stable `/res/*` revalidates; hook watches all graph inputs and invokes the canonical quick gate. |
+| `L-BLD01-CLI` | BLD-01 | I | `L-BLD01-LOCKS`, `L-BLD01-GENERATORS`, `L-BLD01-TREE`, `L-BLD01-CACHE-HOOK` | `tools/build.dart`, `tools/vercel_build.mjs`, build schema/fixtures | One offline production command emits sorted no-time manifest; two fresh roots are byte-identical. |
+| `L-BLD01-ASSET-CONVERGE` | BLD-01 | I | `L-BLD01-CLI`, `TASK(AST-01A)` | Build graph/strict asset gate fragment only; no catalogue edit | Canonical build consumes tracked catalogue/tooling, has no `tmp/tools/fetch_assets.dart` or network dependency, and fails a stale/missing asset mutation. |
+| `L-AUT06-DIAG-MODEL` | AUT-06 | W | — | `lib/verification/diagnostics.dart`, `tools/browser/test_diagnostics.dart` | Versioned public JSON rejects non-finite/private values and exposes every §4 field. |
+| `L-AUT06-SCENARIO` | AUT-06 | W | — | `tools/browser/scenario.dart`, `tools/browser/test_scenario.dart`, scenario schema/fixtures | Versioned preload/actions/assertions parse deterministically; unknown/private action fails. |
+| `L-AUT06-PROCESS` | AUT-06 | W | `L-AUT06-SCENARIO` | `tools/browser/process_owner.dart`, `tools/browser/test_process_owner.dart` | Dynamic ports/profile, owned PID tracking and `finally` cleanup survive timeout/interruption. |
+| `L-AUT06-PROBES` | AUT-06 | W | `L-AUT06-SCENARIO` | `tools/browser/probes.dart`, `tools/browser/test_probes.dart` | Wrong build/backend, console/page/GL error, dark frame and disallowed software adapter fail by name. |
+| `L-AUT06-READBACK` | AUT-06 | I | `L-AUT06-DIAG-MODEL` | Exact legacy end-of-frame readback seam and focused test named at dispatch | Public request yields framebuffer hash/luminance/black pixels only after a completed frame. |
+| `L-AUT06-RUNNER` | AUT-06 | I | `L-AUT06-PROCESS`, `L-AUT06-PROBES`, `L-AUT06-READBACK` | `tools/browser.dart`, diagnostic HTML/entrypoint seam, browser gate entries | Source/package scenarios use real input, expected build ID, artifact capture and owned cleanup. |
+| `L-AUT08-PLAN-MUTANTS` | AUT-08 | W | — | `tools/verify/fixtures/plan/**`, `tools/verify/self_test_plan.dart` | Every invalid-plan/CAS/lease mutation fails for its named assertion. |
+| `L-AUT08-RUNNER-MUTANTS` | AUT-08 | W | — | `tools/verify/fixtures/runner/**`, `tools/verify/self_test_runner.dart` | Pass/fail/timeout/retry/skip/resume/discovery/artifact mutations are discriminated. |
+| `L-AUT08-BUILD-MUTANTS` | AUT-08 | W | — | `tools/verify/fixtures/build/**`, `tools/verify/self_test_build.dart` | Missing/extra/mutated/nondeterministic dist and unsafe cache headers fail. |
+| `L-AUT08-BROWSER-MUTANTS` | AUT-08 | W | — | `tools/verify/fixtures/browser/**`, `tools/verify/self_test_browser.dart` | Wrong build/error/dark/software/cleanup fixtures prove browser false positives are rejected. |
+| `L-AUT08-GATE` | AUT-08 | I | `L-AUT08-PLAN-MUTANTS`, `L-AUT08-RUNNER-MUTANTS`, `L-AUT08-BUILD-MUTANTS`, `L-AUT08-BROWSER-MUTANTS` | `tools/verify/self_test.dart`, self-test gate entry | Mutation suite passes twice and fails when any expected-failure assertion is disabled. |
+| `L-AUT07-PR` | AUT-07 | I | — | `.github/workflows/verify.yml` | Pinned PR workflow runs quick/full software lanes and always uploads structured artifacts. |
+| `L-AUT07-HARDWARE` | AUT-07 | I | `L-AUT07-PR` | `.github/workflows/hardware.yml`, hardware runner docs/config | Manual named-adapter 600-frame/audio/offline lane emits required signed evidence. |
+| `L-AUT07-RELEASE` | AUT-07 | O | `L-AUT07-HARDWARE` | `.github/workflows/release.yml`, release config | Tag lane consumes the already accepted artifact and cannot silently rebuild a different candidate. |
+| `L-BASE02-DOUBLE-BUILD` | BASE-02 | O | — | Fresh ignored output roots only | Two offline production builds have identical exact trees and manifest build ID. |
+| `L-BASE02-DIST` | BASE-02 | O | `L-BASE02-DOUBLE-BUILD` | `dist/web/**` only | One replacement makes tracked dist exact; third compare reports no missing/extra/mutated output. |
+| `L-BASE03-SOURCE` | BASE-03 | I | — | Scenario artifacts only | Source boot reaches 120 frames with expected build/backend/input/readback and no errors. |
+| `L-BASE03-PACKAGE` | BASE-03 | I | `L-BASE03-SOURCE` | Scenario artifacts only | Packaged boot repeats the frozen actions/assertions and identifies its exact build. |
+| `L-BASE04-ALPHA-SPLIT` | BASE-04 | W | — | `tools/renderer/test_alpha_mask.dart`, one exact new split test only | Behavior assertions are unchanged/mutation-live and each file is at or below ratified test cap. |
+| `L-BASE04-ZERO-SPLIT` | BASE-04 | W | — | `tools/renderer/test_zero_cost.dart`, one exact new split test only | All zero-cost cases preserved/mutation-live and both files pass the cap. |
+| `L-BASE04-DISCOVERY` | BASE-04 | I | `L-BASE04-ALPHA-SPLIT`, `L-BASE04-ZERO-SPLIT` | `tools/renderer/test_all.dart`, new discovery self-test only | Runner discovers sorted exact nonempty `test_*.dart` set, excludes only itself, and catches missing/extra/zero tests. |
+| `L-BASE04-GATE` | BASE-04 | I | `L-BASE04-DISCOVERY` | `tools/renderer/budgets.json` only if explicitly ratified | Exact format/analyze/tests/boundary/size/shader suite passes from clean pixeldart SHA. |
+| `L-DOC01-ROOT` | DOC-01 | O | — | Root README/operational docs named at dispatch | Current commands, locks, paths and authority point to master without live status duplication. |
+| `L-DOC01-RENDERER` | DOC-01 | O | — | Pixeldart README/package docs named at dispatch | Public lifecycle/profile/build/test instructions match accepted package behavior. |
+| `L-DOC01-ASSET-AUDIO` | DOC-01 | O | — | `tmp/ASSETS.md`, `tmp/TTS-PLAN.md`, related references only | Narrative docs are explicitly generated/historical and counts derive from strict tracked inputs. |
+| `L-DOC01-GATE` | DOC-01 | O | `L-DOC01-ROOT`, `L-DOC01-RENDERER`, `L-DOC01-ASSET-AUDIO` | Read-only documentation evidence | Links, authority, command/profile parity, public API behavior and generated asset/audio/count references match the accepted implementation; no second status board survives. |
+| `L-PERF01-FIXTURE` | PERF-01 | W | — | `tools/browser/scenarios/perf.json`, metric schema | Fixed camera/route/profile/warm-up/600-frame workload and resource counters are deterministic. |
+| `L-PERF01-MEASURE` | PERF-01 | I | `L-PERF01-FIXTURE` | Evidence artifacts only | Exactly three named-hardware runs report CPU/GPU p50/p95, draws, triangles, textures/resources, package. |
+| `L-PERF01-RATIFY` | PERF-01 | O | `L-PERF01-MEASURE` | Decision/evidence rows via O only | Owner records supported browsers/adapters and binary ceilings; no silent “reasonable” defaults remain. |
+
+#### Serialized pixeldart recipes
+
+The current `REN-03A` patch is an atomic preservation exception: only its existing R
+owner may finish its five files. That lease does not silently widen to a test file.
+After the production handoff, a new test-only lease may mutation-check it; the five
+production paths remain untouched during that leaf.
+
+| Leaf recipe | Parent | Class | After | Write/create boundary | Exact completion probe |
+| --- | --- | --- | --- | --- | --- |
+| `L-REN03A-FINISH` | REN-03A | I | — | The exact five paths in `LEASE-RP3-A` only | Existing owner finishes audited vocabulary/parameter propagation and analyze; handoff preserves exact diff scope. |
+| `L-REN03A-TEST` | REN-03A | W | `L-REN03A-FINISH` | New `tools/renderer/test_post_chain_parameters.dart` only | Exact/custom profile resources and DOF/grade/PS1/VHS parameters are mutation-live; no leased production byte changes. |
+| `L-REN03A-GATE` | REN-03A | I | `L-REN03A-TEST` | Evidence only | Focused test plus exact pixeldart static suite passes from the combined clean result SHA. |
+| `L-REN03B-DECLARE` | REN-03B | W | — | `lib/rendering/core/render_feature.dart`, `tools/renderer/test_feature_graph.dart` | Every resource/program/pass group has explicit dependency closure and invalid graphs fail. |
+| `L-REN03B-ASSEMBLER` | REN-03B | I | `L-REN03B-DECLARE` | New `lib/rendering/passes/pipeline_builder.dart`, new focused test | Minimal/full declared groups build stable ordered graphs; excluded groups are absent. |
+| `L-REN03B-OWNERSHIP` | REN-03B | W | `L-REN03B-ASSEMBLER` | New focused zero-install/resource-count fixture only | Each excluded feature yields zero programs, targets, passes and store resources under mutation. |
+| `L-REN03B-INTEGRATE` | REN-03B | I | `L-REN03B-OWNERSHIP` | Shared pipeline exports/demo/test aggregate only | Package exact suite and repeated install/dispose return resources to baseline. |
+| `L-REN03C-PROFILES` | REN-03C | W | — | `lib/rendering/api/settings.dart`, new `tools/renderer/test_profiles.dart` | Minimal/full/named profiles serialize to explicit feature/parameter sets with no hidden default. |
+| `L-REN03C-SELECTION` | REN-03C | W | `L-REN03C-PROFILES` | `lib/rendering/webgl/capability_selection.dart`, focused selection test | Unsupported and invalid combinations fail or select the documented conservative path deterministically. |
+| `L-REN03C-RECONFIGURE` | REN-03C | I | `L-REN03C-SELECTION` | Renderer/pipeline lifecycle paths named after reread, focused lifecycle test | Configure is between-frame atomic; stale encoders reject; repeated cycles keep exact counts. |
+| `L-REN03C-AB` | REN-03C | I | `L-REN03C-RECONFIGURE` | `web/renderer_test/main.dart`, scenario artifact only | Minimal/full/invalid A/B proves installed groups and live resources through public diagnostics. |
+| `L-REN04-POLICY` | REN-04 | W | — | New `lib/rendering/api/internal_resolution.dart`, focused policy test | Matrix covers CSS size, DPR, fixed/adaptive mode and zero/odd/extreme dimensions. |
+| `L-REN04-TARGETS` | REN-04 | W | `L-REN04-POLICY` | `lib/rendering/webgl/webgl2_device_targets.dart`, focused allocation test | Every scene/history/post target uses resolved internal size; UI/canvas contract stays separate. |
+| `L-REN04-RESIZE` | REN-04 | W | `L-REN04-TARGETS` | `lib/rendering/webgl/device.dart` or exact resize seam, focused resize test | Repeated resize/DPR changes free old targets, preserve NEAREST policy and return to baseline. |
+| `L-REN04-INTEGRATE` | REN-04 | I | `L-REN04-RESIZE` | Shared demo/pipeline and browser scenario only | 384×216 default and matrix cases show correct canvas/readback/resource dimensions. |
+| `L-REN05-SHADERS` | REN-05 | I | — | World `.vert` shader sources, shader manifest, shader-focused test | Serialized R integration keeps default variant bytes stable; enabled variant uses explicit vertex-light inputs and finite clamps. |
+| `L-REN05-PROGRAM` | REN-05 | W | `L-REN05-SHADERS` | `lib/rendering/core/program_library.dart`, exact generated shader output, focused program test | Only selected profiles compile/install variant; cache keys distinguish it; default owns zero extra program. |
+| `L-REN05-SELECT` | REN-05 | I | `L-REN05-PROGRAM` | Profile/pipeline selection seam, focused mutation fixture | Turning the feature off removes program/resource/draw state and preserves old clean output hash. |
+| `L-REN05-AB` | REN-05 | I | `L-REN05-SELECT` | Demo toggle/browser artifacts only | Clean/on fixed scene A/B plus cost/resource report; default stays off absent `DEC-RP5`. |
+| `L-REN06-CLOCK` | REN-06 | W | — | New `lib/rendering/core/frame_clock.dart`, focused determinism test | Explicit time/epoch/frame/seed inputs produce identical 120-frame command/state summaries. |
+| `L-REN06-HISTORY` | REN-06 | W | `L-REN06-CLOCK` | Temporal/history ownership seam and focused reset test | Resize/reconfigure/loss/restore resets or preserves each history exactly as specified. |
+| `L-REN06-MOTION` | REN-06 | W | `L-REN06-CLOCK` | `lib/rendering/api/settings.dart` motion fields plus focused test | Live reduced-motion update measurably reduces every temporal/jitter/history consumer without restart. |
+| `L-REN06-INTEGRATE` | REN-06 | I | `L-REN06-HISTORY`, `L-REN06-MOTION` | Shared demo/scenario only | Two public 120-frame replays match; reduced-motion metrics differ in the intended direction. |
+| `L-REN07-FOG` | REN-07 | W | — | Fog factor API/shader/debug graph paths named at dispatch, focused test | Debug output monotonically represents finite clamped fog factor and disabled mode owns zero extras. |
+| `L-REN07-PROBES` | REN-07 | W | `L-REN07-FOG` | `tools/renderer/comfort_probe.dart`, pure probe tests | Synthetic NaN/dark/flash/luminance-frequency mutants fail exact thresholds. |
+| `L-REN07-INTEGRATE` | REN-07 | I | `L-REN07-PROBES` | Demo toggle plus browser artifacts only | 600-frame named-adapter run passes finite/luminance/mostly-black/photosensitivity and cleanup gates. |
+| `L-REN08-API` | REN-08 | W | — | New public `lib/rendering/api/scene_renderer.dart`, API compile tests | Minimal lifecycle/submit/configure/resize/dispose/loss/restore API exposes no WebGL implementation type. |
+| `L-REN08-IMPLEMENT` | REN-08 | I | `L-REN08-API` | Exact renderer implementation/lifecycle paths, focused fake-device tests | Ownership table is executable; configure is atomic; dispose returns every live count to baseline. |
+| `L-REN08-LOSS` | REN-08 | W | `L-REN08-API` | New loss/restore fixture and narrowly named device seam | Lost renderer rejects work; restore recreates each owned resource once and stale handles/encoders fail. |
+| `L-REN08-PUBLIC` | REN-08 | I | `L-REN08-IMPLEMENT`, `L-REN08-LOSS` | Export barrel, shared demo/browser scenario only | Consumer uses only public facade across resize/reconfigure/loss/restore/dispose; exact package suite passes. |
+
+#### Asset discovery, conversion, house-remodel, art, voice, and audio recipes
+
+Room expansions bind exactly `living-room`, `hall`, `kitchen`, `cellar`, `bedroom`,
+`landing`, `bathroom`, or `spare-room`. The initial scout **workset** IDs are fixed
+so a future orchestrator need not rediscover a useful partition:
+
+```text
+architecture: arch-trim-surfaces-01, arch-openings-01,
+              arch-hearth-alcove-01, arch-stair-rail-01,
+              arch-cellar-service-01
+furniture:    furn-seating-tables-01, furn-storage-display-01,
+              furn-bedroom-private-01, furn-kitchen-work-01,
+              furn-bath-utility-01
+decor:        decor-textiles-rugs-curtains-01, decor-books-clocks-paper-01,
+              decor-crockery-pans-jars-01, decor-tools-coal-storage-01,
+              decor-frames-personal-01
+art:          art-met-open-01, art-aic-open-01, art-smithsonian-open-01
+```
+
+Each workset deterministically expands to three four-record shards (`-01`…`-03`).
+That yields capacity for 180 serious 3D candidates plus 36 open art images before
+rescout. O materializes a new numbered rescout workset whenever the report shows a
+viable-count, quantity-band, BOM, style/scale, licence confidence, average-score, or
+pilot-format deficit—not only an empty category. Agents report shortfall and never
+pad a shard. Normalization/conversion shards bind one accepted **3D** ID and art-
+derivative shards bind two accepted image IDs. Quotas are verified by typed folded
+records, not filenames.
+
+| Leaf recipe | Parent | Class | After | Write/create boundary | Exact completion probe |
+| --- | --- | --- | --- | --- | --- |
+| `L-AST01A-SCHEMA` | AST-01A | W | — | `assets/catalog/schema.json`, schema fixtures only | Valid progressive states round-trip; unknown fields/status/licence/path/non-finite values fail. |
+| `L-AST01A-LICENCE` | AST-01A | W | `L-AST01A-SCHEMA` | `tools/assets/licence.dart`, focused tests, tracked full licence texts | Allowlist rejects NC/ND/SA/unknown/custom-without-decision and detects missing bundled terms. |
+| `L-AST01A-CATALOG` | AST-01A | W | `L-AST01A-SCHEMA`, `L-AST01A-LICENCE` | `tools/assets/catalog.dart`, focused tests/fixtures | Sorted fragment scan rejects duplicate ID/URL/hash, bad state transition, missing source page and escape. |
+| `L-AST01A-ACQUIRE` | AST-01A | W | `L-AST01A-CATALOG` | `tools/assets/acquire.dart`, focused quarantine/HTTP/archive fixtures | Unpinned URL is size/type/path/bomb checked, hash-computed and CAS-ingested atomically; interruption leaves no event/partial. |
+| `L-AST01A-FETCH` | AST-01A | W | `L-AST01A-CATALOG` | `tools/assets/fetch.dart`, focused pinned HTTP/cache fixtures | Recorded expected hash is mandatory; CAS/atomic rename pass; auth/4xx/hash/parse never retry or repin. |
+| `L-AST01A-INGEST` | AST-01A | W | `L-AST01A-CATALOG` | One bound ≤4-entry `assets/catalog/candidates/existing/{batch}.json`, matching inspection overlay and enumerated evidence prefixes | Assigned current manifest files become truthful discovered/inspected/rejected catalogue events without invented provenance. |
+| `L-AST01A-RUNTIME-FRAGMENT` | AST-01A | I | `ALL(L-AST01A-INGEST)` | `assets/runtime-manifest.d/core.json`, fragment compiler fixture | Existing non-model/non-voice runtime entries migrate exactly once; sorted fragment compilation reproduces current logical keys. |
+| `L-AST01A-CLI` | AST-01A | I | `L-AST01A-ACQUIRE`, `L-AST01A-FETCH`, `L-AST01A-RUNTIME-FRAGMENT` | `tools/models.dart`, `tools/assets/test_all.dart`, catalogue gate entries | `acquire`/pinned `fetch` are distinct; catalogue/offline audit reject zero/extras/orphans and pass good/bad fixtures. |
+| `L-ART00-BOM-ROOM` | ART-00 | W | — | `assets/catalog/room_bom/{room}.json` only | Schema check proves required/optional categories, quantity/dimensions/material/search/reuse/exclusion fields and no duplicate key. |
+| `L-ART00-BOM-GATE` | ART-00 | I | `ALL(L-ART00-BOM-ROOM)` | BOM validator/report only; no room fragment edits | Eight sorted fragments cover PLAN §20.0, expose every gap, and emit deterministic room/category matrix. |
+| `L-ART01A-DISCOVER` | ART-01A | W | — | One four-record `assets/catalog/candidates/architecture/{batch}.json` plus enumerated private evidence prefixes | Four original-page candidates cover the assigned structure workset honestly with valid discovered fields. |
+| `L-ART01A-INSPECT` | ART-01A | W | `SAME(L-ART01A-DISCOVER)` | One matching `assets/catalog/inspections/architecture/{batch}.json`, pinned cache and enumerated evidence only | Download/hash/format/axis/units/triangles/materials/textures/terms overlay or normalized rejection is complete; discovery stays unchanged. |
+| `L-ART01A-GATE` | ART-01A | I | `ALL(L-ART01A-INSPECT)` | Architecture/exterior screening report only | ≥110 3D architecture/exterior records are inspected and ≥75 pass hard screening; every pass fills a BOM use, else rescout. |
+| `L-ART01B-DISCOVER` | ART-01B | W | — | One four-record `assets/catalog/candidates/furniture/{batch}.json` plus enumerated private evidence prefixes | Four original-page functional furniture/fixture candidates satisfy the assigned workset without padding. |
+| `L-ART01B-INSPECT` | ART-01B | W | `SAME(L-ART01B-DISCOVER)` | One matching `assets/catalog/inspections/furniture/{batch}.json`, pinned cache and evidence only | Technical/licence overlay is complete or rejection explicit; scale/silhouette preview recorded and discovery unchanged. |
+| `L-ART01B-GATE` | ART-01B | I | `ALL(L-ART01B-INSPECT)` | Furniture screening report only | ≥90 3D furniture/fixture records are inspected and ≥60 pass hard screening with credible functional/scale coverage, else rescout. |
+| `L-ART01C-DISCOVER` | ART-01C | W | — | One four-record `assets/catalog/candidates/{decor-or-art}/{batch}.json` plus enumerated private evidence prefixes | Four original-page decor or open-art records satisfy the assigned workset without weak filler. |
+| `L-ART01C-INSPECT` | ART-01C | W | `SAME(L-ART01C-DISCOVER)` | One matching `assets/catalog/inspections/{decor-or-art}/{batch}.json`, pinned cache/evidence only | Technical/licence/art metadata overlay is complete or rejection explicit; object ID/open marker recorded; discovery unchanged. |
+| `L-ART01C-GATE` | ART-01C | I | `ALL(L-ART01C-INSPECT)` | Typed decor/art screening report only | ≥120 inspected 3D decor/physics props with ≥80 hard-screen passes, plus 50–80 inspected art with ≥30 passes and no lived-detail hole, else rescout. |
+| `L-ART01D-SCORE` | ART-01D | W | — | One `assets/catalog/selection/proposals/{batch}.json` for four disjoint inspected hard-screen-pass IDs | Compute score from recorded facts, cite BOM uses/edit cost/reuse/case value, and emit immutable eligible/rejected score events; no acceptance write. |
+| `L-ART01D-GAP` | ART-01D | I | `ALL(L-ART01D-SCORE)` | Deterministic selection/gap report only | Ranked candidates reveal every required BOM hole, style/scale outlier, licence risk and import-case coverage gap. |
+| `L-ART01D-CURATE` | ART-01D | I | `L-ART01D-GAP` | `assets/catalog/accepted.json` only | Lead selects 160–220 coherent 3D IDs and 30–48 art-image IDs with reasons/room/exterior uses; exactly 30 3D records carry pilot flags. |
+| `L-ART01D-GATE` | ART-01D | I | `L-ART01D-CURATE` | Curation evidence/report only | Typed accepted sets validate separately, source bytes are pinned, category/room quotas hold and 30-model pilot spans real formats. |
+| `L-AST02A-MATRIX` | AST-02A | I | — | `assets/catalog/selection/pilot-30.json` only | Exactly 30 accepted IDs cover negative indices, normals, multi-material, sidecars, scale/axis and bounds cases. |
+| `L-AST02A-QMSH-WRITER` | AST-02A | W | `L-AST02A-MATRIX` | `tools/assets/qmsh_writer.dart`, focused fixtures/tests | Minimal deterministic v1 finite/bounds/index/material encoding matches pixeldart's decoder and rejects corrupt/overflow/pathological input. |
+| `L-AST02A-MODEL-WRITER` | AST-02A | W | `L-AST02A-QMSH-WRITER` | `tools/assets/model_writer.dart`, focused descriptors/tests | Stable multi-part `model.json` paths/materials/bounds/hash schema round-trips with sorted fields. |
+| `L-AST02A-NORMALIZE` | AST-02A | W | `L-AST02A-MODEL-WRITER` | One enumerated `assets-src/models/{id}/**`, `build/model-pilot/{id}.json` | One source becomes metres/Y-up/explicit-pivot/normals/UV/material split with transformation and input/output hashes. |
+| `L-AST02A-CONVERT` | AST-02A | W | `SAME(L-AST02A-NORMALIZE)` | One enumerated pilot QMSH/model output under ignored pilot root plus shard report | QMSH v1 decodes to finite expected bounds/counts/material parts twice byte-identically; corruption mutants fail. |
+| `L-AST02A-REPORT` | AST-02A | I | `ALL(L-AST02A-CONVERT)` | `build/model-pilot/report.json`, format recommendation evidence only | Expanded/deduped vertices, indices, materials/textures, output/package bytes/time and turntables decide v1 versus explicit v2 work. |
+| `L-AST02A-BRIDGE` | AST-02A | I | `L-AST02A-REPORT` | Exactly one selected tracked `assets-src/models/{id}/**`, `web/res/models/{id}/**`, `assets/runtime-manifest.d/model-pilot.json` | After the report ratifies the format, one accepted representative model is rebuilt into final tracked paths and decodes byte-identically; a required v2 keeps the parent blocked until its separately bounded writer amendment lands. |
+| `L-AST02B-INCREMENTAL` | AST-02B | W | — | `tools/assets/incremental.dart`, focused cache/atomic fixtures | Content-keyed changed-only output reuses accepted AST-02A writers, uses atomic replace, deletes known stale outputs and never touches unknown file. |
+| `L-AST02B-PREVIEW` | AST-02B | W | — | `tools/assets/turntable.dart`, fixed camera/light metadata/tests | Stable model turntable manifest and metrics generate without vendor-fragile pixel equality. |
+| `L-AST02B-CLI` | AST-02B | I | `L-AST02B-INCREMENTAL`, `L-AST02B-PREVIEW` | `tools/models.dart`, converter gate entries only | `normalize`, `convert --changed`, `turntable`, `report` pass two cold trees and corruption/unknown-output fixtures. |
+| `L-ART02-SCHEMA` | ART-02 | W | — | `assets/house/schema.json`, `tools/assets/house_schema.dart`, fixtures | Kit/placement transforms, snap, material, bounds, scale, collision and importance fields validate finitely. |
+| `L-ART02-KIT-WORKSET` | ART-02 | W | `L-ART02-SCHEMA` | One immutable `assets/house/kits.d/{family}/{workset}.json` plus ≤3 enumerated normalized model dirs | One measured end/corner/straight or exterior-detail workset has explicit snap/material/proxy/LOD rules and turntables. |
+| `L-ART02-KIT-MERGE` | ART-02 | I | `ALL(L-ART02-KIT-WORKSET)` | Six sorted `assets/house/kits/{family}.json` aggregates and exact-set report | Trim, openings, fireplace/alcove, stair, panels/surfaces, cellar/services/exterior families contain every required workset once. |
+| `L-ART02-KIT-GATE` | ART-02 | I | `L-ART02-KIT-MERGE` | Kit report/contact sheet only | All families snap without forbidden gap/overlap/z-fight, preserve opening dimensions and read at 384×216. |
+| `L-ART03-ROOM-BASE` | ART-03 | W | — | `assets/house/rooms/{room}/base.json`, private fixed camera record | One room has focal composition, architecture, proxy furniture, clear portal/stair/opening sweeps and stable visibility groups. |
+| `L-ART03-ROOM-BOUNDS` | ART-03 | W | `SAME(L-ART03-ROOM-BASE)` | New `lib/house/art_bounds/{room}.dart`, matching pure test | Only genuinely structural projections create simple finite canonical bounds; trim/clutter stay nonblocking. |
+| `L-ART03-HOUSE-BASE` | ART-03 | I | `ALL(L-ART03-ROOM-BASE)`, `ALL(L-ART03-ROOM-BOUNDS)` | House-art loader/barrel, shared camera index and base report | Eight rooms compose deterministically; canonical rooms/portals/windows/stairs/measurements remain byte-for-byte unchanged. |
+| `L-ART03-VERIFY-MATRIX` | ART-03 | I | `L-ART03-HOUSE-BASE` | `assets/house/verification/routes.json`, `targets.json`, sorted fixed cameras | Every portal and stair is bidirectional; full canonical capsule dimensions, thresholds, interactions, exterior cells and Q24 variants are enumerable before fan-out. |
+| `L-ART03-GATE` | ART-03 | I | `L-ART03-VERIFY-MATRIX` | Base-house collision/route/contact evidence only | Offline bounds and runtime collision agree; every frozen route/target/camera resolves against the same canonical geometry. |
+| `L-ART04-BULK-MODELS` | ART-04 | W | — | One enumerated accepted `assets-src/models/{id}/**`, `web/res/models/{id}/**`, shard report | One final model normalizes/converts/turntables twice byte-identically and meets per-asset bounds/material/resource checks. |
+| `L-ART04-ART-SOURCE` | ART-04 | W | — | Bound `assets-src/art/{id}/source.*`, `source.json`, tracked `recipe.json` for each enumerated ID | Open item bytes/hash/object metadata/crop/fit/frame intent are build-reproducible; no private recipe or search thumbnail. |
+| `L-ART04-ART-DERIVE` | ART-04 | W | `SAME(L-ART04-ART-SOURCE)` | Enumerated `web/res/textures/art/{id}.*`, derivative reports only | EXIF/crop/rotate/sRGB/downscale preserve aspect, emit one point-sampled no-mip content hash and reproduce exact bytes. |
+| `L-ART04-ROOM-FURNITURE` | ART-04 | W | — | `assets/house/rooms/{room}/dress/furniture.json` only | 5–12 room-scale pieces reserve explicit floor/wall/socket zones, carry simple proxies and preserve focal/route hierarchy. |
+| `L-ART04-ROOM-SURFACES` | ART-04 | W | `SAME(L-ART04-ROOM-FURNITURE)` | `assets/house/rooms/{room}/dress/surfaces.json` only | Books/crockery/tools/paper/personal effects use named furniture sockets once, with no floating/overlap or story obstruction. |
+| `L-ART04-ROOM-FLOOR` | ART-04 | W | `SAME(L-ART04-ROOM-FURNITURE)` | `assets/house/rooms/{room}/dress/floor.json` only | Rugs/baskets/coal/boxes/utility clutter use disjoint floor zones and keep capsule/opening/stair clearance. |
+| `L-ART04-ROOM-WALL` | ART-04 | W | `SAME(L-ART04-ROOM-FURNITURE)` | `assets/house/rooms/{room}/dress/walls.json` only | Frames/paintings/mirrors/clocks/curtains form varied authored clusters on reserved wall anchors without hiding evidence. |
+| `L-ART04-ROOM-GATE` | ART-04 | I | `SAME(L-ART04-ROOM-SURFACES)`, `SAME(L-ART04-ROOM-FLOOR)`, `SAME(L-ART04-ROOM-WALL)` | Per-room composition report/contact metadata only | Combined room meets BOM/density/placement bands, unique anchors/IDs, credible reuse and no obvious repeated spray. |
+| `L-ART04-EXTERIOR-CELL` | ART-04 | W | — | One `assets/house/exterior/{cell}/{layer}.json` fragment only | Assigned facade/roof/front-step/service-yard/garden/street/neighbor cell has measured authored detail, visibility/LOD, no fake traversal and no repeated spray. |
+| `L-ART04-EXTERIOR-GATE` | ART-04 | I | `ALL(L-ART04-EXTERIOR-CELL)` | Exterior exact-count/contact/resource report only | All frozen exterior cameras and window/threshold views have a coherent late-Victorian envelope within cell budgets. |
+| `L-ART04-MERGE` | ART-04 | I | `ALL(L-ART04-BULK-MODELS)`, `ALL(L-ART04-ART-DERIVE)`, `ALL(L-ART04-ROOM-GATE)`, `L-ART04-EXTERIOR-GATE` | `assets/runtime-manifest.d/models-house.json` and house report only | Exact 160–220 model definitions, 500–750 interior dress/frame, 220–340 architecture and 150–240 exterior/context placements resolve to accepted hashes with separate variant counts. |
+| `L-ART04-COLLISION` | ART-04 | I | `L-ART04-MERGE` | `lib/house/furnishing_collision.dart`, `lib/house/collision.dart`, focused mutation test | Runtime HouseCollision and offline sweeps consume the identical sorted solid/soft/interaction proxy set and support-socket occupancy; mutating any class/extent/owner fails. |
+| `L-ART04-GATE` | ART-04 | I | `L-ART04-COLLISION` | Furnished-house aggregate evidence only | Models, placements, exterior cells, sockets, runtime proxies and exact count formulas fingerprint one merged build. |
+| `L-ART05A-ROUTE` | ART-05A | W | — | One ignored route result shard for a bound record from `routes.json` | Bound named route uses the frozen full capsule through both directions/variants with deterministic first collision; it never authors the route. |
+| `L-ART05A-INTERACTION` | ART-05A | W | — | One ignored reachability result for a bound record from `targets.json` | Assigned target is reachable, visible and unobscured from a valid player pose under every frozen relevant variant. |
+| `L-ART05A-STATS` | ART-05A | W | — | `tools/house/resource_report.dart`, focused synthetic tests | Per-room-pair placements/draws/triangles/materials/textures/live handles and package totals exact-match fixture. |
+| `L-ART05A-CONTACT` | ART-05A | I | `L-ART05A-STATS` | Contact artifacts driven by tracked camera files only | Clean daylight first, then gas/final profile captures every room wall/focal point and exterior elevation/cell; expected build/camera IDs embedded. |
+| `L-ART05A-GATE` | ART-05A | I | `ALL(L-ART05A-ROUTE)`, `ALL(L-ART05A-INTERACTION)`, `L-ART05A-CONTACT` | Evidence only | Route, interaction, resource/perf and approved art artifacts all fingerprint the same furnished-house build. |
+| `L-ART05B-OVERRIDE` | ART-05B | W | — | One Q24-specific house rebuild fixture and artifact shard | Bound override removes old detail, regenerates affected architecture/dress/bounds and preserves corroborators/reachability. |
+| `L-ART05B-GATE` | ART-05B | I | `ALL(L-ART05B-OVERRIDE)` | Q24 comparison report/contact artifacts only | All five states and save/resume variants agree across data, collision, interaction and render with no stale placement. |
+| `L-AST03-SOURCE` | AST-03 | W | — | One immutable `assets/catalog/audio/{family}/{batch}.json`, enumerated source dirs | Assigned door/knock/footstep/room-ambience family has lawful source/hash/metadata and measured usable variants. |
+| `L-AST03-MAP` | AST-03 | W | `ALL(L-AST03-SOURCE)` | One logical-family mapping fragment | Surface/door/room keys map deterministic variants with fallback and no unused accepted clip. |
+| `L-AST03-GATE` | AST-03 | I | `ALL(L-AST03-MAP)` | `assets/runtime-manifest.d/audio.json`, strict audio report only | Exact nonempty source/catalog/fragment/files equality, decode/duration/loudness/channel/rate checks pass offline. |
+| `L-AUD01-PLAN` | AUD-01 | W | — | `scripts/tts/plan.py` or exact existing planner, plan fixtures | Pure `--plan-json` emits nonempty stable visitor unit IDs, speaker/tone/text/settings/source digests. |
+| `L-AUD01-CHECK` | AUD-01 | W | `L-AUD01-PLAN` | `scripts/tts/check.py` or exact existing checker, audio fixtures | Plan/clip manifest/files exact equality catches empty/extra/missing/stale/silent/undecodable/wrong metadata. |
+| `L-AUD01-GATE` | AUD-01 | I | `L-AUD01-CHECK` | VO gate configuration only | Queue hash and expected clip set derive from plan; 291 existing files cannot pass through a zero-plan loophole. |
+| `L-AUD02-RENDER` | AUD-02 | W | — | Four enumerated `web/res/vo/{clip}.ogg`, one immutable attempt result fragment | Render only missing bound units; each output decodes, matches voice/settings/text digest and records hash/metrics. |
+| `L-AUD02-REVIEW` | AUD-02 | W | `SAME(L-AUD02-RENDER)` | One batch review fragment only | Cue/tone/set coverage and audible clipping/silence/pronunciation outliers are accepted or specifically rerendered. |
+| `L-AUD02-MERGE` | AUD-02 | I | `ALL(L-AUD02-REVIEW)` | `assets/runtime-manifest.d/voice.json`, consolidated voice-plan report only | Frozen queue hash equals exact files; all visitor-only units have one valid clip and no unplanned output remains. |
+| `L-AUD03A-EVENT` | AUD-03A | W | — | New `lib/game/audio_event.dart`, focused pure test | Immutable event has logical key, sequence, source room/position, seed and no WebAudio/runtime handle. |
+| `L-AUD03A-SELECT` | AUD-03A | W | `L-AUD03A-EVENT` | New `lib/game/audio_selector.dart`, focused fixtures | Same event/catalog snapshot selects same variant; absent family uses named fallback without consuming extra RNG. |
+| `L-AUD03A-OCCLUSION` | AUD-03A | W | `L-AUD03A-EVENT` | New `lib/house/acoustics.dart`, focused portal tests | Open/closed/multi-portal attenuation and reverb-room facts are finite, monotonic and renderer-neutral. |
+| `L-AUD03A-STATE` | AUD-03A | W | `L-AUD03A-EVENT` | New `lib/game/audio_state.dart`, focused save/state tests | Gesture/mute/focus/music/last-event snapshot is deterministic and contains no node/buffer. |
+| `L-AUD03A-GATE` | AUD-03A | I | `L-AUD03A-SELECT`, `L-AUD03A-OCCLUSION`, `L-AUD03A-STATE` | Audio-event export and evidence only; no `session.dart` write | Pure event sequence/selection/occlusion/save fixtures pass with mutation coverage; GAM-09 alone joins any session-facing semantic event. |
+| `L-AUD03B-CONTENT-MAP` | AUD-03B | I | — | `assets/runtime-manifest.d/audio-map.json` plus exact validator | Every runtime key resolves, every shipped clip is reachable or explicitly non-runtime, and fallbacks are complete. |
+| `L-AUD03B-ENGINE` | AUD-03B | I | `L-AUD03B-CONTENT-MAP` | `lib/engine/audio.dart`, narrowly named WebAudio adapter test | Gesture creates graph once; listener/source/filter/reverb updates change only on events/room state, not per frame. |
+| `L-AUD03B-WIRE` | AUD-03B | I | `L-AUD03B-ENGINE` | `web/main.dart` audio event seam and no other entrypoint code | Canonical events alone trigger voice/music/knock/step/ambience; mute/focus/resume/fallback stay observable. |
+| `L-AUD03B-BROWSER` | AUD-03B | I | `L-AUD03B-WIRE` | Audio browser scenarios/artifacts only | Near/far, same/other room, open/closed, gesture/mute/focus and all visitor families measured on real audio path. |
+| `L-AST01B-RECONCILE` | AST-01B | I | — | O/build-generated `web/res/manifest.json`, strict audit report only | Sorted domain fragments compile exactly; catalogue/accepted/manifest/files/hash/licence/provenance are nonempty/exact with zero unknown orphan. |
+| `L-AST01B-OFFLINE` | AST-01B | O | `L-AST01B-RECONCILE` | Clean ignored cache/output roots only | Clean accepted checkout builds/boots offline without `tmp`, Blender, login, source site or unhashed byte. |
+
+#### Save/domain, pure systems, content, and UI recipes
+
+`lib/game/session.dart`, `lib/config.dart`, and `web/main.dart` are serial join seams.
+Worker leaves create narrowly named modules/tests; only the listed integrator leaf
+may join them. Frozen old save fixtures are append-only. A later migration adds new
+fixtures rather than rewriting historical bytes.
+
+| Leaf recipe | Parent | Class | After | Write/create boundary | Exact completion probe |
+| --- | --- | --- | --- | --- | --- |
+| `L-GAM00-CODEC` | GAM-00 | W | — | `lib/game/save.dart`, `tools/test_save_v2.dart`, frozen v1/v2 fixtures | v1→v2 is idempotent; canonical equivalent JSON is byte-identical; future/non-finite/runtime types fail closed. |
+| `L-GAM00-STORE` | GAM-00 | W | `L-GAM00-CODEC` | `lib/game/save_store.dart`, `lib/game/browser_save_store.dart`, focused transaction test | Active/previous rotation is atomic; encode/write failure changes neither slot; corrupt recovery is deterministic. |
+| `L-GAM00-DOMAIN` | GAM-00 | W | `L-GAM00-CODEC` | New `lib/game/domain_snapshot.dart`, focused snapshot test | Immutable canonical facts cover calendar/economy/journal/house/content/features/second-run with stable order. |
+| `L-GAM00-PRESENTATION` | GAM-00 | W | `L-GAM00-DOMAIN` | New `lib/game/presentation_snapshot.dart`, focused boundary test | Deep finite immutable scalars/IDs only; no engine/web/WebGL/WebAudio/pixeldart import or object. |
+| `L-GAM00-EVENT` | GAM-00 | W | `L-GAM00-DOMAIN` | New `lib/game/domain_event.dart`, focused codec test | Stable event kind/sequence/room/position/selection seed round-trip canonically without handle/timer/closure. |
+| `L-GAM00-HOUSE` | GAM-00 | W | `L-GAM00-CODEC`, `L-GAM00-DOMAIN` | `lib/house/state.dart`, focused save-v2 house fixture | Exact authored ID sets, overrides and mantle history round-trip; missing/extra IDs and emitted geometry fail. |
+| `L-GAM00-SESSION` | GAM-00 | I | `L-GAM00-STORE`, `L-GAM00-PRESENTATION`, `L-GAM00-EVENT`, `L-GAM00-HOUSE` | `lib/game/session.dart`, focused session-v2 integration test | Fresh/save/restore snapshots match; all existing Q15/session/stand-in/Q24 tests stay green. |
+| `L-GAM00-GATE` | GAM-00 | I | `L-GAM00-SESSION` | Gate record/evidence only | Exact save/session suite passes twice; removed-field/reordered-event/runtime-handle mutants fail. |
+| `L-PHY00-SHAPES` | PHY-00 | W | — | New `lib/physics/shapes.dart`, focused finite/overlap/sweep tests | Box/sphere/capsule/approved-convex compounds validate finite local poses/bounds and swept intersections without render meshes. |
+| `L-PHY00-BROADPHASE` | PHY-00 | W | `L-PHY00-SHAPES` | New `lib/physics/broadphase.dart`, focused cell/order tests | Stable-ID spatial cells emit the same unique candidate pairs independent of insertion/map order. |
+| `L-PHY00-SOLVER` | PHY-00 | W | `L-PHY00-BROADPHASE` | New `lib/physics/solver.dart`, focused contact/energy tests | Fixed 60 Hz contacts use fixed iterations, finite clamps/friction/restitution and bounded energy with deterministic ordering. |
+| `L-PHY00-JOINTS` | PHY-00 | W | `L-PHY00-SOLVER` | New `lib/physics/joints.dart`, focused hinge/slider/lever-limit tests | Constrained bodies respect authored axes/limits and cannot gain energy or cross a blocked house proxy. |
+| `L-PHY00-CARRY` | PHY-00 | W | `L-PHY00-SOLVER` | New `lib/physics/carry_constraint.dart`, focused grab/drop/throw tests | One spring carry anchor obeys reach/force/torque/distance/throw clamps, swept collision and safe blocked release. |
+| `L-PHY00-GATE` | PHY-00 | I | `L-PHY00-JOINTS`, `L-PHY00-CARRY` | Physics kernel gate fragment/evidence only | Frame-partition, insertion-order, anti-tunnelling, sleep/wake, limit and mutation suites pass with zero non-finite state. |
+| `L-INP01-ACTIONS` | INP-01 | W | — | New `lib/engine/input_actions.dart`, focused action-edge tests | Remappable move/look/run/crouch/jump/use/grab/drop/rotate/range/throw/cancel actions emit one stable edge/held/value stream. |
+| `L-INP01-PROFILE` | INP-01 | W | `L-INP01-ACTIONS` | New `lib/engine/control_profile.dart`, binding schema/tests | Mouse/keyboard/controller defaults and hold/toggle/accessibility alternatives validate with no required mouse-only action or duplicate chord. |
+| `L-INP01-FOCUS` | INP-01 | W | — | New `lib/sim/interaction_focus.dart`, focus/LOS/hysteresis tests | Reach+cone+visibility+proxy filtering and priority/angle/distance/ID ordering emit exactly one stable focus snapshot or none. |
+| `L-INP01-PROMPT` | INP-01 | I | `L-INP01-PROFILE`, `L-INP01-FOCUS` | `lib/ui/prompt.dart`, focused semantic/highlight model tests | Prompt uses current binding, icon/text/state/reason and non-color semantic cue; unavailable/disabled/high-contrast cases remain truthful. |
+| `L-INP01-GATE` | INP-01 | I | `L-INP01-PROMPT` | Input/focus gate fragment/evidence only | Keyboard, mouse and controller traces agree at action level; occlusion/tie/flicker/binding/semantic mutants fail. |
+| `L-DECQ24-DIAGRAM` | DEC-Q24-00 | O | — | Decision artifacts only, no code | For each unresolved beat, diagram observable event, mundane explanation, data/save/collision/render/detail consequences. |
+| `L-DECQ24-COMPARE` | DEC-Q24-00 | O | `L-DECQ24-DIAGRAM` | Decision comparison only | Options explicitly score deniability, recognizability, canonical-geometry risk, art rebuild and testability. |
+| `L-DECQ24-PUBLISH` | DEC-Q24-00 | O | `L-DECQ24-COMPARE` | Immutable unbiased option packet/evidence only | Packet exposes complete Days 17/18/20 choices and consequences without selecting them; its gate can accept before it becomes the prerequisite for separate owner decisions. |
+| `L-GAM02-OVERRIDE` | GAM-02 | W | — | One new `lib/house/overrides/day_{day}.dart`, matching pure fixture | Bound Day 15/17/18/19/20 override is unobserved, idempotent, finite, keyed by authored IDs and renderer-neutral. |
+| `L-GAM02-STATE` | GAM-02 | W | `ALL(L-GAM02-OVERRIDE)` | `lib/house/drift.dart`, `lib/house/state.dart`, focused persistence test | Apply/rebuild/save/resume order is canonical; missing/duplicate/inapplicable override fails visibly. |
+| `L-GAM02-GATE` | GAM-02 | I | `L-GAM02-STATE` | Q24 pure integration fixture/report only | All five overrides agree across effective data/collision/interaction/save; decorative render proof remains ART-05B. |
+| `L-GAM03A-DRAUGHT` | GAM-03A | W | — | New `lib/sim/draught.dart`, focused graph test | One portal-derived connected-space stream handles door/window/open/closed and zero-distance cases finitely. |
+| `L-GAM03A-MANTLE` | GAM-03A | W | — | New `lib/sim/mantle_economy.dart`, focused transaction test | Hour/gas/light transaction is atomic; unaffordable/spare/duplicate actions refuse with stable semantic events. |
+| `L-GAM03A-EVENTS` | GAM-03A | W | `L-GAM03A-DRAUGHT`, `L-GAM03A-MANTLE` | New `lib/game/gaslight_state.dart`, focused snapshot/event test | Logical flame/light/shadow/mote/hiss weights derive from one stream and survive canonical save/resume. |
+| `L-GAM03A-GATE` | GAM-03A | I | `L-GAM03A-EVENTS` | Gaslight feature export and pure integration test only; no `session.dart` | Door/mantle actions emit one ordered event set with no renderer/audio handle or duplicated RNG. |
+| `L-GAM04A-WEATHER` | GAM-04A | W | — | `lib/sim/weather.dart`, focused 21-day schedule test | Seeded rain/daylight schedule is finite and identical across fresh/save/resume; all 21 days covered. |
+| `L-GAM04A-TEMPERATURE` | GAM-04A | W | `L-GAM04A-WEATHER` | New `lib/sim/temperature.dart`, focused room/outside test | Outside/room temperature and breath threshold derive deterministically without renderer/audio state. |
+| `L-GAM04A-DAYLIGHT` | GAM-04A | W | `L-GAM04A-WEATHER` | `lib/sim/time.dart`, focused dawn/dusk/colour-fact test | Shortening-day and morning/noon/evening facts are monotonic/bounded and use saved simulation time only. |
+| `L-GAM04A-GATE` | GAM-04A | I | `L-GAM04A-TEMPERATURE`, `L-GAM04A-DAYLIGHT` | Climate feature export and pure resume fixture only; no `session.dart` | Days 1–21 and checkpoints emit identical climate facts/events; presentation remains GAM-04B. |
+| `L-GAM05A-HISTORY` | GAM-05A | W | — | New `lib/sim/mantle_history.dart`, focused append-only test | First-light order appends once, duplicate light is idempotent and canonical bytes survive 21-day save/resume. |
+| `L-GAM05A-RUPTURE` | GAM-05A | W | `L-GAM05A-HISTORY` | `lib/sim/rupture.dart`, focused six-stage FSM test | Six ordered stages/durations/guard conditions/portal query/light order are exact and cannot trigger early. |
+| `L-GAM05A-ENDING` | GAM-05A | W | `L-GAM05A-RUPTURE` | `lib/game/rupture_gate.dart`, focused earned-ending test | Only earned ending plus required state starts rupture once; resume continues same stage/time/order. |
+| `L-GAM05A-GATE` | GAM-05A | I | `L-GAM05A-ENDING` | Rupture feature export and pure save fixture only; no `session.dart` | Full state machine and mantle history are deterministic; no geometry/renderer mutation occurs. |
+| `L-GAM08A-WEIGHTS` | GAM-08A | W | — | New `lib/sim/tape.dart`, focused state-table test | Named video/audio weights derive from week/exhaustion/isolation with mostly-clean defaults and finite clamps. |
+| `L-GAM08A-TRACKING` | GAM-08A | W | `L-GAM08A-WEIGHTS` | New `lib/game/tape_state.dart`, focused event/save test | Exactly one post-drift tracking event is sequence-ID stable and reduced motion changes declared weights only. |
+| `L-GAM08A-GATE` | GAM-08A | I | `L-GAM08A-TRACKING` | Tape feature export and pure resume fixture only; no `session.dart` | Same state/save yields same weights/event; changed source dimension mutates only specified channels. |
+| `L-GAM09-CONFIG` | GAM-09 | I | — | `lib/config.dart`, focused typed-feature-config test | All frozen feature defaults are finite, immutable and named once; later G/R workers consume without editing. |
+| `L-GAM09-COMPOSE` | GAM-09 | W | `L-GAM09-CONFIG` | New `lib/game/feature_snapshot.dart`, focused composition test | Gas/climate/rupture/tape facts compose one immutable snapshot/event sequence without order-dependent mutation. |
+| `L-GAM09-SESSION` | GAM-09 | I | `L-GAM09-COMPOSE` | `lib/game/session.dart`, `lib/game/save.dart`, one migration/feature-session integration test | Public actions/ticks update all four pure features once; save-v2 codecs/migrations persist their already-declared facts, and resume/event/snapshot bytes are canonical. |
+| `L-GAM09-GATE` | GAM-09 | I | `L-GAM09-SESSION` | Aggregate pure/save mutation evidence only | Removing a field/event/config or reordering a feature fails; all prior session/save suites remain green. |
+| `L-PHY01-BODY-SCHEMA` | PHY-01 | W | — | New `lib/game/physics_body.dart`, body/profile fixtures | Static/pickup/hinge/slider/lever records require stable IDs, simple shapes, mass/material/damping/sleep/carry/impact/persistence/recovery facts. |
+| `L-PHY01-WORLD` | PHY-01 | W | `L-PHY01-BODY-SCHEMA` | New `lib/game/physics_world.dart`, focused activation/contact tests | Current+adjacent cell activation, max-awake policy and sorted events wrap PHY-00 without renderer/audio/session handles. |
+| `L-PHY01-STATE` | PHY-01 | I | `L-PHY01-WORLD` | New `lib/game/physics_state.dart`, `lib/game/save.dart`, migration/recovery tests | Sparse quantized moved-body deltas round-trip; unknown/non-finite/out-of-bounds bodies reject or recover to authored pose. |
+| `L-PHY01-GATE` | PHY-01 | I | `L-PHY01-STATE` | Physics state/save gate fragment/evidence only | Fresh/move/sleep/throw/save/resume/recovery hashes match and old save fixtures remain immutable/green. |
+| `L-PHY02-PROFILE` | PHY-02 | W | — | `assets/house/physics.schema.json`, initial profile fixtures | Interaction and body data validate class-specific fields, query masks, carry/joint limits, persistence and recovery. |
+| `L-PHY02-ROOM` | PHY-02 | W | `L-PHY02-PROFILE` | One `assets/house/rooms/{room}/physics/{shard}.json` with ≤4 bound proxy placements | Assigned proxy props/doors/drawers/levers have honest modes, simple shapes and no story/route hazard. |
+| `L-PHY02-LOAD` | PHY-02 | I | `ALL(L-PHY02-ROOM)` | New `lib/house/physics_loader.dart`, exact-set/runtime-collision test | Sorted authored bodies resolve to ART-03 placements and identical HouseCollision proxies; missing/extra/duplicate IDs fail. |
+| `L-PHY02-CONTROLLER` | PHY-02 | W | `L-PHY02-LOAD` | New `lib/game/interaction_controller.dart`, focused public-action tests | Focus/use/grab/rotate/range/drop/throw/joint actions update PHY-01 once and emit stable interaction/impact events. |
+| `L-PHY02-SESSION` | PHY-02 | I | `L-PHY02-CONTROLLER` | `lib/game/session.dart`, focused integration test | Session exposes physical interaction actions/snapshot/events without GPU/WebAudio handles or duplicated focus/physics state. |
+| `L-PHY02-MAIN` | PHY-02 | I | `L-PHY02-SESSION` | `web/main.dart`, one source browser scenario | Real pointer lock/buttons/wheel/keyboard alternate drive public actions; DOM only renders the prompt/focus snapshot. |
+| `L-PHY02-GATE` | PHY-02 | I | `L-PHY02-MAIN` | Interaction browser/gate fragment only | Proxy-room focus, door, drawer, pickup, rotate, carry distance, drop, throw and reload pass with real input and no route block. |
+| `L-GAM06-KERNEL` | GAM-06 | W | — | New `lib/game/scenario.dart`, focused kernel test | Public actions only, no wall time/private mutation, bounded step/day termination and first invalid action error. |
+| `L-GAM06-REPORT` | GAM-06 | W | `L-GAM06-KERNEL` | New `lib/game/scenario_report.dart`, focused canonical report test | Machine/human reports have stable order/diffs and no timestamp, map-order leak or absolute path. |
+| `L-GAM06-SYNTHETIC` | GAM-06 | W | `L-GAM06-REPORT` | One miniature deterministic scenario fixture/test | Synthetic actions/checkpoint/ending exercise the runner without claiming unfinished production content or feature coverage. |
+| `L-GAM06-CLI` | GAM-06 | I | `L-GAM06-SYNTHETIC` | `tools/scenario_runner.dart`, focused CLI test and gate fragment | Two cold synthetic executions emit byte-identical summaries; mutations catch seed/action/checkpoint/event/day/termination changes. |
+| `L-CNT01-SOURCE` | CNT-01 | W | — | New `lib/story/content_source.dart`, `lib/story/runtime_content.dart`, focused ID test | Every compiled content unit exposes a stable typed ID; duplicate/unknown/missing family fails. |
+| `L-CNT01-LEDGER` | CNT-01 | W | `L-CNT01-SOURCE` | New `lib/game/content_ledger.dart`, focused save test | Pending/delivered IDs serialize canonically and a unit cannot silently disappear or double-deliver. |
+| `L-CNT01-DOCUMENTS` | CNT-01 | W | `L-CNT01-SOURCE` | New `lib/game/document_runtime.dart`, focused documents/records test | `getDocument`/`getRecord` resolve only canonical IDs and record delivery/examination exactly once. |
+| `L-CNT01-DAY` | CNT-01 | W | `L-CNT01-SOURCE` | New `lib/game/day_content.dart`, focused street/night test | `getStreet`/`getNights` selection/delivery is seed/day deterministic and survives resume. |
+| `L-CNT01-EXAMINE` | CNT-01 | W | `L-CNT01-SOURCE` | New `lib/house/examination_catalog.dart`, focused placed-object test | Every examinable placed object maps to exactly one reachable content target; duplicate/missing tag fails. |
+| `L-CNT01-MEMORY` | CNT-01 | W | `L-CNT01-SOURCE` | New `lib/game/memory_content.dart`, focused Day-17/19/return/second-run test | Citation, replay, journal return and intended carryover fire once under exact conditions. |
+| `L-CNT01-TEXT-ADAPTER` | CNT-01 | W | `L-CNT01-SOURCE` | `lib/story/text.dart`, focused pure adapter test | Existing browser-loaded corpus implements content source without authoring/duplicating prose in Dart. |
+| `L-CNT01-SESSION` | CNT-01 | I | `L-CNT01-LEDGER`, `L-CNT01-DOCUMENTS`, `L-CNT01-DAY`, `L-CNT01-EXAMINE`, `L-CNT01-MEMORY`, `L-CNT01-TEXT-ADAPTER`, `TASK(GAM-09)` | `lib/game/session.dart`, focused session-content test | Serially extends accepted feature session; public actions own delivery/examination and scenario sees every consumed ID. |
+| `L-CNT01-MAIN` | CNT-01 | I | `L-CNT01-SESSION`, `TASK(BASE-03)` | `web/main.dart`, one unique runtime-content browser scenario only | Extend the accepted diagnostics baseline; real input reaches all content/object routes with no private state injection/readback. |
+| `L-CNT02-AUDIT` | CNT-02 | W | — | `tools/content_reachability.dart`, mutation fixtures/test | Deterministic report names every unreachable/missing/duplicate content/drift gap and fails nonempty required gaps. |
+| `L-CNT02-GAP` | CNT-02 | W | `L-CNT02-AUDIT` | One exact source file and bound `{day,family,gapIds}` from the report, no generated JSON | Close only one assigned content/reachability gap unit; corpus/parser/report pass without prose in Dart or collateral edits. |
+| `L-CNT02-DRIFT` | CNT-02 | W | `L-CNT02-AUDIT` | `lib/journal/drift.dart`, focused Days 8–21 behavior test | Authored drift behavior exists/reaches intended days; no runtime prose or generated selection. |
+| `L-CNT02-BUILD` | CNT-02 | I | `ALL(L-CNT02-GAP)`, `L-CNT02-DRIFT` | Generated text JSON through canonical build only | Text build is idempotent; exact Days 8–21 content set and reachability report have zero unexplained required gap. |
+| `L-GAM10-ENDING` | GAM-10 | W | — | One bound production ending/second-run fixture | Compliance, erasure or synchronisation reaches exactly its ending and expected carryover through public actions. |
+| `L-GAM10-CHECKPOINT` | GAM-10 | W | — | One bound Day 3/8/14/20 checkpoint fixture | Uninterrupted and resumed canonical state/event bytes match at the assigned checkpoint. |
+| `L-GAM10-CONTENT` | GAM-10 | W | — | One bound visitor/arrival/content/feature coverage expectation shard | Assigned production IDs are observed exactly through reachable public flow, never a minimum-only count. |
+| `L-GAM10-ECONOMY` | GAM-10 | W | — | One bound degenerate-choice fixture | Assigned gas/ration/hour/sleep/scrutiny/exhaustion/isolation extreme terminates without negative state, loop or soft-lock. |
+| `L-GAM10-GATE` | GAM-10 | I | `ALL(L-GAM10-ENDING)`, `ALL(L-GAM10-CHECKPOINT)`, `ALL(L-GAM10-CONTENT)`, `ALL(L-GAM10-ECONOMY)` | Final canonical scenario gate fragment/evidence only | Two cold 21-day runs prove 22 visitors, 74 arrivals, all content/features/Q24/audio events, three endings, resume, second run and bounded degenerate choices. |
+| `L-GAM07-SURFACE` | GAM-07 | W | — | One bound `lib/ui/{surface}.dart`, one unique keyboard/focus scenario | Journal/door/sleep/help/ending/broadcast/notice/prompt surface has semantics, tab order, Escape and no focus trap. |
+| `L-GAM07-INPUT` | GAM-07 | W | — | `lib/engine/input.dart`, one pointer-lock recovery scenario | Keyboard/mouse equivalence, focus loss/reacquire and pointer-lock recovery use public input without stuck state. |
+| `L-GAM07-PANEL` | GAM-07 | W | — | `lib/ui/panel.dart`, focused pure/DOM contract test | Shared modal lifecycle restores prior focus, prevents hidden interaction and exposes readable semantics. |
+| `L-GAM07-STYLES` | GAM-07 | I | `ALL(L-GAM07-SURFACE)`, `L-GAM07-PANEL` | `web/index.html`, `web/styles.css`, scale/reduced-motion scenario only | 100–200% text, narrow viewport and reduced motion remain readable without clipping/hidden information. |
+| `L-GAM07-MAIN` | GAM-07 | I | `L-GAM07-INPUT`, `L-GAM07-STYLES` | `web/main.dart`, aggregate a11y scenario only | Every surface/action and door equivalence works through real input; diagnostics report focus/UI/pointer state. |
+| `L-GAM07-GATE` | GAM-07 | I | `L-GAM07-MAIN` | Browser artifacts/evidence only | Source/package matrix passes keyboard, focus, scale, pointer recovery, semantics, reduced motion and comfort. |
+
+#### Renderer/game adapters, feature presentation, acceptance, and release recipes
+
+The entrypoint handoff is one-way: G finishes content/UI/audio baseline work, O
+freezes `ACC-01A`, then `INT-00` grants `web/main.dart` to R. No G/C worker writes
+the entrypoint after that point. Pixeldart's shared pipeline/demo remains a serialized
+R seam. Feature-presentation workers own separate modules and scenario inputs only.
+
+| Leaf recipe | Parent | Class | After | Write/create boundary | Exact completion probe |
+| --- | --- | --- | --- | --- | --- |
+| `L-INT00-FREEZE` | INT-00 | O | — | Baseline scenario/expectation hashes and evidence only | Accepted legacy SHA/build/actions/assertions/artifacts are immutable and all active G entrypoint leases are closed. |
+| `L-INT00-HANDOFF` | INT-00 | O | `L-INT00-FREEZE` | Lease table via O only | Exact `web/main.dart`/adapter write set moves G→R at recorded SHA; UI scope and expected baseline stay fixed. |
+| `L-INT01-DEPENDENCY` | INT-01 | O | — | `pubspec.yaml`, `pubspec.lock`, pixeldart gitlink only | Enforced lock resolves exact local pixeldart SHA; legacy build still compiles before adapter code. |
+| `L-INT01-INTERFACE` | INT-01 | W | `L-INT01-DEPENDENCY` | New `lib/presentation/renderer_backend.dart`, boundary test | Renderer-neutral lifecycle/scene/frame/input types contain no legacy or pixeldart implementation type. |
+| `L-INT01-LEGACY` | INT-01 | W | `L-INT01-INTERFACE` | New `lib/presentation/legacy_backend.dart`, mapping fixture | Existing renderer consumes identical snapshots/actions and preserves frozen baseline state/resource semantics. |
+| `L-INT01-NEXT` | INT-01 | W | `L-INT01-INTERFACE` | New `lib/presentation/pixeldart_backend.dart`, mapping fixture | Pixeldart facade consumes the same boundary without simulation branch, hidden default or leaked GPU handle. |
+| `L-INT01-SELECT` | INT-01 | W | `L-INT01-LEGACY`, `L-INT01-NEXT` | New `lib/presentation/backend_selector.dart`, focused query test | Default legacy and exact `?renderer=next` selection are explicit; unknown value fails/falls back as specified. |
+| `L-INT01-MAIN` | INT-01 | I | `L-INT01-SELECT` | `web/main.dart`, two backend smoke scenarios only | Both backends boot from same public entry/actions/save; diagnostics identify backend/profile/build. |
+| `L-INT02-DESCRIPTOR` | INT-02 | W | — | Pixeldart `assets/model_definition.dart`, focused descriptor/corruption test | Multi-part paths/materials/bounds/hashes parse strictly and cannot escape base URL. |
+| `L-INT02-CACHE` | INT-02 | W | `L-INT02-DESCRIPTOR` | Pixeldart `assets/model_cache.dart`, focused fetch/dedup test | Concurrent identical load fetches once; hash/part failure is atomic and leaves no half-cached model. |
+| `L-INT02-LIFECYCLE` | INT-02 | I | `L-INT02-CACHE` | Exact pixeldart mesh/material/texture store seams, focused loss/release test | Load/draw/release/restore returns exact live counts and rebuilds accepted model exactly once. |
+| `L-INT02-BROWSER` | INT-02 | I | `L-INT02-LIFECYCLE` | Renderer demo scenario/artifacts only | One accepted multi-part model draws with provenance/materials/bounds under load/reload/loss/restore. |
+| `L-INT02-HANDBACK` | INT-02 | O | `L-INT02-BROWSER` | Lease/evidence only | C/R changed paths and package SHA are accepted; pixeldart ownership returns exclusively to R. |
+| `L-INT03-LOADER` | INT-03 | W | — | New `lib/presentation/house_scene.dart`, focused authored-data loader test | Base kit/room/model/placement IDs resolve deterministically with no duplicated canonical room geometry. |
+| `L-INT03-ROOM` | INT-03 | W | `L-INT03-LOADER` | One `tools/browser/scenarios/house/{room}.json`, expected aperture/visibility fixture | Bound room proxy renders required focal/architecture pieces and matches canonical portal/window/stair IDs. |
+| `L-INT03-ROUTE` | INT-03 | I | `ALL(L-INT03-ROOM)` | Representative route scenario and house adapter seam only | Hall→kitchen→living→hall→landing→bedroom traverses actual collision/interaction apertures with correct portal culling. |
+| `L-INT04-CONFIG-CHECK` | INT-04 | I | — | Read-only `lib/config.dart` boundary fixture | Accepted GAM-09 config contains every mapper input, no renderer type, and its digest is frozen for all sibling leaves. |
+| `L-INT04-ENV` | INT-04 | W | `L-INT04-CONFIG-CHECK` | New `lib/presentation/environment_mapper.dart`, pure mapping test | Camera/daylight/fog/climate snapshot maps to pixeldart settings without simulation or renderer readback. |
+| `L-INT04-GAS` | INT-04 | W | `L-INT04-CONFIG-CHECK` | New `lib/presentation/gaslight_mapper.dart`, pure mapping test | Mantle/draught facts map to light/flame/shadow/mote/hiss parameters with finite zero-distance behavior. |
+| `L-INT04-WEATHER` | INT-04 | W | `L-INT04-CONFIG-CHECK` | New `lib/presentation/weather_mapper.dart`, pure mapping test | Rain/light-colour/breath facts map deterministically and cannot modify calendar/temperature. |
+| `L-INT04-RUPTURE` | INT-04 | W | `L-INT04-CONFIG-CHECK` | New `lib/presentation/rupture_mapper.dart`, pure mapping test | Six-stage state maps to portal/light/effect parameters but never changes stage/order/earned state. |
+| `L-INT04-TAPE` | INT-04 | W | `L-INT04-CONFIG-CHECK` | New `lib/presentation/tape_mapper.dart`, pure mapping test | Named video weights map to pixeldart VHS/history settings; audio weights remain semantic outputs. |
+| `L-INT04-ADAPTER` | INT-04 | I | `L-INT04-ENV`, `L-INT04-GAS`, `L-INT04-WEATHER`, `L-INT04-RUPTURE`, `L-INT04-TAPE` | Pixeldart backend presentation seam, aggregate snapshot test | One immutable snapshot produces one between-frame configuration/event set with no duplicated game/audio logic. |
+| `L-GAM03B-MODULE` | GAM-03B | W | — | New `lib/presentation/gaslight.dart`, isolated A/B scenario | Uses INT-04 mapping for flame warmth/locality/shadow/motes; no sim/config/entrypoint write. |
+| `L-GAM03B-GATE` | GAM-03B | I | `L-GAM03B-MODULE` | Browser artifacts only | Daylight/gas/open/closed/cost/zero-distance/reduced-motion A/B passes on real adapter. |
+| `L-GAM04B-MODULE` | GAM-04B | W | — | New `lib/presentation/climate.dart`, isolated A/B scenario | Three time colours, rain locality and cold-room breath consume climate facts only. |
+| `L-GAM04B-GATE` | GAM-04B | I | `L-GAM04B-MODULE` | Browser artifacts only | Days/time/rain/cold cases are legible, local, comfortable and match pure schedule after resume. |
+| `L-GAM05B-MODULE` | GAM-05B | W | — | New `lib/presentation/rupture.dart`, isolated stage scenario | Each stage uses existing geometry/portal override and first-light order; no state-machine logic duplicated. |
+| `L-GAM05B-GATE` | GAM-05B | I | `L-GAM05B-MODULE` | Browser artifacts/resource report only | Six stages are ordered/legible, wrong portal works, personal lights extinguish correctly, no spike, reduced motion passes. |
+| `L-GAM08B-VIDEO` | GAM-08B | W | — | New `lib/presentation/tape.dart`, isolated video A/B scenario | Chroma/jitter/noise/dropout/ghosting are individually switchable and mostly-clean defaults match pure weights. |
+| `L-GAM08B-AUDIO` | GAM-08B | W | — | New tape-audio command mapper, focused pure/WebAudio command test | Bandwidth/wow/hiss commands derive only from audio weights, update on state events and honor mute/reduced motion. |
+| `L-GAM08B-GATE` | GAM-08B | I | `L-GAM08B-VIDEO`, `L-GAM08B-AUDIO` | Browser/audio artifacts and cost report only | Fair tracking heartbeat, video/audio restraint, switches, comfort and measured resource/frame cost pass. |
+| `L-INT05-STATIC` | INT-05 | W | — | New `lib/presentation/static_scene.dart`, focused batching/resource test | House architecture/furniture share model/material handles, portal-cull by room and allocate nothing per frame. |
+| `L-INT05-TRANSIENT` | INT-05 | W | — | New `lib/presentation/transient_scene.dart`, focused event-lifetime test | Visitors/particles/short effects are event-driven, bounded, released and absent from save/domain state. |
+| `L-INT05-LIGHT` | INT-05 | W | — | New `lib/presentation/light_scene.dart`, focused light/material cap test | Day/gas/weather/rupture lights/material variants obey stable IDs, finite caps and no duplicate simulation. |
+| `L-INT05-DIAGNOSTICS` | INT-05 | W | — | Pixeldart resource diagnostics adapter, 600-frame scenario | Public counts explain every live target/program/buffer/texture and stay flat across steady representative frames. |
+| `L-INT05-MAIN` | INT-05 | I | `L-INT05-STATIC`, `L-INT05-TRANSIENT`, `L-INT05-LIGHT`, `L-INT05-DIAGNOSTICS` | `web/main.dart`, representative Days 1–3 pixeldart source/package scenarios | Full scene/event/presentation aggregation passes with stable resources, no unexplained allocation and no audio coupling. |
+| `L-INT06A-PREVIEW` | INT-06A | I | — | Preview selector/docs/diagnostic scenario only | Legacy remains default; next preview is documented, observable and frozen at one candidate SHA/build. |
+| `L-INT06B-SWITCH` | INT-06B | O | — | Backend default selector only in isolated commit | Next becomes default; legacy query/deployment rollback remains; no feature/refactor rides the switch. |
+| `L-INT06B-MATRIX1` | INT-06B | O | `L-INT06B-SWITCH` | Evidence only | First unchanged-scope full RC matrix passes source/package/save/art/audio/a11y/perf. |
+| `L-INT06B-MATRIX2` | INT-06B | O | `L-INT06B-MATRIX1` | Evidence only | Second consecutive matrix passes from later clean candidate with same scope and retained rollback. |
+| `L-INT06C-DELETE` | INT-06C | I | — | Exact legacy renderer/dead flag/dependency paths resolved by reference audit | Remove only old backend code after proving zero non-rollback reference; no pixeldart refactor. |
+| `L-INT06C-GATE` | INT-06C | O | `L-INT06C-DELETE` | Verification/rollback evidence only | Static/browser/package/save and prior deployment rollback smoke pass; deletion commit is independently revertible. |
+| `L-ACC01A-SPEC` | ACC-01A | W | — | `tools/browser/scenarios/acc01-days1-3.json`, immutable expectations | Frozen route uses public actions and asserts simulation/input/save/UI/build/readback facts without backend-private state. |
+| `L-ACC01A-SOURCE` | ACC-01A | I | `L-ACC01A-SPEC` | Ignored source artifacts only | Legacy source run passes exact frozen scenario with expected build/backend and no errors. |
+| `L-ACC01A-PACKAGE` | ACC-01A | I | `L-ACC01A-SOURCE` | Ignored package artifacts only | Same actions/expectations pass packaged; no scenario edit after source result. |
+| `L-ACC01B-SOURCE` | ACC-01B | I | — | Ignored next-source artifacts only | Replay exact ACC-01A input/expectation digest; simulation/input/save identical and visual deltas explicitly measured. |
+| `L-ACC01B-PACKAGE` | ACC-01B | I | `L-ACC01B-SOURCE` | Ignored next-package artifacts only | Package replay matches source/build identity and only O-approved visual/perf differences. |
+| `L-ACC02-FULLRUN` | ACC-02 | I | — | Full-run/ending evidence namespace only | Three endings, exact visitors/arrivals/content/Q24/weather/tape/rupture coverage pass pure runner. |
+| `L-ACC02-RESUME` | ACC-02 | I | — | Save/checkpoint/corruption evidence namespace only | Days 3/8/14/20, previous/corrupt recovery and second-run carryover match uninterrupted state/events. |
+| `L-ACC02-REACH` | ACC-02 | I | — | Route/interaction/soft-lock evidence namespace only | Every required content/interaction/ending remains reachable under degenerate choices and furnished/Q24 variants. |
+| `L-ACC02-BROWSER` | ACC-02 | I | `L-ACC02-FULLRUN`, `L-ACC02-RESUME`, `L-ACC02-REACH` | Representative transition scenarios/artifacts only | Critical week/ending/second-run transitions agree with pure reports through public browser input. |
+| `L-ACC03-AUDIO` | ACC-03 | I | — | Spatial/voice/music evidence namespace only | Real gesture/mute/focus/fallback/near/far/open/closed and visitor coverage meet named thresholds. |
+| `L-ACC03-A11Y` | ACC-03 | I | — | Keyboard/focus/text-scale/accessibility evidence namespace only | Every surface/route passes 100–200% text, semantics, no trap and pointer recovery. |
+| `L-ACC03-COMFORT` | ACC-03 | I | — | Reduced-motion/photosensitivity/600-frame evidence namespace only | Motion deltas, finite/luminance/black/flash probes and no unexplained resource drift pass. |
+| `L-ACC03-PERF` | ACC-03 | I | — | Named-hardware performance evidence namespace only | Exactly three post-warm-up runs meet ratified CPU/GPU/draw/triangle/texture/resource/package ceilings. |
+| `L-ACC03-PARITY` | ACC-03 | I | `L-ACC03-AUDIO`, `L-ACC03-A11Y`, `L-ACC03-COMFORT`, `L-ACC03-PERF` | Dev/package comparison report only | Same build/input/state across modes; every difference classified and linked to an approved cause. |
+| `L-REL00-CLOSURE` | REL-00 | O | — | Read-only validator report/evidence | Every non-deferred P0/P1/P2 row except release successors is accepted or has explicit owner waiver and rationale. |
+| `L-REL01-CLEAN` | REL-01 | O | — | Fresh clean worktree and ignored outputs only | Enforced locks, offline double build, exact dist, no maps/network/tmp/floating tool and correct build ID. |
+| `L-REL01-STATE` | REL-01 | O | `L-REL01-CLEAN` | Save/offline scenario artifacts only | Fresh/clear/corrupt/previous/three endings/second run and cache-offline boot pass exact accepted artifact. |
+| `L-REL01-CANDIDATE` | REL-01 | O | `L-REL01-STATE` | Signed candidate evidence only | Candidate path/hash/tree/build ID and rollback point are immutable; no later gate recompiles it. |
+| `L-REL02-TOOLING` | REL-02 | O | — | External CLI install/link state only, no secret-bearing tracked file | Install Vercel CLI, authenticate/link/pull safely and record sanitized versions/project without exposing credentials. |
+| `L-REL02-PREBUILT` | REL-02 | O | `L-REL02-TOOLING` | Exact production prebuilt wrapper/output from accepted candidate only | Prebuilt tree references the accepted bytes/build ID and does not start a second compile path. |
+| `L-REL02-DEPLOY` | REL-02 | O | `L-REL02-PREBUILT` | External deployment and ignored evidence only | Deploy prebuilt; smoke build ID/assets/headers/save/offline/cache/logs and capture deployment/artifact hashes. |
+| `L-REL03-REVIEW` | REL-03 | O | — | Owner review artifact only | Required closure, waivers, limitations, rollback and exact deployment/candidate are presented without hidden red gate. |
+| `L-REL03-RELEASE` | REL-03 | O | `L-REL03-REVIEW` | Tag/release metadata only after explicit owner approval | Signed tag/release references exact accepted commit/deployment; no rebuild or scope change. |
 
 ### Active and reserved leases
 
@@ -649,7 +1575,7 @@ reservation.
 
 | ID | Outcome / detailed source | Lane | P | Status | Depends | Gate | Evidence | One next action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| CTL-01 | Durable master-plan cutover | O/game+docs | P0 | **LANDED–VERIFY** | — | `G-CTL-01` | `EV-PLAN-LOCAL-20260801` | Commit the reviewed root and docs packets in their own repositories, then rerun plan/card/link/diff checks from the committed states and promote compact clean evidence. |
+| CTL-01 | Durable master-plan cutover | O/game+docs | P0 | **LANDED–VERIFY** | — | `G-CTL-01` | `EV-PLAN-LOCAL-20260801` | Review and separately commit the current depth deltas on top of root `f7a151d` and docs `35b919f`, then rerun plan/card/link/diff/DAG checks from a clean extraction and promote compact evidence. |
 | CTL-02 | Three-repository state and RP-3 preservation hold | O/all | P0 | **ACCEPTED** | — | `G-CTL-02` | `EV-STATE-20260801` | — |
 | CTL-03 | Isolated C/G worktrees and base/branch checkpoint | O/game | P0 | **BLOCKED** | CTL-01, CTL-02 | `G-CTL-03` | — | Create ignored worktrees, exclude them from recursive tooling, record branches/base SHAs, and prove no shared dirty path was copied. |
 | BASE-01 | Dated pure game baseline | G/game | P0 | **ACCEPTED** | — | `G-BASE-01` | `EV-GAME-PURE-20260801` | — |
@@ -672,7 +1598,7 @@ reservation.
 | REN-00 | RP-0 single renderer tree | R/pixeldart+game | P1 | **ACCEPTED** | — | `G-REN-00` | `EV-RP0` | — |
 | REN-01 | RP-1 skip-path draw assertions | R/pixeldart | P1 | **ACCEPTED** | REN-00 | `G-REN-01` | `EV-RP1` | — |
 | REN-02 | RP-2 `TextureStore` | R/pixeldart | P1 | **ACCEPTED** | REN-00 | `G-REN-02` | `EV-RP2` | — |
-| REN-03A | RP-3 parameterized post-chain/capability patch | R/pixeldart | P0 | **ACTIVE** | REN-01, REN-02 | `G-REN-03A` | `LEASE-RP3-A` | Audit and finish only the five leased files; mutation-test feature vocabulary/parameter propagation, then hand off without broad formatting. |
+| REN-03A | RP-3 parameterized post-chain/capability patch | R/pixeldart | P0 | **ACTIVE** | REN-01, REN-02 | `G-REN-03A` | `LEASE-RP3-A` | Existing owner finishes/hands off only the five leased files; then grant a separate test-only lease and run the combined clean gate without reopening those bytes. |
 | REN-03B | RP-3 resource assembler and owns-zero installation | R/pixeldart | P0 | **BLOCKED** | BASE-04, REN-03A | `G-REN-03B` | — | Build declared groups only; excluded groups create zero programs, targets, passes, or store-owned resources. |
 | REN-03C | RP-3 profile matrix, atomic reconfigure, browser A/B | R/pixeldart | P0 | **BLOCKED** | REN-03B | `G-REN-03C` | — | Cover minimal/full/invalid combinations and resource counts across repeated configure/dispose cycles. |
 | REN-04 | RP-4 fixed 384×216 internal-target policy | R/pixeldart | P1 | **BLOCKED** | REN-03C | `G-REN-04` | — | Ratify the sizing matrix, then prove resize/DPR/NEAREST behavior for every scene/history/post target. |
@@ -695,7 +1621,7 @@ lifecycle files at a time.
 | ART-01A | Scout architecture/structure candidates | C/game | P1 | **BLOCKED** | ART-00 | `G-ART-01A` | — | Record at least 50 viable trim/stair/fireplace/window/door/structural candidates in the leased fragment with original-page licence evidence. |
 | ART-01B | Scout furniture/fixtures candidates | C/game | P1 | **BLOCKED** | ART-00 | `G-ART-01B` | — | Record at least 50 tables, stools, chairs, beds, storage, range, bath, washstand, lighting, and utility candidates. |
 | ART-01C | Scout decor/clutter candidates | C/game | P1 | **BLOCKED** | ART-00 | `G-ART-01C` | — | Record at least 50 paintings/frames, books, clocks, crockery, bottles, textiles, tools, coal, paper, and personal-effect candidates. |
-| ART-01D | Curate and pin the coherent shipped collection | C/game | P1 | **BLOCKED** | ART-01A, ART-01B, ART-01C | `G-ART-01D` | — | Score period fit, silhouette, room purpose, licence, format/material cases, size, reuse, and edit cost; accept roughly 80–120 without category holes. |
+| ART-01D | Curate and pin the coherent shipped collection | C/game | P1 | **BLOCKED** | ART-01A, ART-01B, ART-01C | `G-ART-01D` | — | Score period fit, silhouette, purpose, licence, format/material cases, size, reuse and edit cost; accept 80–120 typed 3D models plus 18–30 open art images without category holes. |
 | AST-02A | Representative 30-asset normalization/QMSH pilot and format recommendation — TODO `Q18b` | C/game | P1 | **BLOCKED** | ART-01D | `G-AST-02A` | — | Harden deterministic OBJ/material/texture handling against selected cases, measure v1 expansion, and prototype/test v2 only when measured data predicts a budget breach. |
 | AST-02B | Incremental bulk normalization/conversion/turntable producer | C/game | P1 | **BLOCKED** | AST-02A, PERF-01 | `G-AST-02B` | — | Apply the ratified payload/resource decision, then implement hash-keyed atomic `models.dart` commands, multi-material descriptors, corruption fixtures, changed-only builds, and two-cold-run byte equality. |
 | ART-02 | Modular late-Victorian architectural kit — TODO `Q18c` | C/game | P1 | **BLOCKED** | ART-01D, AST-02A | `G-ART-02` | — | Build/normalize trim, architraves, reveals, cornices, fireplaces, alcoves, stair components, panels, and transitions with measured snap/variant rules. |
@@ -707,7 +1633,7 @@ lifecycle files at a time.
 | AUD-01 | Non-vacuous frozen VO plan/checker — TODO `Q30`, `A2` | C/game | P0 | **BLOCKED** | CTL-03 | `G-AUD-01` | — | Add pure `--plan-json`, nonempty exact plan↔clip-manifest↔files checks, source/settings digests, decode/audio metadata, and empty/extra/silent/stale fixtures. |
 | AUD-02 | Final visitor-only VO corpus | C/game | P1 | **BLOCKED** | AST-01A, AUD-01 | `G-AUD-02` | — | Freeze the queue hash, render missing units in bounded batches, inspect the cue/tone/set matrix, pin outputs, and derive truth from the plan—not a hand-maintained count. |
 | AUD-03A | Deterministic semantic audio event/runtime contract | G/game | P1 | **BLOCKED** | GAM-00 | `G-AUD-03A` | — | Define logical keys, listener/room snapshots, source position, portal occlusion, deterministic variants, music/mute/gesture state, and pure event tests using fixtures. |
-| AUD-03B | Final voice/spatial/music/knock/footstep browser wiring | C+G/game | P1 | **BLOCKED** | AST-03, AUD-02, AUD-03A, BASE-03 | `G-AUD-03B` | — | Wire canonical events to content and measure near/far/open/closed, fallback, user gesture, mute/focus, and visitor coverage without per-frame filter churn. |
+| AUD-03B | Final voice/spatial/music/knock/footstep browser wiring | C+G/game | P1 | **BLOCKED** | AST-03, AUD-02, AUD-03A, BASE-03, CNT-01 | `G-AUD-03B` | — | After runtime-content wiring, join canonical audio events and measure near/far/open/closed, fallback, gesture, mute/focus and visitor coverage without per-frame churn. |
 | AST-01B | Final strict shipped-asset reconciliation | C+O/game | P0 | **BLOCKED** | ART-04, AST-03, AUD-02, BLD-01 | `G-AST-01B` | — | Require exact nonempty catalogue↔runtime manifest↔filesystem equality, hashes/licences/generated provenance, no unverified orphan, and offline build/boot. |
 
 ### Game completion
@@ -726,20 +1652,22 @@ lifecycle files at a time.
 | GAM-05B | Pixeldart rupture presentation/portal override | G+R/game | P1 | **BLOCKED** | GAM-05A, INT-04 | `G-GAM-05B` | — | Prove six legible ordered stages, intact geometry, wrong portal connection, personal light-out order, no spike, and reduced motion. |
 | GAM-08A | State-driven tape/audio degradation contract — amended `E9` | G/game | P1 | **BLOCKED** | GAM-00 | `G-GAM-08A` | — | Derive named video/audio weights and one post-drift tracking event from week/exhaustion/isolation, with save and reduced-motion fixtures. |
 | GAM-08B | Pixeldart VHS/history plus WebAudio tape presentation | G+R/game | P1 | **BLOCKED** | GAM-08A, INT-04 | `G-GAM-08B` | — | Prove individually switchable chroma/jitter/noise/dropout/ghosting and bandwidth/wow/hiss, mostly-clean restraint, fair heartbeat, and measured cost. |
-| GAM-06 | Deterministic 21-day scenario/save/ending runner — TODO `GAM-06` | G/game | P0 | **BLOCKED** | GAM-00 | `G-GAM-06` | — | Run same-seed byte equality, three ending fixtures, Days 3/8/14/20 resume, arrival/tier/event coverage, and degenerate-economy no-soft-lock checks. |
+| GAM-09 | Serial pure-feature/config/session convergence — TODO `GAM-09` | G/game | P0 | **BLOCKED** | GAM-03A, GAM-04A, GAM-05A, GAM-08A | `G-GAM-09` | — | Freeze typed config once, compose feature snapshots/events, and make one session/save join so parallel pure parents never collide on `session.dart` or `config.dart`. |
+| GAM-06 | Deterministic scenario-runner kernel/report/CLI — consolidated design | G/game | P0 | **BLOCKED** | GAM-00 | `G-GAM-06` | — | Land the pure bounded runner against a miniature synthetic fixture without prematurely claiming final production coverage. |
 | CNT-01 | Runtime content consumers and examination seams | G/game | P1 | **BLOCKED** | GAM-00 | `G-CNT-01` | — | Wire documents/records/street/nights, placed-object raycast examination, Day-17 citation, Day-19 replay, journal return, and second-run text through canonical APIs. |
 | CNT-02 | Days 8–21 drift/content coverage and reachability | G/game | P1 | **BLOCKED** | CNT-01, GAM-06 | `G-CNT-02` | — | Author/validate remaining drift behavior and prove every intended content unit has a reachable consumer in deterministic full-run summaries. |
-| GAM-07 | Keyboard/focus/text-scale/reduced-motion/a11y browser suite | G/game | P1 | **BLOCKED** | BASE-03 | `G-GAM-07` | — | Exercise every surface, pointer-lock recovery, door equivalence, zoom/scale, semantics, traps/escape, and comfort through real input. |
+| GAM-10 | Final production scenario, ending, checkpoint, and content closure | G/game | P0 | **BLOCKED** | AUD-03A, CNT-02, GAM-02, GAM-06, GAM-09 | `G-GAM-10` | — | Materialize bounded production coverage shards, then prove exact visitors/arrivals/content/features, four checkpoints, three endings, second run and degenerate-choice termination. |
+| GAM-07 | Keyboard/focus/text-scale/reduced-motion/a11y browser suite | G/game | P1 | **BLOCKED** | AUD-03B, BASE-03 | `G-GAM-07` | — | Make the final G entrypoint join after content/audio, then exercise every surface, pointer recovery, equivalence, scale, semantics, traps/escape and comfort. |
 
 ### Renderer/game convergence
 
 | ID | Outcome / detailed source | Lane | P | Status | Depends | Gate | Evidence | One next action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| INT-00 | Freeze legacy web/UI baseline and hand `web/main.dart` from G to R | O/game | P0 | **BLOCKED** | ACC-01A, GAM-07 | `G-INT-00` | — | Record the accepted baseline SHA/scenarios, require no active G lease on the entrypoint, then grant R the exact adapter write set without reopening UI scope. |
+| INT-00 | Freeze legacy web/UI/audio/content baseline and hand `web/main.dart` from G to R | O/game | P0 | **BLOCKED** | ACC-01A | `G-INT-00` | — | Record the accepted post-content/UI/audio baseline SHA/scenarios, close every G/C entrypoint lease, then grant R the exact adapter write set without reopening their scope. |
 | INT-01 | RV-11 game renderer adapter and `?renderer=next` switch, legacy default | R/game | P1 | **BLOCKED** | GAM-00, INT-00, REN-08 | `G-INT-01` | — | Add the path dependency and map immutable snapshots behind unchanged/documented game seams; smoke both backends. |
 | INT-02 | RV-13A representative QMSH/material asset bridge | C+R/pixeldart | P1 | **BLOCKED** | AST-02A, REN-08 | `G-INT-02` | — | Load/draw/release/restore one accepted multi-part model with provenance and exact resource counts, then hand ownership back to R. |
 | INT-03 | RV-10 representative furnished house route | R/game | P1 | **BLOCKED** | ART-03, INT-01, INT-02 | `G-INT-03` | — | Render hall→kitchen→living→hall→landing→bedroom with proxy architecture/furniture and prove apertures agree with interaction/collision. |
-| INT-04 | RV-12 renderer-neutral presentation adapter | R/game | P1 | **BLOCKED** | GAM-03A, GAM-04A, GAM-05A, GAM-08A, INT-03 | `G-INT-04` | — | Map camera/environment/post/weather/tape/rupture snapshots into pixeldart with no duplicated simulation or audio logic. |
+| INT-04 | RV-12 renderer-neutral presentation adapter | R/game | P1 | **BLOCKED** | GAM-09, INT-03 | `G-INT-04` | — | Consume the serially integrated immutable feature snapshot and map camera/environment/post/weather/tape/rupture into pixeldart with no simulation/audio logic. |
 | INT-05 | RV-13B full production scene/asset/transient/light aggregation | R/game | P1 | **BLOCKED** | ART-04, GAM-03B, GAM-04B, GAM-05B, GAM-08B, INT-04 | `G-INT-05` | — | Pass representative Days 1–3 on pixeldart in dev/package with stable resource counts, no unexplained frame allocation, and no renderer/audio coupling. |
 | INT-06A | Complete next-renderer preview | R+O/game | P0 | **BLOCKED** | INT-05 | `G-INT-06A` | — | Keep legacy default; expose documented preview/backend diagnostics and freeze an acceptance candidate. |
 | INT-06B | Make next default while retaining legacy rollback; observe two RC matrices | O/game | P0 | **BLOCKED** | ACC-01B, ACC-02, ACC-03 | `G-INT-06B` | — | Switch default in a separate commit, retain rollback query/deployment point, and accept two consecutive unchanged-scope matrices. |
@@ -749,9 +1677,9 @@ lifecycle files at a time.
 
 | ID | Outcome / detailed source | Lane | P | Status | Depends | Gate | Evidence | One next action |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| ACC-01A | Legacy Days 1–3 dev/package baseline | G/game | P0 | **BLOCKED** | BASE-03 | `G-ACC-01A` | — | Run the unchanged critical route now on legacy and freeze scenario/actions/assertions/artifacts. |
+| ACC-01A | Final pre-handoff legacy Days 1–3 dev/package baseline | G/game | P0 | **BLOCKED** | GAM-07 | `G-ACC-01A` | — | After content/audio/UI entrypoint joins, run the critical legacy route and freeze its scenario/actions/assertions/artifacts. |
 | ACC-01B | Next-backend Days 1–3 parity | G+R/game | P0 | **BLOCKED** | ACC-01A, INT-06A | `G-ACC-01B` | — | Replay the frozen route in dev/package; accept only approved visual/perf differences and identical simulation/input/save outcomes. |
-| ACC-02 | Full 21-day/three-ending/second-run player proof | G/game | P0 | **BLOCKED** | ART-05B, CNT-02, GAM-02, GAM-04B, GAM-05B, GAM-06, INT-06A | `G-ACC-02` | — | Combine pure fixtures with representative browser transitions and prove M4 without dead content, state loss, or soft-lock. |
+| ACC-02 | Full 21-day/three-ending/second-run player proof | G/game | P0 | **BLOCKED** | ART-05B, GAM-04B, GAM-05B, GAM-10, INT-06A | `G-ACC-02` | — | Combine final production scenario closure with representative browser transitions and prove M4 without dead content, state loss, or soft-lock. |
 | ACC-03 | Presentation/audio/accessibility/comfort/performance proof | G+C+R/game | P1 | **BLOCKED** | ART-05A, AUD-03B, GAM-03B, GAM-07, GAM-08B, INT-06A, PERF-01 | `G-ACC-03` | — | Run isolated A/B, real-adapter/audio, 600-frame, keyboard/focus/text/reduced-motion, resource, and package parity gates. |
 | REL-00 | All pre-release required-scope closure audit | O/all | P0 | **BLOCKED** | ACC-01B, ACC-02, ACC-03, AST-01B, AUT-07, BASE-01, DOC-01, INT-06C | `G-REL-00` | — | Have the plan validator reject any non-deferred P0/P1/P2 row other than REL-00, REL-01, REL-02, and REL-03 without accepted evidence or an explicit owner waiver. |
 | REL-01 | Clean-checkout offline release candidate | O/game | P0 | **BLOCKED** | REL-00 | `G-REL-01` | — | Enforce locks, build twice, compare dist, serve offline, clear/corrupt/restore saves, run endings/second run, and prove no production source maps. |
@@ -762,8 +1690,8 @@ lifecycle files at a time.
 
 | Evidence | Scope and location |
 | --- | --- |
-| `EV-PLAN-LOCAL-20260801` | Local candidate only: master/PLAN/TODO authority notices, preserved card headings/bodies, card extraction and link/diff validation. It supports `LANDED–VERIFY`; `CTL-01` needs separate committed root/docs SHAs and a clean rerun before acceptance. |
-| `EV-STATE-20260801` | Game `65f30da`, pixeldart `9ffedf4` plus the exact five dirty paths, docs `16c992e` plus PLAN/TODO dirt; preservation lease established without modifying RP-3 bytes. |
+| `EV-PLAN-LOCAL-20260801` | Local candidate: initial root/docs cutover commits are `f7a151d`/`35b919f`; current depth deltas pass local master/PLAN/TODO authority, 79-task/6-decision/281-leaf grammar/DAG/coverage, card extraction, table/link and diff checks. It supports `LANDED–VERIFY`; current-delta SHAs plus a clean rerun are still required. |
+| `EV-STATE-20260801` | Initial state: game `65f30da`, docs `16c992e`, pixeldart `9ffedf4` plus the exact five dirty paths. Planning advanced to game `f7a151d`/docs `35b919f`; the current depth delta touches only the named planning/card files, while pixeldart remains the same five-path preservation set. |
 | `EV-GAME-PURE-20260801` | At game `65f30da`: analyzer green, 28 root Dart programs green, and 53 corpus tests green. It does not prove browser/package/audio/art/release scope. |
 | `EV-RP0` | `tmp/RENDERER-BOARD.md` “RP-0 — consolidation”: one pixeldart tree, audited deletion, analyzer/package checks and commits recorded. |
 | `EV-RP1` | `tmp/RENDERER-BOARD.md` “RP-1”: mutation-checked SSAO/bloom/DOF skip draw assertions and then-current package ladder. |
@@ -1065,9 +1993,11 @@ IDs, save/content compatibility impact, and—when visual—its evidence artifac
 1. **Update status here, once.** Do not update current status in `tmp/PLAN.md`,
    `tmp/TODO.md`, renderer boards, handoffs, or package TODOs.
 2. Before starting, confirm dependencies, repository, current HEAD, dirty paths,
-   owner, worktree/base SHA, exact write/deny set, next action, and gate. Use the
-   compare-and-swap claim once `AUT-01` exists; set exactly that row to **ACTIVE**.
-3. One write set has one owner. Parallelize only disjoint work.
+   owner, worktree/base SHA, plan digest, bound leaf, exact read/write/create/deny
+   sets, steps, and gate. Use the compare-and-swap claim once `AUT-01` exists; set
+   exactly the parent row to **ACTIVE** and add the materialized leaf lease.
+3. One write set has one owner. Parallelize only disjoint materialized leaves; a
+   recipe without complete bindings is not dispatchable.
 4. A task becomes **ACCEPTED** only with evidence for its exact observable gate.
    “Code landed,” analyzer green, or a historical checkbox is insufficient.
 5. If an accepted dependency changes materially, demote affected downstream rows
@@ -1081,8 +2011,9 @@ IDs, save/content compatibility impact, and—when visual—its evidence artifac
 9. Re-audit this file after every renderer integration packet, schema/save change,
    required-scope decision, or release-candidate build.
 10. Workers never edit canonical status as part of their feature commit. They
-    return the handoff schema in §4; O validates source/input fingerprints, promotes
-    compact evidence, releases the lease, and then admits the next packet.
+    return the bound-leaf handoff schema in §4; O validates source/input/spec
+    fingerprints and exact changed paths, integrates leaves, runs the parent gate,
+    promotes compact evidence, releases leases, and then admits the next packet.
 11. `tools/plan.dart validate` is mandatory before dispatch, after a status/
     decision/dependency edit, and before release. Manual review remains required
     for art, licence meaning, owner decisions, and what evidence actually proves.
