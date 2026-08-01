@@ -194,6 +194,7 @@ const int wardenStartDay = 5;
 const int standInSeedSalt = 913741;
 const List<int> standInCountChoices = [0, 2, 2, 3];
 const int unverifiableSeedSalt = 274953;
+const int unverifiableNoticeHour = 20;
 
 const double scrutinyPerCheck = 0.15, scrutinyCap = 1.0, scrutinyDecay = 0.5;
 const double exhaustionPerShortSleep = 0.2,
