@@ -27,6 +27,7 @@ import 'package:quarantine/config.dart';
 import 'package:quarantine/journal/entry.dart' show Vocabulary;
 import 'package:quarantine/story/text.dart';
 import 'package:quarantine/story/schema.dart' show vocabularyFields;
+import 'package:quarantine/story/unverifiable_notice.dart';
 import 'package:quarantine/visitors/director.dart';
 import 'package:quarantine/visitors/ambient.dart';
 import 'package:quarantine/visitors/stand_ins.dart';
@@ -103,6 +104,7 @@ late EndingPanel _endingPanel;
 late VisitorDirector _visitorDirector;
 late AmbientDirector _ambientDirector;
 late AmbientNotice _ambientNotice;
+final Set<int> _unverifiableDaysShown = {};
 
 final List<String> _pendingSounds = [];
 EndingState? _ending;
@@ -247,6 +249,12 @@ Future<void> main() async {
       _restoreVisitorDoor();
     }
     _ambientDirector.restoreDelivered(saved.snapshot?.meta['ambient']);
+    final savedUnverifiables = saved.snapshot?.meta['unverifiables'];
+    if (savedUnverifiables is List) {
+      for (final day in savedUnverifiables) {
+        if (day is int) _unverifiableDaysShown.add(day);
+      }
+    }
     _sleepPanel = SleepPanel(web.document)
       ..onSleep = (quality, location) {
         if (_session.snapshot.day == 21) {
@@ -382,6 +390,7 @@ void _saveSession(String status) {
           ).toJson(),
           'visitors': _visitorDirector.snapshot.toJson(),
           'ambient': _ambientDirector.deliveredIds,
+          'unverifiables': _unverifiableDaysShown.toList()..sort(),
           if (_ending != null) 'ending': _ending!.toJson(),
         },
       ),
@@ -505,6 +514,7 @@ void _raf(num ts) {
         _updateVisitorSchedule();
         _syncDifficultySeam();
         _updateAmbientEvents();
+        _updateUnverifiableNotice();
         _updateMantles();
         _update(_fixedDt);
         _examineState.update(_fixedDt);
@@ -709,6 +719,18 @@ void _updateAmbientEvents() {
   _ambientNotice.show(source, event.text);
   final sound = ambientSoundForChannel(event.channel);
   if (sound != null) _pendingSounds.add('ambient-$sound');
+}
+
+void _updateUnverifiableNotice() {
+  final snapshot = _session.snapshot;
+  if (snapshot.hour < unverifiableNoticeHour) return;
+  if (!_unverifiableDaysShown.add(snapshot.day)) return;
+  final line = pickUnverifiable(
+    textLibrary.getUnverifiables(snapshot.day),
+    _session.runSeed,
+    snapshot.day,
+  );
+  if (line != null) _ambientNotice.show('noticed', line);
 }
 
 bool _canBeginRupture(Portal? portal) => RuptureGate.canBegin(

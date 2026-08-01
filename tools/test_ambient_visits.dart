@@ -1,4 +1,5 @@
 import 'package:quarantine/story/schema.dart';
+import 'package:quarantine/story/unverifiable_notice.dart';
 import 'package:quarantine/visitors/ambient.dart';
 
 Never _fail(String message) =>
@@ -34,4 +35,24 @@ The cart passes after dark.
     ..restoreDelivered(director.deliveredIds);
   _expect(restored.due(13, 23).isEmpty, 'delivered state survives restore');
   print('ambient visitor delivery is explicit, timed, and non-repeating');
+
+  _expect(
+    pickUnverifiable(const [], 12345, 16) == null,
+    'a day with no authored line surfaces nothing',
+  );
+  _expect(
+    pickUnverifiable(const ['only line'], 12345, 16) == 'only line',
+    'a single-line day never needs the seed',
+  );
+  final twoLines = const ['first line', 'second line'];
+  final pickA = pickUnverifiable(twoLines, 111, 15);
+  final pickAAgain = pickUnverifiable(twoLines, 111, 15);
+  _expect(pickA == pickAAgain, 'the same seed and day always pick the same line');
+  var sawBothLines = false;
+  for (var seed = 0; seed < 50; seed++) {
+    final picked = pickUnverifiable(twoLines, seed, 15);
+    if (picked == 'second line') sawBothLines = true;
+  }
+  _expect(sawBothLines, 'a seed sweep must eventually pick the other line');
+  print('unverifiable notice picking is deterministic and seed-varied');
 }
