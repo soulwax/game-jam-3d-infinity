@@ -64,9 +64,29 @@ ROOT = Path(__file__).resolve().parent.parent
 TEXT_DIR = ROOT / "text"
 OUT_DIR = ROOT / "web" / "res" / "vo"
 MANIFEST = ROOT / "web" / "res" / "manifest.json"
+TEXT_CHOICES_FILE = ROOT / "web" / "res" / "text_choices.json"
 VENV = ROOT / "scripts" / ".venv"
 CACHE = ROOT / "scripts" / ".cache"
 SR = 24000
+
+
+def load_text_choices() -> dict[str, int]:
+    if not TEXT_CHOICES_FILE.exists():
+        return {}
+    try:
+        raw = json.loads(TEXT_CHOICES_FILE.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return {}
+    if not isinstance(raw, dict):
+        return {}
+    return {k: v for k, v in raw.items() if isinstance(v, int)}
+
+
+TEXT_CHOICES = load_text_choices()
+
+
+def unit_address(unit: Unit, part: Part) -> str:
+    return f"{unit.stem}:{part.label}"
 
 
 @dataclass(frozen=True)
@@ -195,6 +215,18 @@ TONES: dict[str, Tone] = {
         "-6%", "-3Hz", 1.08, 1.0,
         "equalizer=f=1000:t=q:w=2.0:g=-3,equalizer=f=2800:t=q:w=1.6:g=1",
         "compand=attacks=0.003:decays=0.12:points=-60/-30|-32/-12|-14/-10|0/-9",
+        "en-GB-RyanNeural", "en-GB-LibbyNeural",
+    ),
+    "whisper": Tone(
+        "-8%", "-2Hz", 0.75, 0.4,
+        "equalizer=f=4200:t=q:w=1.3:g=4,equalizer=f=350:t=q:w=1.0:g=-6",
+        "compand=attacks=0.02:decays=0.4:points=-60/-45|-24/-18|0/-14",
+        "en-GB-RyanNeural", "en-GB-LibbyNeural",
+    ),
+    "adrift": Tone(
+        "-3%", "+1Hz", 1.02, 0.95,
+        "equalizer=f=1500:t=q:w=1.5:g=1,equalizer=f=600:t=q:w=1.2:g=1",
+        "compand=attacks=0.012:decays=0.32:points=-60/-40|-24/-15|0/-9",
         "en-GB-RyanNeural", "en-GB-LibbyNeural",
     ),
 }
@@ -766,8 +798,8 @@ def plan_units(units: list[Unit], a: argparse.Namespace,
             gauge[key] = int(raw)
         rng = random.Random(f"{a.seed}:text:{unit.stem}")
         jobs = [[] if p.absent else
-                plan_jobs(resolve(p.text, rng), cache, a.backend, voice, gender,
-                          tone, a.chunk_chars)
+                plan_jobs(resolve(p.text, rng, TEXT_CHOICES, unit_address(unit, p)),
+                          cache, a.backend, voice, gender, tone, a.chunk_chars)
                 for p in unit.parts]
         drops = str(pick(a, unit, "dropouts"))
         lead = str(pick(a, unit, "lead"))
@@ -794,7 +826,8 @@ def render(plan: Plan, a: argparse.Namespace, out_dir: Path,
     for i, part in enumerate(unit.parts):
         if "word-missing" in unit.cues and not part.absent:
             rng_text = random.Random(f"{a.seed}:text:{unit.stem}:{i}")
-            resolved = resolve(part.text, rng_text)
+            resolved = resolve(part.text, rng_text, TEXT_CHOICES,
+                                unit_address(unit, part))
             marker_pos = detect_marker(resolved)
             if marker_pos is not None:
                 marker_info[i] = (marker_pos, resolved)
@@ -1217,7 +1250,8 @@ def main() -> None:
                 marker_note = ""
                 if "word-missing" in u.cues and not part.absent:
                     rng_text = random.Random(f"{a.seed}:text:{u.stem}:{part_idx}")
-                    resolved = resolve(part.text, rng_text)
+                    resolved = resolve(part.text, rng_text, TEXT_CHOICES,
+                                        unit_address(u, part))
                     marker_pos = detect_marker(resolved)
                     if marker_pos is not None:
                         marker_note = f"  [dropout marker at char {marker_pos}]"

@@ -612,6 +612,114 @@ def test_resolve_empty_branch():
     assert "Start" in result and "end" in result
 
 
+def test_parse_claim_line_is_skipped():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = pathlib.Path(tmpdir)
+        (tmpdir / "visitors").mkdir(exist_ok=True)
+
+        f = tmpdir / "visitors" / "speaker.txt"
+        f.write_text(
+            "@visitor speaker\n"
+            "@day 1\n"
+            "@tier full.1\n"
+            "Hello there.\n"
+            "@claim who Sylvia\n"
+        )
+        units = tts.parse([f])
+
+        assert units[0].parts[0].text == "Hello there."
+
+
+def test_parse_arrival_and_ambient_lines_are_skipped():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = pathlib.Path(tmpdir)
+        (tmpdir / "visitors").mkdir(exist_ok=True)
+
+        f = tmpdir / "visitors" / "speaker.txt"
+        f.write_text(
+            "@visitor speaker\n"
+            "@day 1\n"
+            "@arrival 9 0\n"
+            "@tier full.1\n"
+            "Hello there.\n"
+            "@ambient 9 street full.1\n"
+        )
+        units = tts.parse([f])
+
+        assert units[0].parts[0].text == "Hello there."
+
+
+def test_parse_unknown_at_directive_raises_exit():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tmpdir = pathlib.Path(tmpdir)
+        (tmpdir / "visitors").mkdir(exist_ok=True)
+
+        f = tmpdir / "visitors" / "speaker.txt"
+        f.write_text(
+            "@visitor speaker\n"
+            "@day 1\n"
+            "@tier full.1\n"
+            "Hello there.\n"
+            "@unknown-thing bad\n"
+        )
+        try:
+            tts.parse([f])
+            assert False, "expected SystemExit"
+        except SystemExit:
+            pass
+
+
+def test_cues_include_new_tags():
+    for tag in ("wireless-hum", "static-burst", "mid-sentence-start",
+                "over-specific", "through-floor", "door-muffled",
+                "long-pause", "whisper", "off-key"):
+        assert tag in tts.CUES
+
+
+def test_off_key_cue_selects_adrift():
+    unit = tts.Unit("test", "neighbour", 1, [], direction={},
+                   cues=["off-key"])
+    assert unit.cued["tone"] == "adrift"
+    assert "adrift" in tts.TONES
+    assert "whisper" in tts.TONES
+
+
+def test_speakers_include_new_visitors():
+    for name in ("clerk", "evacuee", "ragman", "twins", "watchman", "widow",
+                 "milkman", "nurse", "tuner", "engineer", "census"):
+        assert name in tts.SPEAKERS
+
+
+def test_resolve_uses_choices_when_address_matches():
+    text = "The choice is {red|blue}."
+    rng = random.Random("unused")
+    result = tts.resolve(text, rng, {"stem:part:0": 1}, "stem:part")
+    assert result == "The choice is blue."
+
+
+def test_resolve_falls_back_when_address_missing_from_choices():
+    text = "The choice is {red|blue}."
+    rng1 = random.Random("seed")
+    expected = tts.resolve(text, rng1)
+
+    rng2 = random.Random("seed")
+    result = tts.resolve(text, rng2, {"other:part:0": 1}, "stem:part")
+    assert result == expected
+
+
+def test_resolve_choices_index_advances_per_span():
+    text = "{a|b} and {c|d}"
+    rng = random.Random("unused")
+    result = tts.resolve(text, rng, {"stem:0": 0, "stem:1": 1}, "stem")
+    assert result == "a and d"
+
+
+def test_unit_address_matches_dart_scheme():
+    unit = tts.Unit("neighbour-day01-full-2", "neighbour", 1, [])
+    part = tts.Part("full-2", "text")
+    assert tts.unit_address(unit, part) == "neighbour-day01-full-2:full-2"
+
+
 if __name__ == "__main__":
     test_parse_forward_directives()
     test_parse_forward_directive_override()
@@ -656,4 +764,14 @@ if __name__ == "__main__":
     test_pick_multipart_tone_override()
     test_chunk_text_limit_edge_case()
     test_resolve_empty_branch()
+    test_parse_claim_line_is_skipped()
+    test_parse_arrival_and_ambient_lines_are_skipped()
+    test_parse_unknown_at_directive_raises_exit()
+    test_cues_include_new_tags()
+    test_off_key_cue_selects_adrift()
+    test_speakers_include_new_visitors()
+    test_resolve_uses_choices_when_address_matches()
+    test_resolve_falls_back_when_address_missing_from_choices()
+    test_resolve_choices_index_advances_per_span()
+    test_unit_address_matches_dart_scheme()
     print("All tests passed!")

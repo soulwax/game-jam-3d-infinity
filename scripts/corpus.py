@@ -100,6 +100,15 @@ CUES: dict[str, dict[str, str]] = {
     "thinning": {"tone": "thinning"},
     "flattening": {"tone": "flattening"},
     "hollowed": {"tone": "hollowed"},
+    "wireless-hum": {"radio_level": "2"},
+    "static-burst": {"crackle": "3", "dropouts": "1"},
+    "mid-sentence-start": {"lead": "0.0"},
+    "over-specific": {"tone": "confiding"},
+    "through-floor": {"set": "floor"},
+    "door-muffled": {"set": "door", "distance": "3"},
+    "long-pause": {"lead": "3.0"},
+    "whisper": {"tone": "whisper"},
+    "off-key": {"tone": "adrift", "wow": "1"},
 }
 
 
@@ -128,6 +137,17 @@ SPEAKERS: dict[str, dict[str, str]] = {
               "voice_name": "en-GB-MaisieNeural", "set": "letterbox"},
     "sibling": {"tone": "neutral"},
     "stranger": {"tone": "neutral"},
+    "clerk": {"tone": "official", "voice": "male"},
+    "evacuee": {"tone": "weary", "voice": "female"},
+    "ragman": {"tone": "casual", "voice": "male"},
+    "twins": {"tone": "neutral", "voice": "female"},
+    "watchman": {"tone": "clipped", "voice": "male"},
+    "widow": {"tone": "weary", "voice": "female"},
+    "milkman": {"tone": "casual", "voice": "male"},
+    "nurse": {"tone": "courteous", "voice": "female"},
+    "tuner": {"tone": "courteous", "voice": "male"},
+    "engineer": {"tone": "neutral", "voice": "male"},
+    "census": {"tone": "official", "voice": "female"},
 }
 
 
@@ -197,6 +217,12 @@ def parse(paths: list[Path]) -> list[Unit]:
                 last = Unit(f"{speaker}-day{d:02d}-{tier}", speaker, d,
                             [part], dict(direction))
                 units.append(last)
+            elif line.startswith("@"):
+                if line.split(maxsplit=1)[0] not in {"@claim", "@arrival",
+                                                       "@ambient"}:
+                    raise SystemExit(
+                        f"{path.name}:{lineno}: unknown directive "
+                        f"{line.split(maxsplit=1)[0]!r}")
             elif line and part is not None:
                 part.text = (part.text + " " + line).strip()
 
@@ -210,8 +236,21 @@ def parse(paths: list[Path]) -> list[Unit]:
     return units
 
 
-def resolve(text: str, rng: random.Random) -> str:
-    return ALT.sub(lambda m: rng.choice(m.group(1).split("|")), text)
+def resolve(text: str, rng: random.Random,
+            choices: dict[str, int] | None = None,
+            address: str | None = None) -> str:
+    index = 0
+
+    def pick(m: re.Match) -> str:
+        nonlocal index
+        alternatives = m.group(1).split("|")
+        key = f"{address}:{index}" if address is not None else None
+        index += 1
+        if choices is not None and key in choices:
+            return alternatives[choices[key] % len(alternatives)]
+        return rng.choice(alternatives)
+
+    return ALT.sub(pick, text)
 
 
 SENTENCE = re.compile(r"(?<=[.!?;…])\s+")

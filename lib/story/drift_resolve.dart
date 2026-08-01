@@ -32,9 +32,13 @@ Map<String, int> resolveDriftSpans(StoryText story) {
       for (final tierEntry in dayEntry.value.entries) {
         final tierStem = tierEntry.key.replaceAll('.', '-');
         final stem = '${visitorEntry.key}-day$day-$tierStem';
+        // Matches scripts/corpus.py's Part.label for a visitor tier exactly
+        // (the same dash-converted tier name) — this is the address the
+        // Python voice pipeline also builds, so a rendered clip and the
+        // subtitle it plays under always picked the same alternative.
         dayEntry.value[tierEntry.key] = _resolveLine(
           tierEntry.value,
-          '$stem:line',
+          '$stem:$tierStem',
           choices,
         );
       }

@@ -46,7 +46,8 @@ def load_broadcasts() -> dict[int, DayLiturgy]:
 
         rng = random.Random(f"board:text:{unit.stem}")
         for part in unit.parts:
-            resolved_parts[part.label] = tts.resolve(part.text, rng)
+            resolved_parts[part.label] = tts.resolve(
+                part.text, rng, tts.TEXT_CHOICES, tts.unit_address(unit, part))
             source_parts[part.label] = part.text
 
         liturgies[unit.day] = DayLiturgy(
