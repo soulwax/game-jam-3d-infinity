@@ -1,0 +1,129 @@
+# THE QUARANTINE — Board wireless broadcast, days 8-14.
+# The liturgy is fixed: date, status, sighting, instructions, closing.
+# Sectors stay the closed set week 1 established: 6, 9, 11.
+# Week 2's spine: the city is collectively editing what it believes, and this is
+# the instrument. It states, restates, strains, contradicts itself, and corrects —
+# and the correction is always smoother than the thing it corrects.
+# Population layer (wave 5): still no names. People are now plural nouns WITH BEHAVIOUR —
+# repeating, enquiring, awaiting examination, failing to make a return. The document is
+# visibly about a population that is not behaving as the document expects.
+# LOCKED BY VISITOR QUOTATIONS — change these and you break another file:
+#   day 9 status "settled, orderly and entirely as expected" — ayling.txt day 9 full.2 quotes
+#     this verbatim, so the clause itself is fixed; the drift moved onto "across|over" instead
+#     (was previously {as expected|as advised}, which broke the quote on the other reading).
+#   day 9 instructions "four hours from the eleventh"  — gas-man.txt day 9 full.2 / compressed.2
+#   day 12 instructions "on the ninth"  — postman.txt day 12 says the eighth, deliberately
+#   day 13 instructions "nothing at sector 9 is outstanding" — ayling.txt day 13 full.1
+#   day 13 instructions "{required|expected}" — ayling.txt day 13 compressed.2 quotes the pair
+
+# Day 8 — the first sighting that says something. Careful to the point of saying
+# almost nothing, and short enough that a resident can repeat it back word for word.
+# Mundane reading: someone walked the wrong side of the cordon and was turned back.
+@day 8
+@part date
+Eighth day of the order.
+@part status
+Boundary holding at sector 6. All returns from 409 households {received|collected} on time.
+@part sighting
+A movement near the sector 6 line has been accounted for. Residents need not repeat it further.
+@part instructions
+Residents of the even numbers are reminded to keep front glazing shuttered after dark.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+# Day 9 — the announcement is already settled. The status performs calm at a volume
+# calm does not require, and the sighting exists only to close a thing twice.
+@day 9
+@part date
+Ninth day of the order.
+@part status
+Conditions {across|over} sectors 6, 9 and 11 are settled, orderly and entirely as expected.
+@part sighting
+The matter at the sector 6 line remains accounted for. Enquiries are no longer being taken.
+@part instructions
+Households in receipt of the allowance are reminded that it stands at four hours from the eleventh.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+# Day 10 — the pivot. The second statement does not sit against the eighth: a
+# different sector, two movements where there was one, and an hour nobody gave
+# before. Every detail is worth writing down and every one of them is doubtable.
+# Mundane reading: two clerks, two sets of notes, one slot to read them in.
+@day 10
+@part date
+Tenth day of the order.
+@part status
+Boundary holding. Returns from sector 9 are {delayed|deferred} pending {a second|a further} count.
+@part sighting
+Two movements at the sector 9 line {shortly after|shortly before} first light are accounted for.
+@part instructions
+Every household is asked to keep the records of its occupants {legible|orderly} and available.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+# Day 11 — a small undeniable event, and the hours treated as long since settled.
+# Nothing is explained and nothing is named. Mundane reading: a scheduled test of
+# equipment that has been tested before, and rooms chosen for the heat.
+@day 11
+@part date
+Eleventh day of the order.
+@part status
+Boundary holding. Conditions in the {forenoon|afternoon} hours are unchanged at sectors 9 and 11.
+@part sighting
+The signal was sounded across sectors 6, 9 and 11 at ten past six. The apparatus is in order.
+@part instructions
+Persons awaiting examination are instructed to keep to the north rooms during the settled hours.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+# Day 12 — rumour has become fact. Revised ration hours are reported as announced on
+# the ninth; the ninth announced no such thing. Stated twice, so it sounds remembered.
+# Mundane reading: a bulletin the resident's set was not tuned for.
+@day 12
+@part date
+Twelfth day of the order.
+@part status
+Boundary holding. Ration hours for households in sectors 9 and 11 stand as revised on the ninth.
+@part sighting
+Residents' accounts of the sector 6 movement now agree in every particular. The matter is closed.
+@part instructions
+Every household is reminded that the revised hours were {published|circulated} on the ninth.
+@part closing
+This has been the message from the Board.
+@cue closing-degrades
+
+# Day 13 — the status and the sighting cannot both be true. The instruction resolves
+# it in favour of the status and does not mention that anything was resolved.
+# Mundane reading: a correction reached the desk between one paragraph and the next.
+@day 13
+@part date
+Thirteenth day of the order.
+@part status
+All movement at the sector 9 line has been accounted for {since the eighth|since the seventh}.
+@part sighting
+One further movement at the sector 9 line remains unaccounted for and is under {review|inquiry}.
+@part instructions
+Residents are reminded that nothing at sector 9 is outstanding and no report is {required|expected}.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+# Day 14 — the capstone. A harder warning that explains nothing, and a week that
+# ends by declining to reconcile its own reports.
+# Mundane reading: an overstretched office closing a file it cannot finish.
+@day 14
+@part date
+Fourteenth day of the order.
+@part status
+The order continues into a third week. Boundary conditions are not as they were on the first day.
+@part sighting
+Reports from sectors 6, 9 and 11 do not agree. Eleven households have made no return.
+@part instructions
+Every household is required to remain within its {own walls|own rooms} until further notice.
+@part closing
+This has been a message from the Board. It will not be repeated.
+@cue closing-degrades

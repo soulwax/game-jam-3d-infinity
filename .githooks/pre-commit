@@ -1,0 +1,12 @@
+#!/bin/sh
+set -e
+
+if ! git diff --cached --name-only --diff-filter=ACMR |
+  grep -qE '^(lib/|web/|pubspec\.yaml|tools/vercel_build\.mjs)'; then
+  exit 0
+fi
+
+echo "pre-commit: building js+wasm into dist/web"
+node tools/vercel_build.mjs --wasm --no-source-maps
+
+git add -A dist/web

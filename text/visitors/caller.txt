@@ -1,0 +1,88 @@
+# THE QUARANTINE — the caller, Mrs Hallow. Days 5, 10, 20.
+# She is at the wrong door only in the sense that the right person has gone. She asks
+# after the previous tenant (PLAN §24.1) and never once says their name, and never
+# notices she hasn't — she talks the way people talk about someone you both know.
+# The player cannot ask a question that resolves it. She is withholding nothing.
+# She is never frightening and she never escalates. The dread is structural: somebody
+# keeps arriving to collect from a person who is in no record the player has.
+# Branch encoding per the wave brief §2: full.N / compressed.N, one line per tier.
+
+# --- Day 5 — the first call. Brief, apologetic, entirely ordinary. full.2 is the
+# writable detail: a day and an hour that are on the kitchen calendar (§47) and can
+# be checked against it. full.4 corroborates the pencil height-marks (§24.1) without
+# ever explaining them. Boring explanation for all of it: she is owed a dish.
+@visitor caller
+@day 5
+@arrival 15 0
+@tier full.1
+I'm sorry to knock. It's the lady who was here before you I want, and I've the right house.
+@claim object a knock
+@tier full.2
+She had me down for the Tuesday, half three. It'll be on her calendar by the back door.
+@tier full.3
+It's only two pound and a dish. My mother's dish. I'd not knock twice for less than that.
+@tier full.4
+Say Mrs Hallow called. Her little one used to open this door to me {himself|herself}.
+@claim who Mrs Hallow
+@claim object the door
+
+# --- Day 5, off. The identity that is always crisp has gone soft; the hour
+# she'd normally hold to the minute has gone suspiciously exact instead.
+@visitor caller
+@day 5
+@tier off.1
+I'm sorry to knock. It's the lady who had this house I'm after — I've the house, I think.
+@cue off-key
+@tier off.2
+She had me down for half three sharp, the Tuesday just gone. I'd stake the hour on it.
+@claim verb confirmed
+
+# --- Day 10 — the pivot day (§18.3), when the player is deciding what is worth
+# recording. Her account has moved by exactly one field: Tuesday has become Thursday.
+# The dish is still a dish, the two pound is still two pound. She does not notice and
+# there is nothing to catch her on. Boring explanation: people misremember errands.
+# full.1 has Mrs Ayling at the wrong house number, in the ordinary way.
+@visitor caller
+@day 10
+@arrival 9 0
+@tier full.1
+Mrs Ayling at number 7 said to try you again. So here's me, and I'm sorry for it.
+@claim who Mrs Ayling
+@claim verb said
+@cue thinning
+@tier full.2
+She had me down for the Thursday, half three. She's never once forgot a thing in her life.
+@cue thinning
+@tier full.3
+It's only two pound and a dish. I'd not have troubled you, only the dish was my mother's.
+@cue thinning
+@tier compressed.1
+I'm sorry to knock. It's the lady who was here before you I want, and I've the right house.
+@claim object a knock
+@cue thinning
+@tier compressed.2
+I'll try again Friday. I'd hate her to think I never called for it.
+@cue thinning
+
+# --- Day 10, off. The same pivot as full — a detail has moved by one field —
+# but here it is a place, not a day, and she is newly, wrongly precise about it.
+@visitor caller
+@day 10
+@tier off.1
+Mrs Ayling said to try again. Number 9, I think she said — or near enough to it.
+@tier off.2
+She had me down for the Thursday, half three. It'll be on the calendar by the front door.
+@claim place the front door
+
+# --- Day 20 — week 3. Still asking. The question has outlasted any use the answer
+# could have had, and she asks it in the tone she used on the fifth day.
+@visitor caller
+@day 20
+@arrival 9 0
+@tier compressed.1
+I'm sorry to knock again. It's the lady who was here before you, and I've the right house.
+@claim object a knock
+@cue hollowed
+@tier compressed.2
+Two pound and the dish. Say Mrs Hallow called — she'll know the {rest|whole}.
+@cue hollowed

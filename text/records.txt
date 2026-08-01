@@ -1,0 +1,51 @@
+# THE QUARANTINE — The Board's paperwork as data, days 1-21.
+# WP-E responsibility: author both records per §45 and WP-E brief.
+# compliance-card: every Board visitor marks it — stamp, date, initial. A second record.
+# ration-book: dated coupons, torn on collection. The only hard chronology.
+# The card drifts, but never on the same night as the journal, never in the same field.
+
+@record compliance-card
+Day 1 · · · (no visitor)
+Day 2 · · · (no visitor)
+Day 3 · HC · routine inspection · ⬜
+Day 4 · · · (no visitor)
+Day 5 · WM · record signed · ⬜
+Day 6 · HC · perimeter check · ⬜
+Day 7 · · · (no visitor)
+Day 8 · WM · ration allocation · ⬜
+Day 9 · HC · compliance noted · ⬜
+Day 10 · · · (no visitor)
+Day 11 · WM · area reviewed · ⬜
+Day 12 · HC · status confirmed · ⬜
+Day 13 · · · (no visitor)
+Day 14 · WM · final inspection · ⬜
+Day 15 · HB · week three start · ⬜
+Day 16 · · · (no visitor)
+Day 17 · WM · record check · ⬜
+Day 18 · HC · condition logged · ⬜
+Day 19 · · · (no visitor)
+Day 20 · WM · last review · ⬜
+Day 21 · HB · termination · ⬜
+
+@record ration-book
+Day 1 · issued 4 · balance 4
+Day 2 · torn 1 · balance 3
+Day 3 · torn 1 · balance 2
+Day 4 · issued 4 · balance 6
+Day 5 · torn 1 · balance 5
+Day 6 · torn 1 · balance 4
+Day 7 · torn 1 · balance 3
+Day 8 · issued 4 · balance 7
+Day 9 · torn 2 · balance 5
+Day 10 · torn 1 · balance 4
+Day 11 · issued 4 · balance 8
+Day 12 · torn 1 · balance 7
+Day 13 · torn 2 · balance 5
+Day 14 · issued 3 · balance 8
+Day 15 · torn 1 · balance 7
+Day 16 · torn 1 · balance 6
+Day 17 · issued 3 · balance 9
+Day 18 · torn 2 · balance 7
+Day 19 · torn 1 · balance 6
+Day 20 · torn 1 · balance 5
+Day 21 · torn 1 · balance 4

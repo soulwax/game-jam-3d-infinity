@@ -1,0 +1,66 @@
+# THE QUARANTINE — §24.7 / §30's small unverifiables. Cheap, textual, never rendered,
+# never resolved. Scattered across the 21 days, never more than one day adjacent to
+# another, max two lines on any one day. Every one has a boring explanation available;
+# late entries (post day 14) may lean a little further but stay understated.
+
+@unverifiable 1
+Someone has swept the step two doors down; nobody has swept yours.
+
+@unverifiable 2
+The water tastes of iron today.
+
+@unverifiable 4
+The post came at the wrong hour.
+
+@unverifiable 6
+A window on the landing faces a blank wall; no building stands beyond it.
+
+@unverifiable 7
+The number on next door's post has been written over in a different hand.
+
+@unverifiable 9
+There is a smell of burning that is not in this room.
+
+@unverifiable 10
+Two milk bottles wait on the step where you are sure you set out only one.
+
+@unverifiable 11
+A sound comes through the party wall that isn't quite a voice.
+
+@unverifiable 12
+The compliance card by the door carries a stamp from a date you don't recognise.
+
+@unverifiable 13
+The stair by the turn creaks on a different step than it did last week.
+
+@unverifiable 14
+A key that fits nothing sits heavier in your pocket than it did yesterday.
+
+@unverifiable 15
+The light in the hall was on and you are certain you did not light it.
+
+@unverifiable 15
+A cup you'd emptied sits in the sink with water in it.
+
+# 16/17 are a deliberate exception to the adjacency rule above (§59.3): the
+# only paired echo in the file, one absence answering another.
+@unverifiable 16
+A float passes the window at an hour the milkman never once kept.
+
+@unverifiable 17
+Someone plays four notes on a piano, twice, from further down the row.
+
+@unverifiable 18
+It rained when the broadcast said it wouldn't, or you remember sun instead.
+
+@unverifiable 18
+A photograph on the stairs hangs crooked however often it's straightened.
+
+@unverifiable 20
+The chalk mark on the doorframe has been drawn over in the same place twice.
+
+@unverifiable 21
+The hall clock ran fast today by the same amount it ran slow yesterday.
+
+@unverifiable 21
+The kettle was hot before the gas had been lit long enough to warm it.

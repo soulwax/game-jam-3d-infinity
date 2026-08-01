@@ -1,0 +1,116 @@
+# THE QUARANTINE — the child. Days 3, 8, 14, 19.
+#
+# Sylvia, number 3. Every line is a voice at knee height through the letterbox: she is
+# not allowed out, you are not allowed out, and the slot is the whole relationship.
+#
+# She is never uncanny, never sing-song, never in riddles, and she never knows a thing
+# she has not seen out of her own front window. What she has instead is the only mouth
+# on this street with no reason to be tactful. Adults are managing each other. She says
+# the plain thing, asks the direct question, and reports what she saw with total
+# confidence and a child's unreliable sense of when.
+#
+# Boring explanation, held for days 3-14 and never confirmed: a bored eight-year-old
+# with a window and nobody her own age to talk to. Her house numbers are wrong the way
+# children's house numbers are wrong.
+#
+# Branch encoding per the wave brief §2: full.N / compressed.N, contiguous from 1.
+
+@visitor child
+
+# --- Day 3. She introduces herself and she wants something. full.2 is the hazmat boy
+# from the far side of the glass, described by the one person on the street who has
+# said out loud how old he is. full.4 is the question no adult on this row will ask.
+
+@day 3
+@arrival 15 0
+@tier full.1
+I'm Sylvia. Number 3. I can see your shoes. Have you got a pencil you don't want any more?
+@claim who Sylvia
+@cue letterbox
+@tier full.2
+The one in the suit isn't a man. He's a big boy. You can tell from his neck and his wrists.
+@cue letterbox
+@tier full.3
+Here's the game. I say a word and you say the one after it. {You can start|You go first}.
+@cue letterbox
+@tier full.4
+Are you on your own in there? Nobody's come out of your door. I'm at the window a lot.
+@claim object the door
+@claim place the window
+@cue letterbox
+
+# --- Day 8. The boundary announcement, heard through a wall and repeated back with
+# the official words worn down the way children wear them down. Deniable and ordinary:
+# she has the wrong house number for Mrs Pethick and half the phrase for the rest.
+# full.3 is the question the whole street has agreed not to put to anyone.
+
+@day 8
+@arrival 13 0
+@tier full.1
+Mrs Pethick at number 12 says there's been a movement at the boundary. She said it twice.
+@claim who Mrs Pethick
+@claim object the movement
+@cue letterbox
+@cue thinning
+@tier full.2
+It's been counted for. That's the words. Counted for, and nobody has to {do anything|do a thing}.
+@cue letterbox
+@cue thinning
+@tier full.3
+Did you see it? Everyone says it's counted for and nobody says what it was that moved.
+@cue letterbox
+@cue thinning
+@tier full.4
+The postman came twice yesterday. I've not seen him do that before.
+@cue letterbox
+@tier compressed.1
+# Reused verbatim from Day 3 full.4.
+Are you on your own in there? Nobody's come out of your door. I'm at the window a lot.
+@claim object the door
+@claim place the window
+@cue letterbox
+@cue thinning
+@tier compressed.2
+A movement at the boundary. I've got it right, haven't I. Say if I've got it wrong.
+@cue letterbox
+@cue thinning
+
+# --- Day 14. The capstone, and PLAN §11.1 rule 3 lands here: she is simply right, and
+# says it the way you say a thing you have timed off a clock. full.1 is §5 — the word
+# is missing from the line and the grammar keeps the hole open, as the hazmat boy's
+# Day 11 does. She is not warning anyone. She is pleased with herself for timing it.
+
+@day 14
+@arrival 10 0
+@tier full.1
+The  comes round the front of our house at {ten|nine} and the back at four. I timed it.
+@cue word-missing
+@cue flattening
+@tier full.2
+Everyone keeps saying it's nearly done. It isn't nearly done. There's a whole week yet.
+@cue letterbox
+@cue flattening
+@tier compressed.1
+# Reused verbatim from Day 3 full.1.
+I'm Sylvia. Number 3. I can see your shoes. Have you got a pencil you don't want any more?
+@claim who Sylvia
+@cue letterbox
+@cue flattening
+@tier compressed.2
+I'm still here. Nobody's said I have to stop coming to the door, so I've kept coming.
+@cue letterbox
+@cue flattening
+
+# --- Day 19. Week 3. Still at the letterbox, and light. The weight is everything
+# standing around her by now, and none of it is in what she says.
+
+@day 19
+@arrival 10 0
+@tier compressed.1
+I've still got the pencil. I've not used it up. I'm keeping it for something good.
+@cue letterbox
+@cue hollowed
+@tier compressed.2
+Mum says I'm not to stop long. I'm stopping {a bit|a while}. It's not raining much.
+@cue letterbox
+@cue hollowed

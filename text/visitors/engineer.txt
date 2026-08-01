@@ -1,0 +1,55 @@
+# THE QUARANTINE — the GPO engineer, Mr Liddell. Days 4, 10. PLAN §58: he is
+# from the GPO, about the line. The house has no telephone. He is not
+# confused, and his paperwork agrees with him. Stand-in eligible.
+# Branch encoding per the wave brief §2: full.N / compressed.N / off.N,
+# contiguous from 1. Off tiers days 1-14 only, per §56.1.
+
+@visitor engineer
+
+# --- Day 4 — first visit. Entirely procedural about a line that isn't there,
+# and mildly troubled by the mismatch in the way a paperwork man is troubled.
+@day 4
+@arrival 11 0
+@tier full.1
+Liddell, GPO. I'm to check the line — shouldn't take more than a few minutes.
+@tier full.2
+No telephone in? That's on my sheet as installed. I'll note the discrepancy.
+@claim object the record
+@tier full.3
+Happens more than you'd think. A sheet's only as good as the last man who wrote on it.
+@tier compressed.1
+GPO. Line's not here to check. I'll note it and move on.
+@claim object the record
+
+# --- Day 4, off. Same procedural calm, but the certainty that is normally his
+# whole character has gone soft — he confirms things he'd normally check twice.
+@tier off.1
+Liddell. GPO — I'm to check the line, or that's what the sheet has me down for.
+@tier off.2
+No telephone? I'll have that as installed. Or nearly installed. I'd have to check twice.
+@claim verb confirmed
+@cue off-key
+
+# --- Day 10 — second visit. Unbothered by the job's evident pointlessness,
+# which is its own kind of admirable and its own kind of unsettling.
+@day 10
+@arrival 11 0
+@tier full.1
+Liddell again. Still nothing on my sheet to say the line's been struck off.
+@claim object the record
+@tier full.2
+I'll keep coming till somebody higher up tells me to stop. That's the whole of my job.
+@tier full.3
+Funny thing, doing a job that's never once been needed. I've made my peace with it.
+@tier compressed.1
+Still nothing struck off my sheet. I'll keep coming till told otherwise.
+@claim object the record
+
+# --- Day 10, off. The one thing he never loses is his place in a visit —
+# here, briefly, he does.
+@tier off.1
+Liddell again, or it might be my second call — I've lost which visit this is.
+@cue off-key
+@tier off.2
+Nothing struck off my sheet. Or nothing I've checked struck off, I should say.
+@claim verb checked

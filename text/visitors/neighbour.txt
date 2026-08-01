@@ -1,0 +1,176 @@
+# The neighbour — PLAN §13. Days 1, 4, 7 (week 1), 8, 12 (week 2), 16, 20 (week 3).
+# Branch encoding per the wave brief §2: full.N / compressed.N, contiguous from 1.
+# Weeks 2-3 shrink the tree: day 8 has five full branches, day 12 three, week 3 none.
+
+@visitor neighbour
+
+# --- Day 1 — ordinary, warm, one remark that is very slightly wrong (full.4).
+# The boring explanation: she is thinking of a different house on the street.
+@day 1
+@arrival 13 0
+@tier full.1
+I said to Ron, she'll have run out of tea by Thursday, and here I am with a quarter of it.
+@tier full.2
+You had the front door painted the summer before last. Green, wasn't it. Lovely job.
+@claim object the door
+@claim place the front door
+@tier full.3
+Your mother stood on that step and told me she couldn't abide the draught off this street.
+@tier full.4
+Three windows at the front and you only ever open the two. I'd be the same.
+@tier full.5
+Anything you want fetching, you knock on the wall. Two knocks. I'll hear it.
+@claim object a knock
+
+# --- Day 1, off. §56: same errand, same manners, on the wrong footing. Over-
+# specific about what can't be checked (the exact count of her own knocking),
+# vague about what could be (which door, which knock). One claim is wrong.
+@tier off.1
+I'll have been past this morning, though I couldn't tell you the hour of it.
+@tier off.2
+Two of you knocked here today, or was it the door that did — I've lost which.
+@claim object the door
+@cue off-key
+
+# --- Day 4 — the same woman, assembled. Every line is sayable by someone who is
+# fine; only a player holding a Day 1 note has anything to hold it against.
+@day 4
+@arrival 14 0
+@tier full.1
+Two windows at the front. I said three the other day and I was wrong. Two.
+@tier full.2
+The door was green. The summer before last. Green, and they came on the {Tuesday|Thursday}.
+@claim object the door
+@claim place the front door
+@tier full.3
+I slept, I had my breakfast, I came round. All of it in the right order.
+@tier full.4
+Your mother on that step, about the draught. I've thought about it every day since.
+@tier full.5
+You knock twice on the wall. Two knocks. That's ours, that is.
+@claim object a knock
+
+# --- Day 4, off. The same reconstruction as full, worn one degree further:
+# a number slips, and the hedge ("near enough") does the work a fact should.
+@tier off.1
+I'll have been past on the Tuesday, or near enough it — the days run on a bit now.
+@tier off.2
+You knocked on the wall, same as always. I heard it plain enough, the once.
+@claim object a knock
+
+# --- Day 7 — the street is being asked the same question and she would rather
+# you heard it from her. Boring explanation: the Board is taking a list.
+@day 7
+@arrival 16 0
+@tier full.1
+They're asking everyone on this street the same question and I'd rather it came from me.
+@tier full.2
+I've told them what I remember. I'd like it to match what you remember.
+@tier full.3
+You'll say the door was green, won't you. The summer before last. Green.
+@tier full.4
+Nobody is in trouble. It's a list, and a list wants the same answer twice.
+@tier full.5
+If you'd rather I stopped asking, I'll stop. We'll stand here and not say anything.
+
+# --- Day 7, off. She is still asking, and the errand has drifted from a list
+# to a form without her noticing the difference — an over-specific paperwork
+# word standing in for the vaguer thing she was actually asked to do.
+@tier off.1
+I've filled in my own form already. I'd like yours to match it, if it's no trouble.
+@claim object a form
+@tier off.2
+Nobody's in any trouble, I don't think. I've said that at every door today.
+
+# --- Day 8 — she quotes the Board's boundary announcement back, and the weight
+# lands on the wrong word. Boring explanation: she is being careful to get it right.
+@day 8
+@arrival 19 0
+@tier full.1
+A sighting near the boundary. Near. That's the word they used, near.
+@claim object the sighting
+@cue thinning
+@tier full.2
+Reported near it, not at it. Ron says that's a different thing and I think he's right.
+@cue thinning
+@tier full.3
+I've said it back to myself twice so I'd have it right for you.
+@cue thinning
+@tier full.4
+They're careful with their words and I've decided that's a kindness.
+@cue thinning
+@tier full.5
+Two at the front. I keep saying it to myself. Two.
+@cue thinning
+@tier compressed.1
+A sighting near the boundary. Near.
+@claim object the sighting
+@cue thinning
+@tier compressed.2
+Anything you want fetching, you knock on the wall. Two knocks. I'll hear it.
+@cue thinning
+
+# --- Day 8, off. The one borrowed cadence this visitor gets: her own word was
+# always "the sighting" (full.1/compressed.1); here she has picked up the
+# child's word for it instead, without knowing she has, and states it as fact.
+@tier off.1
+A movement near the boundary. That's the word going round, near enough.
+@claim object the movement
+@cue off-key
+@tier off.2
+I've said it back to myself so I'd have it right. Near enough is right enough.
+
+# --- Day 12 — three full branches by the schedule. full.3 is deliberately absent:
+# it is the copied mannerism (PLAN §18.2), a line belonging to the sibling and
+# spoken verbatim by her. That line is authored by another cluster and is inserted
+# by the continuity pass, not invented here.
+@day 12
+@arrival 14 0
+@tier full.1
+It was a rumour on the Tuesday and a fact by the Thursday and now nobody heard it clearly.
+@cue flattening
+@tier full.2
+I'm not saying I heard it. I'm saying I know it. That's a different thing, isn't it.
+@cue flattening
+# The copied mannerism (PLAN 18.2). This line is the sibling's, day 9 full.3, and it
+# must stay byte-identical to it — the beat is that the player recognises it exactly,
+# and an approximate repeat is worth nothing. Change one, change both.
+@tier full.3
+You had the flu the week Dad died. You didn't come to the house. That's just what happened.
+@cue flattening
+@tier compressed.1
+Two at the front. Two. I've always said two.
+@cue flattening
+@tier compressed.2
+You had the front door painted the summer before last. Green, wasn't it. Lovely job.
+@cue flattening
+
+# --- Day 12, off. The rumour-into-fact machine (§18.2) running one turn too
+# far: she upgrades her own hedge into a claim of certainty mid-sentence.
+@tier off.1
+It was a rumour on the Tuesday, or might have been the Wednesday — I've lost the day.
+@tier off.2
+I'm not saying I heard it. I'm saying I've confirmed it. That's different, isn't it.
+@claim verb confirmed
+@cue off-key
+
+# --- Day 16 — week 3. Two lines, and they are the two lines a person says when
+# there is nothing left to say. Readable as confirmation or as fracture.
+@day 16
+@arrival 14 0
+@tier compressed.1
+You saw it as well, then.
+@cue flattening
+@tier compressed.2
+I'll not stop long.
+@cue flattening
+
+# --- Day 20 — the same shape, one day from the end, with nothing behind it.
+@day 20
+@ambient 14 letterbox compressed.1
+@tier compressed.1
+You're in, then.
+@cue hollowed
+@tier compressed.2
+I'll not stop long.
+@cue hollowed

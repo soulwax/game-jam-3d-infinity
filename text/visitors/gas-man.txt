@@ -1,0 +1,76 @@
+# The gas board — Mr Reeve. Days 4, 9, 16. PLAN §25.5: gas is the resource that
+# buys certainty, so this is the man who quietly decides how much of the house can
+# be checked after dark. He has no idea that is what he does. He reads a meter.
+# Branch encoding per the wave brief §2: full.N / compressed.N, contiguous from 1.
+# Nothing here needs a boring explanation because all of it is boring, and that is
+# his job in the design: he is the contrast that makes the anomalies elsewhere cost.
+
+@visitor gas-man
+
+# --- Day 4 — entirely routine. Cheerful, faintly bored, over-familiar in the way of
+# a man who has stood in four hundred kitchens. full.3 opens §24.1's thread without
+# being asked and without meaning anything by it, and nobody ever closes it.
+@day 4
+@arrival 9 0
+@tier full.1
+Gas board. I'll do the meter and be out your road. Don't get up, I know where it is.
+@claim object the meter
+@tier full.2
+I've been under more sinks on this row than the man that put them in. Mind the flap.
+@tier full.3
+The one before you never lit the back room. A reading like that for a year, near enough.
+@tier full.4
+Two mantles of an evening and you'll feel it by Friday. Most light the one and {sit|stop} by it.
+
+# --- Day 4, off. Still cheerful, still over-familiar — but the meter reading
+# has gone soft where it should be exact, and precise where it never needs to be.
+@tier off.1
+Gas board. I'll have done the meter Tuesdays, near enough, since I started this walk.
+@tier off.2
+The one before you kept to the back room a good while. A neighbour told me that, I think.
+@claim who a neighbour
+
+# --- Day 9 — the allowance changes and he delivers it as somebody else's decision.
+# Apologetic in the manner of a man who is not responsible and has said so all
+# morning. full.2 carries the writable number; §18.3's day 10 is one day away.
+@day 9
+@arrival 9 0
+@tier full.1
+It's come down. Not my doing — I've said so at every door today and I'll say it {here|now}.
+@claim object the allowance
+@cue thinning
+@tier full.2
+Four hours a day from the eleventh. Four. That's on the notice, not just me saying it.
+@claim object the ration hours
+@cue thinning
+@tier full.3
+I don't mark your card, that's the warden's. I only put the figure in my own book.
+@cue thinning
+
+# Day 9, off. Apologetic register intact; the writable figure has come loose
+# from its own certainty, hedged where the real man is always exact.
+@tier off.1
+It's come down, so I'm told. I've said as much at every door, or near enough all of them.
+@tier off.2
+Four hours a day, or thereabouts, from the eleventh. I'll not swear to the exact count.
+@claim object the count
+
+@tier compressed.1
+# Reused verbatim from Day 4 full.1, on the morning the house gets smaller.
+Gas board. I'll do the meter and be out your road. Don't get up, I know where it is.
+@claim object the meter
+@cue thinning
+@tier compressed.2
+Four hours, from the eleventh. I'd put that down somewhere if I were you.
+@cue thinning
+
+# --- Day 16 — week 3. He is still doing the round. Whether that is the most
+# reassuring thing in the week or the worst is not decided here and never is.
+@day 16
+@arrival 10 0
+@tier compressed.1
+Still on the round. Eleven years I've done this street and I've done it today.
+@cue flattening
+@tier compressed.2
+Reading's the same as last week. I'll put it down as I {found it|had it}.
+@cue flattening

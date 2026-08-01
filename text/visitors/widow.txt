@@ -1,0 +1,48 @@
+# THE QUARANTINE — the widow, Mrs Attercliffe. Days 16, 19, 20. Final week only.
+# Her loss is her own and ordinary: someone gone before Day 1, before any of this
+# started. She is not linked to the previous tenant (§24.1) — that thread stays
+# with caller/postman/ayling. The point is the street holds more than one
+# unfinished grief, and nobody's is being tended to, including hers.
+# Branch encoding per the wave brief: full.N / compressed.N, one line per tier.
+
+# --- Day 16 — authored to be read both ways per §9, same as the day's broadcast
+# ("corrected to agree with it", lights in every window of an empty house). Both
+# lines below are sayable as comfort (an agreement with what she needs to believe)
+# or as devastation (a correction that erases something).
+@visitor widow
+@day 16
+@arrival 18 0
+@tier full.1
+They've corrected the count. I said it wouldn't want saying twice, and it didn't.
+@claim verb corrected
+@claim object the count
+@cue flattening
+@tier full.2
+I still lay his plate of an evening. It costs nothing, saying it out or not.
+@cue flattening
+
+# --- Day 19 — reality thins and replays. Repetition is her whole condition now.
+# compressed.1 is her own day 16 full.1, verbatim.
+@visitor widow
+@day 19
+@arrival 18 0
+@tier compressed.1
+They've corrected the count. I said it wouldn't want saying twice, and it didn't.
+@claim verb corrected
+@claim object the count
+@cue hollowed
+@tier compressed.2
+I know I've said that before. I couldn't tell you when.
+@cue hollowed
+
+# --- Day 20 — almost nothing left to do. She resolves nothing of her own; she is
+# there at the end the way anyone left in a house is there at the end.
+@visitor widow
+@day 20
+@arrival 19 0
+@tier compressed.1
+Nothing left to do today. I sat with him a while, same as always.
+@cue hollowed
+@tier compressed.2
+You'll all still be here tomorrow, I shouldn't wonder. I'll not be {far|long}.
+@cue hollowed

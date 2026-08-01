@@ -1,0 +1,112 @@
+# THE QUARANTINE — Board wireless broadcast, days 1-7.
+# The liturgy is fixed: date, status, sighting, instructions, closing.
+# The shape never changes; only words inside it do. Sectors are a closed set: 6, 9, 11.
+# Population layer (wave 5): week 1 names NOBODY. People appear only as counts,
+# categories, addresses and roles — that agentlessness is what makes day 17's naming
+# of Mrs Ayling land. Do not sprinkle names here.
+# The household count is 412 (d1) -> 411 (d2) -> 409 (d6, echoed d7, d8). It is meant
+# to drift downward while the status says "no change". Do not normalise the numbers.
+
+@day 1
+@part date
+First day of the order.
+@part status
+Boundary holding. All routes {remain|stay} closed. 412 households are within the order.
+@part sighting
+—
+@part instructions
+Residents are reminded to remain indoors after dark.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+@day 2
+@part date
+Second day of the order.
+@part status
+Boundary holding. {No change reported|No change to report}. 411 households now stand registered.
+@part sighting
+—
+@part instructions
+Residents are reminded to remain indoors after dark.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+@day 3
+@part date
+Third day of the order.
+@part status
+Boundary holding. No change reported at any address in sectors 6, 9 and 11.
+@part sighting
+Distant activity {noted|logged} at sector 6, beyond the even numbers of Morland Row.
+@part instructions
+Residents are reminded to remain indoors after dark.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+# Day 4 — the first mutation. Nothing new is said. The clipped status is spoken out
+# in full and a courtesy formula appears that has never been there. A different
+# announcer, or a script typed again from the same notes.
+@day 4
+@part date
+Fourth day of the order.
+@part status
+The boundary is holding. No change {reported|recorded}. Meters are to be read in all sectors.
+@part sighting
+—
+@part instructions
+Residents are reminded to remain indoors after dark. Thank you for your co-operation.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+# Day 5 — the warden's day. Compliance becomes a thing kept, dated and produced.
+# Mundane reading: routine quarantine paperwork, as any council would ask for.
+@day 5
+@part date
+Fifth day of the order.
+@part status
+Boundary holding. No change reported. Two premises in sector 11 remain unoccupied.
+@part sighting
+Distant activity noted at sector 11, opposite the odd numbers.
+@part instructions
+Each household is reminded to keep its record of days {current|complete} and available.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+# Day 6 — the liturgy breaks. The boundary clause is gone from the status and the
+# sighting loses its distance. The instruction reaches into the middle of the day and
+# gives no reason. Mundane reading: a short slot, read quickly, badly cut.
+@day 6
+@part date
+Sixth day of the order.
+@cue hum-long
+@part status
+No change reported. 409 households.
+@part sighting
+Activity noted at {sector 6|sector 9}, at the rear of the odd numbers.
+@part instructions
+Persons over sixty are reminded to keep to rear rooms between noon and four and indoors after dark.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+# Day 7 — the liturgy recovers, and is more complete than it has ever been. The
+# status carries every clause the week has used. The sighting remembers the third
+# day. The instruction stays passive and acquires someone who instructed it and
+# someone who counts. Neither is named. Nothing here drifts.
+@day 7
+@part date
+Seventh day of the order.
+@part status
+Boundary holding. All routes remain closed. No change reported at 409 addresses.
+@part sighting
+Distant activity noted at sector 6, as on the third day, opposite the same three premises.
+@part instructions
+Households are reminded, on instruction, to remain indoors after dark and to be counted by day.
+@part closing
+This has been a message from the Board.
+@cue no-effect

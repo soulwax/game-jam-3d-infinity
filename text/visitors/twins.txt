@@ -1,0 +1,67 @@
+# THE QUARANTINE — the Bell sisters (twins). Days 4, 11, 17.
+# Identical twins who live together; only one is ever at the door at a time,
+# never both. The player cannot reliably tell them apart, and neither can
+# several of the neighbours. This puts the drift mechanic's own logic into a
+# living person: a detail can be "wrong" — the wrong twin, the wrong day, the
+# wrong thing said — in a way that is completely mundane, because people
+# confuse twins constantly. Never framed as anything but that.
+#
+# Boring explanation, held through Day 14 and never confirmed: they are
+# identical twins, they have always been mixed up, and even people who have
+# known them for decades still get it wrong.
+#
+# Branch encoding per the wave brief: full.N / compressed.N, one line per tier.
+
+@visitor twins
+
+# --- Day 4 — the first appearance. Two of them, established clearly and
+# warmly. Whichever sister is at the door introduces the situation almost
+# apologetically. full.2 gives the one small checkable detail — a scar — that
+# Day 17 will need to unsettle later.
+@day 4
+@arrival 17 0
+@tier full.1
+I'm a Bell, from along the row. There's two of us — people mix us up, always have.
+@tier full.2
+It's me you want, the one with the scar on this thumb. My sister's is the other hand.
+@tier full.3
+Even Mrs Pethick gets us backwards, and she's known us the longest of anyone here.
+@tier full.4
+We take it in turns calling. Saves the pair of us knocking on the one door at once.
+@claim place the front door
+
+# --- Day 11 — a different sister at the door, referencing something the Day
+# 4 sister told the player, slightly wrong, or something never actually said
+# to her because it was her sister who heard it. Entirely ordinary sisterly
+# information-sharing gone sideways — never framed as anything else.
+@day 11
+@arrival 18 0
+@tier full.1
+My sister said you'd asked after the {broadcast|wireless}. She'd not have got that wrong.
+@claim object the broadcast
+@cue thinning
+@tier full.2
+She told me it's my scar on the left thumb. I could have sworn it was my right.
+@cue thinning
+@tier full.3
+You'll have to forgive her if she's told you something twice. She does that lately.
+@cue thinning
+@tier compressed.1
+We take it in turns calling. Saves the pair of us knocking on the one door at once.
+@claim place the front door
+@cue thinning
+@tier compressed.2
+She'll have said it better than I will. She always was the one for talking.
+@cue thinning
+
+# --- Day 17 — week 3. The scar detail now cuts the other way: it no longer
+# reliably distinguishes them, or distinguishes them differently than the
+# player was told on Day 4. Which sister is which is never resolved, ever.
+@day 17
+@arrival 18 0
+@tier compressed.1
+It's my thumb with the scar, not hers. Or it's hers. I've lost track which, myself.
+@cue flattening
+@tier compressed.2
+Don't go by the thumb. We've never once been able to, and we're the ones who'd know.
+@cue flattening

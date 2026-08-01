@@ -1,0 +1,101 @@
+# THE QUARANTINE — the warden. Days 5, 8, 13, 15, 20.
+# The face of the quarantine: official, procedural, never a threat. The register is the
+# broadcast's own passive, spoken aloud by someone who has said it forty times today.
+# They carry a pen and the compliance record. They never gloat, press, or come back to it.
+# Branch encoding per the wave brief: full.N / compressed.N, one line per tier.
+
+# Day 5 — the only visitor who asks to see your notes. Every branch here is a form being
+# filled in. The dread is the player's own record, not this man's manner.
+@visitor warden
+@day 5
+@arrival 18 0
+@tier full.1
+I'm to confirm your last collection, with the date. Not what you recall — what you wrote.
+@tier full.2
+And the day activity was first noted at sector 6. Your figure, please — {not mine|not ours}.
+@tier full.3
+May I see the record? There's a box for it and I can't leave the box empty.
+@claim who the warden
+@claim object the record
+@tier full.4
+The card by your door has the fourth. If your book has the third, one of the two is a slip.
+@tier full.5
+That was the eleventh, not the ninth. I'll put it right in the margin — saves you the asking.
+
+# Day 8 — the boundary sighting has been announced and the warden's job now includes it.
+# The forms have a line for it and are presented as having always had one. Deniable:
+# forms get revised, and the man carrying them was not consulted about when.
+@visitor warden
+@day 8
+@arrival 16 0
+@tier full.1
+There's a line on the sheet for the sector 6 movement. There's always been a line for it.
+@claim object the movement
+@cue thinning
+@tier full.2
+The announcement of the movement at the line — the day you heard it, from your own record.
+@cue thinning
+@tier full.3
+Front glazing shuttered since the eighth. I'm to ask, not to inspect. Say yes, or say when.
+@cue thinning
+@tier full.4
+New card, same door. The old one is {collected|withdrawn}. That is the procedure, as ever.
+@cue thinning
+@tier full.5
+If you noted anything at the line yourself, there's a box. Day and number, nothing further.
+@cue thinning
+@tier compressed.1
+May I see the record? There's a box for it and I can't leave the box empty.
+@claim who the warden
+@claim object the record
+@cue thinning
+@tier compressed.2
+Two boxes today. The movement, then the shutters. Then I'm {away|gone}.
+@cue thinning
+
+# Day 13 — the broadcast contradicted itself and then corrected. The warden arrives with
+# the corrected version and is entirely comfortable with it. Flatter and more clipped than
+# day 5: what has gone is the human part, not the procedural part.
+@visitor warden
+@day 13
+@arrival 15 0
+@tier full.1
+The correction stands. Nothing at sector 9 is outstanding. That is the sheet I'm working to.
+@claim verb corrected
+@claim object the record
+@cue flattening
+@tier full.2
+If your book has the movement unaccounted for, your book has the earlier reading. I'll mark it.
+@cue flattening
+@tier full.3
+Day, then number. That is all today's sheet wants of you.
+@cue flattening
+@tier compressed.1
+I'm to confirm your last collection, with the date. Not what you recall — what you wrote.
+@cue flattening
+@tier compressed.2
+Number. Then the day. Then I'm {away|gone}.
+@cue flattening
+
+# Day 15 — week 3. He asks for less than he did, and that is worse: the box no longer
+# needs the householder in order to be filled.
+@visitor warden
+@day 15
+@arrival 14 0
+@tier compressed.1
+Only the card today. You needn't fetch the book down.
+@cue flattening
+@tier compressed.2
+Nothing to confirm. It's filled in {already|from here}.
+@cue flattening
+
+# Day 20 — the last full day. Punctual, not sad. The record is completed on time.
+@visitor warden
+@day 20
+@arrival 16 0
+@tier compressed.1
+Twentieth. Everything's marked but tomorrow's initial, and I've the pen for that.
+@cue hollowed
+@tier compressed.2
+Nine tomorrow, then the file goes in. {Same as|Just as} every house on the row.
+@cue hollowed

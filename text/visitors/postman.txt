@@ -1,0 +1,96 @@
+# The postman — Ken Dalgleish. Days 2, 7, 12, 17. Post is one of the few things
+# that still crosses the boundary, so he is the regular evidence that an outside
+# exists. He knows every house on the row by what comes through its door rather
+# than by who lives behind it. Harmless gossip, no malice, never a threat.
+# Branch encoding per the wave brief §2: full.N / compressed.N, contiguous from 1.
+# The previous tenant's post (§24.1) is an administrative nuisance to him and he
+# never treats it as anything else. He does not resolve it and never learns a name.
+
+@visitor postman
+
+# --- Day 2 — he introduces himself into the routine. Mrs Ayling at nine and Mrs
+# Pethick at ten are named the way a postman names them: by their post.
+@day 2
+@arrival 10 0
+@tier full.1
+Ken. Ken Dalgleish. I've had this walk since before they put the new boxes in.
+@claim who Ken Dalgleish
+@tier full.2
+There's still post coming for the one before you. I bring it till somebody tells me not to.
+@tier full.3
+Nine takes two papers and ten takes none. I know this street by what goes through the door.
+@tier full.4
+Mrs Pethick's had a card off her sister every week since {the spring|the summer}. Never misses.
+
+# --- Day 2, off. Same gossip register, over-specific about a bureaucratic
+# word he'd never actually use, vague about how long he's really had the walk.
+@tier off.1
+Ken. I've had this walk a good while now — I couldn't tell you exactly how long.
+@tier off.2
+There's still post for the one before you. It's on my record to keep bringing it.
+@claim object the record
+@cue off-key
+
+# --- Day 7 — the week's decisive day, and the post is what changed. His explanation
+# is reasonable and is the only one anybody offers: it was held, and now it isn't.
+@day 7
+@arrival 10 0
+@tier full.1
+It's all come at once today. They'd been holding the lot at the office and now they've not.
+@claim object a delivery
+@tier full.2
+One delivery a day from here on, and it'll be the morning. That's the order, it's not mine.
+@tier full.3
+Nothing for half the row and four for you. That's how it falls when it's been stacked up.
+@tier full.4
+Two more for the one before you. I'd open them, myself. It's your door they came to.
+
+# --- Day 7, off. The held-and-released explanation intact, but the verb has
+# slipped: what was held is now, in his telling, something sent back and forth.
+@tier off.1
+It's all come at once today, or near enough all of it. They'd had it a good while.
+@tier off.2
+One a day from here on. Or that's the order — I've had it returned to me twice already.
+@claim verb returned
+
+# --- Day 12 — rumour has become a fact nobody heard clearly, and Ken is exactly the
+# mechanism. He attributes it confidently and gets the day wrong: the broadcast says
+# the ninth. Deniable, because postmen repeat things and get them slightly wrong.
+@day 12
+@arrival 17 0
+@tier full.1
+They had it at number three: the ration hours changed on the eighth. Everybody's heard it.
+@claim object the ration hours
+@cue flattening
+@tier full.2
+I've it off Mrs Ayling at nine, who had it off the warden. So it's not a rumour, is it.
+@cue flattening
+@tier compressed.1
+# Reused verbatim from Day 2 full.2.
+There's still post coming for the one before you. I bring it till somebody tells me not to.
+@cue flattening
+@tier compressed.2
+It changed on the eighth. Ask anyone on the row and they'll tell you the same.
+@cue flattening
+
+# --- Day 12, off. Rumour-into-fact again, but the topic has slid one street
+# over from post to gas — the kind of slip a tired man makes without noticing.
+@tier off.1
+They had it at number three: the allowance changed on the eighth. Everybody's heard it.
+@claim object the allowance
+@tier off.2
+I've had it off two others now, so it's not just the one telling me the same thing.
+@cue off-key
+
+# --- Day 17 — the broadcast's parcel, delivered. He is not frightened and he is not
+# portentous; he has a docket and he needs a signature. No house number is named
+# here, because the Board's own record of it is unstable and this must not fix it.
+@day 17
+@arrival 12 0
+@tier compressed.1
+Parcel on the round. Right name on it, right number, and no postmark anywhere on it.
+@claim object a delivery
+@cue flattening
+@tier compressed.2
+It wants signing for. I'll get it signed and that's me away till {the morning|tomorrow}.
+@cue flattening

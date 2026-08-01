@@ -1,0 +1,61 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "fetch-assets",
+      "detail": "Download CC0/CC-BY assets from the internet into web/res/ and regenerate tmp/ASSETS.md",
+      "type": "shell",
+      "command": "dart",
+      "args": ["run", "tmp/tools/fetch_assets.dart"],
+      "problemMatcher": []
+    },
+    {
+      "label": "serve",
+      "detail": "Dev server with Dart source maps (webdev serve web:8080)",
+      "type": "shell",
+      "command": "dart",
+      "args": ["pub", "global", "run", "webdev", "serve", "web:8080", "--auto", "refresh"],
+      "isBackground": true,
+      "dependsOn": ["fetch-assets"],
+      "problemMatcher": {
+        "owner": "dart",
+        "pattern": {
+          "regexp": "^(ERROR|SEVERE):(.*)$",
+          "severity": 1,
+          "message": 2
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": "Building|Serving",
+          "endsPattern": "Serving `web` on|Succeeded after"
+        }
+      }
+    },
+    {
+      "label": "build-release",
+      "detail": "One-command build into dist/ (skips pub get / asset fetch if already present)",
+      "type": "shell",
+      "command": "dart",
+      "args": ["run", "tools/build.dart"],
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "serve-release",
+      "detail": "Static-serve the release build on :8081",
+      "type": "shell",
+      "command": "dart",
+      "args": ["run", "tools/serve_release.dart"],
+      "isBackground": true,
+      "dependsOn": ["build-release"],
+      "problemMatcher": []
+    },
+    {
+      "label": "analyze",
+      "type": "shell",
+      "command": "dart",
+      "args": ["analyze"],
+      "problemMatcher": []
+    }
+  ]
+}

@@ -1,0 +1,74 @@
+# THE QUARANTINE — the stranger. Days 6, 13, 17.
+#
+# The payoff of the notes system (PLAN 13). The player has no entry for this person.
+# Every assertion here is CORRECT, checkable in principle, and unfindable in fact:
+# true things about the house, the habits and the history that were never written down.
+# The horror is not that someone is wrong. It is that they are right and there is no
+# record. Warm, unhurried, entirely unremarkable in manner. Never threatening, and they
+# never become threatening.
+#
+# Boring explanation, available through Day 14 and never confirmed or denied: they lived
+# on this row years ago, they knew the tenant before, and the street talks. The stranger
+# never OFFERS it — a person who explains how they know things is a person who knows
+# they should not.
+
+@visitor stranger
+
+# --- Day 6. First appearance and the strongest. Nothing here is a question.
+
+@day 6
+@arrival 19 0
+@tier full.1
+You keep the milk on the inside sill, not the step. You always have. Cold enough, isn't it.
+@claim place the doorstep
+@tier full.2
+That back bedroom door sticks when it's wet. You lift it by the handle to get it shut.
+@tier full.3
+You had a bad winter the year before last. Six weeks off work. Nobody made a fuss of it.
+@tier full.4
+Your mother's name was Eileen. She'd have been eighty in March. I hope you marked it.
+@tier full.5
+I'll not keep you. You'll {want|need} the wireless on at four. You never miss it, do you.
+@claim object the broadcast
+
+# --- Day 13. They return. 18.2 has flattened everyone else; the stranger is not
+# compressed either, but for the opposite reason to the sibling — there was never a
+# fuller version of them to compress. The compressed lines are deliberately
+# indistinguishable in register from the full ones. compressed.1 is Day 6 full.1 verbatim,
+# and nothing about the delivery marks it as a repeat.
+
+@day 13
+@arrival 18 0
+@tier full.1
+You've moved the chair. It used to face the window. I could see that from the gate.
+@claim place the window
+@cue thinning
+@tier full.2
+You take the stairs on the left side. The right one gives. You've done that from the start.
+@cue thinning
+@tier full.3
+Your writing slopes back when you're tired. It always did. I don't mind saying I liked it.
+@cue thinning
+@tier full.4
+You had a bicycle with a basket on it. Green. You kept it in the passage and it rusted.
+@cue thinning
+@tier compressed.1
+# Reused verbatim from Day 6 full.1.
+You keep the milk on the inside sill, not the step. You always have. Cold enough, isn't it.
+@cue thinning
+@tier compressed.2
+I'll not keep you. It's nearly four.
+@cue thinning
+
+# --- Day 17. Week 3: a minor character becomes central and something personal arrives.
+# No journal quotation — see the report; that beat needs runtime interpolation and there
+# is no placeholder syntax for it.
+
+@day 17
+@arrival 15 0
+@tier compressed.1
+I've brought something of your mother's back. You'll not remember lending it. That's fine.
+@cue thinning
+@tier compressed.2
+You put it down wrong, but I'd not change it. It reads better the way you had it.
+@cue thinning

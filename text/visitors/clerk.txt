@@ -1,0 +1,106 @@
+# THE QUARANTINE — Mr Voss, Board records clerk. Days 8, 10, 13.
+# Where Mr Sowerby checks compliance in person, Voss is the paperwork behind him: he
+# has never been in this house and has no way to know it beyond the compliance card
+# and the ration book (PLAN §45). Younger and more literal than the warden. He treats
+# the card as the whole truth because to him it is. Never sinister, never presses.
+# Branch encoding per the wave brief: full.N / compressed.N, one line per tier.
+
+# --- Day 8, his first visit. Entirely procedural: he audits the card against the
+# Board's own master copy and finds a small mismatch he is required to note, not
+# resolve. Boring explanation: two clerks, two copies, one of them behind by a day.
+@visitor clerk
+@day 8
+@arrival 9 0
+@tier full.1
+Board records. I check the card against our master copy — nothing further today.
+@cue thinning
+@tier full.2
+There's a mismatch on the fourth. I note it, I don't resolve it. Not my role, that.
+@cue thinning
+@tier full.3
+Your card says the sixth. Ours says the fifth. I'll write down both, if that's fine.
+@claim object the compliance card
+@cue thinning
+@tier full.4
+I'm not here to say who's right. I'm here so it's on file. That's the whole visit.
+@cue thinning
+
+# --- Day 8, off. The one man whose whole job is precision has come loose from
+# it: the master copy is now one of several, and the mismatch itself needs
+# checking against a note he isn't sure he wrote.
+@visitor clerk
+@day 8
+@tier off.1
+Board records. I check the card against a master copy — one of the copies, that is.
+@tier off.2
+There's a mismatch on the fourth, or noted for the fifth now. I'd have to check my note.
+@claim object the record
+
+# --- Day 10, the pivot (§18.3). Voss unknowingly demonstrates the cost of a written
+# record: he reads a figure back from an earlier day's card, worn slightly wrong by
+# his own transcription, and trusts his copy over the original. Civic-scale drift,
+# performed by a bureaucrat with no idea he's doing it.
+@day 10
+@arrival 13 0
+@tier full.1
+My note from the eighth says the fifth. I'll go by my own note, if it's the same to you.
+@claim verb wrote down
+@claim object the record
+@cue thinning
+@tier full.2
+I copied that figure myself, off your card. I trust my hand over the card, honestly.
+@cue thinning
+@tier full.3
+The master copy reads what I wrote down that day now, not what was on your card.
+@cue thinning
+@tier compressed.1
+There's a mismatch on the fourth. I note it, I don't resolve it. Not my role, that.
+@cue thinning
+@tier compressed.2
+Two boxes today. The figure, then my note on it. Then I'm {away|gone}.
+@cue thinning
+
+# --- Day 10, off. The civic-drift mechanism he embodies has turned on him:
+# he now overclaims the one act — checking — that his role is built on never
+# needing to do.
+@visitor clerk
+@day 10
+@tier off.1
+My note from the eighth says the fifth, or it did the last I looked at my own note.
+@tier off.2
+I copied that figure myself and I've checked it twice since. Trust the copy over the card.
+@claim verb checked
+@cue off-key
+
+# --- Day 13, the broadcast contradicts itself and corrects (week-2.txt day 13). Voss
+# arrives holding the corrected figure and is entirely comfortable with it. If the
+# player's card disagrees with his correction, he notes it and does not press.
+@day 13
+@arrival 12 0
+@tier full.1
+I've the corrected figure with me. I'm comfortable with it, same as the broadcast.
+@claim verb corrected
+@cue flattening
+@tier full.2
+If your card disagrees with the correction, I'll note the disagreement and leave it.
+@cue flattening
+@tier full.3
+The correction's the correction. I don't need your book to agree with it today.
+@cue flattening
+@tier compressed.1
+Your card says the sixth. Ours says the fifth. I'll write down both, if that's fine.
+@claim object the compliance card
+@cue flattening
+@tier compressed.2
+Figure, then the note. Then I'm {away|gone}.
+@cue flattening
+
+# --- Day 13, off. Comfortable with the correction, as always — but the object
+# of it has genericised from the card itself to "the record" in the abstract.
+@visitor clerk
+@day 13
+@tier off.1
+I've the corrected figure with me. Comfortable with it, same as the broadcast, near enough.
+@tier off.2
+If your record disagrees, I'll note it. I'll not say which one of us has it right.
+@claim object the record

@@ -1,0 +1,40 @@
+# THE QUARANTINE — the piano tuner, Mr Prentice. Days 3, 12. PLAN §58: a
+# standing arrangement to tune a piano that does not exist. The arrangement
+# is real, the address is right, somebody used to pay him — the previous
+# tenant (§24.1) touched at one more point and resolved at none. A true
+# anchor: never a stand-in, no off tier, ever.
+# Branch encoding per the wave brief §2: full.N / compressed.N, contiguous
+# from 1.
+
+@visitor tuner
+
+# --- Day 3 — first visit. Entirely matter-of-fact about an arrangement that
+# makes no sense once he's standing in the hall. He does not push it.
+@day 3
+@arrival 10 0
+@tier full.1
+Prentice. I'm to tune the piano — same arrangement as always, this time of year.
+@tier full.2
+No piano? That's queer. I've had the standing arrangement a fair while now.
+@claim object a name
+@tier full.3
+I'll not charge for a wasted call. If it turns up, you know where to find me.
+@tier compressed.1
+No piano? That's queer. Standing arrangement, this time of year.
+@claim object a name
+
+# --- Day 12 — second visit. He has not forgotten, and he has noticed
+# something about the street in passing — the cross-witness (§59.2), offered
+# without weight, about the same day the postman is off.
+@day 12
+@arrival 11 0
+@tier full.1
+Prentice again. I did wonder if I'd got the wrong house, but the name's the same.
+@claim object a name
+@tier full.2
+Still no piano, I take it. I'll not keep asking, but I'll not forget it either.
+@tier full.3
+That postman's been later on his round this week. Not that it's my place to remark.
+@tier compressed.1
+Still no piano. I'll not forget the arrangement, whoever it's with.
+@claim object a name

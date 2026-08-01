@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Play (Chrome + Dart breakpoints)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:8080",
+      "webRoot": "${workspaceFolder}/web",
+      "preLaunchTask": "serve",
+      "smartStep": true,
+      "sourceMaps": true
+    },
+    {
+      "name": "Play release build",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:8081",
+      "webRoot": "${workspaceFolder}/dist/web",
+      "preLaunchTask": "serve-release",
+      "sourceMaps": true
+    },
+    {
+      "name": "Debug asset fetcher",
+      "type": "dart",
+      "request": "launch",
+      "program": "tmp/tools/fetch_assets.dart",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+# THE QUARANTINE — the milkman, Harold Askew. Days 1, 3, 7. PLAN §58: the
+# first voice of the game, 7 a.m. before the broadcast. The float, the
+# bottles, the count — a resource that is easy to record and easy to check.
+# He stops coming in Week 2 and nothing marks it; rationing is a complete
+# explanation. A true anchor: never a stand-in, no off tier, ever.
+# Branch encoding per the wave brief §2: full.N / compressed.N, contiguous
+# from 1.
+
+@visitor milkman
+
+# --- Day 1 — the game's first voice, before the broadcast even runs. Ordinary
+# to the point of being furniture: a count, a habit, a total non-event.
+@day 1
+@arrival 7 0
+@tier full.1
+Morning. Two on the step, same as always. I'll leave three if you're wanting it.
+@claim object the count
+@tier full.2
+Been doing this row since before the war ended. You get to know a door by its milk.
+@tier full.3
+Empties out by eight or I can't promise they'll get taken. Creatures of habit, us.
+
+# --- Day 3 — the round continues, entirely unremarkable. He is the fixed
+# point against which everything else in the corpus is allowed to drift.
+@day 3
+@arrival 7 0
+@tier full.1
+Two again. I'll not ask questions, I just count what's out and leave what's asked.
+@claim object the count
+@tier full.2
+Quiet round this week. Fewer bottles out on this row than I'd expect for the season.
+@tier full.3
+I'll be past again Thursday. Same time, same count, unless you tell me otherwise.
+@tier compressed.1
+Two on the step, same as always.
+@claim object the count
+
+# --- Day 7 — his last visit; nothing marks it as such, not even to him. He
+# notices something about the neighbour without meaning anything by it — the
+# cross-witness (§59.2) that only means something once she's off, later today.
+@day 7
+@arrival 7 0
+@tier full.1
+Two again, and I'll say it plain: fewer of you taking milk than a fortnight back.
+@claim object the count
+@tier full.2
+Mrs Pethick took hers in early today. Usually waits till I've gone past next door.
+@tier full.3
+I'll keep coming while there's a round to keep. Can't promise past that, mind.
+@tier compressed.1
+Two on the step. Fewer taking it than there were.
+@claim object the count

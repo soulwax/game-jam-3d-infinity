@@ -1,0 +1,79 @@
+# The hazmat boy — PLAN §13. Day 3 distant, Day 6 at the door, Day 11, Day 18.
+# Branch encoding per the wave brief §2: full.N / compressed.N, contiguous from 1.
+# He is too young for the uniform, he has been given a script, and he does it well.
+
+# --- Day 3 — not at the door. Seen from the window, heard in pieces. full.2 and
+# full.4 are the ones the wind lets through whole; they return on Day 6 unchanged.
+@visitor hazmat-boy
+@day 3
+@arrival 12 0
+@tier full.1
+...no cause for alarm at any address on...
+@claim place the street
+@tier full.2
+You are safer inside than you are out here.
+@cue rehearsed
+@tier full.3
+...door to door, in order, and then we're...
+@tier full.4
+It is nothing to worry about and nothing to sign.
+@cue rehearsed
+@tier full.5
+...tell you my name, only they'd rather I...
+
+# --- Day 6 — at the door, close and audible. full.2 and full.3 are character-for-
+# character identical to Day 3's full.2 and full.4. Boring explanation: he has been
+# handed a card and told to read it at every house.
+@day 6
+@arrival 13 0
+@tier full.1
+There is no cause for alarm at any address on this street.
+@claim place the street
+@cue rehearsed
+@tier full.2
+You are safer inside than you are out here.
+@cue rehearsed
+@tier full.3
+It is nothing to worry about and nothing to sign.
+@cue rehearsed
+@tier full.4
+We're going door to door, in order, and then we're away by {four|five}.
+@tier full.5
+I'd tell you my name, only they'd rather I didn't. It isn't a secret, it's the form.
+
+# --- Day 11 — asked directly, the answer arrives with the word gone out of it.
+# Ask again and he answers a near question instead. He is never rude and never
+# refuses. Boring explanation: he mumbled it and you were standing in the hall.
+@day 11
+@arrival 14 0
+@tier full.1
+The  has not moved all week. Nobody has said different to me.
+@cue word-missing
+@cue thinning
+@tier full.2
+The shutters are as they were. That part I can answer for you.
+@cue thinning
+@tier full.3
+I'm not being funny with you. I've told you what I'm able to tell you.
+@cue thinning
+@tier compressed.1
+There is no cause for alarm at any address on this street.
+@cue rehearsed
+@cue thinning
+@tier compressed.2
+The  is where it was. I've nothing else for you.
+@cue word-missing
+@cue thinning
+
+# --- Day 18 — he resolves as trustworthy, insufficient or purely symbolic, and
+# which one is decided by the accumulated axes. Both lines are sayable in all three.
+@day 18
+@arrival 14 0
+@tier compressed.1
+I came back round, like I said I would.
+@cue flattening
+@tier compressed.2
+There is no cause for alarm at any address on this street.
+@claim place the street
+@cue rehearsed
+@cue flattening

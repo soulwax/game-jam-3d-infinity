@@ -1,0 +1,59 @@
+# THE QUARANTINE — the Board enumerator, Miss Wren (census). Days 11, 14.
+# PLAN §58: cross-checks the household record against what you say —
+# §18's civic drift as a person at the door, claim-dense, the natural mirror
+# of the compliance card (§45.1). Stand-in eligible.
+# Branch encoding per the wave brief §2: full.N / compressed.N / off.N,
+# contiguous from 1. Off tiers days 1-14 only, per §56.1.
+
+@visitor census
+
+# --- Day 11 — first visit. Brisk, procedural, entirely comfortable asking a
+# stranger to confirm facts about their own household back to her.
+@day 11
+@arrival 8 0
+@tier full.1
+Miss Wren, Board enumerator. I'm to check the household record against what you say.
+@claim object the record
+@tier full.2
+Household of one, is it? That's what's on file. I'll confirm it and move on.
+@claim object the record
+@tier full.3
+Two names crossed off this row already this week. Yours isn't one of them.
+@claim object a name
+@tier compressed.1
+Household of one, on file. I'll confirm it and move on.
+@claim object the record
+
+# --- Day 11, off. The civic-drift mechanism she embodies turned on herself:
+# she overclaims writing something down that she has only, in fact, checked.
+@tier off.1
+Wren, Board enumerator — I'm to check the record against what you say, near enough.
+@tier off.2
+Household of one, I make it. Or I did last time I wrote it down.
+@claim verb wrote down
+@cue off-key
+
+# --- Day 14 — second visit. The habit of cross-checking turned, gently, on
+# the player: has your own answer moved since the last time you gave it.
+@day 14
+@arrival 12 0
+@tier full.1
+Back again. I'm to confirm the household record hasn't changed since the eleventh.
+@claim object the record
+@tier full.2
+You'd be surprised how many change their answer between visits. Not accusing you.
+@tier full.3
+I've got Mrs Ayling's name against yours for a witness, if it's ever wanted.
+@claim who Mrs Ayling
+@tier compressed.1
+Confirming the household record hasn't changed. Same as the eleventh.
+@claim object the record
+
+# --- Day 14, off. The specific witness has softened into a generic one, and
+# she is no longer sure which neighbour it was.
+@tier off.1
+Back again. Confirming the household record, or near enough what I confirmed before.
+@tier off.2
+I've a neighbour's name against yours for a witness. I'd have to check whose it was.
+@claim who a neighbour
+@cue off-key

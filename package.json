@@ -1,0 +1,19 @@
+{
+  "name": "manyfold",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Vercel build shim for a pure-Dart WebGL2 game — no runtime JS dependencies.",
+  "scripts": {
+    "assets:check": "dart run tools/asset_audit.dart --strict",
+    "assets:build": "dart run tools/asset_audit.dart --build",
+    "assets:self-test": "dart run tools/asset_audit.dart --self-test",
+    "build": "node tools/vercel_build.mjs",
+    "build:wasm": "node tools/vercel_build.mjs --wasm",
+    "build:ship": "node tools/vercel_build.mjs --wasm --no-source-maps",
+    "build:prebuilt": "node tools/vercel_build.mjs --prebuilt"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

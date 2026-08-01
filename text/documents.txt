@@ -1,0 +1,41 @@
+# THE QUARANTINE - house residue (PLAN 47) and the pre-written journal seed
+# (PLAN 31, 48). Furniture with dates on, not clues. No drift spans, no
+# directives inside a block, one @doc per fixed id.
+
+# PLAN 47: "a shopping list in the kitchen, in your own hand, for a meal
+# never made." Ordinary items, no date stated.
+@doc residue-shopping-list
+Bread. Milk. The good tea, not the everyday.
+Two chops, if the butcher has any left by Friday.
+Candles. Just in case.
+
+# PLAN 47: "a calendar with a plan on a date now passed - a name, a time,
+# nothing more." Kept to exactly that and no further.
+@doc residue-calendar
+Denise - half six.
+
+# PLAN 47: "a half-written letter, abandoned mid-sentence." Ordinary
+# correspondence that simply stops. No framing, no hint of what is coming.
+@doc residue-letter
+Dear Nora,
+Thank you for the card. The garden must be looking well by now, and I hope the
+
+# PLAN 47: "a task left undone: a bulb waiting to be changed, a chair
+# mid-repair." Described as objects, not narrated.
+@doc residue-task
+The kitchen chair, upturned on the table, one leg re-glued and clamped.
+A spare bulb still in its wrapper on the landing shelf.
+
+# PLAN 31: the entry already in the player's own hand on the morning of Day
+# 1, teaching the schema by example. PLAN 48: on a second run this exact
+# entry is replaced by the player's own last entry from the previous run.
+# Every field after the day comes from text/vocabulary.txt.
+@doc journal-seed
+Sun · I · checked · the meter · kitchen · morning
+
+# PLAN 48, WP-G: fallback for a returning player whose previous run left
+# nothing usable (no entries, corruption, or fresh account). Reads as a
+# memory of Day 0 — the day before starting again — echoing the original's
+# warmth but marking it as reflection, not present moment.
+@doc journal-seed-return
+Sat · I · checked · the door · hallway · evening

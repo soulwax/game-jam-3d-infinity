@@ -1,0 +1,51 @@
+# THE QUARANTINE — the watchman, Cole. Days 15, 18, 21. Final week only.
+# Where Mr Sowerby (warden.txt) is the register's domestic face, Cole is the same
+# institution one notch colder: procedural, uninterested in anything beyond the
+# door. He never touches or threatens the player — invariant 4 holds absolutely.
+# He is new on day 15, so no compressed tier exists yet to shrink from.
+# Branch encoding per the wave brief: full.N / compressed.N, one line per tier.
+
+# --- Day 15 — the day options start greying out. He asks for less than Sowerby
+# ever did, because less is now assumed rather than confirmed. Boring explanation:
+# a new man working a simplified sheet.
+@visitor watchman
+@day 15
+@arrival 18 0
+@tier full.1
+Cole. Street watch now. In or out's all today's sheet wants — not the book.
+@cue flattening
+@tier full.2
+One line covers you: door shut or not. That's what I'm recording, nothing further.
+@claim object the door
+@cue flattening
+
+# --- Day 18 — the decisive day, by whichever path. He reports it flat, the same
+# register the broadcast uses: nothing dramatic to say about the most dramatic
+# day. compressed.1 is his own day 15 full.2, verbatim.
+@visitor watchman
+@day 18
+@arrival 18 0
+@tier compressed.1
+One line covers you: door shut or not. That's what I'm recording, nothing further.
+@claim object the door
+@cue flat-affect
+@cue flattening
+@tier compressed.2
+Today's logged as normal. I didn't see it happen, so I don't write that I did.
+@cue flat-affect
+@cue flattening
+
+# --- Day 21 — resolution, all three endings. He sounds like a man finishing a
+# shift, because that is exactly what today is for him.
+@visitor watchman
+@day 21
+@arrival 18 0
+@tier compressed.1
+Sheet's signed. Quiet street, nothing outstanding — I'm {done|through} for the night.
+@claim object the record
+@cue flat-affect
+@cue hollowed
+@tier compressed.2
+Whatever's through that door come morning isn't mine to log. I'm off home.
+@cue flat-affect
+@cue hollowed

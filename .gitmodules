@@ -1,0 +1,3 @@
+[submodule "external/pixeldart"]
+	path = external/pixeldart
+	url = git@github.com:soulwax/pixeldart.git

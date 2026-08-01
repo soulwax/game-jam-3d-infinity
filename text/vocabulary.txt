@@ -1,0 +1,91 @@
+# THE QUARANTINE - the note schema's closed vocabulary (PLAN 10, wave 6).
+# Five fields for [day] [who] [verb] [object] [place] [time]. Day is generated
+# at runtime and has no vocabulary of its own. Every value below is something
+# the visitor files or the broadcasts already make plausible - see the wave 6
+# report for how each one traces back to the corpus.
+
+# who - the five principals by the names their own files use, the wave-5 six,
+# plus "I" and "broadcast" (both used in PLAN 10's own worked examples) and
+# three generic categories for when a specific name would overreach.
+@vocab who
+I
+broadcast
+the Board
+Mrs Pethick
+Denise
+Ronnie
+Mr Sowerby
+the stranger
+Mr Reeve
+Ken Dalgleish
+Sylvia
+Dr Marchant
+Mrs Hallow
+Mrs Ayling
+the warden
+a neighbour
+
+# verb - clipped shorthand, not literary. What an entry records happening.
+@vocab verb
+came to
+asked about
+said
+saw
+heard
+wrote down
+was told
+did not answer
+left
+returned
+checked
+confirmed
+corrected
+knocked
+
+# object - the things an entry is about, pulled from what visitors and
+# broadcasts actually discuss.
+@vocab object
+the boundary
+the sighting
+the allowance
+the compliance card
+the ration hours
+the door
+a knock
+a delivery
+the broadcast
+a form
+a name
+the record
+the meter
+the movement
+the count
+
+# place - rooms and thresholds per PLAN 44's floor plan, plus a small set of
+# exterior references a player confined to the house could plausibly note.
+@vocab place
+kitchen
+hallway
+the front door
+the bedroom
+the landing
+the cellar
+the bathroom
+the spare room
+the street
+the window
+the doorstep
+
+# time - the day's fixed appointments (PLAN 27) plus a few granular options
+# consistent with the light and ritual sections.
+@vocab time
+morning
+midday
+afternoon
+dusk
+evening
+night
+first light
+after dark
+before the knock
+after the broadcast

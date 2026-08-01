@@ -1,0 +1,73 @@
+# THE QUARANTINE — the doctor. Days 6, 11, 15.
+#
+# Dr Marchant, Board medical. Where the warden audits your compliance, he audits you,
+# and PLAN §9's question makes that the most loaded examination in the game without one
+# line acknowledging it. So it is played completely straight: competent, unhurried,
+# kind in a professional register. Ordinary questions — sleep, appetite, headaches,
+# memory. He never diagnoses and never reacts to an answer. He writes it down, and the
+# writing-down is the whole beat: the player is being recorded by someone else's
+# instrument while their own is failing. He never confirms or denies anything about
+# their state, and §9 is not resolved out loud by the one man qualified to resolve it.
+#
+# Boring explanation, held for days 6-14 and never confirmed: a quarantine health sheet,
+# filled in fortnightly, by a man with a round of houses to get through before four.
+#
+# Branch encoding per the wave brief §2: full.N / compressed.N, contiguous from 1.
+
+@visitor doctor
+
+# --- Day 6. The first examination, and the routine has to be exact here because days
+# 11 and 15 are deformations of it. full.4 is the question the player cannot answer
+# well and knows it — and he takes the poor answer down as evenly as a good one.
+
+@day 6
+@arrival 9 0
+@tier full.1
+Dr Marchant, Board medical. A short list of questions and a sheet to put the answers on.
+@claim who Dr Marchant
+@tier full.2
+Sleeping — through, or in pieces? And what time you woke, {as near as|as close as} you can put it.
+@tier full.3
+Appetite, and headaches or none. I write down what you say. I don't write what I think of it.
+@tier full.4
+Now say the last three days back to me, in order. Most people can't. It isn't a test.
+
+# --- Day 11. The same questions, and full.1 is asked as though it has been asked before
+# and answered differently. He is not accusing anyone; he is checking a form against
+# itself, and he says plainly that forms get filled in wrong. Deniable: they do.
+
+@day 11
+@arrival 10 0
+@tier full.1
+Sleeping. You told me {five|four} last time; I've six here in my own hand. One of us slipped.
+@cue thinning
+@tier full.2
+Headaches — you said none. I'll ask it again and put today's answer down as today's.
+@cue thinning
+@tier full.3
+Mr Sowerby carries the compliance card. I've the health sheet. Different papers entirely.
+@claim who Mr Sowerby
+@claim object the compliance card
+@cue thinning
+@tier compressed.1
+# Reused verbatim from Day 6 full.4.
+Now say the last three days back to me, in order. Most people can't. It isn't a test.
+@cue thinning
+@tier compressed.2
+Sleep, appetite, head. Three words each and I'll not keep you standing.
+@cue thinning
+
+# --- Day 15. Week 3. The examination has been reduced to something that no longer
+# requires the householder in order to be completed. He asks for less, and that is
+# worse. Nothing sinister in the delivery: he is simply being efficient with a round.
+
+@day 15
+@arrival 10 0
+@tier compressed.1
+I needn't trouble you today. Where there's no new answer the sheet takes last week's.
+@cue flat-affect
+@cue flattening
+@tier compressed.2
+Nothing to ask. You're marked {as before|as I had it}. Good afternoon to you.
+@cue flat-affect
+@cue flattening

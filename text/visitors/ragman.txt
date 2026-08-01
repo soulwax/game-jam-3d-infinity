@@ -1,0 +1,62 @@
+# THE QUARANTINE — the rag-and-bone man, Mr Kettering (ragman). Days 6, 13, 20.
+# He does his rounds with a cart, buying and collecting scrap, old clothes,
+# anything unwanted — an entirely real trade for this period. The bizarre
+# thing about him is narrow and specific: he always seems to know exactly
+# what a household is about to get rid of before they've decided to get rid
+# of it. He is cheerful, unbothered, entirely a tradesman, never a threat.
+#
+# Boring explanation, held through Day 14 and never confirmed: he has done
+# this street for decades, he reads houses the way any good tradesman reads
+# anything, and people's habits of disposal are more predictable than they
+# think.
+#
+# Branch encoding per the wave brief: full.N / compressed.N, one line per tier.
+
+@visitor ragman
+
+# --- Day 6 — first appearance. He asks after something specific and
+# startling in its precision, tied to the kitchen chair already established
+# as house residue (PLAN 47 / text/documents.txt residue-task). Cheerful and
+# entirely unbothered throughout.
+@day 6
+@arrival 16 0
+@tier full.1
+Rag and bone! Bottles, iron, old clothes — I'll take whatever you don't want.
+@tier full.2
+That kitchen chair, the one with the leg glued — you weren't about to keep it?
+@tier full.3
+Thirty years on this row. You get a nose for what a house is about to lose.
+@tier full.4
+No charge for looking today. I'll come back {Thursday|Tuesday}, if you've changed your mind.
+
+# --- Day 13 — the day the broadcast contradicts itself and then corrects. He
+# is entirely unaffected — his trade doesn't care what the Board says — and
+# full.3 is the one line where that indifference should itself feel strange,
+# because everyone else on the street is reacting to the order and he isn't.
+@day 13
+@ambient 17 street full.1
+@tier full.1
+Rag and bone, same as ever. The wireless doesn't tell me what to weigh.
+@claim object the broadcast
+@tier full.2
+Corrected or not, iron's iron. I'll take it the same either way, love.
+@claim verb corrected
+@tier full.3
+Everybody's fretting over that broadcast. Can't say it's troubled me at all.
+@cue flat-affect
+@tier full.4
+Board's clipboard has been up and down this row twice today. Keeps them busy, I suppose.
+@tier compressed.1
+Rag and bone! Bottles, iron, old clothes — I'll take whatever you don't want.
+@tier compressed.2
+Same cart, same round. Nothing's outstanding on my sheet, whatever's on theirs.
+
+# --- Day 20 — the last full day. Inevitability, not drama. He still does his
+# round. Let his total unbotheredness be the last thing about him the player
+# takes away — the one person for whom nothing here has changed at all.
+@day 20
+@ambient 18 street compressed.1
+@tier compressed.1
+Same as ever on this row. I'll be back Thursday, same as I always have been.
+@tier compressed.2
+Rag and bone, still. Nothing's changed for me — I'll take what's going spare.

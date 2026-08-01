@@ -1,0 +1,105 @@
+# Week 3 — days 15-21. The liturgy sharpens, holds, omits, empties.
+# Population layer (wave 5): individuals. Days 15-16 have individuals but NO names (the
+# man who saw to the lamp, the occupier of number 12) — day 17's Mrs Ayling is the first
+# name in twenty-one days and must stay the first. After 17 the document names and
+# addresses people directly (18's "the occupier of this address", 21's thanks by name),
+# and that intimacy is meant to be worse than the anonymity was.
+# LOCKED BY A VISITOR QUOTATION: day 18's sighting must keep "The Board has no further
+# detail." — ayling.txt day 18 compressed.1 quotes it as the words she was given to say.
+
+@day 15
+@part date
+Fifteenth day of the order.
+@part status
+Boundary holding. Movement between addresses is closed {as of|from} first light.
+@part sighting
+One lamp out at Morland Row. The man who saw to it is {no longer|not now} on the register.
+@part instructions
+Residents are reminded to remain at their registered address and to open the door to no one.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+@day 16
+@part date
+Sixteenth day of the order.
+@part status
+The evening count was {returned|recorded} in full. The register is corrected to agree with it.
+@part sighting
+Lights were reported in every window of {number 12|number 14}. Its occupier is not listed.
+@part instructions
+Residents are reminded to report corrections to their own count before the evening broadcast.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+# Day 17 is the hinge: sixteen agentless days end here and the document names a
+# person. The drift span sits on "nightly|weekly" and NOT on "appointed" — an
+# "appointed|confirmed" pair would retcon Mrs Ayling into having always been
+# official, which is a different beat, and a drift must never swap between two
+# beats. text/visitors/ayling.txt is written to the appointed reading.
+@day 17
+@part date
+Seventeenth day of the order.
+@part status
+Mrs Ayling of number 9 is appointed warden and will carry the register {nightly|weekly}.
+@part sighting
+A parcel was delivered to {number 3|number 8}. It was correctly addressed and no one posted it.
+@part instructions
+Residents are reminded to give Mrs Ayling their record when she calls and to keep nothing back.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+@day 18
+@part date
+Eighteenth day of the order.
+@part status
+Normal.
+@cue flat-affect
+@part sighting
+The street was full at {four|five} o'clock and empty at six. The Board has no further detail.
+@part instructions
+The occupier of this address is reminded to remain within it.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+@day 19
+@part date
+Nineteenth day of the order.
+@part status
+Boundary holding. No change reported since the {third|first} day.
+@part sighting
+—
+@part instructions
+Residents are reminded to remain indoors after dark.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+@day 20
+@part date
+Twentieth day of the order.
+@part status
+Boundary holding.
+@part sighting
+—
+@part instructions
+No instructions are issued today.
+@part closing
+This has been a message from the Board.
+@cue no-effect
+
+@day 21
+@part date
+Twenty-first day of the order.
+@part status
+The order is complete.
+@part sighting
+—
+@part instructions
+Residents are thanked for their cooperation. Mrs Ayling is thanked by name.
+@part closing
+This has been a message.
+@cue closing-degrades

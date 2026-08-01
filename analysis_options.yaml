@@ -1,0 +1,25 @@
+include: package:lints/recommended.yaml
+
+linter:
+  rules:
+    - avoid_dynamic_calls
+    - avoid_catching_errors
+    - cancel_subscriptions
+    - close_sinks
+
+analyzer:
+  exclude:
+    - build/**
+    - .dart_tool/**
+    - tmp/**
+    # external/ holds sibling packages checked out inside this tree
+    # (pixeldart, the standalone renderer). They declare their own package
+    # name and resolve their own imports, so analysing them from here
+    # reports every one of their `package:` URIs as unresolvable — 1416
+    # errors that say nothing about either package. Each one is analysed in
+    # its own checkout, where the imports do resolve.
+    - external/**
+  errors:
+    missing_required_param: error
+    missing_return: error
+    todo: ignore

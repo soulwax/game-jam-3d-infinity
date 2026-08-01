@@ -1,0 +1,109 @@
+import 'dart:js_interop';
+
+import 'package:web/web.dart' as web;
+
+import 'panel.dart';
+
+class Door {
+  static const List<String> choices = [
+    'open',
+    'chain',
+    'through-door',
+    'letterbox',
+    'ignore',
+  ];
+
+  final web.HTMLElement root;
+  late final web.HTMLElement _speaker;
+  late final web.HTMLElement _line;
+  late final web.HTMLButtonElement _continueButton;
+  late final web.HTMLElement _citeList;
+  late final web.HTMLElement _citeResult;
+  final List<web.HTMLButtonElement> _choiceButtons = [];
+  void Function(String choice)? onChoice;
+  void Function()? onContinue;
+  void Function(int ordinal)? onCite;
+  bool visitorPresent = false;
+
+  Door(web.Document document)
+    : root = buildElement(document, 'div', cls: 'door') {
+    _speaker = buildElement(document, 'div', cls: 'door-speaker');
+    _line = buildElement(document, 'div', cls: 'door-line');
+    root.appendChild(_speaker);
+    root.appendChild(_line);
+    _citeList = buildElement(document, 'div', cls: 'door-cite-list');
+    _citeResult = buildElement(document, 'div', cls: 'door-cite-result');
+    root.appendChild(_citeList);
+    root.appendChild(_citeResult);
+    for (final choice in choices) {
+      final btn =
+          buildElement(document, 'button', cls: 'door-choice', text: choice)
+              as web.HTMLButtonElement;
+      btn.setAttribute('type', 'button');
+      btn.addEventListener(
+        'click',
+        ((web.Event _) => onChoice?.call(choice)).toJS,
+      );
+      root.appendChild(btn);
+      _choiceButtons.add(btn);
+    }
+    _continueButton =
+        buildElement(document, 'button', cls: 'door-continue', text: 'continue')
+            as web.HTMLButtonElement;
+    _continueButton.setAttribute('type', 'button');
+    _continueButton.addEventListener(
+      'click',
+      ((web.Event _) => onContinue?.call()).toJS,
+    );
+    root.appendChild(_continueButton);
+    document.body!.appendChild(root);
+  }
+
+  void showArrival(String visitor, String line) {
+    visitorPresent = true;
+    _speaker.textContent = visitor;
+    _line.textContent = line;
+    for (final button in _choiceButtons) {
+      button.style.display = '';
+    }
+    _continueButton.style.display = 'none';
+    _citeList.textContent = '';
+    _citeResult.textContent = '';
+    root.className = 'door visible';
+  }
+
+  void showConversation(String line) {
+    _line.textContent = line;
+    for (final button in _choiceButtons) {
+      button.style.display = 'none';
+    }
+    _continueButton.style.display = '';
+    _citeResult.textContent = '';
+  }
+
+  void showCitableEntries(web.Document document, List<(int, String)> entries) {
+    _citeList.textContent = '';
+    for (final (ordinal, text) in entries) {
+      final btn =
+          buildElement(document, 'button', cls: 'door-cite-entry', text: text)
+              as web.HTMLButtonElement;
+      btn.setAttribute('type', 'button');
+      btn.addEventListener(
+        'click',
+        ((web.Event _) => onCite?.call(ordinal)).toJS,
+      );
+      _citeList.appendChild(btn);
+    }
+  }
+
+  void showCiteResult(String message) {
+    _citeResult.textContent = message;
+  }
+
+  void hide() {
+    visitorPresent = false;
+    _citeList.textContent = '';
+    _citeResult.textContent = '';
+    root.className = 'door';
+  }
+}

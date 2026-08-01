@@ -1,0 +1,142 @@
+# THE QUARANTINE — the sibling. Days 2, 5, 9, 10, 14, 19.
+#
+# Highest emotional stake in the game, and the load-bearing test of PLAN 11.1 rule 3:
+# THE PLAYER MUST SOMETIMES BE RIGHT — and the sibling must sometimes simply be right
+# too. Branches marked TRUE below are plainly, verifiably true. A player who corrects
+# one of them is the one who has drifted. The sibling is gracious about it, and that
+# is meant to sting more than being right would have.
+#
+# Boring explanation, held for all of days 2-14 and never confirmed: families
+# remember the same afternoon three different ways, and this one always has.
+
+@visitor sibling
+
+# --- Day 2. The first visit. Warm, ordinary, one memory sold with a specificity
+# nobody uses for a real one (full.3).
+
+@day 2
+@arrival 16 0
+@tier full.1
+# TRUE. The kettle is in that cupboard. It can be opened.
+Mum's kettle is still in the cupboard over the sink. The one with the handle burnt through.
+@claim place kitchen
+@tier full.2
+# TRUE. The chair is where they say it is.
+You've had that chair by the window since you moved in. You always did face the street.
+@tier full.3
+You broke your wrist off the shed roof on a Tuesday. The ninth. Quarter past four, it was.
+@tier full.4
+I've {left|put} the pears on the step. Don't come out till I'm at the gate, they're funny.
+@tier full.5
+You never write. I'm not having a go. I'd just like to know you're putting things down.
+
+# --- Day 5. The divergence widens. The warden calls today and asks to see the notes.
+# The sibling does not know that and would not care. full.5 brushes it without knowing.
+
+@day 5
+@arrival 10 0
+@tier full.1
+# TRUE. Gran's was eleven. A player whose notes say twelve is the one who is wrong.
+Gran's was Ardwick Terrace, number eleven. You used to say twelve and you were wrong then.
+@tier full.2
+Dad drove us to Rhyl that summer, not the coach. You slept the whole way, there and back.
+@tier full.3
+There was a dog. Rusty, or Rusker. I've said Rusty for years and nobody's stopped me yet.
+@tier full.4
+# TRUE. The mark is on the back door. It can be gone and looked at.
+You've a mark on the back door where the pram went through. Go and look, it's still there.
+@claim object the door
+@tier full.5
+I'd not tell anyone what you keep in that book. Not because of anything. It's just yours.
+
+# --- Day 9. Theatrical, performed for an unseen audience (18.3). The sibling performs
+# sincerity, which is not the same as being insincere. full.3 is true and is delivered
+# as if it were being minuted.
+
+@day 9
+@arrival 11 0
+@tier full.1
+I want you to know — and I do mean this — that I've thought about you every day of it.
+@cue thinning
+@tier full.2
+Say it back to me. Not for me. Say it so you've said it out loud in your own house.
+@cue thinning
+@tier full.3
+# TRUE. It happened. The sibling is not wrong and is not being kind.
+You had the flu the week Dad died. You didn't come to the house. That's just what happened.
+@cue thinning
+@tier full.4
+I'm not going to cry on your step. I'll do that in the car and you'll never have to see.
+@cue thinning
+@tier full.5
+Ask me anything about us. Go on, I'd like you to. I'd like that to be on the record.
+@cue thinning
+@tier compressed.1
+# Reused verbatim from Day 2 full.5.
+You never write. I'm not having a go. I'd just like to know you're putting things down.
+@cue thinning
+@tier compressed.2
+I've thought about you every day of it.
+@cue thinning
+
+# --- Day 10. The pivot. Someone close describes the boundary sighting inconsistently
+# and the player decides whether to write it down. full.1, full.2 and full.3 each carry
+# a concrete writable detail and they cannot all be true: the time moves, the count
+# moves, the place moves. This is what misremembering produces, not what lying produces.
+
+@day 10
+@arrival 17 0
+@tier full.1
+I saw it myself. Thursday, about six. Three of them at the fence by the allotments.
+@claim who I
+@claim verb saw
+@claim object the sighting
+@cue thinning
+@tier full.2
+It was still light, mind. Four at the outside. Two men, and one of them was carrying.
+@cue thinning
+@tier full.3
+The fence I mean is the one behind the school, not the allotments. I've said that wrong.
+@cue thinning
+@tier full.4
+Whatever it was, nobody hurried. That's the bit I keep coming back to. Nobody hurried.
+@cue thinning
+@tier compressed.1
+# Reused verbatim from Day 5 full.5, arriving on the day the notes become a choice.
+I'd not tell anyone what you keep in that book. Not because of anything. It's just yours.
+@cue thinning
+@tier compressed.2
+Put it down if you want. I'll say the same tomorrow.
+@cue thinning
+
+# --- Day 14. The capstone. 18.2's uncompressed person falls here: still long, still
+# specific, still hesitant, and NO compressed tier at all. Sincerity is the anomaly.
+# full.2 concedes Day 5 full.2 — the player who corrected the coach was right.
+
+@day 14
+@arrival 18 0
+@tier full.1
+I've had the whole walk here to think what to say and I've come with nothing. So. Here.
+@tier full.2
+# TRUE, and it makes the player retroactively right about Day 5 full.2.
+You were right about the coach to Rhyl. Dad never drove us. I've had that wrong for years.
+@tier full.3
+# TRUE. The gate is off its hinge and has been. It can be gone and looked at.
+Your gate's off its hinge. It was off in May as well. Nobody's coming to see to it now.
+@tier full.4
+I stood in your hall a minute before I knocked. It smells like Gran's did. I don't know.
+@tier full.5
+If I've any of it wrong, tell me and I'll put it down your way. I've brought a pencil.
+
+# --- Day 19. Week 3. Earlier scenes replay with altered meaning. compressed.1 is Day 5
+# full.4, word for word, said now.
+
+@day 19
+@arrival 14 0
+@tier compressed.1
+You've a mark on the back door where the pram went through. Go and look, it's still there.
+@claim object the door
+@cue hollowed
+@tier compressed.2
+I've brought the pears. Don't come out till I'm at the gate.
+@cue hollowed

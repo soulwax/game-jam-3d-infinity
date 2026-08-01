@@ -1,0 +1,56 @@
+# THE QUARANTINE — the nurse, Nurse Fairhurst. Days 2, 7. PLAN §58: district
+# rounds "while the surgeries are shut" — warm, unhurried, full of small
+# checkable facts. Stand-in eligible: warmth reconstructed is the register at
+# its most uncomfortable (§56.2).
+# Branch encoding per the wave brief §2: full.N / compressed.N / off.N,
+# contiguous from 1. Off tiers days 1-14 only, per §56.1.
+
+@visitor nurse
+
+# --- Day 2 — first visit. Ordinary, unhurried, the doctor's rounds handed to
+# somebody with more time for them than he has.
+@day 2
+@arrival 13 0
+@tier full.1
+Nurse Fairhurst. I do the rounds while the surgeries are shut — won't keep you long.
+@tier full.2
+Dr Marchant sends his rounds through me now, while he's stretched thin himself.
+@claim who Dr Marchant
+@tier full.3
+Nothing to note for your address. I'll mark the form and be on my way.
+@claim object a form
+@tier compressed.1
+Rounds, while the surgeries are shut. Nothing to note for you.
+@claim object a form
+
+# --- Day 2, off. Warmth reconstructed: she hesitates on her own name and
+# overclaims the doctor's instruction as more direct than it likely was.
+@tier off.1
+Nurse... Fairhurst. Rounds, while the surgeries are shut — I'll not keep you a moment.
+@cue off-key
+@tier off.2
+Dr Marchant has me doing his rounds now. Or near enough his rounds, this week.
+@claim verb was told
+
+# --- Day 7 — second visit. Fewer houses on her list; the surgeries reopening
+# is the boring explanation for everything about her, including her absence.
+@day 7
+@arrival 13 0
+@tier full.1
+Back again. Nothing's changed at your address since the second, I'll note that down.
+@claim object the record
+@tier full.2
+You're eating, sleeping? I only ask because I'm meant to ask. Say what you like.
+@tier full.3
+Fewer houses on my list than I had. The surgeries reopen soon enough, they say.
+@tier compressed.1
+Nothing's changed at your address. I'll note it and be on.
+@claim object the record
+
+# --- Day 7, off. The record she is normally exact about has gone hedged.
+@tier off.1
+Back again, or near enough the second time. I've lost count of the rounds, honestly.
+@tier off.2
+Nothing's changed at your address, so I've written. I'd stand by that, more or less.
+@claim verb confirmed
+@cue off-key

@@ -1,0 +1,71 @@
+# THE QUARANTINE — the street, §46's five-phase arc, days 1-21.
+# Days 1-4: traffic, voices, a bus, a radio. Ordinary and unremarked.
+# Days 5-9: traffic thins, voices become single voices, the dog (a recurring, unnamed dog
+# heard barking, noticed only in retrospect once it stops appearing after day 9).
+# Days 10-14: no engines; birds, noticed only because they can now be heard.
+# Days 15-18: the birds stop; wind, the eaves, rain on glass.
+# Days 19-21: nothing. Not silence — absence. Room tone that is the house's own.
+# Nobody ever remarks on the pattern; only the content itself shifts.
+
+@street 1
+traffic on the main road, voices past the window, a bus grinding gears, a radio next door
+
+@street 2
+the same traffic, someone laughing at the corner, the late bus, a radio turned up loud
+
+@street 3
+cars along the row, voices by the gate, the bus on its hour, a wireless two doors down
+
+@street 4
+traffic down to occasional cars, one bus passing near-empty, a single voice, a faint radio
+
+@street 5
+a car now and then, one voice down the street, and a dog barking two gardens over
+
+@street 6
+barely a car all morning, someone's wireless faint through the wall, the dog again
+
+@street 7
+an occasional car, a single voice at the gate, the dog carrying from behind the row
+
+@street 8
+a car passing rarely, no radio today, the dog barking off toward the allotments
+
+@street 9
+one voice, then nothing, the dog barking late and further off than usual
+
+@street 10
+no engines at all today, a bird calling from the guttering
+
+@street 11
+birds in the yard at first light, nothing else moving
+
+@street 12
+birdsong along the row, no cars, no voices at all
+
+@street 13
+birds again at dawn, the street otherwise still
+
+@street 14
+birds calling through the morning, the house around them quiet
+
+@street 15
+no birdsong today, only wind picking up in the eaves
+
+@street 16
+wind in the eaves, a loose slate somewhere above
+
+@street 17
+wind against the glass, nothing else audible
+
+@street 18
+rain on the window, the eaves running, wind dropping toward dusk
+
+@street 19
+no wind, no rain, only the house settling into itself
+
+@street 20
+a quiet that isn't the street's, a board finding its own temperature
+
+@street 21
+the house's own tone, nothing arriving from outside it at all

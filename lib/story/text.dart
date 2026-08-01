@@ -1,0 +1,242 @@
+import 'dart:js_interop';
+import 'package:web/web.dart' as web;
+
+import 'corpus.dart';
+import 'schema.dart'
+    show
+        StoryText,
+        VisitorArrivalMetadata,
+        VisitorAmbientMetadata,
+        VisitorClaim;
+
+class TextLibrary {
+  static TextLibrary? _instance;
+
+  late Map<String, dynamic> _broadcasts;
+  late Map<String, dynamic> _visitors;
+  late Map<String, dynamic> _vocabulary;
+  late Map<String, dynamic> _documents;
+  late Map<String, dynamic> _street;
+  late Map<String, dynamic> _unverifiables;
+  late Map<String, dynamic> _nights;
+  late Map<String, dynamic> _endings;
+  late Map<String, dynamic> _records;
+  late Map<String, dynamic> _cues;
+  late Map<String, dynamic> _claims;
+
+  TextLibrary._();
+
+  static TextLibrary get instance => _instance ??= TextLibrary._();
+
+  Future<void> load() async {
+    try {
+      final resp = await web.window.fetch('res/text.json'.toJS).toDart;
+      final jsonText = (await resp.text().toDart).toString();
+      final decoded = decodeTextCorpus(jsonText);
+      _broadcasts = decoded['broadcasts']!;
+      _visitors = decoded['visitors']!;
+      _vocabulary = decoded['vocabulary']!;
+      _documents = decoded['documents']!;
+      _street = decoded['street']!;
+      _unverifiables = decoded['unverifiables']!;
+      _nights = decoded['nights']!;
+      _endings = decoded['endings']!;
+      _records = decoded['records']!;
+      _cues = decoded['cues']!;
+      _claims = decoded['claims']!;
+    } catch (e) {
+      throw 'Failed to load text.json: $e';
+    }
+  }
+
+  Map<String, String>? getBroadcast(int day) {
+    final parts = _broadcasts[day.toString()];
+    if (parts is Map) {
+      return Map<String, String>.fromEntries(
+        parts.entries
+            .where((entry) => entry.key is String && entry.value is String)
+            .map(
+              (entry) => MapEntry(entry.key as String, entry.value as String),
+            ),
+      );
+    }
+    return null;
+  }
+
+  String? getBroadcastPart(int day, String part) {
+    final broadcast = getBroadcast(day);
+    return broadcast?[part];
+  }
+
+  Map<int, Map<String, dynamic>>? getVisitor(String name) {
+    final visitor = _visitors[name];
+    if (visitor is Map) {
+      final result = <int, Map<String, dynamic>>{};
+      for (final entry in visitor.entries) {
+        final dayNum = entry.key is String
+            ? int.tryParse(entry.key as String)
+            : null;
+        if (dayNum != null && entry.value is Map) {
+          result[dayNum] = Map<String, dynamic>.from(entry.value as Map);
+        }
+      }
+      return result.isNotEmpty ? result : null;
+    }
+    return null;
+  }
+
+  String? getVisitorDialogue(String visitorName, int day, String tier) {
+    final visitor = getVisitor(visitorName);
+    final dayData = visitor?[day];
+    final value = dayData?[tier];
+    return value is String ? value : null;
+  }
+
+  List<String> get visitorNames => _visitors.keys.toList()..sort();
+
+  List<int> visitorDays(String visitor) =>
+      (getVisitor(visitor)?.keys.toList() ?? const <int>[])..sort();
+
+  bool hasVisitorTier(String visitor, int day, String tier) =>
+      getVisitor(visitor)?[day]?.containsKey(tier) ?? false;
+
+  /// Returns null when the authored corpus deliberately has no arrival timing.
+  VisitorArrivalMetadata? getVisitorArrivalMetadata(
+    String visitorName,
+    int day,
+  ) {
+    final visitor = _visitors[visitorName];
+    final raw = visitor is Map ? visitor['_arrival'] : null;
+    final dayData = raw is Map ? raw[day.toString()] : null;
+    if (dayData is! Map) return null;
+    final hour = dayData['hour'];
+    final order = dayData['order'];
+    if (hour is! num ||
+        order is! num ||
+        hour != hour.toInt() ||
+        order != order.toInt()) {
+      return null;
+    }
+    return VisitorArrivalMetadata(hour: hour.toInt(), order: order.toInt());
+  }
+
+  VisitorAmbientMetadata? getVisitorAmbientMetadata(
+    String visitorName,
+    int day,
+  ) {
+    final visitor = _visitors[visitorName];
+    final raw = visitor is Map ? visitor['_ambient'] : null;
+    final dayData = raw is Map ? raw[day.toString()] : null;
+    if (dayData is! Map) return null;
+    final hour = dayData['hour'];
+    final channel = dayData['channel'];
+    final lineKey = dayData['lineKey'];
+    if (hour is! num ||
+        hour != hour.toInt() ||
+        channel is! String ||
+        lineKey is! String) {
+      return null;
+    }
+    return VisitorAmbientMetadata(
+      hour: hour.toInt(),
+      channel: channel,
+      lineKey: lineKey,
+    );
+  }
+
+  /// Rehydrates only the visitor data needed by the deterministic runtime
+  /// director. The compiled JSON remains the browser's source of text.
+  StoryText visitorStory() {
+    final story = StoryText();
+    for (final entry in _visitors.entries) {
+      if (entry.value is! Map) continue;
+      final days = <int, Map<String, String>>{};
+      final rawVisitor = entry.value as Map;
+      for (final dayEntry in rawVisitor.entries) {
+        final day = dayEntry.key is String
+            ? int.tryParse(dayEntry.key as String)
+            : null;
+        if (day == null || dayEntry.value is! Map) continue;
+        final lines = <String, String>{};
+        for (final line in (dayEntry.value as Map).entries) {
+          if (line.key is String && line.value is String) {
+            lines[line.key as String] = line.value as String;
+          }
+        }
+        if (lines.isNotEmpty) days[day] = lines;
+      }
+      if (days.isEmpty) continue;
+      story.visitors[entry.key] = days;
+      final arrivals = <int, VisitorArrivalMetadata>{};
+      for (final day in days.keys) {
+        final arrival = getVisitorArrivalMetadata(entry.key, day);
+        if (arrival != null) arrivals[day] = arrival;
+      }
+      if (arrivals.isNotEmpty) story.visitorArrivals[entry.key] = arrivals;
+      final ambient = <int, VisitorAmbientMetadata>{};
+      for (final day in days.keys) {
+        final event = getVisitorAmbientMetadata(entry.key, day);
+        if (event != null) ambient[day] = event;
+      }
+      if (ambient.isNotEmpty) story.visitorAmbient[entry.key] = ambient;
+    }
+    for (final entry in _claims.entries) {
+      final raw = entry.value;
+      if (raw is! List) continue;
+      final claims = <VisitorClaim>[
+        for (final item in raw)
+          if (item is Map && item['field'] is String && item['value'] is String)
+            VisitorClaim(field: item['field'] as String, value: item['value'] as String),
+      ];
+      if (claims.isNotEmpty) story.claims[entry.key] = claims;
+    }
+    return story;
+  }
+
+  List<String> getVocabulary(String field) {
+    final values = _vocabulary[field];
+    return values is List ? List<String>.from(values) : const [];
+  }
+
+  List<String> getDocument(String id) {
+    final lines = _documents[id];
+    return lines is List ? List<String>.from(lines) : const [];
+  }
+
+  List<String> getStreet(int day) {
+    final layers = _street[day.toString()];
+    return layers is List ? List<String>.from(layers) : const [];
+  }
+
+  List<String> getUnverifiables(int day) {
+    final lines = _unverifiables[day.toString()];
+    return lines is List ? List<String>.from(lines) : const [];
+  }
+
+  List<String> getBroadcastCues(int day, String part) {
+    final cues = _cues['broadcast:$day:$part'];
+    return cues is List ? List<String>.from(cues) : const [];
+  }
+
+  List<String> getVisitorCues(String visitorName, int day, String tier) {
+    final cues = _cues['visitor:$visitorName:$day:$tier'];
+    return cues is List ? List<String>.from(cues) : const [];
+  }
+
+  List<String> getNights(int day) {
+    final lines = _nights[day.toString()];
+    return lines is List ? List<String>.from(lines) : const [];
+  }
+
+  List<String> getEnding(String id) {
+    final lines = _endings[id];
+    return lines is List ? List<String>.from(lines) : const [];
+  }
+
+  List<String> getRecord(String id) {
+    final lines = _records[id];
+    return lines is List ? List<String>.from(lines) : const [];
+  }
+}
+
+final textLibrary = TextLibrary.instance;

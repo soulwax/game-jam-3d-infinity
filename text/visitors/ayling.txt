@@ -1,0 +1,148 @@
+# THE QUARANTINE — Mrs Ayling, number 9. Days 1, 9, 13, 17, 18, 20.
+# She is already canon: week-3.txt day 17 appoints her warden, in a document that had
+# been agentless for sixteen days. §17.3's beat for day 17 is "a minor character
+# becomes central", so for sixteen days she must be genuinely, unremarkably minor.
+# She is not a plant and not a schemer. A player replaying should find nothing in days
+# 1-13 that predicted this and everything in them that made it plausible.
+# What happens to her is entirely ordinary and entirely human. That is why it is week 3.
+# Branch encoding per the wave brief §2: full.N / compressed.N, one line per tier.
+
+# --- Day 1 — furniture. A greeting, a drain, the instruction repeated almost word for
+# word off the wireless, and an offer of an errand. This is the street's ordinary
+# temperature, established here so that it can change later. Nothing is off.
+@visitor ayling
+@day 1
+@arrival 9 0
+@tier full.1
+Morning. Mrs Ayling, number 9. I'll not keep you — I'm only going along the row.
+@claim who Mrs Ayling
+@tier full.2
+That drain at the corner's blocked again. Third time since Easter and nobody's {come|been}.
+@tier full.3
+Residents are reminded to remain indoors after dark. That's what they said. After dark.
+@claim time after dark
+@claim object the broadcast
+@tier full.4
+I go up to the corner shop Tuesdays. If there's anything you want, you've only to say.
+
+# --- Day 1, off. The same street furniture, one degree loosened: the round
+# has shrunk to "a few doors" and the broadcast's instruction has picked up
+# the wrong object, as if she'd been asked about something else entirely.
+@visitor ayling
+@day 1
+@tier off.1
+Morning. Mrs Ayling, I'll not keep you — I'm only going along past a few doors.
+@tier off.2
+Residents are to remain indoors after dark. That's the words, or close enough to them.
+@claim object the door
+@cue off-key
+
+# --- Day 9 — theatrical week (§18.3). She has begun enjoying the order slightly: the
+# structure of it, having something to be correct about. Some people are like this and
+# everybody knows one. It is characterisation, not setup, and it is all the
+# foreshadowing there is. Boring explanation: she likes knowing where she stands.
+# compressed.1 is her own day 1 full.3, verbatim.
+@visitor ayling
+@day 9
+@arrival 14 0
+@tier full.1
+I've the wireless on at nine sharp now. You get the whole of it if you're sat down first.
+@cue thinning
+@tier full.2
+Settled, orderly and entirely as expected. Those were the words. I thought that was well put.
+@cue thinning
+@tier full.3
+There's a right way to do a thing and it costs you nothing. I like knowing where I stand.
+@cue thinning
+@tier compressed.1
+Residents are reminded to remain indoors after dark. That's what they said. After dark.
+@claim time after dark
+@claim object the broadcast
+@cue thinning
+@tier compressed.2
+Card's by the door where they ask for it. No bother at all, once you're in the way of it.
+@cue thinning
+
+# --- Day 9, off. The order-loving register intact; the quote she's proud of
+# getting right has drifted one register — administrative where it should be
+# the wireless's own words.
+@visitor ayling
+@day 9
+@tier off.1
+I've the wireless on of a morning now. You get most of it if you're sat down in time.
+@cue off-key
+@tier off.2
+Settled and orderly, they said. Entirely as expected — that's on the record, isn't it.
+@claim object the record
+
+# --- Day 13 — the broadcast contradicted itself and then corrected (week-2.txt day 13).
+# She is comfortable with the correction at once and cannot be drawn on the
+# contradiction. Boring explanation: a correction is what a correction is for.
+# compressed.1 is her own day 1 full.4, verbatim.
+@visitor ayling
+@day 13
+@arrival 9 0
+@tier full.1
+Nothing at sector 9 is outstanding. That's the instruction, and that's the end of it.
+@cue flattening
+@tier full.2
+They said the one thing and then they said this. This is the one they've left standing.
+@cue flattening
+@tier full.3
+I'll not argue with a correction. If it wanted arguing with they'd not have corrected it.
+@cue flattening
+@tier compressed.1
+I go up to the corner shop Tuesdays. If there's anything you want, you've only to say.
+@cue flattening
+@tier compressed.2
+No report's {required|expected}. So there's no report.
+@cue flattening
+
+# --- Day 13, off. Comfortable with the correction, same as always — but the
+# topic it's corrected has slid from the broadcast to the paperwork on the wall.
+@visitor ayling
+@day 13
+@tier off.1
+Nothing at sector 9 is outstanding, so they said. Or was it sector seven — I'd have to check.
+@tier off.2
+They said one thing, then corrected it on the card. I'll not argue with a correction.
+@claim object the compliance card
+
+# --- Day 17 — the promotion. A woman handed a clipboard and a small authority over
+# people she has lived beside for years. She is embarrassed and she is doing it anyway,
+# which is worse than relish and is the truthful version of it.
+@visitor ayling
+@day 17
+@arrival 9 0
+@tier compressed.1
+They've given me a clipboard. I'm to have your record when I call. It wasn't my idea.
+@cue flattening
+@tier compressed.2
+I've lived up this road nineteen years. Don't make me ask you twice. Please don't.
+@cue flattening
+
+# --- Day 18 — the decisive day. The street was full at four and empty at six, and she
+# is the one who has to say something official about it. The official words do not fit
+# her mouth and she says them anyway, because they are the ones she was given.
+@visitor ayling
+@day 18
+@arrival 10 0
+@tier compressed.1
+The Board has no further detail. That's what I'm to say. That's the whole of what I have.
+@claim who the Board
+@cue flattening
+@tier compressed.2
+I saw it same as you did, and I've written down that I've no further detail.
+@cue flattening
+
+# --- Day 20 — the last full day. Mr Sowerby calls today too, punctual and unbothered
+# because for him it was always a job. She is neither, and the contrast is the point.
+@visitor ayling
+@day 20
+@arrival 12 0
+@tier compressed.1
+I've to collect again and I don't know what for. Mr Sowerby does his and goes home.
+@cue hollowed
+@tier compressed.2
+You'll all still live up this road after. I've to think about that and I {can't|shan't}.
+@cue hollowed
