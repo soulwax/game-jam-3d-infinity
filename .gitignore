@@ -41,6 +41,7 @@ scripts/.venv/
 
 # Generic output artifacts
 tmp/
+_worktrees/
 output/
 test-output/
 test-results/
