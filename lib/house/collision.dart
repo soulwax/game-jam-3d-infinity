@@ -17,6 +17,54 @@ class Capsule {
     this.radius = playerCapsuleRadius,
   });
 
+  /// PHY-01: sparse moved-state for deterministic replay/recovery.
+  /// Currently captures only the stair traversal progress.
+  String? get activeStairId => _activeStair?.stair.id;
+  double? get activeStairProgress => _activeStair?.progress;
+
+  /// Sets the internal stair traversal state without needing runtime
+  /// references stored in saves.
+  void restoreActiveStair({
+    required House house,
+    required String? stairId,
+    required double? progress,
+    required String currentRoom,
+  }) {
+    if (stairId == null || progress == null) {
+      _activeStair = null;
+      return;
+    }
+
+    final stair = house.stairs.where((s) => s.id == stairId);
+    final resolved = stair.isEmpty ? null : stair.first;
+    if (resolved == null) {
+      _activeStair = null;
+      return;
+    }
+
+    // Only allow restoring an active stair if we're plausibly near it.
+    // This keeps state conservative and avoids “teleporting” into stair mode
+    // on restore.
+    final eye = Vec3(
+      (base.x + tip.x) * 0.5,
+      // Inverse of _setEye():
+      // base = eye - Vec3(0, playerEyeHeight - radius, 0)
+      // => eye.y = base.y + (playerEyeHeight - radius)
+      base.y + (playerEyeHeight - radius),
+      (base.z + tip.z) * 0.5,
+    );
+
+    final active =
+        _near(eye, resolved.lowerEye) && currentRoom == 'hall' ||
+        _near(eye, resolved.upperEye) && currentRoom == 'landing';
+    if (!active) {
+      _activeStair = null;
+      return;
+    }
+
+    _activeStair = _ActiveStair(resolved, progress.clamp(0.0, 1.0));
+  }
+
   MovementResult move(House house, String currentRoom, Vec3 eye, Vec3 delta) {
     final active = _activeStair;
     if (active != null) {

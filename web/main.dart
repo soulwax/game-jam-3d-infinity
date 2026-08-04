@@ -2,46 +2,46 @@ import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:math' as math;
 
+import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/audio.dart';
 import 'package:quarantine/engine/camera.dart';
+import 'package:quarantine/engine/fps_motion.dart';
 import 'package:quarantine/engine/hud.dart';
 import 'package:quarantine/engine/input.dart';
-import 'package:quarantine/engine/fps_motion.dart';
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/engine/renderer.dart';
-import 'package:quarantine/game/session.dart';
+import 'package:quarantine/game/ambient_audio.dart';
 import 'package:quarantine/game/browser_save_store.dart';
+import 'package:quarantine/game/ending.dart';
 import 'package:quarantine/game/player_state.dart';
 import 'package:quarantine/game/rupture_gate.dart';
-import 'package:quarantine/game/ambient_audio.dart';
-import 'package:quarantine/game/ending.dart';
-import 'package:quarantine/sim/time.dart';
-import 'package:quarantine/sim/weather.dart';
-import 'package:quarantine/sim/rupture.dart';
+import 'package:quarantine/game/session.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/emitter.dart';
 import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/interaction.dart';
 import 'package:quarantine/house/room.dart';
-import 'package:quarantine/config.dart';
 import 'package:quarantine/journal/entry.dart' show Vocabulary;
-import 'package:quarantine/story/text.dart';
-import 'package:quarantine/story/schema.dart' show vocabularyFields;
-import 'package:quarantine/story/unverifiable_notice.dart';
-import 'package:quarantine/visitors/director.dart';
-import 'package:quarantine/visitors/ambient.dart';
-import 'package:quarantine/visitors/stand_ins.dart';
-import 'package:quarantine/visitors/state.dart';
 import 'package:quarantine/sim/interaction.dart';
+import 'package:quarantine/sim/rupture.dart';
+import 'package:quarantine/sim/time.dart';
+import 'package:quarantine/sim/weather.dart';
+import 'package:quarantine/story/schema.dart' show vocabularyFields;
+import 'package:quarantine/story/text.dart';
+import 'package:quarantine/story/unverifiable_notice.dart';
+import 'package:quarantine/ui/ambient_notice.dart';
 import 'package:quarantine/ui/broadcast.dart';
 import 'package:quarantine/ui/door.dart';
-import 'package:quarantine/ui/journal_panel.dart';
-import 'package:quarantine/ui/help_panel.dart';
-import 'package:quarantine/ui/ambient_notice.dart';
 import 'package:quarantine/ui/ending_panel.dart';
+import 'package:quarantine/ui/help_panel.dart';
+import 'package:quarantine/ui/journal_panel.dart';
 import 'package:quarantine/ui/panel.dart';
 import 'package:quarantine/ui/prompt.dart';
 import 'package:quarantine/ui/sleep_panel.dart';
+import 'package:quarantine/visitors/ambient.dart';
+import 'package:quarantine/visitors/director.dart';
+import 'package:quarantine/visitors/stand_ins.dart';
+import 'package:quarantine/visitors/state.dart';
 import 'package:web/web.dart' as web;
 
 @JS('Object.keys')
@@ -217,6 +217,14 @@ Future<void> main() async {
         ..tip =
             restoredBase +
             Vec3(0, playerCapsuleHeight - playerCapsuleRadius * 2, 0);
+
+      _playerCapsule.restoreActiveStair(
+        house: _house,
+        stairId: savedPlayer.activeStairId,
+        progress: savedPlayer.activeStairProgress,
+        currentRoom: _currentRoom,
+      );
+
       _showSaveStatus('restored position');
     }
 
@@ -387,6 +395,8 @@ void _saveSession(String status) {
             eye: _simEye,
             yaw: _simYaw,
             pitch: _simPitch,
+            activeStairId: _playerCapsule.activeStairId,
+            activeStairProgress: _playerCapsule.activeStairProgress,
           ).toJson(),
           'visitors': _visitorDirector.snapshot.toJson(),
           'ambient': _ambientDirector.deliveredIds,

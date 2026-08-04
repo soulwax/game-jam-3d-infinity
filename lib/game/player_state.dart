@@ -13,6 +13,11 @@ class PlayerState {
     required this.eye,
     required this.yaw,
     required this.pitch,
+
+    // PHY-01: sparse moved-state for deterministic replay/recovery.
+    // Currently used for active stair traversal.
+    this.activeStairId,
+    this.activeStairProgress,
   });
 
   final String roomId;
@@ -20,11 +25,16 @@ class PlayerState {
   final double yaw;
   final double pitch;
 
+  final String? activeStairId;
+  final double? activeStairProgress;
+
   Map<String, dynamic> toJson() => {
     'roomId': roomId,
     'eye': {'x': eye.x, 'y': eye.y, 'z': eye.z},
     'yaw': yaw,
     'pitch': pitch,
+    if (activeStairId != null) 'activeStairId': activeStairId,
+    if (activeStairProgress != null) 'activeStairProgress': activeStairProgress,
   };
 
   static PlayerState? tryFromJson(Object? raw) {
@@ -33,18 +43,40 @@ class PlayerState {
     final eye = raw['eye'];
     final yaw = raw['yaw'];
     final pitch = raw['pitch'];
+
     if (roomId is! String || eye is! Map || yaw is! num || pitch is! num) {
       return null;
     }
+
     final x = eye['x'];
     final y = eye['y'];
     final z = eye['z'];
     if (x is! num || y is! num || z is! num) return null;
+
+    final activeStairId = raw['activeStairId'] is String
+        ? raw['activeStairId'] as String
+        : null;
+
+    final rawProgress = raw['activeStairProgress'];
+    final activeStairProgress = rawProgress is num
+        ? rawProgress.toDouble()
+        : null;
+
+    if (activeStairId == null && activeStairProgress != null) return null;
+    if (activeStairId != null && activeStairProgress == null) return null;
+
+    if (activeStairProgress != null &&
+        (activeStairProgress < 0.0 || activeStairProgress > 1.0)) {
+      return null;
+    }
+
     final state = PlayerState(
       roomId: roomId,
       eye: Vec3(x.toDouble(), y.toDouble(), z.toDouble()),
       yaw: yaw.toDouble(),
       pitch: pitch.toDouble(),
+      activeStairId: activeStairId,
+      activeStairProgress: activeStairProgress,
     );
     return state.isFinite ? state : null;
   }
@@ -55,7 +87,11 @@ class PlayerState {
       eye.z.isFinite &&
       yaw.isFinite &&
       pitch.isFinite &&
-      pitch.abs() <= math.pi / 2;
+      pitch.abs() <= math.pi / 2 &&
+      (activeStairProgress == null ||
+          (activeStairProgress!.isFinite &&
+              activeStairProgress! >= 0.0 &&
+              activeStairProgress! <= 1.0));
 
   bool isCollisionSafe(House house) {
     if (house.byId(roomId) == null) return false;
