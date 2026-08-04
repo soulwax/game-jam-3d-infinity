@@ -18,6 +18,7 @@ import 'package:quarantine/game/rupture_gate.dart';
 import 'package:quarantine/game/session.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/emitter.dart';
+import 'package:quarantine/house/focus.dart';
 import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/interaction.dart';
 import 'package:quarantine/house/room.dart';
@@ -628,17 +629,36 @@ void _update(double dt) {
   }
 
   _camera.lookFrom(_simEye, _simYaw, _simPitch);
-  final mantle = raycastMantle(_camera, _house, _currentRoom);
-  final portal = raycastPortal(_camera, _house, _currentRoom);
-  final window = raycastWindow(_camera, _house, _currentRoom);
-  final prompt = mantle != null && !mantle.broken
-      ? mantle.name
-      : portal != null
-      ? (portal.passable ? 'close door' : 'open door')
-      : window != null
-      ? 'the shutter'
-      : null;
-  _prompt.show(prompt);
+
+  // UI prompt / watched-object focus (deterministic resolver)
+  final focus = resolveFocus(
+    camera: _camera,
+    house: _house,
+    currentRoom: _currentRoom,
+  );
+  _prompt.show(focus.prompt);
+
+  // Interaction target selection is gated by the deterministic focus resolver.
+  // This keeps interaction effects aligned with the same watched-object contract
+  // that drives the UI prompt.
+  Mantle? mantle;
+  Portal? portal;
+  Window? window;
+
+  switch (focus.kind) {
+    case FocusKind.mantle:
+      mantle = raycastMantle(_camera, _house, _currentRoom);
+      break;
+    case FocusKind.portal:
+      portal = raycastPortal(_camera, _house, _currentRoom);
+      break;
+    case FocusKind.window:
+      window = raycastWindow(_camera, _house, _currentRoom);
+      break;
+    case FocusKind.none:
+      break;
+  }
+
   _broadcast.update(
     textLibrary.getBroadcastPart(_session.snapshot.day, 'status'),
     _currentRoom == 'living-room',
