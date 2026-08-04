@@ -223,6 +223,7 @@ Future<void> main() async {
         stairId: savedPlayer.activeStairId,
         progress: savedPlayer.activeStairProgress,
         currentRoom: _currentRoom,
+        eye: _simEye,
       );
 
       _showSaveStatus('restored position');

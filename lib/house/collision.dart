@@ -29,6 +29,7 @@ class Capsule {
     required String? stairId,
     required double? progress,
     required String currentRoom,
+    Vec3? eye,
   }) {
     if (stairId == null || progress == null) {
       _activeStair = null;
@@ -45,18 +46,20 @@ class Capsule {
     // Only allow restoring an active stair if we're plausibly near it.
     // This keeps state conservative and avoids “teleporting” into stair mode
     // on restore.
-    final eye = Vec3(
-      (base.x + tip.x) * 0.5,
-      // Inverse of _setEye():
-      // base = eye - Vec3(0, playerEyeHeight - radius, 0)
-      // => eye.y = base.y + (playerEyeHeight - radius)
-      base.y + (playerEyeHeight - radius),
-      (base.z + tip.z) * 0.5,
-    );
+    final effectiveEye =
+        eye ??
+        Vec3(
+          (base.x + tip.x) * 0.5,
+          // Inverse of _setEye():
+          // base = eye - Vec3(0, playerEyeHeight - radius, 0)
+          // => eye.y = base.y + (playerEyeHeight - radius)
+          base.y + (playerEyeHeight - radius),
+          (base.z + tip.z) * 0.5,
+        );
 
     final active =
-        _near(eye, resolved.lowerEye) && currentRoom == 'hall' ||
-        _near(eye, resolved.upperEye) && currentRoom == 'landing';
+        _near(effectiveEye, resolved.lowerEye) && currentRoom == 'hall' ||
+        _near(effectiveEye, resolved.upperEye) && currentRoom == 'landing';
     if (!active) {
       _activeStair = null;
       return;
