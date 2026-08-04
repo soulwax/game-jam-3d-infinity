@@ -1,9 +1,0 @@
-MANYFOLD — third-party asset notices
-
-Full licence texts for the named licences sit beside this file in
-the same directory:
-
-  CC-BY-4.0.txt
-  CC0-1.0.txt
-  OFL-1.1.txt
-
