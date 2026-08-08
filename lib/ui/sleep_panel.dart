@@ -9,6 +9,7 @@ class SleepPanel extends Panel {
   void Function(SleepQuality quality, SleepLocation location)? onSleep;
 
   SleepPanel(web.Document document) : super(document) {
+    root.setAttribute('aria-label', 'Rest');
     root.appendChild(
       buildElement(document, 'h2', cls: 'journal-title', text: 'Rest'),
     );

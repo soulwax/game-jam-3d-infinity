@@ -7,6 +7,7 @@ import 'panel.dart';
 
 class EndingPanel extends Panel {
   EndingPanel(super.document) {
+    root.setAttribute('aria-label', 'Ending record');
     _title = buildElement(document, 'h1', cls: 'journal-title');
     _body = buildElement(document, 'div', cls: 'ending-copy');
     root.appendChild(_title);

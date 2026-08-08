@@ -6,6 +6,7 @@ import 'panel.dart';
 
 class HelpPanel extends Panel {
   HelpPanel(super.document) {
+    root.setAttribute('aria-label', 'House notes');
     root.appendChild(
       buildElement(document, 'h1', cls: 'journal-title', text: 'house notes'),
     );

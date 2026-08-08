@@ -40,8 +40,13 @@ abstract class Panel {
   JSFunction? _keyHandler;
 
   Panel(this.document)
-      : root = document.createElement('div') as web.HTMLElement {
+    : root = document.createElement('div') as web.HTMLElement {
     root.className = 'panel';
+    root.setAttribute('role', 'dialog');
+    root.setAttribute('aria-modal', 'true');
+    root.setAttribute('aria-label', 'Game panel');
+    root.setAttribute('tabindex', '-1');
+    root.setAttribute('hidden', '');
     root.style.setProperty('--panel-fade', '${panelFadeSeconds}s');
     document.body!.appendChild(root);
   }
@@ -56,16 +61,22 @@ abstract class Panel {
     _lastFocus = document.activeElement;
     document.callMethod<JSAny?>('exitPointerLock'.toJS);
     root.className = 'panel open';
+    root.removeAttribute('hidden');
     final handler = _onKeyDown;
     _keyHandler = handler.toJS;
     document.addEventListener('keydown', _keyHandler);
     final f = _focusableIn(root);
-    if (f.isNotEmpty) f.first.focus();
+    if (f.isNotEmpty) {
+      f.first.focus();
+    } else {
+      root.focus();
+    }
   }
 
   void close() {
     if (!isOpen) return;
     root.className = 'panel';
+    root.setAttribute('hidden', '');
     if (Panel._active == this) Panel._active = null;
     final h = _keyHandler;
     if (h != null) {

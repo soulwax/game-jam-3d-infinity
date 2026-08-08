@@ -33,7 +33,10 @@ class JournalPanel extends Panel {
     this.interactionEngine, {
     this.onOpenCost,
   }) : super(document) {
-    root.appendChild(buildElement(document, 'div', cls: 'journal-title', text: 'The Journal'));
+    root.setAttribute('aria-label', 'The Journal');
+    root.appendChild(
+      buildElement(document, 'div', cls: 'journal-title', text: 'The Journal'),
+    );
 
     final pages = buildElement(document, 'div', cls: 'journal-pages');
     _leftPage = buildElement(document, 'div', cls: 'page page-left');
@@ -65,10 +68,20 @@ class JournalPanel extends Panel {
 
   web.HTMLElement _buildTurnControls() {
     final row = buildElement(document, 'div', cls: 'page-turn');
-    final prev = buildElement(document, 'button', cls: 'turn-prev', text: '‹ earlier');
+    final prev = buildElement(
+      document,
+      'button',
+      cls: 'turn-prev',
+      text: '‹ earlier',
+    );
     prev.setAttribute('type', 'button');
     prev.addEventListener('click', ((web.Event _) => _turn(-1)).toJS);
-    final next = buildElement(document, 'button', cls: 'turn-next', text: 'later ›');
+    final next = buildElement(
+      document,
+      'button',
+      cls: 'turn-next',
+      text: 'later ›',
+    );
     next.setAttribute('type', 'button');
     next.addEventListener('click', ((web.Event _) => _turn(1)).toJS);
     _rightDayLabel = buildElement(document, 'span', cls: 'right-day-label');
@@ -100,7 +113,14 @@ class JournalPanel extends Panel {
 
   web.HTMLElement _buildConsult() {
     final box = buildElement(document, 'div', cls: 'consult');
-    box.appendChild(buildElement(document, 'div', cls: 'consult-label', text: 'Cite an entry'));
+    box.appendChild(
+      buildElement(
+        document,
+        'div',
+        cls: 'consult-label',
+        text: 'Cite an entry',
+      ),
+    );
     _entryPicker = buildElement(document, 'div', cls: 'entry-picker');
     _resultBox = buildElement(document, 'div', cls: 'consult-result');
     box.appendChild(_entryPicker);
@@ -114,9 +134,17 @@ class JournalPanel extends Panel {
     selectedOrdinal = null;
     _resultBox.textContent = '';
     for (final entry in interactionEngine.getSelectableEntries()) {
-      final btn = buildElement(document, 'button', cls: 'picker-entry', text: entry.current.toString());
+      final btn = buildElement(
+        document,
+        'button',
+        cls: 'picker-entry',
+        text: entry.current.toString(),
+      );
       btn.setAttribute('type', 'button');
-      btn.addEventListener('click', ((web.Event _) => _select(entry.ordinal, btn)).toJS);
+      btn.addEventListener(
+        'click',
+        ((web.Event _) => _select(entry.ordinal, btn)).toJS,
+      );
       _entryPicker.appendChild(btn);
     }
   }
@@ -133,29 +161,61 @@ class JournalPanel extends Panel {
     if (result.selectedOrdinal == null) return;
     final event = interactionEngine.createHumiliationEvent(result, audience);
     if (event == null) {
-      _resultBox.appendChild(buildElement(document, 'div', cls: 'result confirm', text: 'Confirmed.'));
+      _resultBox.appendChild(
+        buildElement(
+          document,
+          'div',
+          cls: 'result confirm',
+          text: 'Confirmed.',
+        ),
+      );
       return;
     }
     final callout = buildElement(document, 'div', cls: 'result humiliation');
-    callout.appendChild(buildElement(document, 'div', cls: 'humiliation-audience', text: event.audience.name));
-    callout.appendChild(buildElement(document, 'div', cls: 'humiliation-text', text: event.contradictionText));
+    callout.appendChild(
+      buildElement(
+        document,
+        'div',
+        cls: 'humiliation-audience',
+        text: event.audience.name,
+      ),
+    );
+    callout.appendChild(
+      buildElement(
+        document,
+        'div',
+        cls: 'humiliation-text',
+        text: event.contradictionText,
+      ),
+    );
     _resultBox.appendChild(callout);
   }
 
   void _renderPages() {
-    _renderEntries(_leftPage, [
-      for (final e in journal.entries) if (e.day == time.dayNumber) e,
-    ]..sort((a, b) => a.ordinal.compareTo(b.ordinal)));
+    _renderEntries(
+      _leftPage,
+      [
+        for (final e in journal.entries)
+          if (e.day == time.dayNumber) e,
+      ]..sort((a, b) => a.ordinal.compareTo(b.ordinal)),
+    );
 
     _rightDayLabel.textContent = 'Day $_rightDay';
-    _renderEntries(_rightPage, [
-      for (final e in journal.entries) if (e.day == _rightDay) e,
-    ]..sort((a, b) => a.ordinal.compareTo(b.ordinal)));
+    _renderEntries(
+      _rightPage,
+      [
+        for (final e in journal.entries)
+          if (e.day == _rightDay) e,
+      ]..sort((a, b) => a.ordinal.compareTo(b.ordinal)),
+    );
 
     final ratio = journalLockSupply <= 0
         ? 0.0
         : (journal.locksRemaining / journalLockSupply).clamp(0.0, 1.0);
-    _tapeFill.style.setProperty('width', '${(ratio * 100).toStringAsFixed(1)}%');
+    _tapeFill.style.setProperty(
+      'width',
+      '${(ratio * 100).toStringAsFixed(1)}%',
+    );
   }
 
   void _renderEntries(web.HTMLElement page, List<Entry> entries) {
