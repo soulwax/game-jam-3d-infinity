@@ -8,6 +8,7 @@ import 'package:web/web.dart' as web;
 import '../config.dart';
 import '../house/house.dart';
 import '../house/room.dart';
+import 'audio_planner.dart';
 import 'math3.dart';
 
 const Map<String, String> sfxSlot = {
@@ -192,6 +193,8 @@ class Audio {
     double rate = 1,
     double gain = 1,
     String? sourceRoom,
+    double? transmissionGainDb,
+    double? transmissionCutoffHz,
   }) {
     final buf = _buffers[name];
     if (buf == null) return;
@@ -202,7 +205,12 @@ class Audio {
     final filter = _createOcclusionFilter();
     final attenuationGain = _ctx.createGain()..gain.value = 1.0;
 
-    if (sourceRoom != null && _listenerRoom != null && _house != null) {
+    if (transmissionGainDb != null && transmissionCutoffHz != null) {
+      filter.frequency.value = transmissionCutoffHz;
+      attenuationGain.gain.value = math
+          .pow(10.0, transmissionGainDb / 20.0)
+          .toDouble();
+    } else if (sourceRoom != null && _listenerRoom != null && _house != null) {
       final path = _house.pathBetweenRooms(sourceRoom, _listenerRoom!);
       final (gainDb, freqHz) = _computeOcclusion(path);
       filter.frequency.value = freqHz;
@@ -225,6 +233,18 @@ class Audio {
     filter.connect(p);
     p.connect(_slotForCue(name));
     src.start();
+  }
+
+  void playPlanned(AudioPlan plan, {double rate = 1, double gain = 1}) {
+    playAt(
+      plan.cue,
+      plan.position,
+      rate: rate,
+      gain: gain,
+      sourceRoom: plan.sourceRoom,
+      transmissionGainDb: plan.gainDb,
+      transmissionCutoffHz: plan.lowPassHz,
+    );
   }
 
   bool _isDoorOpen(Portal portal) {

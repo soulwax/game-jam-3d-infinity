@@ -6,6 +6,7 @@ import 'dart:typed_data';
 
 import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/audio.dart';
+import 'package:quarantine/engine/audio_planner.dart';
 import 'package:quarantine/engine/camera.dart';
 import 'package:quarantine/engine/fps_motion.dart';
 import 'package:quarantine/engine/hud.dart';
@@ -1073,6 +1074,8 @@ bool _audioArmed = false;
 bool _reducedMotion = false;
 HouseSoundscape? _houseSoundscape;
 HouseInventory? _houseInventory;
+AudioPlanner? _audioPlanner;
+int _audioEventSequence = 0;
 final HouseClock _houseClock = HouseClock();
 final HouseServiceSoundScheduler _houseServiceSounds =
     HouseServiceSoundScheduler();
@@ -1611,6 +1614,14 @@ Future<void> _loadAuthoredHouseSoundscape() async {
       final soundscape = HouseSoundscape.decode(source);
       soundscape.validateAgainst(_house, inventory);
       _houseSoundscape = soundscape;
+      final variants = <String, List<String>>{};
+      for (final emitter in soundscape.emitters) {
+        for (final entry in emitter.cues.entries) {
+          variants['${emitter.id}:${entry.key}'] = [entry.value];
+        }
+      }
+      _audioPlanner = AudioPlanner(house: _house, cues: AudioCueSet(variants));
+      _canvas.setAttribute('data-audio-planner', 'validated');
       _canvas.setAttribute('data-house-soundscape', 'validated');
       _canvas.setAttribute('data-house-soundscape-source', url);
       _canvas.setAttribute(
@@ -1622,6 +1633,8 @@ Future<void> _loadAuthoredHouseSoundscape() async {
       lastError = error;
     }
   }
+  _audioPlanner = null;
+  _canvas.setAttribute('data-audio-planner', 'unavailable');
   _canvas.setAttribute('data-house-soundscape', 'unavailable');
   web.console.warn('authored house soundscape unavailable: $lastError'.toJS);
 }
@@ -1839,12 +1852,42 @@ void _playHouseCue(Audio audio, String emitterId, String event) {
   final inventory = _houseInventory;
   if (soundscape == null || inventory == null) return;
   final emitter = soundscape.emitterFor(emitterId);
-  audio.playAt(
-    emitter.cue(event),
-    soundscape.worldPosition(emitter, _house, inventory.modelScale),
-    sourceRoom: emitter.roomId,
-    gain: emitter.gain,
+  final position = soundscape.worldPosition(
+    emitter,
+    _house,
+    inventory.modelScale,
   );
+  final planner = _audioPlanner;
+  if (planner == null) {
+    audio.playAt(
+      emitter.cue(event),
+      position,
+      sourceRoom: emitter.roomId,
+      gain: emitter.gain,
+    );
+    return;
+  }
+  final plan = planner.plan(
+    AudioEvent(
+      id: '$emitterId:$event:$_audioEventSequence',
+      sequence: _audioEventSequence++,
+      cueFamily: '$emitterId:$event',
+      sourceRoom: emitter.roomId,
+      position: position,
+      seed: _audioSeed(emitterId, event),
+      category: AudioCategory.ambience,
+    ),
+    AcousticListener(roomId: _currentRoom, position: _viewEye),
+  );
+  audio.playPlanned(plan, gain: emitter.gain);
+}
+
+int _audioSeed(String emitterId, String event) {
+  var seed = _session.runSeed;
+  for (final unit in '$emitterId:$event'.codeUnits) {
+    seed = hashCombine(seed, unit);
+  }
+  return seed;
 }
 
 void _updateFps(double frameTime) {

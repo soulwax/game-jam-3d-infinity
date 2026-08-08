@@ -126,6 +126,7 @@ final class AudioPlan {
   final String eventId;
   final String cue;
   final AudioCategory category;
+  final String sourceRoom;
   final Vec3 position;
   final List<String> portalPath;
   final double gainDb;
@@ -137,6 +138,7 @@ final class AudioPlan {
     required this.eventId,
     required this.cue,
     required this.category,
+    required this.sourceRoom,
     required Vec3 position,
     required List<String> portalPath,
     required this.gainDb,
@@ -187,6 +189,7 @@ final class AudioPlanner {
       eventId: event.id,
       cue: cues.select(event.cueFamily, event.seed),
       category: event.category,
+      sourceRoom: event.sourceRoom,
       position: event.position,
       portalPath: [for (final portal in route.portals) portal.id],
       gainDb: gainDb.clamp(-60.0, 0.0),

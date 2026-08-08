@@ -73,6 +73,7 @@ function assertHealthy(failures, label) {
         houseSoundscape: canvas.getAttribute('data-house-soundscape'),
         houseSoundscapeSource: canvas.getAttribute('data-house-soundscape-source'),
         houseSoundEmitterCount: canvas.getAttribute('data-house-sound-emitter-count'),
+        audioPlanner: canvas.getAttribute('data-audio-planner'),
         audioSpatialActive: canvas.getAttribute('data-audio-spatial-active'),
         wallTexture: canvas.getAttribute('data-renderer-texture-wall-plaster'),
         grimeTexture: canvas.getAttribute('data-renderer-texture-grime'),
@@ -141,6 +142,9 @@ function assertHealthy(failures, label) {
       if (result.audioSpatialActive === null ||
           !/^\d+$/.test(result.audioSpatialActive)) {
         throw new Error(`${name}: audio lifecycle telemetry was not published ${JSON.stringify(result)}`);
+      }
+      if (result.audioPlanner !== 'validated') {
+        throw new Error(`${name}: acoustic planner was not wired ${JSON.stringify(result)}`);
       }
       if (buttons.some((button) => !button.text && !button.label)) {
         throw new Error(`${name}: unlabeled button in accessibility smoke`);
