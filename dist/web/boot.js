@@ -2,8 +2,8 @@
   const app = './app/';
   if ((WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,95,1,120,0])))) {
     try {
-      const m = await import(app + 'main.59579d9d.mjs');
-      const compiled = await m.compileStreaming(fetch(app + 'main.34dcb3ca.wasm'));
+      const m = await import(app + 'main.07cbcdbf.mjs');
+      const compiled = await m.compileStreaming(fetch(app + 'main.a7c453e1.wasm'));
       (await compiled.instantiate({})).invokeMain();
       return;
     } catch (e) {
@@ -11,6 +11,6 @@
     }
   }
   const s = document.createElement('script');
-  s.src = app + 'main.1e505432.js';
+  s.src = app + 'main.80b7859d.js';
   document.body.appendChild(s);
 })();
