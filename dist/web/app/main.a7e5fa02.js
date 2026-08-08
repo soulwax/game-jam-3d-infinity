@@ -5765,7 +5765,7 @@ mB:function mB(a){this.a=a},
 iw:function iw(a,b,c){this.a=a
 this.b=b
 this.c=c},
-mA(a,b,c,d,e){var s="2d9de84f7726-d004e52a5506-dirty",r=A.o5("RENDERER_SHA"),q=A.o5("GAME_SHA"),p=A.o5("DART_SDK_VERSION"),o=A.o5("LOCKFILE_SHA256"),n=A.lT(b,A.I(b).c)
+mA(a,b,c,d,e){var s="73484bf75158-d004e52a5506",r=A.o5("RENDERER_SHA"),q=A.o5("GAME_SHA"),p=A.o5("DART_SDK_VERSION"),o=A.o5("LOCKFILE_SHA256"),n=A.lT(b,A.I(b).c)
 n=A.N(n,A.o(n).c)
 B.a.Z(n)
 n=new A.mz(a,e,s,A.ap(n,t.N),r,q,p,o,c,d)
@@ -6325,6 +6325,7 @@ b0=$.jG.j()
 b7=A.e(a6.createElement("div"))
 b0=new A.lC(h,a9,b0,a6,b7)
 b0.bI(a6)
+b7.setAttribute("aria-label","The Journal")
 A.e(b7.appendChild(A.Y(a6,"div","journal-title","The Journal")))
 b8=A.Y(a6,"div","journal-pages",null)
 a9=A.Y(a6,"div","page page-left",null)
@@ -14674,19 +14675,21 @@ s=this.b.y
 return s==null?null:s.$1(this.a.a)},
 $S:1}
 A.kE.prototype={
-io(a){var s,r,q,p=this,o=p.a,n=A.Y(o,"h1","journal-title",null)
-p.f!==$&&A.y()
-p.f=n
-s=A.Y(o,"div","ending-copy",null)
-p.r!==$&&A.y()
-p.r=s
-r=p.b
-A.e(r.appendChild(n))
-A.e(r.appendChild(s))
-q=A.Y(o,"button","door-continue","close record")
-q.setAttribute("type","button")
-q.addEventListener("click",A.am(new A.kF(p)))
-A.e(r.appendChild(q))},
+io(a){var s,r,q,p,o=this,n=o.b
+n.setAttribute("aria-label","Ending record")
+s=o.a
+r=A.Y(s,"h1","journal-title",null)
+o.f!==$&&A.y()
+o.f=r
+q=A.Y(s,"div","ending-copy",null)
+o.r!==$&&A.y()
+o.r=q
+A.e(n.appendChild(r))
+A.e(n.appendChild(q))
+p=A.Y(s,"button","door-continue","close record")
+p.setAttribute("type","button")
+p.addEventListener("click",A.am(new A.kF(o)))
+A.e(n.appendChild(p))},
 i5(a,b){var s,r,q,p,o,n,m=this
 t.h.a(b)
 s=m.f
@@ -14711,14 +14714,16 @@ if(s!=null)s.$0()
 return null},
 $S:1}
 A.l7.prototype={
-ip(a){var s,r="help-copy",q=this.b,p=this.a
-A.e(q.appendChild(A.Y(p,"h1","journal-title","house notes")))
-A.e(q.appendChild(A.Y(p,"p",r,"WASD moves. Mouse looks. E uses what you face.")))
-A.e(q.appendChild(A.Y(p,"p",r,"J opens the journal. L rests. K saves. The final door waits until Day 21.")))
-s=A.Y(p,"button","door-continue","return")
-s.setAttribute("type","button")
-s.addEventListener("click",A.am(new A.l8(this)))
-A.e(q.appendChild(s))}}
+ip(a){var s,r,q="help-copy",p=this.b
+p.setAttribute("aria-label","House notes")
+s=this.a
+A.e(p.appendChild(A.Y(s,"h1","journal-title","house notes")))
+A.e(p.appendChild(A.Y(s,"p",q,"WASD moves. Mouse looks. E uses what you face.")))
+A.e(p.appendChild(A.Y(s,"p",q,"J opens the journal. L rests. K saves. The final door waits until Day 21.")))
+r=A.Y(s,"button","door-continue","return")
+r.setAttribute("type","button")
+r.addEventListener("click",A.am(new A.l8(this)))
+A.e(p.appendChild(r))}}
 A.l8.prototype={
 $1(a){A.e(a)
 return this.a.aH()},
@@ -14832,6 +14837,11 @@ $S:14}
 A.fc.prototype={
 bI(a){var s=this.b
 s.className="panel"
+s.setAttribute("role","dialog")
+s.setAttribute("aria-modal","true")
+s.setAttribute("aria-label","Game panel")
+s.setAttribute("tabindex","-1")
+s.setAttribute("hidden","")
 A.e(s.style).setProperty("--panel-fade","0.25s")
 A.e(A.h(this.a.body).appendChild(s))},
 cm(){var s,r,q,p,o=this,n=o.b
@@ -14843,14 +14853,17 @@ r=o.a
 o.d=A.h(r.activeElement)
 A.qE(r,"exitPointerLock",t.X)
 n.className="panel open"
+n.removeAttribute("hidden")
 q=A.am(o.gjk())
 o.e=q
 r.addEventListener("keydown",q)
 p=A.rP(n)
-if(p.length!==0)B.a.gaW(p).focus()},
+if(p.length!==0)B.a.gaW(p).focus()
+else n.focus()},
 aH(){var s,r,q=this,p=q.b
 if(!B.b.v(A.G(p.className),"open"))return
 p.className="panel"
+p.setAttribute("hidden","")
 if($.m6===q)$.m6=null
 s=q.e
 if(s!=null){q.a.removeEventListener("keydown",s)
@@ -14881,6 +14894,7 @@ r=r?"prompt":"prompt visible"
 s.className=r}}
 A.mP.prototype={
 iu(a){var s,r,q,p,o,n,m,l,k,j,i=this.b
+i.setAttribute("aria-label","Rest")
 A.e(i.appendChild(A.Y(a,"h2","journal-title","Rest")))
 A.e(i.appendChild(A.Y(a,"p","consult-label","Sleeping is the only way to end the day.")))
 s=A.Y(a,"div","entry-picker",null)
@@ -16402,7 +16416,7 @@ B.eC=new A.a5(B.f5,[0,1],t.I)
 B.f2={uScene:0,uHistory:1}
 B.eD=new A.a5(B.f2,[0,1],t.I)
 B.eQ={RENDERER_SHA:0,GAME_SHA:1,DART_SDK_VERSION:2,LOCKFILE_SHA256:3}
-B.eE=new A.a5(B.eQ,["d004e52a550696538afaab098008c0e195ce13dc","2d9de84f772646f55e3d5c833569cf57a3e65651","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29"],t.B)
+B.eE=new A.a5(B.eQ,["d004e52a550696538afaab098008c0e195ce13dc","73484bf75158a814d87995bf6ed7e93b37e9c230","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29"],t.B)
 B.eW={aPosition:0,aUvMat:1}
 B.bu=new A.a5(B.eW,[0,4],t.I)
 B.f3={uScene:0,uLut:1}
@@ -16727,4 +16741,3 @@ return}var s=document.scripts
 function onLoad(b){for(var q=0;q<s.length;++q){s[q].removeEventListener("load",onLoad,false)}a(b.target)}for(var r=0;r<s.length;++r){s[r].addEventListener("load",onLoad,false)}})(function(a){v.currentScript=a
 var s=A.oO
 if(typeof dartMainRunner==="function"){dartMainRunner(s,[])}else{s([])}})})()
-//# sourceMappingURL=main.js.map
