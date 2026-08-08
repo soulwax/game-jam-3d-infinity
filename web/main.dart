@@ -32,6 +32,7 @@ import 'package:quarantine/house/focus.dart';
 import 'package:quarantine/house/geometry.dart';
 import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/inventory.dart';
+import 'package:quarantine/house/soundscape.dart';
 import 'package:quarantine/house/exterior_mesh_adapter.dart';
 import 'package:quarantine/house/exterior_pvs.dart';
 import 'package:quarantine/house/exterior_scene.dart';
@@ -1070,6 +1071,11 @@ web.Element? _fpsDiv;
 Audio? _audio;
 bool _audioArmed = false;
 bool _reducedMotion = false;
+HouseSoundscape? _houseSoundscape;
+HouseInventory? _houseInventory;
+final HouseClock _houseClock = HouseClock();
+final HouseServiceSoundScheduler _houseServiceSounds =
+    HouseServiceSoundScheduler();
 
 bool _paused = false;
 bool _haveLastTime = false;
@@ -1557,6 +1563,7 @@ Future<void> _loadAuthoredHouseManifest() async {
       _canvas.setAttribute('data-house-manifest', 'validated');
       _canvas.setAttribute('data-house-manifest-source', url);
       await _loadAuthoredHouseInventory();
+      await _loadAuthoredHouseSoundscape();
       return;
     } catch (error) {
       lastError = error;
@@ -1575,6 +1582,7 @@ Future<void> _loadAuthoredHouseInventory() async {
       final source = (await response.text().toDart).toString();
       final inventory = HouseInventory.decode(source);
       inventory.validateAgainst(_house);
+      _houseInventory = inventory;
       _pixeldartRuntime?.setInventory(inventory);
       _canvas.setAttribute('data-house-inventory', 'validated');
       _canvas.setAttribute('data-house-inventory-source', url);
@@ -1589,6 +1597,33 @@ Future<void> _loadAuthoredHouseInventory() async {
   }
   _canvas.setAttribute('data-house-inventory', 'unavailable');
   web.console.warn('authored house inventory unavailable: $lastError'.toJS);
+}
+
+Future<void> _loadAuthoredHouseSoundscape() async {
+  final inventory = _houseInventory;
+  if (inventory == null) return;
+  const urls = ['res/house/soundscape.json', 'assets/house/soundscape.json'];
+  Object? lastError;
+  for (final url in urls) {
+    try {
+      final response = await web.window.fetch(url.toJS).toDart;
+      final source = (await response.text().toDart).toString();
+      final soundscape = HouseSoundscape.decode(source);
+      soundscape.validateAgainst(_house, inventory);
+      _houseSoundscape = soundscape;
+      _canvas.setAttribute('data-house-soundscape', 'validated');
+      _canvas.setAttribute('data-house-soundscape-source', url);
+      _canvas.setAttribute(
+        'data-house-sound-emitter-count',
+        '${soundscape.emitters.length}',
+      );
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  _canvas.setAttribute('data-house-soundscape', 'unavailable');
+  web.console.warn('authored house soundscape unavailable: $lastError'.toJS);
 }
 
 void _collectUrls(
@@ -1666,6 +1701,18 @@ void _raf(num ts) {
       while (_accumulator >= _fixedDt && steps < _maxSteps) {
         _prevEye = _simEye;
         _session.advance(_fixedDt);
+        for (final event in _houseClock.advance(
+          day: _session.snapshot.day,
+          hour: _session.snapshot.hour,
+        )) {
+          _pendingSounds.add('clock:${event.event}');
+        }
+        for (final event in _houseServiceSounds.advance(
+          day: _session.snapshot.day,
+          hour: _session.snapshot.hour,
+        )) {
+          _pendingSounds.add('service:${event.emitterId}:${event.event}');
+        }
         _updateVisitorSchedule();
         _syncDifficultySeam();
         _updateAmbientEvents();
@@ -1686,6 +1733,13 @@ void _raf(num ts) {
 
       final audio = _audio;
       if (audio != null) {
+        audio
+          ..setListener(
+            _viewEye,
+            Vec3(math.sin(_simYaw), 0, math.cos(_simYaw)),
+            Vec3(0, 1, 0),
+          )
+          ..setListenerRoom(_currentRoom);
         for (final s in _pendingSounds) {
           _dispatchSound(audio, s);
         }
@@ -1762,7 +1816,31 @@ void _dispatchSound(Audio audio, String name) {
     case 'ambient-gate':
       audio.play('gate', gain: 0.22);
       break;
+    case 'clock:tick':
+      _playHouseCue(audio, 'hall-clock', 'tick');
+      break;
+    case 'clock:chime':
+      _playHouseCue(audio, 'hall-clock', 'chime');
+      break;
+    default:
+      if (name.startsWith('service:')) {
+        final parts = name.split(':');
+        if (parts.length == 3) _playHouseCue(audio, parts[1], parts[2]);
+      }
   }
+}
+
+void _playHouseCue(Audio audio, String emitterId, String event) {
+  final soundscape = _houseSoundscape;
+  final inventory = _houseInventory;
+  if (soundscape == null || inventory == null) return;
+  final emitter = soundscape.emitterFor(emitterId);
+  audio.playAt(
+    emitter.cue(event),
+    soundscape.worldPosition(emitter, _house, inventory.modelScale),
+    sourceRoom: emitter.roomId,
+    gain: emitter.gain,
+  );
 }
 
 void _updateFps(double frameTime) {

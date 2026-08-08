@@ -70,6 +70,9 @@ function assertHealthy(failures, label) {
         houseInventory: canvas.getAttribute('data-house-inventory'),
         houseInventorySource: canvas.getAttribute('data-house-inventory-source'),
         houseInventoryCount: canvas.getAttribute('data-house-inventory-count'),
+        houseSoundscape: canvas.getAttribute('data-house-soundscape'),
+        houseSoundscapeSource: canvas.getAttribute('data-house-soundscape-source'),
+        houseSoundEmitterCount: canvas.getAttribute('data-house-sound-emitter-count'),
         wallTexture: canvas.getAttribute('data-renderer-texture-wall-plaster'),
         grimeTexture: canvas.getAttribute('data-renderer-texture-grime'),
       }));
@@ -127,6 +130,12 @@ function assertHealthy(failures, label) {
             result.houseInventorySource,
           ) || Number(result.houseInventoryCount) !== 27) {
         throw new Error(`${name}: authored house inventory was not validated ${JSON.stringify(result)}`);
+      }
+      if (result.houseSoundscape !== 'validated' ||
+          !['res/house/soundscape.json', '/res/house/soundscape.json'].includes(
+            result.houseSoundscapeSource,
+          ) || Number(result.houseSoundEmitterCount) !== 4) {
+        throw new Error(`${name}: authored house soundscape was not validated ${JSON.stringify(result)}`);
       }
       if (buttons.some((button) => !button.text && !button.label)) {
         throw new Error(`${name}: unlabeled button in accessibility smoke`);

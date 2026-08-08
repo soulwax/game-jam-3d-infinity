@@ -44,7 +44,12 @@
     "collapse": "sfx/collapse.ogg",
     "votive": "sfx/votive.wav",
     "rood": "sfx/rood.ogg",
-    "winnow": "sfx/winnow.wav"
+    "winnow": "sfx/winnow.wav",
+    "clock-tick": "sfx/clock-tick.wav",
+    "clock-chime": "sfx/clock-chime.wav",
+    "range-settle": "sfx/range-settle.wav",
+    "cellar-drip": "sfx/cellar-drip.wav",
+    "cistern-settle": "sfx/cistern-settle.wav"
   },
   "music": {
     "loop": "music/loop.ogg"

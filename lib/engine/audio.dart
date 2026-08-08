@@ -25,6 +25,11 @@ const Map<String, String> sfxSlot = {
   'votive': 'mid',
   'rood': 'transient',
   'winnow': 'transient',
+  'clock-tick': 'transient',
+  'clock-chime': 'mid',
+  'range-settle': 'transient',
+  'cellar-drip': 'transient',
+  'cistern-settle': 'transient',
 
   'step-above-0': 'sub',
   'step-above-1': 'sub',
@@ -257,15 +262,11 @@ class Audio {
 
   void setListener(Vec3 pos, Vec3 fwd, Vec3 up) {
     final l = _ctx.listener;
-    l.positionX.value = pos.x;
-    l.positionY.value = pos.y;
-    l.positionZ.value = pos.z;
-    l.forwardX.value = fwd.x;
-    l.forwardY.value = fwd.y;
-    l.forwardZ.value = fwd.z;
-    l.upX.value = up.x;
-    l.upY.value = up.y;
-    l.upZ.value = up.z;
+    // Firefox can expose the AudioParam listener fields as null until the
+    // context is resumed. The legacy methods remain widely implemented and
+    // update the same spatial listener state without a nullable bridge seam.
+    l.setPosition(pos.x, pos.y, pos.z);
+    l.setOrientation(fwd.x, fwd.y, fwd.z, up.x, up.y, up.z);
   }
 
   void setRoomIr(String irName) {

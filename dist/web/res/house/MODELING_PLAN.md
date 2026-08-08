@@ -195,6 +195,15 @@ socket uniqueness and route-safe margins. The catalog intentionally points at
 future normalized model paths and declares `room-fixture` proxies, so the current
 authored fixture mesh remains the visual fallback until those models are imported.
 
+`assets/house/soundscape.json` is the matching acoustic placement authority. It
+binds four emitters to inventory placement IDs: the hall clock (hourly tick and
+six-hour chime), kitchen range (metal settling), cellar drain (drip), and
+bathroom cistern (tank settling). Cue files are authored deterministic WAVs in
+`web/res/sfx/`; the runtime resolves their room-local positions through the
+house model scale, listener room, and portal graph so closed doors attenuate the
+source naturally. Clock scheduling is simulation-owned and emits no historical
+backlog after sleep or restore.
+
 ### Kit dimensions and variants
 
 These bands keep independently authored pieces compatible. Final measurements are

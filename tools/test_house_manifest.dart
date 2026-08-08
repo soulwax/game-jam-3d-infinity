@@ -52,6 +52,10 @@ void main() {
     stringOf(house, 'inventoryPath') == 'assets/house/inventory.json',
     'house inventory path drifted',
   );
+  require(
+    stringOf(house, 'soundscapePath') == 'assets/house/soundscape.json',
+    'house soundscape path drifted',
+  );
 
   final rooms = listOf(house, 'rooms');
   final portals = listOf(house, 'portals');

@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "kind": "quarantine-house-soundscape",
+  "sourceRef": "assets/house/house.json",
+  "units": "metres",
+  "coordinateSpace": "room-local-y-up",
+  "emitters": [
+    {
+      "id": "hall-clock",
+      "roomId": "hall",
+      "placementId": "placement-hall-clock",
+      "position": [1.22, 2.18, 0.12],
+      "gain": 0.34,
+      "cues": {"tick": "clock-tick", "chime": "clock-chime"}
+    },
+    {
+      "id": "kitchen-range",
+      "roomId": "kitchen",
+      "placementId": "placement-kitchen-range",
+      "position": [4.05, 0.94, 1.45],
+      "gain": 0.22,
+      "cues": {"settle": "range-settle"}
+    },
+    {
+      "id": "cellar-drain",
+      "roomId": "cellar",
+      "placementId": "placement-cellar-drain",
+      "position": [2.60, 0.12, 2.85],
+      "gain": 0.28,
+      "cues": {"drip": "cellar-drip"}
+    },
+    {
+      "id": "bathroom-cistern",
+      "roomId": "bathroom",
+      "placementId": "placement-bathroom-cistern",
+      "position": [2.12, 1.50, 2.05],
+      "gain": 0.18,
+      "cues": {"settle": "cistern-settle"}
+    }
+  ]
+}
