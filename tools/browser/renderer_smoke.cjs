@@ -66,6 +66,8 @@ function assertHealthy(failures, label) {
         frameSubmits: canvas.getAttribute('data-renderer-frame-submits'),
         houseManifest: canvas.getAttribute('data-house-manifest'),
         houseManifestSource: canvas.getAttribute('data-house-manifest-source'),
+        wallTexture: canvas.getAttribute('data-renderer-texture-wall-plaster'),
+        grimeTexture: canvas.getAttribute('data-renderer-texture-grime'),
       }));
       const buttons = await page.locator('button').evaluateAll((nodes) =>
         nodes.map((node) => ({
@@ -96,6 +98,10 @@ function assertHealthy(failures, label) {
       if (result.backend === 'next' &&
           !diagnostics.capabilities.includes(`profile-${diagnostics.profile}`)) {
         throw new Error(`${name}: selected profile is absent from capabilities ${JSON.stringify(diagnostics)}`);
+      }
+      if (result.backend === 'next' &&
+          (result.wallTexture !== 'loaded' || result.grimeTexture !== 'loaded')) {
+        throw new Error(`${name}: authored Pixeldart textures did not load ${JSON.stringify(result)}`);
       }
       if (name === 'unknown-fallback' &&
           (diagnostics.fallback !== true ||

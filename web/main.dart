@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:math' as math;
+import 'dart:typed_data';
 
 import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/audio.dart';
@@ -96,6 +97,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   px.InstanceId? _exteriorShellItem;
   px.RetainedItemDescriptor? _exteriorShellDescriptor;
   final List<_PixeldartDecoration> _decorations = [];
+  final Map<String, px.TextureHandle> _textures = {};
+  final Map<String, px.MaterialHandle> _roomMaterials = {};
   px.MaterialHandle? _sceneMaterial;
   px.MaterialHandle? _exteriorMaterial;
   px.CameraView? _cameraView;
@@ -216,12 +219,36 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   /// read here, while the Pixeldart world owns only renderer handles.
   void attachHouse(House house) {
     if (!_initialized || _sceneItems.isNotEmpty) return;
+    _textures['wall-plaster'] = _renderer.resources.registerTexture(
+      width: 256,
+      height: 256,
+      debugLabel: 'texture:wall-plaster',
+    );
+    _textures['grime'] = _renderer.resources.registerTexture(
+      width: 512,
+      height: 512,
+      debugLabel: 'texture:grime',
+    );
     _sceneMaterial = _renderer.resources.registerMaterial(
-      const px.MaterialDefinition(
+      px.MaterialDefinition(
         key: 'quarantine-house-safe',
+        albedoTexture: _textures['wall-plaster'],
         tintR: 0.58,
         tintG: 0.58,
         tintB: 0.58,
+        uvScaleU: 1.0,
+        uvScaleV: 1.0,
+      ),
+    );
+    _roomMaterials['cellar'] = _renderer.resources.registerMaterial(
+      px.MaterialDefinition(
+        key: 'quarantine-house-cellar',
+        albedoTexture: _textures['grime'],
+        tintR: 0.48,
+        tintG: 0.46,
+        tintB: 0.44,
+        uvScaleU: 1.0,
+        uvScaleV: 1.0,
       ),
     );
     for (final room in house.rooms) {
@@ -233,7 +260,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _sceneMeshes.add(handle);
       final descriptor = px.RetainedItemDescriptor(
         mesh: handle,
-        material: _sceneMaterial!,
+        material: _materialForRoom(room.id),
       );
       final item = _world.addItem(descriptor);
       _sceneItems.add(item);
@@ -261,8 +288,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     }
     final exteriorMesh = toPixeldartMeshData(buildHouseExteriorMesh(house));
     _exteriorMaterial = _renderer.resources.registerMaterial(
-      const px.MaterialDefinition(
+      px.MaterialDefinition(
         key: 'quarantine-house-exterior-shell',
+        albedoTexture: _textures['grime'],
         tintR: 0.5,
         tintG: 0.5,
         tintB: 0.5,
@@ -542,7 +570,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _sceneMeshes.add(handle);
     final base = px.RetainedItemDescriptor(
       mesh: handle,
-      material: _sceneMaterial!,
+      material: _materialForRoom(roomId),
       visibilityMask: 0,
     );
     final item = _world.addItem(base);
@@ -554,6 +582,50 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         isVisible: visible,
       ),
     );
+  }
+
+  px.MaterialHandle _materialForRoom(String roomId) =>
+      _roomMaterials[roomId] ?? _sceneMaterial!;
+
+  /// Loads authored RGBA pixels into the already-declared retained textures.
+  /// Declaring handles during [attachHouse] means geometry and materials stay
+  /// stable while the browser performs image decoding; missing art keeps the
+  /// renderer's white fallback instead of removing the scene.
+  Future<void> loadTextures(Map<String, String> urls) async {
+    if (!_initialized) return;
+    await Future.wait([
+      for (final key in const ['wall-plaster', 'grime'])
+        if (urls[key] case final url?) _loadTexture(key, url),
+    ]);
+  }
+
+  Future<void> _loadTexture(String key, String url) async {
+    final handle = _textures[key];
+    if (handle == null) return;
+    try {
+      final image = web.HTMLImageElement()..src = url;
+      await image.decode().toDart;
+      final canvas = web.HTMLCanvasElement()
+        ..width = image.naturalWidth
+        ..height = image.naturalHeight;
+      final context = canvas.getContext('2d');
+      if (context is! web.CanvasRenderingContext2D) {
+        throw StateError('2D canvas context unavailable for $key');
+      }
+      context.drawImage(image, 0, 0);
+      final pixels = context
+          .getImageData(0, 0, image.naturalWidth, image.naturalHeight)
+          .data
+          .toDart;
+      _renderer.resources.updateTexturePixels(
+        handle,
+        Uint8List.fromList(pixels),
+      );
+      _canvas.setAttribute('data-renderer-texture-$key', 'loaded');
+    } catch (error) {
+      _canvas.setAttribute('data-renderer-texture-$key', 'fallback');
+      web.console.warn('Pixeldart texture $key unavailable: $error'.toJS);
+    }
   }
 
   px.RetainedItemDescriptor _withVisibility(
@@ -1302,7 +1374,10 @@ Future<void> _initAudio(JSObject? data) async {
 Future<void> _loadTextures(JSObject? data) async {
   final urls = <String, String>{};
   _collectUrls(data?['tex'] as JSObject?, urls);
-  await _renderer?.loadTextures(urls);
+  await Future.wait([
+    _renderer?.loadTextures(urls) ?? Future<void>.value(),
+    _pixeldartRuntime?.loadTextures(urls) ?? Future<void>.value(),
+  ]);
 }
 
 void _applyCredits(JSObject? data) {

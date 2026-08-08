@@ -912,6 +912,25 @@ void _wallQuad(
     Facing.east => Vec3(x + size.x, y + v0, z + u1),
     Facing.west => Vec3(x, y + v0, z + u0),
   };
+  // Keep an authored UV-bearing interior face on top of the structural wall
+  // volume. The tiny room-side offset avoids z-fighting with the box cap while
+  // leaving the collision plane and exterior thickness unchanged.
+  const inset = 0.003;
+  final roomSide = switch (facing) {
+    Facing.north => Vec3(0, 0, inset),
+    Facing.south => Vec3(0, 0, -inset),
+    Facing.east => Vec3(-inset, 0, 0),
+    Facing.west => Vec3(inset, 0, 0),
+  };
+  builder.quad(
+    a + roomSide,
+    b + roomSide,
+    c + roomSide,
+    d + roomSide,
+    0x8B8B8B,
+    uScale: (u1 - u0) / texWorldSize,
+    vScale: (v1 - v0) / texWorldSize,
+  );
   // Keep the canonical interior face at the room boundary, then cap a real
   // structural section outward. This gives every wall visible reveal/contact
   // thickness while preserving the collision planes used by simulation.
