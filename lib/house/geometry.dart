@@ -46,6 +46,7 @@ RoomGeometry buildRoomGeometry(House house, Room room) {
     uScale: s.x / texWorldSize,
     vScale: s.z / texWorldSize,
   );
+  _addFloorFinish(floor, room, s);
   ceiling.quad(
     Vec3(o.x, o.y + s.y, o.z),
     Vec3(o.x + s.x, o.y + s.y, o.z),
@@ -70,6 +71,98 @@ RoomGeometry buildRoomGeometry(House house, Room room) {
     walls: walls.build(),
     doors: doors.build(),
   );
+}
+
+void _addFloorFinish(StaticMeshBuilder builder, Room room, Vec3 size) {
+  final x = room.origin.x;
+  final y = room.origin.y;
+  final z = room.origin.z;
+  if (room.surfaceFloor == 'floor-wood') {
+    const boardDepth = 0.15;
+    final boardCount = (size.z / 0.22).floor();
+    for (var i = 0; i < boardCount; i++) {
+      final z0 = z + i * 0.22 + 0.018;
+      final tone = i.isEven ? 0x795A43 : 0x6B4B37;
+      _box(
+        builder,
+        Vec3(x, y + 0.004, z0),
+        Vec3(x + size.x, y + 0.014, z0 + boardDepth),
+        tone,
+      );
+    }
+    if (room.id == 'hall' || room.id == 'landing') {
+      final runnerWidth = room.id == 'hall' ? 1.0 : 0.82;
+      final runnerX = x + (size.x - runnerWidth) * 0.5;
+      _box(
+        builder,
+        Vec3(runnerX, y + 0.016, z + 0.18),
+        Vec3(runnerX + runnerWidth, y + 0.026, z + size.z - 0.18),
+        0x62535A,
+      );
+      _box(
+        builder,
+        Vec3(runnerX + 0.08, y + 0.027, z + 0.22),
+        Vec3(runnerX + runnerWidth - 0.08, y + 0.033, z + size.z - 0.22),
+        0x82706C,
+      );
+    }
+    if (room.id == 'living-room') {
+      _box(
+        builder,
+        Vec3(x + 1.15, y + 0.018, z + 2.15),
+        Vec3(x + 4.70, y + 0.030, z + 4.35),
+        0x554A4A,
+      );
+      _box(
+        builder,
+        Vec3(x + 1.28, y + 0.031, z + 2.28),
+        Vec3(x + 4.57, y + 0.037, z + 4.22),
+        0x77656A,
+      );
+    }
+    return;
+  }
+  if (room.surfaceFloor == 'floor-linoleum') {
+    for (var i = 0; i < 5; i++) {
+      final z0 = z + 0.18 + i * 0.62;
+      _box(
+        builder,
+        Vec3(x + 0.08, y + 0.004, z0),
+        Vec3(x + size.x - 0.08, y + 0.012, z0 + 0.50),
+        i.isEven ? 0x76796C : 0x686B61,
+      );
+    }
+    return;
+  }
+  if (room.surfaceFloor == 'floor-tiles') {
+    for (var ix = 0; ix < 4; ix++) {
+      for (var iz = 0; iz < 3; iz++) {
+        final x0 = x + 0.08 + ix * 0.86;
+        final z0 = z + 0.08 + iz * 0.86;
+        _box(
+          builder,
+          Vec3(x0, y + 0.004, z0),
+          Vec3(x0 + 0.78, y + 0.012, z0 + 0.78),
+          (ix + iz).isEven ? 0xB9B4A8 : 0xA29D94,
+        );
+      }
+    }
+    return;
+  }
+  if (room.surfaceFloor == 'floor-concrete') {
+    _box(
+      builder,
+      Vec3(x + 0.08, y + 0.004, z + 0.08),
+      Vec3(x + size.x - 0.08, y + 0.014, z + size.z - 0.08),
+      0x77736B,
+    );
+    _box(
+      builder,
+      Vec3(x + 2.20, y + 0.015, z + 2.45),
+      Vec3(x + 2.68, y + 0.021, z + 2.93),
+      0x4A4944,
+    );
+  }
 }
 
 /// Adds authored, view-only furnishing and architectural anchors to the room
