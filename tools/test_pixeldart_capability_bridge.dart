@@ -20,14 +20,19 @@ RenderCapabilities _caps({int samples = 1, bool floatTargets = false}) =>
 
 void main() {
   const bridge = PixeldartCapabilityBridge();
-  final safe = bridge.decide(_caps());
+  final safe = bridge.decide(RenderCapabilities.safeMinimum);
   _expect(safe.profile == 'safe', 'minimum capability profile is safe');
   final rich = bridge.decide(_caps(samples: 4, floatTargets: true));
   _expect(
-    rich.profile == 'standard',
-    'rich capabilities enable standard profile',
+    rich.profile == 'high',
+    'rich capabilities expose the executable high profile',
   );
   _expect(rich.capabilities.contains('webgl2'), 'WebGL identity is retained');
+  _expect(
+    rich.capabilities.contains('negotiated-profile-high') &&
+        rich.capabilities.contains('profile-high'),
+    'diagnostics distinguish negotiated and executable profiles',
+  );
   final serialized = bridge.serialize(_caps(samples: 2));
   _expect(
     bridge.deserialize(serialized).maxSamples == 2,
@@ -62,8 +67,9 @@ void main() {
     'context-loss support remains observable',
   );
   _expect(
-    bridge.diagnostics(_caps()).profile == safe.profile,
-    'diagnostics use the same capability decision',
+    bridge.diagnostics(_caps(samples: 4, floatTargets: true)).profile ==
+        rich.profile,
+    'diagnostics use the executable capability decision',
   );
   var rejected = false;
   try {

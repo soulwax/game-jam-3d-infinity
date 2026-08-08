@@ -9,13 +9,11 @@ final class PixeldartCapabilityBridge {
 
   CapabilityDecision decide(pixeldart.RenderCapabilities capabilities) {
     capabilities.validate();
-    final available = <String>{'webgl2'};
-    if (capabilities.maxSamples > 1) available.add('msaa');
-    if (capabilities.floatRenderTarget || capabilities.halfFloatRenderTarget) {
-      available.add('float-textures');
-    }
-    if (capabilities.anisotropicFiltering) available.add('anisotropy');
-    return const CapabilityPolicy().choose(available: available);
+    final profile = runtimeProfile(capabilities);
+    return CapabilityDecision(
+      profile: profile.kind.name,
+      capabilities: capabilityLabels(capabilities, profile: profile),
+    );
   }
 
   Map<String, Object?> serialize(pixeldart.RenderCapabilities capabilities) =>
@@ -48,8 +46,10 @@ final class PixeldartCapabilityBridge {
   }) {
     capabilities.validate();
     final selected = profile ?? runtimeProfile(capabilities);
+    final negotiated = qualityProfile(capabilities);
     return [
       capabilities.webglVersion ?? 'webgl2',
+      'webgl2',
       if (capabilities.vendorString case final vendor?) 'vendor-$vendor',
       if (capabilities.rendererString case final renderer?)
         'renderer-$renderer',
@@ -58,6 +58,7 @@ final class PixeldartCapabilityBridge {
       'max-samples-${capabilities.maxSamples}',
       'max-vertex-attributes-${capabilities.maxVertexAttributes}',
       'max-color-attachments-${capabilities.maxColorAttachments}',
+      'negotiated-profile-${negotiated.kind.name}',
       'profile-${selected.kind.name}',
       for (final feature in (selected.installedFeatures.toList()..sort()))
         'feature-$feature',
