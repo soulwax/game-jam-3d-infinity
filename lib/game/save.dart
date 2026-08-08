@@ -1,7 +1,8 @@
 import 'dart:convert';
 
 class SaveSnapshot {
-  static const int currentVersion = 1;
+  static const int legacyVersion = 1;
+  static const int currentVersion = 2;
 
   final int version;
   final Map<String, dynamic> run;
@@ -26,7 +27,8 @@ class SaveSnapshot {
 
   static SaveSnapshot fromJson(Map<String, dynamic> json) {
     final version = json['version'];
-    if (version is! int || version != currentVersion) {
+    if (version is! int ||
+        (version != legacyVersion && version != currentVersion)) {
       throw FormatException('unsupported save version $version');
     }
     final run = json['run'];
@@ -35,7 +37,7 @@ class SaveSnapshot {
       throw const FormatException('save run and meta must be objects');
     }
     return SaveSnapshot(
-      version: version,
+      version: currentVersion,
       run: Map<String, dynamic>.from(run),
       meta: Map<String, dynamic>.from(meta),
     );
@@ -65,12 +67,25 @@ Map<String, dynamic> _canonicalMap(Map<String, dynamic> value) {
 
 dynamic _canonicalValue(dynamic value) {
   if (value is Map) {
-    return _canonicalMap(Map<String, dynamic>.from(value));
+    final converted = <String, dynamic>{};
+    for (final entry in value.entries) {
+      if (entry.key is! String) {
+        throw const FormatException('save map keys must be strings');
+      }
+      converted[entry.key as String] = entry.value;
+    }
+    return _canonicalMap(converted);
   }
   if (value is List) {
     return List.unmodifiable(value.map(_canonicalValue));
   }
-  if (value == null || value is bool || value is num || value is String) {
+  if (value == null || value is bool || value is String) {
+    return value;
+  }
+  if (value is num) {
+    if (!value.isFinite) {
+      throw const FormatException('save contains a non-finite number');
+    }
     return value;
   }
   throw FormatException('save contains unsupported value ${value.runtimeType}');

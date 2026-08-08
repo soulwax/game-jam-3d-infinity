@@ -32,7 +32,7 @@ void main() {
   );
   var rejectedFuture = false;
   try {
-    codec.decode('{"version":2,"run":{},"meta":{}}');
+    codec.decode('{"version":3,"run":{},"meta":{}}');
   } on FormatException {
     rejectedFuture = true;
   }
