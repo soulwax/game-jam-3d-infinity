@@ -18,7 +18,7 @@ nine observable from inside, or the opposite-house 10-to-11 window change.
 Decorative geometry wraps those facts; it never replaces them.
 
 Current checkpoint: the scaled interior shell, thick walls, modeled portal doors,
-and first exterior envelope are implemented. Remaining production work is
+room fixture pass, and first exterior envelope are implemented. Remaining production work is
 material/texture replacement, higher-fidelity kit variants, fixed-camera review,
 and fixed-camera review; the Pixeldart next runtime now consumes the QHMX-compatible
 shell through its indexed adapter and PVS mask without changing collision or room
@@ -164,6 +164,14 @@ leaf: passable doors swing into the room from their hinge edge, while closed doo
 remain seated in the opening. The front door uses the recessed hero kit, the cellar
 uses the grille kit, and interior rooms use the four-panel kit. The stair portal
 deliberately remains a modeled open stair throat rather than a door.
+
+The current room mesh also carries a deterministic lived-in fixture pass. It adds
+the living-room fireplace and grate, hall stair treads/table/clock, kitchen range
+and worktable, cellar coal stack and pipe, bedroom bed/washstand, landing guard,
+bathroom tub/cistern, and spare-room sheeted furniture. These are render-only
+boxes authored from the scaled room envelope; they are deliberately kept out of
+collision and focus queries, and the stair run is clipped to the hall's canonical
+render bounds at the landing transition.
 
 ### Kit dimensions and variants
 

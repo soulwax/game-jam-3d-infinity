@@ -55,5 +55,5 @@ void main() {
       _fail('room ${room.id} wall mesh has no structural thickness');
     }
   }
-  print('room geometry: shared legacy/Pixeldart opening mesh fixture passes');
+  print('room geometry: shared legacy/Pixeldart openings and fixture pass');
 }
