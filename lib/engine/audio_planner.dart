@@ -149,6 +149,20 @@ final class AudioPlan {
        portalPath = List.unmodifiable(portalPath);
 }
 
+final class AudioTransmission {
+  final List<String> portalPath;
+  final double gainDb;
+  final double lowPassHz;
+  final bool reachable;
+
+  AudioTransmission({
+    required List<String> portalPath,
+    required this.gainDb,
+    required this.lowPassHz,
+    required this.reachable,
+  }) : portalPath = List.unmodifiable(portalPath);
+}
+
 final class AudioPlanner {
   final House house;
   final Map<String, AcousticPortalProfile> portalProfiles;
@@ -171,7 +185,30 @@ final class AudioPlanner {
     if (house.byId(listener.roomId) == null) {
       throw StateError('audio listener room missing: ${listener.roomId}');
     }
-    final route = _route(event.sourceRoom, listener.roomId);
+    final transmission = this.transmission(event.sourceRoom, listener.roomId);
+    return AudioPlan(
+      eventId: event.id,
+      cue: cues.select(event.cueFamily, event.seed),
+      category: event.category,
+      sourceRoom: event.sourceRoom,
+      position: event.position,
+      portalPath: transmission.portalPath,
+      gainDb: transmission.gainDb,
+      lowPassHz: transmission.lowPassHz,
+      unreachable:
+          !transmission.reachable && event.sourceRoom != listener.roomId,
+      priority: event.priority,
+    );
+  }
+
+  AudioTransmission transmission(String sourceRoom, String listenerRoom) {
+    if (house.byId(sourceRoom) == null) {
+      throw StateError('audio source room missing: $sourceRoom');
+    }
+    if (house.byId(listenerRoom) == null) {
+      throw StateError('audio listener room missing: $listenerRoom');
+    }
+    final route = _route(sourceRoom, listenerRoom);
     var gainDb = 0.0;
     var lowPassHz = 20000.0;
     for (final portal in route.portals) {
@@ -181,21 +218,15 @@ final class AudioPlanner {
       gainDb += edgeGain;
       if (edgeCutoff < lowPassHz) lowPassHz = edgeCutoff;
     }
-    if (!route.reachable && event.sourceRoom != listener.roomId) {
+    if (!route.reachable && sourceRoom != listenerRoom) {
       gainDb = -48.0;
       lowPassHz = 240.0;
     }
-    return AudioPlan(
-      eventId: event.id,
-      cue: cues.select(event.cueFamily, event.seed),
-      category: event.category,
-      sourceRoom: event.sourceRoom,
-      position: event.position,
+    return AudioTransmission(
       portalPath: [for (final portal in route.portals) portal.id],
       gainDb: gainDb.clamp(-60.0, 0.0),
       lowPassHz: lowPassHz.clamp(120.0, 20000.0),
-      unreachable: !route.reachable && event.sourceRoom != listener.roomId,
-      priority: event.priority,
+      reachable: route.reachable || sourceRoom == listenerRoom,
     );
   }
 

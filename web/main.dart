@@ -1621,6 +1621,7 @@ Future<void> _loadAuthoredHouseSoundscape() async {
         }
       }
       _audioPlanner = AudioPlanner(house: _house, cues: AudioCueSet(variants));
+      _audio?.setAcousticPlanner(_audioPlanner);
       _canvas.setAttribute('data-audio-planner', 'validated');
       _canvas.setAttribute('data-house-soundscape', 'validated');
       _canvas.setAttribute('data-house-soundscape-source', url);
@@ -1663,6 +1664,7 @@ Future<void> _initAudio(JSObject? data) async {
   if (loop.isA<JSString>()) urls['music'] = 'res/${(loop as JSString).toDart}';
   final audio = await Audio.load(urls, house: _house);
   _audio = audio;
+  audio.setAcousticPlanner(_audioPlanner);
   if (_audioArmed) audio.resume();
 }
 

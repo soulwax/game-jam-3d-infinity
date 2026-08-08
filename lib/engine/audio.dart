@@ -55,6 +55,7 @@ class Audio {
   final math.Random _rng = math.Random();
 
   String? _listenerRoom;
+  AudioPlanner? _acousticPlanner;
   final Map<web.BiquadFilterNode, _SpatialChain> _filterChains = {};
 
   bool _musicStarted = false;
@@ -378,25 +379,49 @@ class Audio {
     _updateAllOcclusionFilters();
   }
 
+  void setAcousticPlanner(AudioPlanner? planner) {
+    _acousticPlanner = planner;
+    _updateAllOcclusionFilters();
+  }
+
   void _updateAllOcclusionFilters() {
     final house = _house;
     final listenerRoom = _listenerRoom;
     if (house == null || listenerRoom == null) return;
 
     for (final entry in _filterChains.entries) {
-      final filter = entry.key;
       final chain = entry.value;
       final sourceRoom = chain.sourceRoom;
       if (sourceRoom == null) continue;
 
-      final path = house.pathBetweenRooms(sourceRoom, listenerRoom);
-      final (gainDb, freqHz) = _computeOcclusion(path);
-
-      filter.frequency.value = freqHz;
-      chain.attenuationGain.gain.value = math
-          .pow(10.0, gainDb / 20.0)
-          .toDouble();
+      final transmission = _acousticPlanner?.transmission(
+        sourceRoom,
+        listenerRoom,
+      );
+      final (gainDb, freqHz) = transmission == null
+          ? _computeOcclusion(house.pathBetweenRooms(sourceRoom, listenerRoom))
+          : (transmission.gainDb, transmission.lowPassHz);
+      _rampTransmission(chain, gainDb, freqHz);
     }
+  }
+
+  void _rampTransmission(
+    _SpatialChain chain,
+    double gainDb,
+    double frequencyHz,
+  ) {
+    final now = _ctx.currentTime.toDouble();
+    const seconds = 0.08;
+    final gain = math.pow(10.0, gainDb / 20.0).toDouble();
+    chain.filter.frequency.cancelScheduledValues(now);
+    chain.filter.frequency.setValueAtTime(chain.filter.frequency.value, now);
+    chain.filter.frequency.linearRampToValueAtTime(frequencyHz, now + seconds);
+    chain.attenuationGain.gain.cancelScheduledValues(now);
+    chain.attenuationGain.gain.setValueAtTime(
+      chain.attenuationGain.gain.value,
+      now,
+    );
+    chain.attenuationGain.gain.linearRampToValueAtTime(gain, now + seconds);
   }
 
   void _disposeSpatial(web.BiquadFilterNode filter) {

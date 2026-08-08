@@ -71,6 +71,12 @@ void main() {
     living.gainDb == -2 && living.lowPassHz == 20000,
     'open portal transmission is wrong',
   );
+  final openTransmission = planner.transmission('hall', 'living-room');
+  _expect(
+    openTransmission.portalPath.join(',') == 'hall-living' &&
+        openTransmission.reachable,
+    'public transmission route is wrong: ${openTransmission.portalPath}',
+  );
 
   final portal = house.portalById('hall-living')!;
   portal.open = false;
@@ -81,6 +87,11 @@ void main() {
   _expect(
     closed.gainDb == -18 && closed.lowPassHz == 900,
     'closed portal transmission is wrong',
+  );
+  final closedTransmission = planner.transmission('hall', 'living-room');
+  _expect(
+    closedTransmission.gainDb == -18 && closedTransmission.lowPassHz == 900,
+    'public transmission did not observe portal state',
   );
   portal.locked = true;
   final sealed = planner.plan(
