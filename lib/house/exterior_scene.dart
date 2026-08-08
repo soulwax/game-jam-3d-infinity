@@ -17,11 +17,14 @@ HouseExteriorMesh buildHouseExteriorMesh(House house) {
   for (final facing in Facing.values) {
     _facade(builder, house, facing, width, depth, eaves, wall);
   }
+  _stringCourses(builder, width, depth);
   _plinth(builder, width, depth);
   _roof(builder, width, depth, eaves, ridge);
+  _roofDetails(builder, width, depth, eaves, ridge);
   _chimneys(builder, width, depth, ridge);
   _drainage(builder, width, depth, eaves);
   _frontThreshold(builder, house, width);
+  _serviceDetails(builder, width, depth);
   _boundaryAndStreet(builder, width);
   return builder.build();
 }
@@ -162,6 +165,150 @@ void _facade(
     }
   }
   _facadeOpenings(builder, openings, facing, width, depth, wall);
+  _facadeDressings(builder, openings, facing, width, depth, wall);
+}
+
+void _facadeDressings(
+  HouseExteriorMeshBuilder builder,
+  List<_Opening> openings,
+  Facing facing,
+  double width,
+  double depth,
+  double wall,
+) {
+  const stone = 2;
+  const timber = 3;
+  for (final opening in openings) {
+    if (opening.door) continue;
+    switch (facing) {
+      case Facing.north:
+        builder.box(
+          minX: opening.u0 - 0.08,
+          minY: opening.v0 - 0.08,
+          minZ: -wall - 0.08,
+          maxX: opening.u1 + 0.08,
+          maxY: opening.v0 - 0.02,
+          maxZ: -wall,
+          material: stone,
+        );
+        if (opening.v0 < 3.0) {
+          builder.box(
+            minX: opening.u0 - 0.10,
+            minY: opening.v0 - 0.24,
+            minZ: -wall - 0.20,
+            maxX: opening.u1 + 0.10,
+            maxY: opening.v0 - 0.14,
+            maxZ: -wall - 0.05,
+            material: timber,
+          );
+          for (final x in [opening.u0 - 0.04, opening.u1 + 0.04]) {
+            builder.box(
+              minX: x - 0.025,
+              minY: opening.v0 - 0.16,
+              minZ: -wall - 0.25,
+              maxX: x + 0.025,
+              maxY: opening.v0 - 0.04,
+              maxZ: -wall - 0.17,
+              material: 6,
+            );
+          }
+        }
+      case Facing.south:
+        builder.box(
+          minX: opening.u0 - 0.08,
+          minY: opening.v0 - 0.08,
+          minZ: depth + wall,
+          maxX: opening.u1 + 0.08,
+          maxY: opening.v0 - 0.02,
+          maxZ: depth + wall + 0.08,
+          material: stone,
+        );
+      case Facing.west:
+        builder.box(
+          minX: -wall - 0.08,
+          minY: opening.v0 - 0.08,
+          minZ: opening.u0 - 0.08,
+          maxX: -wall,
+          maxY: opening.v0 - 0.02,
+          maxZ: opening.u1 + 0.08,
+          material: stone,
+        );
+      case Facing.east:
+        builder.box(
+          minX: width + wall,
+          minY: opening.v0 - 0.08,
+          minZ: opening.u0 - 0.08,
+          maxX: width + wall + 0.08,
+          maxY: opening.v0 - 0.02,
+          maxZ: opening.u1 + 0.08,
+          material: stone,
+        );
+    }
+  }
+  if (facing != Facing.north) return;
+  // Alternating dressed corner blocks make the front read as a maintained
+  // end-terrace facade instead of a procedural flat wall.
+  for (var i = 0; i < 10; i++) {
+    final y = 0.28 + i * 0.72;
+    final depthOffset = i.isEven ? 0.02 : 0.10;
+    for (final x in [-0.08, width - 0.10]) {
+      builder.box(
+        minX: x,
+        minY: y,
+        minZ: -wall - depthOffset,
+        maxX: x + 0.18,
+        maxY: y + 0.28,
+        maxZ: -wall + 0.02,
+        material: stone,
+      );
+    }
+  }
+}
+
+void _stringCourses(
+  HouseExteriorMeshBuilder builder,
+  double width,
+  double depth,
+) {
+  const stone = 2;
+  const y0 = 3.96;
+  const y1 = 4.08;
+  builder.box(
+    minX: -0.06,
+    minY: y0,
+    minZ: -0.05,
+    maxX: width + 0.06,
+    maxY: y1,
+    maxZ: 0.04,
+    material: stone,
+  );
+  builder.box(
+    minX: -0.06,
+    minY: y0,
+    minZ: depth - 0.04,
+    maxX: width + 0.06,
+    maxY: y1,
+    maxZ: depth + 0.05,
+    material: stone,
+  );
+  builder.box(
+    minX: -0.05,
+    minY: y0,
+    minZ: -0.04,
+    maxX: 0.04,
+    maxY: y1,
+    maxZ: depth + 0.04,
+    material: stone,
+  );
+  builder.box(
+    minX: width - 0.04,
+    minY: y0,
+    minZ: -0.04,
+    maxX: width + 0.05,
+    maxY: y1,
+    maxZ: depth + 0.04,
+    material: stone,
+  );
 }
 
 void _facadeOpenings(
@@ -542,6 +689,78 @@ void _roof(
   );
 }
 
+void _roofDetails(
+  HouseExteriorMeshBuilder builder,
+  double width,
+  double depth,
+  double eaves,
+  double ridge,
+) {
+  const slate = 4;
+  const lead = 5;
+  const fascia = 3;
+  const overhang = 0.42;
+  // Heavy timber fascia and lead edge at the two visible roof ends.
+  for (final z in [-overhang - 0.03, depth + overhang - 0.09]) {
+    builder.box(
+      minX: -overhang,
+      minY: eaves - 0.14,
+      minZ: z,
+      maxX: width + overhang,
+      maxY: eaves + 0.02,
+      maxZ: z + 0.12,
+      material: fascia,
+    );
+  }
+  for (final z in [-overhang - 0.01, depth + overhang - 0.06]) {
+    builder.box(
+      minX: width * 0.5 - 0.16,
+      minY: ridge - 0.16,
+      minZ: z,
+      maxX: width * 0.5 + 0.16,
+      maxY: ridge - 0.05,
+      maxZ: z + 0.12,
+      material: lead,
+    );
+  }
+  // Short slate starter courses provide a readable eave rhythm without
+  // exploding the broad roof plane into thousands of individual slates.
+  for (var i = 0; i < 12; i++) {
+    final x0 = -overhang + i * (width + 2 * overhang) / 12;
+    final x1 = -overhang + (i + 1) * (width + 2 * overhang) / 12 - 0.015;
+    builder.box(
+      minX: x0,
+      minY: eaves - 0.025,
+      minZ: -overhang - 0.02,
+      maxX: x1,
+      maxY: eaves + 0.015,
+      maxZ: -overhang + 0.04,
+      material: slate,
+    );
+    builder.box(
+      minX: x0,
+      minY: eaves - 0.025,
+      minZ: depth + overhang - 0.04,
+      maxX: x1,
+      maxY: eaves + 0.015,
+      maxZ: depth + overhang + 0.02,
+      material: slate,
+    );
+  }
+  for (final x in [width * 0.25, width * 0.75]) {
+    // Lead flashing collars where each stack pierces the slate field.
+    builder.box(
+      minX: x - 0.50,
+      minY: ridge - 0.63,
+      minZ: depth * 0.14,
+      maxX: x + 0.50,
+      maxY: ridge - 0.56,
+      maxZ: depth * 0.32,
+      material: lead,
+    );
+  }
+}
+
 void _chimneys(
   HouseExteriorMeshBuilder builder,
   double width,
@@ -630,6 +849,7 @@ void _frontThreshold(
   House house,
   double width,
 ) {
+  const wallOffset = 0.42;
   final hall = house.byId('hall')!;
   final door = house.portalById('front-door')!;
   final u0 = hall.origin.x + door.offsetFor('hall');
@@ -663,6 +883,117 @@ void _frontThreshold(
     maxZ: -0.98,
     material: 6,
   );
+  // A small gas/electric lantern and backplate give the entrance a period
+  // scale cue while remaining entirely outside the canonical portal volume.
+  builder.box(
+    minX: u1 + 0.16,
+    minY: 1.55,
+    minZ: -wallOffset,
+    maxX: u1 + 0.28,
+    maxY: 1.95,
+    maxZ: -wallOffset + 0.05,
+    material: 6,
+  );
+  builder.box(
+    minX: u1 + 0.12,
+    minY: 1.42,
+    minZ: -wallOffset - 0.06,
+    maxX: u1 + 0.32,
+    maxY: 1.50,
+    maxZ: -wallOffset + 0.08,
+    material: 3,
+  );
+}
+
+void _serviceDetails(
+  HouseExteriorMeshBuilder builder,
+  double width,
+  double depth,
+) {
+  const stone = 2;
+  const iron = 6;
+  const timber = 3;
+
+  // Side-yard coal hatch and grate, set into the plinth rather than the
+  // collision wall. The bars are deliberately sparse so the detail reads at
+  // normal gameplay distance.
+  builder.box(
+    minX: width + 0.02,
+    minY: -0.03,
+    minZ: 2.25,
+    maxX: width + 0.10,
+    maxY: 0.18,
+    maxZ: 3.35,
+    material: stone,
+  );
+  builder.box(
+    minX: width + 0.10,
+    minY: 0.02,
+    minZ: 2.34,
+    maxX: width + 0.14,
+    maxY: 0.13,
+    maxZ: 3.26,
+    material: iron,
+  );
+  for (var i = 0; i < 5; i++) {
+    final z = 2.42 + i * 0.18;
+    builder.box(
+      minX: width + 0.14,
+      minY: 0.03,
+      minZ: z,
+      maxX: width + 0.18,
+      maxY: 0.12,
+      maxZ: z + 0.07,
+      material: iron,
+    );
+  }
+
+  // Rear service corner: a timber water butt, lid and two iron hoops.
+  final buttX = width + 0.58;
+  final buttZ = depth - 1.15;
+  builder.box(
+    minX: buttX - 0.34,
+    minY: 0,
+    minZ: buttZ - 0.34,
+    maxX: buttX + 0.34,
+    maxY: 1.05,
+    maxZ: buttZ + 0.34,
+    material: timber,
+  );
+  for (final y in [0.26, 0.76]) {
+    builder.box(
+      minX: buttX - 0.37,
+      minY: y,
+      minZ: buttZ - 0.37,
+      maxX: buttX + 0.37,
+      maxY: y + 0.06,
+      maxZ: buttZ + 0.37,
+      material: iron,
+    );
+  }
+  builder.box(
+    minX: buttX - 0.36,
+    minY: 1.05,
+    minZ: buttZ - 0.36,
+    maxX: buttX + 0.36,
+    maxY: 1.12,
+    maxZ: buttZ + 0.36,
+    material: iron,
+  );
+
+  // Low ventilation bricks above the engineering plinth on the rear face.
+  for (var i = 0; i < 6; i++) {
+    final x = 0.65 + i * 1.55;
+    builder.box(
+      minX: x,
+      minY: 0.10,
+      minZ: depth + 0.02,
+      maxX: x + 0.34,
+      maxY: 0.22,
+      maxZ: depth + 0.08,
+      material: iron,
+    );
+  }
 }
 
 void _boundaryAndStreet(HouseExteriorMeshBuilder builder, double width) {
