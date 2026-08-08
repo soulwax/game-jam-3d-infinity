@@ -18,8 +18,29 @@ class BrowserSaveStore {
     _codec.decode(candidate);
     final storage = web.window.localStorage;
     final active = storage.getItem(_activeKey);
-    if (active != null) storage.setItem(_previousKey, active);
-    storage.setItem(_activeKey, candidate);
+    final previous = storage.getItem(_previousKey);
+    try {
+      if (active != null) storage.setItem(_previousKey, active);
+      storage.setItem(_activeKey, candidate);
+    } catch (_) {
+      // localStorage has no transaction primitive. Restore both keys if the
+      // second write fails so a partial rotation cannot destroy recovery.
+      try {
+        if (active == null) {
+          storage.removeItem(_activeKey);
+        } else {
+          storage.setItem(_activeKey, active);
+        }
+        if (previous == null) {
+          storage.removeItem(_previousKey);
+        } else {
+          storage.setItem(_previousKey, previous);
+        }
+      } catch (_) {
+        // Preserve the original storage error for the caller.
+      }
+      rethrow;
+    }
   }
 
   SaveRead read({bool Function(SaveSnapshot snapshot)? isUsable}) {

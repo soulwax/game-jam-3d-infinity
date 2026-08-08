@@ -21,9 +21,13 @@ void _reject(Object? value, String message) {
 Map<String, dynamic> _sections({Map<String, dynamic>? calendar}) => {
   'calendar': calendar ?? {'hour': 8, 'day': 2},
   'economy': {'gas': 4, 'hours': 9},
-  'journal': {'entries': ['door', 'rain']},
+  'journal': {
+    'entries': ['door', 'rain'],
+  },
   'house': {'seed': 77, 'overrides': <String>[]},
-  'content': {'delivered': ['broadcast-day-02']},
+  'content': {
+    'delivered': ['broadcast-day-02'],
+  },
   'features': {'difficulty': 'normal'},
   'secondRun': {'carryover': null},
 };
@@ -33,9 +37,13 @@ void main() {
   final b = DomainSnapshot.fromJson({
     'secondRun': {'carryover': null},
     'features': {'difficulty': 'normal'},
-    'content': {'delivered': ['broadcast-day-02']},
+    'content': {
+      'delivered': ['broadcast-day-02'],
+    },
     'house': {'overrides': <String>[], 'seed': 77},
-    'journal': {'entries': ['door', 'rain']},
+    'journal': {
+      'entries': ['door', 'rain'],
+    },
     'economy': {'hours': 9, 'gas': 4},
     'calendar': {'day': 2, 'hour': 8},
   });
@@ -48,8 +56,8 @@ void main() {
   var immutable = false;
   try {
     a.calendar['day'] = 9;
-  } on UnsupportedError {
-    immutable = true;
+  } catch (error) {
+    immutable = error is UnsupportedError;
   }
   _expect(immutable, 'snapshot sections are immutable');
 

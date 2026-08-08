@@ -368,6 +368,7 @@ class CompiledApp {
       _383: (module,f) => finalizeWrapper(f, function(x0) { return module.exports._383(f,arguments.length,x0) }),
       _384: (module,f) => finalizeWrapper(f, function(x0) { return module.exports._384(f,arguments.length,x0) }),
       _385: (module,f) => finalizeWrapper(f, function(x0) { return module.exports._385(f,arguments.length,x0) }),
+      _386: (x0,x1) => x0.removeItem(x1),
       _387: (module,f) => finalizeWrapper(f, function(x0) { return module.exports._387(f,arguments.length,x0) }),
       _388: (module,f) => finalizeWrapper(f, function(x0) { return module.exports._388(f,arguments.length,x0) }),
       _389: (module,f) => finalizeWrapper(f, function(x0) { return module.exports._389(f,arguments.length,x0) }),

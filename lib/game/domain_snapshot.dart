@@ -102,7 +102,9 @@ dynamic _canonicalValue(dynamic value) {
   if (value == null || value is bool || value is String) return value;
   if (value is num) {
     if (!value.isFinite) {
-      throw const FormatException('domain snapshot contains a non-finite number');
+      throw const FormatException(
+        'domain snapshot contains a non-finite number',
+      );
     }
     return value;
   }

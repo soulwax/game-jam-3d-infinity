@@ -8,6 +8,16 @@ import 'package:quarantine/story/schema.dart' show vocabularyFields;
 
 Never _fail(String message) => throw StateError(message);
 
+class _ToggleCodec extends SaveCodec {
+  bool fail = false;
+
+  @override
+  String encode(SaveSnapshot snapshot) {
+    if (fail) throw const FormatException('synthetic encode failure');
+    return super.encode(snapshot);
+  }
+}
+
 void _expect(bool value, String message) {
   if (!value) _fail(message);
 }
@@ -49,6 +59,22 @@ void main() {
   _expect(
     recovered.recovery == 'recovered previous save',
     'recovery is explicit',
+  );
+
+  final guardedCodec = _ToggleCodec();
+  final guardedStore = SaveStore(codec: guardedCodec);
+  guardedStore.write(a);
+  guardedCodec.fail = true;
+  var writeRejected = false;
+  try {
+    guardedStore.write(b);
+  } on FormatException {
+    writeRejected = true;
+  }
+  _expect(writeRejected, 'failed writes are rejected');
+  _expect(
+    guardedStore.read().snapshot?.run['day'] == 3,
+    'failed writes do not rotate the active save',
   );
 
   final vocabulary = Vocabulary({
