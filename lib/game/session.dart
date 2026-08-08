@@ -10,6 +10,9 @@ import '../sim/day.dart';
 import '../sim/time.dart';
 import '../visitors/state.dart';
 import 'save.dart';
+import 'domain_event.dart';
+import 'presentation_snapshot.dart';
+import 'domain_snapshot.dart';
 
 enum GameSessionEventType {
   timeAdvanced,
@@ -72,6 +75,7 @@ class GameSession {
   final DayLoop _dayLoop;
   final DifficultyState _difficulty;
   final List<GameSessionEvent> _events = [];
+  final List<DomainEvent> _domainEvents = [];
   int _nextEventSequence = 1;
 
   GameSession._(
@@ -169,7 +173,15 @@ class GameSession {
     final difficulty = DifficultyState.fromJson(
       Map<String, dynamic>.from(difficultyJson),
     );
-    return GameSession._(seed, runSeed, house, time, journal, dayLoop, difficulty);
+    return GameSession._(
+      seed,
+      runSeed,
+      house,
+      time,
+      journal,
+      dayLoop,
+      difficulty,
+    );
   }
 
   /// Exists for future pure adapters (movement and audio), but callers receive
@@ -189,6 +201,43 @@ class GameSession {
     rationCoupons: _dayLoop.rationCoupons,
     rationCollectedToday: _dayLoop.rationCollectedToday,
     journalEntryCount: _journal.entries.length,
+  );
+
+  /// Renderer/audio-neutral facts. No mutable game object or runtime handle
+  /// crosses this boundary.
+  PresentationSnapshot get presentationSnapshot => PresentationSnapshot(
+    values: {
+      'calendar': {'day': _time.dayNumber, 'hour': _time.currentHour},
+      'economy': {
+        'hoursRemaining': _dayLoop.hoursRemaining,
+        'gasRemaining': _dayLoop.gasRemaining,
+        'rationCoupons': _dayLoop.rationCoupons,
+        'rationCollectedToday': _dayLoop.rationCollectedToday,
+      },
+      'journal': {'entryCount': _journal.entries.length},
+      'house': HouseState.capture(_house).toJson(),
+      'features': {
+        'recordAccuracy': _difficulty.accuracy,
+        'complianceFloorTripped': _difficulty.complianceTriggered,
+        'isolationElevatesExposure': isolationElevatesExposure,
+      },
+    },
+  );
+
+  /// Canonical domain facts used by save/session integration and scenario
+  /// tooling. Presentation-only readiness and runtime handles are excluded.
+  DomainSnapshot get domainSnapshot => DomainSnapshot(
+    calendar: {'day': _time.dayNumber, 'hour': _time.currentHour},
+    economy: {
+      'hoursRemaining': _dayLoop.hoursRemaining,
+      'gasRemaining': _dayLoop.gasRemaining,
+      'rationCoupons': _dayLoop.rationCoupons,
+    },
+    journal: _journal.toJson(),
+    house: HouseState.capture(_house).toJson(),
+    content: const {},
+    features: {'difficulty': _difficulty.toJson()},
+    secondRun: const {},
   );
 
   /// Serializes all current authoritative session state except mutable house
@@ -352,6 +401,12 @@ class GameSession {
     return events;
   }
 
+  List<DomainEvent> drainDomainEvents() {
+    final events = List<DomainEvent>.unmodifiable(_domainEvents);
+    _domainEvents.clear();
+    return events;
+  }
+
   void _record(GameSessionEventType type, {int? entryOrdinal}) {
     _events.add(
       GameSessionEvent(
@@ -362,6 +417,13 @@ class GameSession {
         entryOrdinal: entryOrdinal,
       ),
     );
+    _domainEvents.add(
+      DomainEvent(
+        kind: _eventKind(type),
+        sequence: _nextEventSequence - 1,
+        selectionSeed: _runSeed,
+      ),
+    );
   }
 
   void _requireNonNegative(int value, String name) {
@@ -370,3 +432,12 @@ class GameSession {
     }
   }
 }
+
+String _eventKind(GameSessionEventType type) => switch (type) {
+  GameSessionEventType.timeAdvanced => 'time.advanced',
+  GameSessionEventType.dayEndReached => 'day.end-reached',
+  GameSessionEventType.journalWritten => 'journal.written',
+  GameSessionEventType.journalRejected => 'journal.rejected',
+  GameSessionEventType.slept => 'sleep.completed',
+  GameSessionEventType.complianceFloorTripped => 'compliance.floor-tripped',
+};

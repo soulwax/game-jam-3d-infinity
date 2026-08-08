@@ -3,17 +3,26 @@ import 'house.dart';
 /// The mutable subset of canonical house geometry. Static geometry is rebuilt
 /// from the seed; this state is deliberately keyed by stable authored IDs.
 class HouseState {
-  const HouseState({
+  HouseState({
     required this.portals,
     required this.windows,
     required this.mantles,
     required this.driftLandedCount,
-  });
+    Map<String, String> overrides = const {},
+    List<String> mantleHistory = const [],
+  }) : overrides = Map.unmodifiable(Map<String, String>.from(overrides)),
+       mantleHistory = List.unmodifiable(mantleHistory);
 
   final Map<String, PortalState> portals;
   final Map<String, bool> windows;
   final Map<String, MantleState> mantles;
   final int driftLandedCount;
+
+  /// Authored Q24/geometry variant IDs, never emitted geometry.
+  final Map<String, String> overrides;
+
+  /// Append-only first-light order, kept separate from current mantle state.
+  final List<String> mantleHistory;
 
   factory HouseState.capture(House house) => HouseState(
     portals: {
@@ -41,6 +50,8 @@ class HouseState {
       for (final entry in mantles.entries) entry.key: entry.value.toJson(),
     },
     'driftLandedCount': driftLandedCount,
+    'overrides': overrides,
+    'mantleHistory': mantleHistory,
   };
 
   static HouseState fromJson(Map<String, dynamic> json) {
@@ -48,10 +59,14 @@ class HouseState {
     final rawWindows = json['windows'];
     final rawMantles = json['mantles'];
     final rawDriftLandedCount = json['driftLandedCount'] ?? 0;
+    final rawOverrides = json['overrides'] ?? const {};
+    final rawMantleHistory = json['mantleHistory'] ?? const [];
     if (rawPortals is! Map ||
         rawWindows is! Map ||
         rawMantles is! Map ||
-        rawDriftLandedCount is! int) {
+        rawDriftLandedCount is! int ||
+        rawOverrides is! Map ||
+        rawMantleHistory is! List) {
       throw const FormatException('saved house state is malformed');
     }
     final portals = <String, PortalState>{};
@@ -79,11 +94,27 @@ class HouseState {
         Map<String, dynamic>.from(entry.value as Map),
       );
     }
+    final overrides = <String, String>{};
+    for (final entry in rawOverrides.entries) {
+      if (entry.key is! String || entry.value is! String) {
+        throw const FormatException('saved house overrides are malformed');
+      }
+      overrides[entry.key as String] = entry.value as String;
+    }
+    final mantleHistory = <String>[];
+    for (final value in rawMantleHistory) {
+      if (value is! String || value.isEmpty) {
+        throw const FormatException('saved mantle history is malformed');
+      }
+      mantleHistory.add(value);
+    }
     return HouseState(
       portals: portals,
       windows: windows,
       mantles: mantles,
       driftLandedCount: rawDriftLandedCount,
+      overrides: overrides,
+      mantleHistory: mantleHistory,
     );
   }
 

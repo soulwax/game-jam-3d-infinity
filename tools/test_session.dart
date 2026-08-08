@@ -51,6 +51,15 @@ void main() {
     'end of day must be an explicit event',
   );
   _expect(session.drainEvents().isEmpty, 'draining events clears the queue');
+  final semantic = session.drainDomainEvents();
+  _expect(
+    semantic.isNotEmpty && semantic.first.kind == 'time.advanced',
+    'session exposes stable semantic events',
+  );
+  _expect(
+    session.presentationSnapshot.values['calendar'] is Map,
+    'session exposes renderer-neutral presentation facts',
+  );
 
   final entry = session.writeJournal(
     {
@@ -120,6 +129,15 @@ void main() {
   _expectThrows(
     () => GameSession.create(vocabulary: vocabulary, daySeconds: 0),
     'invalid day length must fail',
+  );
+  final resumed = GameSession.restore(
+    vocabulary: vocabulary,
+    snapshot: session.toSaveSnapshot(),
+    daySeconds: 24.0,
+  );
+  _expect(
+    resumed.domainSnapshot.encode() == session.domainSnapshot.encode(),
+    'domain snapshot is stable across save and restore',
   );
   print('session tests passed');
 }
