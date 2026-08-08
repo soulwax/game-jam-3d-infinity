@@ -152,6 +152,11 @@ function assertHealthy(failures, label) {
       if (save.status !== 'saved' || !save.active) {
         throw new Error(`${name}: browser save path failed ${JSON.stringify(save)}`);
       }
+      const ignoreVisitor = page.locator('.door.visible button', { hasText: 'ignore' });
+      if (await ignoreVisitor.count() > 0) {
+        await ignoreVisitor.first().click();
+        await page.waitForTimeout(50);
+      }
       for (const [key, marker] of [
         ['j', '.journal-title'],
         ['l', '.entry-picker'],
