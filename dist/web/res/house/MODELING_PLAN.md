@@ -176,6 +176,18 @@ tiles/brackets and mantel objects, hall hooks and umbrella stand, kitchen sink,
 faucet and crockery, cellar valve/pipe fittings, bed pillows/legs, landing
 balusters, bath taps, and spare-room crate bindings.
 
+### Data-driven inventory
+
+`assets/house/inventory.json` is the placement authority for future normalized
+models. It contains a stable asset catalog and 27 exact room-local placements
+covering all eight rooms. Every placement records its role, socket, position,
+Y-up Euler rotation, scale, visibility layer/state key, interaction affordance,
+and clearance radius. Positions are canonical metres; the validator applies the
+house `modelScale` exactly once before checking transformed bounds, room escape,
+socket uniqueness and route-safe margins. The catalog intentionally points at
+future normalized model paths and declares `room-fixture` proxies, so the current
+authored fixture mesh remains the visual fallback until those models are imported.
+
 ### Kit dimensions and variants
 
 These bands keep independently authored pieces compatible. Final measurements are

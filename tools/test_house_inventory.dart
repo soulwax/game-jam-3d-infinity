@@ -1,0 +1,28 @@
+import 'dart:io';
+
+import 'package:quarantine/house/house.dart';
+import 'package:quarantine/house/inventory.dart';
+
+Never fail(String message) => throw StateError('house inventory: $message');
+
+void main() {
+  final path = '${Directory.current.path}/assets/house/inventory.json';
+  final file = File(path);
+  if (!file.existsSync()) fail('missing $path');
+  final inventory = HouseInventory.decode(file.readAsStringSync());
+  inventory.validateAgainst(House(42));
+  if (inventory.assets.length < 20) fail('inventory catalog is too small');
+  if (inventory.placements.length < 24) {
+    fail('inventory needs precise placements for every room');
+  }
+  final rooms = {
+    for (final placement in inventory.placements) placement.roomId,
+  };
+  if (rooms.length != 8) fail('inventory does not cover all eight rooms');
+  final pickable = inventory.placements.where((item) => item.pickable).length;
+  if (pickable < 8) fail('inventory has too few inspectable placements');
+  print(
+    'house inventory: ${inventory.assets.length} assets, '
+    '${inventory.placements.length} placements, $pickable pickable pass',
+  );
+}

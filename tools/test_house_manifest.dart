@@ -48,6 +48,10 @@ void main() {
   );
   final modelScale = (house['modelScale'] as num?)?.toDouble() ?? 1.0;
   require(modelScale == 1.5, 'MVP model scale must be 1.5');
+  require(
+    stringOf(house, 'inventoryPath') == 'assets/house/inventory.json',
+    'house inventory path drifted',
+  );
 
   final rooms = listOf(house, 'rooms');
   final portals = listOf(house, 'portals');

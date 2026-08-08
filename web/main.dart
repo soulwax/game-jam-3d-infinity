@@ -96,6 +96,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   final List<px.InstanceId> _sceneItems = [];
   final Map<String, px.InstanceId> _sceneItemsByRoom = {};
   final Map<String, px.RetainedItemDescriptor> _sceneDescriptors = {};
+  final Map<String, px.InstanceId> _inventoryItemsById = {};
+  final Map<String, px.RetainedItemDescriptor> _inventoryDescriptors = {};
+  final List<px.MeshHandle> _inventoryMeshes = [];
   px.InstanceId? _exteriorShellItem;
   px.RetainedItemDescriptor? _exteriorShellDescriptor;
   final List<_PixeldartDecoration> _decorations = [];
@@ -222,6 +225,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   /// read here, while the Pixeldart world owns only renderer handles.
   void attachHouse(House house) {
     if (!_initialized || _sceneItems.isNotEmpty) return;
+    _houseForInventory = house;
     _textures['wall-plaster'] = _renderer.resources.registerTexture(
       width: 256,
       height: 256,
@@ -322,7 +326,58 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _inventoryPlacements = List<InventoryPlacement>.unmodifiable(
       inventory.placements,
     );
+    if (!_initialized) return;
+    for (final entry in _inventoryItemsById.entries) {
+      _world.removeItem(entry.value);
+      final descriptor = _inventoryDescriptors[entry.key];
+      if (descriptor != null) {
+        _renderer.resources.releaseMesh(descriptor.mesh);
+      }
+    }
+    _inventoryItemsById.clear();
+    _inventoryDescriptors.clear();
+    _inventoryMeshes.clear();
+    for (final placement in _inventoryPlacements) {
+      final room = _houseForInventory?.byId(placement.roomId);
+      if (room == null) continue;
+      final asset = inventory.assetFor(placement.assetId);
+      final mesh = _renderer.resources.registerMesh(
+        _inventoryProxyMesh(asset, placement, inventory.modelScale),
+        debugLabel: 'inventory:${placement.id}',
+      );
+      final position = placement.runtimePosition(inventory.modelScale);
+      final rotation = px.Quat.axisAngle(
+        const px.Vec3(0, 1, 0),
+        placement.transform.rotation.y * math.pi / 180,
+      );
+      final descriptor = px.RetainedItemDescriptor(
+        mesh: mesh,
+        material: _sceneMaterial!,
+        transform: px.Transform(
+          translation: px.Vec3(
+            room.origin.x + position.x,
+            room.origin.y + position.y,
+            room.origin.z + position.z,
+          ),
+          rotation: rotation,
+        ),
+        visibilityMask: -1,
+        castsShadow: false,
+      );
+      _inventoryMeshes.add(mesh);
+      _inventoryDescriptors[placement.id] = descriptor;
+      _inventoryItemsById[placement.id] = _world.addItem(descriptor);
+    }
+    _canvas.setAttribute(
+      'data-renderer-inventory-items',
+      '${_inventoryItemsById.length}',
+    );
   }
+
+  House? _houseForInventory;
+
+  Iterable<InventoryPlacement> inventoryForRoom(String roomId) =>
+      _inventoryPlacements.where((placement) => placement.roomId == roomId);
 
   void setVisibleRooms(House house, String currentRoomId) {
     final current = house.byId(currentRoomId);
@@ -350,6 +405,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _world.updateItem(
         decoration.item,
         _withVisibility(decoration.base, mask),
+      );
+    }
+    for (final placement in _inventoryPlacements) {
+      final item = _inventoryItemsById[placement.id];
+      final base = _inventoryDescriptors[placement.id];
+      if (item == null || base == null) continue;
+      _world.updateItem(
+        item,
+        _withVisibility(base, visible.contains(placement.roomId) ? -1 : 0),
       );
     }
     final exteriorVisible = ExteriorPvs()
@@ -646,6 +710,62 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   px.MaterialHandle _materialForRoom(String roomId) =>
       _roomMaterials[roomId] ?? _sceneMaterial!;
 
+  px.MeshData _inventoryProxyMesh(
+    InventoryAsset asset,
+    InventoryPlacement placement,
+    double modelScale,
+  ) {
+    final scale = placement.transform.scale;
+    final min = Vec3(
+      asset.bounds.min.x * scale.x * modelScale,
+      asset.bounds.min.y * scale.y * modelScale,
+      asset.bounds.min.z * scale.z * modelScale,
+    );
+    final max = Vec3(
+      asset.bounds.max.x * scale.x * modelScale,
+      asset.bounds.max.y * scale.y * modelScale,
+      asset.bounds.max.z * scale.z * modelScale,
+    );
+    final builder = StaticMeshBuilder();
+    _inventoryBox(builder, min, max, _inventoryColor(asset.kind));
+    final vertices = builder.build();
+    return px.MeshData(
+      layout: px.VertexLayoutDescriptor.compatibility14,
+      vertices: vertices,
+      localBounds: px.Aabb.fromPoints([
+        for (var i = 0; i < vertices.length; i += vertexStride)
+          px.Vec3(vertices[i], vertices[i + 1], vertices[i + 2]),
+      ]),
+    );
+  }
+
+  int _inventoryColor(String kind) => switch (kind) {
+    'architecture' => 0x84715D,
+    'fixture' => 0x9C978B,
+    'service' => 0x5F5B55,
+    'story' => 0xA69A83,
+    'micro' => 0x6D6257,
+    _ => 0x75665B,
+  };
+
+  void _inventoryBox(StaticMeshBuilder builder, Vec3 min, Vec3 max, int color) {
+    final p000 = Vec3(min.x, min.y, min.z);
+    final p100 = Vec3(max.x, min.y, min.z);
+    final p110 = Vec3(max.x, max.y, min.z);
+    final p010 = Vec3(min.x, max.y, min.z);
+    final p001 = Vec3(min.x, min.y, max.z);
+    final p101 = Vec3(max.x, min.y, max.z);
+    final p111 = Vec3(max.x, max.y, max.z);
+    final p011 = Vec3(min.x, max.y, max.z);
+    builder
+      ..quad(p100, p000, p010, p110, color)
+      ..quad(p001, p101, p111, p011, color)
+      ..quad(p000, p001, p011, p010, color)
+      ..quad(p101, p100, p110, p111, color)
+      ..quad(p000, p100, p101, p001, color)
+      ..quad(p010, p011, p111, p110, color);
+  }
+
   /// Loads authored RGBA pixels into the already-declared retained textures.
   /// Declaring handles during [attachHouse] means geometry and materials stay
   /// stable while the browser performs image decoding; missing art keeps the
@@ -902,7 +1022,6 @@ late Input _input;
 late Hud<Object> _hud;
 Renderer? _renderer;
 late House _house;
-HouseInventory? _houseInventory;
 RoomEmitter? _emitter;
 late GameTime _time;
 late GameSession _session;
@@ -1416,7 +1535,6 @@ Future<void> _loadAuthoredHouseInventory() async {
       final source = (await response.text().toDart).toString();
       final inventory = HouseInventory.decode(source);
       inventory.validateAgainst(_house);
-      _houseInventory = inventory;
       _pixeldartRuntime?.setInventory(inventory);
       _canvas.setAttribute('data-house-inventory', 'validated');
       _canvas.setAttribute('data-house-inventory-source', url);

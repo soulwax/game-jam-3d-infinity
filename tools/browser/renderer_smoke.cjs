@@ -66,6 +66,9 @@ function assertHealthy(failures, label) {
         frameSubmits: canvas.getAttribute('data-renderer-frame-submits'),
         houseManifest: canvas.getAttribute('data-house-manifest'),
         houseManifestSource: canvas.getAttribute('data-house-manifest-source'),
+        houseInventory: canvas.getAttribute('data-house-inventory'),
+        houseInventorySource: canvas.getAttribute('data-house-inventory-source'),
+        houseInventoryCount: canvas.getAttribute('data-house-inventory-count'),
         wallTexture: canvas.getAttribute('data-renderer-texture-wall-plaster'),
         grimeTexture: canvas.getAttribute('data-renderer-texture-grime'),
       }));
@@ -113,6 +116,12 @@ function assertHealthy(failures, label) {
             result.houseManifestSource,
           )) {
         throw new Error(`${name}: authored house manifest was not validated ${JSON.stringify(result)}`);
+      }
+      if (result.houseInventory !== 'validated' ||
+          !['res/house/inventory.json', '/res/house/inventory.json'].includes(
+            result.houseInventorySource,
+          ) || Number(result.houseInventoryCount) !== 27) {
+        throw new Error(`${name}: authored house inventory was not validated ${JSON.stringify(result)}`);
       }
       if (buttons.some((button) => !button.text && !button.label)) {
         throw new Error(`${name}: unlabeled button in accessibility smoke`);

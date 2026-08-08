@@ -4,6 +4,7 @@
   "status": "authored-shell-v0",
   "modelScale": 1.5,
   "exteriorMesh": {"format":"QHMX","version":1,"path":"assets/house/exterior/main_shell.qhmx","materialsPath":"assets/house/exterior/materials.json","viewOnly":true,"wallThickness":0.42,"partitionThickness":0.18},
+  "inventoryPath": "assets/house/inventory.json",
   "levels": [
     {"id":"cellar","kind":"below-grade","floorY":-2.0},
     {"id":"ground","kind":"ground","floorY":0.0},
