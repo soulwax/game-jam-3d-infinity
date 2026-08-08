@@ -63,11 +63,314 @@ RoomGeometry buildRoomGeometry(House house, Room room) {
     _addDoorModel(doors, room, s, portal);
   }
   _addCeilingOrnament(walls, room, s);
+  _addRoomFixtures(walls, house, room, s);
   return RoomGeometry(
     floor: floor.build(),
     ceiling: ceiling.build(),
     walls: walls.build(),
     doors: doors.build(),
+  );
+}
+
+/// Adds authored, view-only furnishing and architectural anchors to the room
+/// mesh. These pieces deliberately stay in the render stream: collision,
+/// focus queries and portal traversal continue to use the simulation facts.
+void _addRoomFixtures(
+  StaticMeshBuilder builder,
+  House house,
+  Room room,
+  Vec3 size,
+) {
+  final x = room.origin.x;
+  final y = room.origin.y;
+  final z = room.origin.z;
+  const wood = 0x5A3B2A;
+  const darkWood = 0x38271F;
+  const iron = 0x343330;
+  const stone = 0xB5AA98;
+  const ceramic = 0xD1CCC1;
+  const fabric = 0x6A6470;
+  const soot = 0x211E1C;
+
+  switch (room.id) {
+    case 'living-room':
+      final fireX = x + size.x - 0.48;
+      final fireZ = z + size.z * 0.40;
+      _box(
+        builder,
+        Vec3(fireX, y, fireZ - 0.85),
+        Vec3(x + size.x, y + 2.55, fireZ + 0.85),
+        0x776554,
+      );
+      _box(
+        builder,
+        Vec3(fireX - 0.38, y + 0.02, fireZ - 0.72),
+        Vec3(x + size.x + 0.05, y + 0.16, fireZ + 0.72),
+        stone,
+      );
+      _box(
+        builder,
+        Vec3(fireX - 0.52, y + 2.18, fireZ - 0.94),
+        Vec3(x + size.x + 0.08, y + 2.34, fireZ + 0.94),
+        wood,
+      );
+      _box(
+        builder,
+        Vec3(fireX - 0.02, y + 0.45, fireZ - 0.48),
+        Vec3(x + size.x + 0.03, y + 1.48, fireZ + 0.48),
+        soot,
+      );
+      for (var i = 0; i < 3; i++) {
+        _box(
+          builder,
+          Vec3(fireX - 0.08 + i * 0.18, y + 0.28, fireZ - 0.42),
+          Vec3(fireX - 0.02 + i * 0.18, y + 1.35, fireZ - 0.34),
+          iron,
+        );
+      }
+    case 'hall':
+      _addStairRun(builder, house, room, size, darkWood, iron);
+      // A narrow hall table and a framed clock sit outside the circulation
+      // route, giving the entrance a believable domestic landmark.
+      _box(
+        builder,
+        Vec3(x + 0.28, y + 0.78, z + 0.52),
+        Vec3(x + 0.68, y + 0.88, z + 2.15),
+        darkWood,
+      );
+      for (final legZ in [z + 0.66, z + 2.01]) {
+        _box(
+          builder,
+          Vec3(x + 0.34, y, legZ),
+          Vec3(x + 0.42, y + 0.8, legZ + 0.08),
+          wood,
+        );
+      }
+      final clockX = x + 1.22;
+      _box(
+        builder,
+        Vec3(clockX - 0.28, y + 2.35, z + 0.02),
+        Vec3(clockX + 0.28, y + 3.02, z + 0.10),
+        darkWood,
+      );
+      _box(
+        builder,
+        Vec3(clockX - 0.13, y + 2.48, z + 0.10),
+        Vec3(clockX + 0.13, y + 2.72, z + 0.15),
+        stone,
+      );
+      _box(
+        builder,
+        Vec3(clockX - 0.025, y + 1.82, z + 0.08),
+        Vec3(clockX + 0.025, y + 2.36, z + 0.13),
+        iron,
+      );
+    case 'kitchen':
+      final rangeX = x + size.x - 0.62;
+      _box(
+        builder,
+        Vec3(rangeX, y, z + 0.72),
+        Vec3(x + size.x, y + 1.28, z + 2.18),
+        iron,
+      );
+      _box(
+        builder,
+        Vec3(rangeX - 0.08, y + 1.28, z + 0.62),
+        Vec3(x + size.x + 0.04, y + 1.38, z + 2.28),
+        stone,
+      );
+      for (var i = 0; i < 3; i++) {
+        _box(
+          builder,
+          Vec3(rangeX + 0.12, y + 1.39, z + 0.88 + i * 0.40),
+          Vec3(rangeX + 0.40, y + 1.45, z + 1.16 + i * 0.40),
+          soot,
+        );
+      }
+      _box(
+        builder,
+        Vec3(x + 1.05, y + 0.82, z + 1.15),
+        Vec3(x + 3.10, y + 0.94, z + 2.35),
+        wood,
+      );
+      for (final tableX in [x + 1.18, x + 2.94]) {
+        _box(
+          builder,
+          Vec3(tableX, y, z + 1.28),
+          Vec3(tableX + 0.10, y + 0.82, z + 1.38),
+          darkWood,
+        );
+      }
+      _box(
+        builder,
+        Vec3(x + 0.48, y + 1.72, z + 2.74),
+        Vec3(x + 2.55, y + 1.84, z + 2.88),
+        darkWood,
+      );
+    case 'cellar':
+      for (var i = 0; i < 4; i++) {
+        _box(
+          builder,
+          Vec3(x + 0.35 + i * 0.28, y, z + 1.05),
+          Vec3(x + 0.58 + i * 0.28, y + 0.55 + (i % 2) * 0.18, z + 2.0),
+          darkWood,
+        );
+      }
+      _box(
+        builder,
+        Vec3(x + 2.55, y + 0.15, z + 0.38),
+        Vec3(x + 2.72, y + 1.55, z + 0.56),
+        iron,
+      );
+      _box(
+        builder,
+        Vec3(x + 2.42, y + 1.28, z + 0.32),
+        Vec3(x + 2.86, y + 1.38, z + 0.65),
+        ceramic,
+      );
+    case 'bedroom':
+      final bedX = x + 0.85;
+      final bedZ = z + 2.08;
+      _box(
+        builder,
+        Vec3(bedX, y + 0.42, bedZ),
+        Vec3(bedX + 3.65, y + 0.72, bedZ + 2.05),
+        fabric,
+      );
+      _box(
+        builder,
+        Vec3(bedX - 0.10, y + 0.72, bedZ - 0.12),
+        Vec3(bedX + 3.75, y + 1.28, bedZ + 0.10),
+        wood,
+      );
+      _box(
+        builder,
+        Vec3(bedX + 0.22, y + 0.74, bedZ + 1.35),
+        Vec3(bedX + 1.05, y + 0.90, bedZ + 1.82),
+        ceramic,
+      );
+      _box(
+        builder,
+        Vec3(x + size.x - 0.95, y + 0.78, z + 0.58),
+        Vec3(x + size.x - 0.18, y + 1.48, z + 1.42),
+        wood,
+      );
+      _box(
+        builder,
+        Vec3(x + size.x - 1.04, y + 1.48, z + 0.48),
+        Vec3(x + size.x - 0.10, y + 1.57, z + 1.52),
+        darkWood,
+      );
+    case 'landing':
+      _box(
+        builder,
+        Vec3(x + 0.34, y + 0.02, z + 1.62),
+        Vec3(x + 0.48, y + 1.06, z + 2.70),
+        darkWood,
+      );
+      for (var i = 0; i < 4; i++) {
+        _box(
+          builder,
+          Vec3(x + 0.48, y + 0.82 + i * 0.20, z + 1.68 + i * 0.22),
+          Vec3(x + 2.14, y + 0.90 + i * 0.20, z + 1.76 + i * 0.22),
+          wood,
+        );
+      }
+    case 'bathroom':
+      _box(
+        builder,
+        Vec3(x + 0.30, y + 0.04, z + 0.38),
+        Vec3(x + 2.15, y + 0.62, z + 1.22),
+        ceramic,
+      );
+      _box(
+        builder,
+        Vec3(x + 0.42, y + 0.62, z + 0.48),
+        Vec3(x + 2.03, y + 0.72, z + 1.12),
+        stone,
+      );
+      _box(
+        builder,
+        Vec3(x + size.x - 0.78, y + 0.12, z + size.z - 0.88),
+        Vec3(x + size.x - 0.18, y + 1.75, z + size.z - 0.28),
+        ceramic,
+      );
+      _box(
+        builder,
+        Vec3(x + size.x - 0.86, y + 1.68, z + size.z - 0.98),
+        Vec3(x + size.x - 0.10, y + 1.82, z + size.z - 0.18),
+        iron,
+      );
+    case 'spare-room':
+      _box(
+        builder,
+        Vec3(x + 1.0, y, z + 0.70),
+        Vec3(x + 3.25, y + 1.65, z + 2.0),
+        fabric,
+      );
+      _box(
+        builder,
+        Vec3(x + 0.80, y + 1.60, z + 0.52),
+        Vec3(x + 3.45, y + 1.74, z + 2.18),
+        wood,
+      );
+      _box(
+        builder,
+        Vec3(x + size.x - 1.05, y, z + size.z - 1.02),
+        Vec3(x + size.x - 0.25, y + 0.72, z + size.z - 0.24),
+        darkWood,
+      );
+  }
+}
+
+void _addStairRun(
+  StaticMeshBuilder builder,
+  House house,
+  Room room,
+  Vec3 size,
+  int wood,
+  int iron,
+) {
+  if (house.stairs.isEmpty) return;
+  const darkWood = 0x38271F;
+  final stair = house.stairs.first;
+  final min = stair.min;
+  final max = stair.max;
+  const stepCount = 18;
+  final x0 = min.x + 0.12;
+  final x1 = max.x - 0.12;
+  final topY = _min(max.y, room.origin.y + size.y - 0.18);
+  final runHeight = _max(0.1, topY - room.origin.y - 0.10);
+  final runFraction = _min(1, runHeight / (max.y - min.y));
+  final endZ = max.z - runFraction * (max.z - min.z);
+  for (var i = 0; i < stepCount; i++) {
+    final t = i / (stepCount - 1) * runFraction;
+    final stepY = room.origin.y + 0.10 + t * (max.y - min.y);
+    final stepZ = max.z - t * (max.z - min.z);
+    _box(
+      builder,
+      Vec3(x0, stepY, stepZ - 0.18),
+      Vec3(x1, stepY + 0.11, stepZ + 0.18),
+      wood,
+    );
+  }
+  _box(
+    builder,
+    Vec3(x0 - 0.10, room.origin.y + 0.08, endZ),
+    Vec3(x0, room.origin.y + 0.34, max.z),
+    darkWood,
+  );
+  _box(
+    builder,
+    Vec3(x1, room.origin.y + 0.08, endZ),
+    Vec3(x1 + 0.10, room.origin.y + 0.34, max.z),
+    darkWood,
+  );
+  _box(
+    builder,
+    Vec3(x1 + 0.16, room.origin.y + 1.42, endZ + 0.25),
+    Vec3(x1 + 0.25, _min(room.origin.y + 1.52, topY), max.z - 0.25),
+    iron,
   );
 }
 
