@@ -20,6 +20,7 @@ class Door {
   late final web.HTMLElement _citeList;
   late final web.HTMLElement _citeResult;
   final List<web.HTMLButtonElement> _choiceButtons = [];
+  JSFunction? _keyHandler;
   void Function(String choice)? onChoice;
   void Function()? onContinue;
   void Function(int ordinal)? onCite;
@@ -35,6 +36,10 @@ class Door {
       ..setAttribute('hidden', '');
     _speaker = buildElement(document, 'div', cls: 'door-speaker');
     _line = buildElement(document, 'div', cls: 'door-line');
+    _line
+      ..setAttribute('role', 'status')
+      ..setAttribute('aria-live', 'polite')
+      ..setAttribute('aria-atomic', 'true');
     root.appendChild(_speaker);
     root.appendChild(_line);
     _citeList = buildElement(document, 'div', cls: 'door-cite-list');
@@ -62,6 +67,32 @@ class Door {
       ((web.Event _) => onContinue?.call()).toJS,
     );
     root.appendChild(_continueButton);
+    final handler = ((web.KeyboardEvent event) {
+      if (!visitorPresent || event.code != 'Tab') return;
+      final focusable = <web.HTMLElement>[
+        for (final button in _choiceButtons)
+          if (button.style.display != 'none') button,
+        if (_continueButton.style.display != 'none') _continueButton,
+      ];
+      final citeButtons = _citeList.querySelectorAll('button');
+      for (var i = 0; i < citeButtons.length; i++) {
+        final node = citeButtons.item(i);
+        if (node is web.HTMLElement) focusable.add(node);
+      }
+      if (focusable.isEmpty) return;
+      final active = document.activeElement;
+      if (event.shiftKey) {
+        if (active == focusable.first || !focusable.contains(active)) {
+          event.preventDefault();
+          focusable.last.focus();
+        }
+      } else if (active == focusable.last || !focusable.contains(active)) {
+        event.preventDefault();
+        focusable.first.focus();
+      }
+    }).toJS;
+    _keyHandler = handler;
+    root.addEventListener('keydown', handler);
     document.body!.appendChild(root);
   }
 
@@ -115,5 +146,10 @@ class Door {
     _citeResult.textContent = '';
     root.className = 'door';
     root.setAttribute('hidden', '');
+    final handler = _keyHandler;
+    if (handler != null) {
+      root.removeEventListener('keydown', handler);
+      _keyHandler = null;
+    }
   }
 }

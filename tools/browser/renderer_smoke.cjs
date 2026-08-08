@@ -83,6 +83,8 @@ function assertHealthy(failures, label) {
             label: door?.getAttribute('aria-label'),
             hidden: door?.getAttribute('hidden'),
             visible: door?.classList.contains('visible'),
+            lineLive: door?.querySelector('.door-line')?.getAttribute('aria-live'),
+            focused: door?.contains(document.activeElement),
           };
         })(),
         prompt: (() => {
@@ -173,7 +175,9 @@ function assertHealthy(failures, label) {
       if (result.door.role !== 'dialog' ||
           result.door.modal !== 'true' ||
           result.door.label !== 'Front door visitor' ||
-          (result.door.hidden !== '' && !result.door.visible)) {
+          (result.door.hidden !== '' && !result.door.visible) ||
+          result.door.lineLive !== 'polite' ||
+          (result.door.visible && !result.door.focused)) {
         throw new Error(`${name}: visitor door semantics were incomplete ${JSON.stringify(result.door)}`);
       }
       if (result.prompt.role !== 'status' || result.prompt.live !== 'polite' ||
