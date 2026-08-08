@@ -4234,7 +4234,7 @@ return b+14},
 tr(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q){var s=m+p,r=n+q
 return A.he(a,A.he(a,A.he(a,A.he(a,A.he(a,A.he(a,b,c,g,h,i,j,k,l,m,n,o),d,g,h,i,j,k,l,s,n,o),e,g,h,i,j,k,l,s,r,o),c,g,h,i,j,k,l,m,n,o),e,g,h,i,j,k,l,s,r,o),f,g,h,i,j,k,l,m,r,o)},
 oQ(a){return new A.bw((a>>>16&255)/255,(a>>>8&255)/255,(a&255)/255)},
-xn(a,b,c){var s,r,q,p=(a-Math.floor(a))*6,o=B.d.aB(p),n=p-o,m=c*(1-b),l=c*(1-n*b),k=c*(1-(1-n)*b),j=A.ae(),i=A.ae(),h=A.ae()
+xn(a,b,c){var s,r,q,p=(a-Math.floor(a))*6,o=B.d.aC(p),n=p-o,m=c*(1-b),l=c*(1-n*b),k=c*(1-(1-n)*b),j=A.ae(),i=A.ae(),h=A.ae()
 switch(B.c.V(o,6)){case 0:j.b=c
 i.b=k
 h.b=m
@@ -4852,7 +4852,7 @@ return new A.mY(B.u.b1(r.a,0,r.b),B.u.b1(q.a,0,q.b),B.u.b1(p.a,0,p.b),B.u.b1(o.a
 wT(a,a0,a1){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e=a0.d,d=e.a,c=e.b,b=e.c
 e=a0.y
 if(e==="floor-wood"){e=a1.c
-s=B.d.aB(e/0.22)
+s=B.d.aC(e/0.22)
 for(r=c+0.004,q=a1.a,p=d+q,o=c+0.014,n=0;n<s;++n){m=b+n*0.22+0.018
 l=(n&1)===0?7952963:7031607
 A.u(a,new A.b(d,r,m),new A.b(p,o,m+0.15),l)}r=a0.a
@@ -4969,7 +4969,7 @@ for(p=a7-0.98,o=a9+0.18,n=q-1.12,a7-=0.28,m=a9+0.24,q-=1.04,k=0;k<3;++k){l=k*0.1
 A.u(b1,new A.b(p,o+l,n),new A.b(a7,m+l,q),a4)}break}},
 wV(a0,a1,a2,a3,a4,a5){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a=a1.d
 if(a.length===0)return
-s=B.a.gaI(a)
+s=B.a.gaB(a)
 r=s.d
 q=s.e
 p=r.a+0.12
@@ -5831,7 +5831,7 @@ mU:function mU(a){this.a=a},
 iA:function iA(a,b,c){this.a=a
 this.b=b
 this.c=c},
-mT(a,b,c,d,e){var s="8f1007e8d369-d004e52a5506",r=A.op("RENDERER_SHA"),q=A.op("GAME_SHA"),p=A.op("DART_SDK_VERSION"),o=A.op("LOCKFILE_SHA256"),n=A.mb(b,A.L(b).c)
+mT(a,b,c,d,e){var s="02c7570a3cbd-d004e52a5506",r=A.op("RENDERER_SHA"),q=A.op("GAME_SHA"),p=A.op("DART_SDK_VERSION"),o=A.op("LOCKFILE_SHA256"),n=A.mb(b,A.L(b).c)
 n=A.K(n,A.o(n).c)
 B.a.a0(n)
 n=new A.mS(a,e,s,A.am(n,t.N),r,q,p,o,c,d)
@@ -6346,7 +6346,7 @@ b6=A.r0(f)
 h=A.qR(42,1+h,A.qT(42),b5,b6,A.qN(6,16,b6,null,6,B.eq,b5),new A.hH(0,0,0,!1))}else{h=e.a
 h.toString
 h=A.qS(h,f)}$.S.b=h
-$.cx.j().aE(A.pI($.S.j().gdL()))
+$.cx.j().aF(A.pI($.S.j().gdL()))
 if(e.b!=null){h=e.b
 h.toString
 A.eG(h)}h=$.aG.j()
@@ -6428,15 +6428,24 @@ A.e(c1.style).setProperty("--shake-max-px","2px")}$.ey.b=b0
 $.ey.j().scl(new A.p9())
 h=A.e(c2.document)
 a6=A.Z(h,"div","prompt",null)
+a6.setAttribute("role","status")
+a6.setAttribute("aria-live","polite")
+a6.setAttribute("aria-atomic","true")
 A.e(a6.style).setProperty("transition-duration","0.3s")
 A.e(A.i(h.body).appendChild(a6))
 $.rY.b=new A.mC(a6)
 a6=A.e(c2.document)
 h=A.Z(a6,"div","broadcast",null)
+h.setAttribute("role","status")
+h.setAttribute("aria-live","polite")
+h.setAttribute("aria-atomic","true")
 A.e(A.i(a6.body).appendChild(h))
 $.rW.b=new A.kE(h)
 h=A.e(c2.document)
 a6=A.Z(h,"div","ambient-notice",null)
+a6.setAttribute("role","status")
+a6.setAttribute("aria-live","polite")
+a6.setAttribute("aria-atomic","true")
 A.e(A.i(h.body).appendChild(a6))
 $.q1.b=new A.kd(a6)
 a6=A.uL(A.e(c2.document))
@@ -6852,8 +6861,8 @@ s=$.D.j()
 q=o>0?o:600
 s.height=q
 q=$.eF
-if(q!=null)q.aC(A.a($.D.j().width),A.a($.D.j().height))
-$.cx.j().aC(A.a($.D.j().width),A.a($.D.j().height))
+if(q!=null)q.aD(A.a($.D.j().width),A.a($.D.j().height))
+$.cx.j().aD(A.a($.D.j().width),A.a($.D.j().height))
 q=$.bL
 r=q==null?null:""+q.b+"x"+q.c
 if(r!=null)$.D.j().setAttribute("data-renderer-surface",r)},
@@ -6958,7 +6967,7 @@ if(j!=null){$.bI.j().dH($.hf(),$.bM,$.dM)
 e=$.bh===$.ey.j()?1:0
 j.c6=e
 $.tk=r
-$.cx.j().aE(A.pI($.S.j().gdL()))}else if($.bf.j().a===B.a1){$.bI.j().dH($.hf(),$.bM,$.dM)
+$.cx.j().aF(A.pI($.S.j().gdL()))}else if($.bf.j().a===B.a1){$.bI.j().dH($.hf(),$.bM,$.dM)
 e=$.bL
 if(e!=null){d=$.bI.j()
 c=d.a
@@ -7005,7 +7014,7 @@ b7=b2?b0:0
 b8=b2?b0:0
 b9=b2?b0:0
 c0=b2?b0:0
-e.k1=new A.it(b,b3,d,b4,b5,b6,b7,b8,b9,c0,b2?b0:0,c)}$.cx.j().aE(A.pI($.S.j().gdL()))
+e.k1=new A.it(b,b3,d,b4,b5,b6,b7,b8,b9,c0,b2?b0:0,c)}$.cx.j().aF(A.pI($.S.j().gdL()))
 i=$.bL
 if(i!=null){h=i.gkI()
 if(h!=null){$.D.j().setAttribute("data-renderer-frame-stats",h)
@@ -7172,7 +7181,7 @@ if(s.d!==B.J){$.aF.j().cu(q)
 A.qo()}A.eG("restored visitor")},
 y4(){var s,r,q,p,o=$.S.j().gam(),n=$.jJ.j().kr(o.a,o.b)
 if(n.length===0)return
-s=B.a.gaI(n)
+s=B.a.gaB(n)
 $.jJ.j().b.k(0,s.a)
 r=s.d
 q=r==="letterbox"?"through the letterbox":"from the street"
@@ -7335,7 +7344,7 @@ tK(a,b){var s=a*2654435769^b
 s=((s^s>>>15)>>>0)*2246822507>>>0
 s=((s^s>>>13)>>>0)*3266489909>>>0
 return((s^s>>>16)>>>0)/4294967296},
-po(a,b){var s=B.d.aB(a),r=A.tK(s,b),q=A.tK(s+1,b),p=B.d.Z(a-s,0,1)
+po(a,b){var s=B.d.aC(a),r=A.tK(s,b),q=A.tK(s+1,b),p=B.d.Z(a-s,0,1)
 return r+(q-r)*(p*p*(3-2*p))},
 tJ(a,b){var s=a^b*2654435769
 s=((s^s>>>15)>>>0)*2246822507>>>0
@@ -7502,7 +7511,7 @@ if(a.length!==s)throw A.c(A.ap(a))}p=c.$0()
 return p},
 S(a,b){if(!(b>=0&&b<a.length))return A.d(a,b)
 return a[b]},
-gaI(a){if(a.length>0)return a[0]
+gaB(a){if(a.length>0)return a[0]
 throw A.c(A.i2())},
 gR(a){var s=a.length
 if(s>0)return a[s-1]
@@ -7625,7 +7634,7 @@ return a===s?s:s+1}}else if(a>=-2147483648)return a|0
 r=Math.ceil(a)
 if(isFinite(r))return r
 throw A.c(A.ax(""+a+".ceil()"))},
-aB(a){var s,r
+aC(a){var s,r
 if(a>=0){if(a<=2147483647)return a|0}else if(a>=-2147483648){s=a|0
 return a===s?s:s-1}r=Math.floor(a)
 if(isFinite(r))return r
@@ -8006,7 +8015,7 @@ if("__proto__"===b)return!1
 return this.a.hasOwnProperty(b)},
 b_(a){return A.pC(this,this.$ti.c)}}
 A.mx.prototype={
-$0(){return B.d.aB(1000*this.a.now())},
+$0(){return B.d.aC(1000*this.a.now())},
 $S:17}
 A.fq.prototype={}
 A.nl.prototype={
@@ -9603,7 +9612,7 @@ for(s=0;r.m();)++s
 return s},
 gI(a){return!this.gu(this).m()},
 gL(a){return!this.gI(this)},
-gaI(a){var s=this.gu(this)
+gaB(a){var s=this.gu(this)
 if(!s.m())throw A.c(A.i2())
 return s.gp()},
 cc(a,b,c){var s,r
@@ -9836,26 +9845,26 @@ l.a=n
 o=(m^r+((r<<31|s>>>1)>>>0)+o>>>0)>>>0
 l.b=o}while(a!==0)
 if(o===0&&n===0)l.a=23063
-l.aF()
-l.aF()
-l.aF()
-l.aF()},
-aF(){var s=this,r=s.a,q=4294901760*r,p=q>>>0,o=55905*r,n=o>>>0,m=n+p+s.b
+l.aG()
+l.aG()
+l.aG()
+l.aG()},
+aG(){var s=this,r=s.a,q=4294901760*r,p=q>>>0,o=55905*r,n=o>>>0,m=n+p+s.b
 r=m>>>0
 s.a=r
 s.b=B.c.K(o-n+(q-p)+(m-r),4294967296)>>>0},
 an(a){var s,r,q,p=this
 if(a<=0||a>4294967296)throw A.c(A.rc(u.w+a))
 s=a-1
-if((a&s)>>>0===0){p.aF()
-return(p.a&s)>>>0}do{p.aF()
+if((a&s)>>>0===0){p.aG()
+return(p.a&s)>>>0}do{p.aG()
 r=p.a
 q=r%a}while(r-q+a>=4294967296)
 return q},
 ck(){var s,r=this
-r.aF()
+r.aG()
 s=r.a
-r.aF()
+r.aG()
 return((s&67108863)*134217728+(r.a&134217727))/9007199254740992},
 $ipH:1}
 A.mD.prototype={
@@ -11814,7 +11823,7 @@ q=A.T([a0,B.H],s,t.fB)
 p=A.aq([a0],s)
 for(s=this.b,o=this.a,n=o.e,m=t.Q,l=p.$ti.c;p.a!==0;){k=A.K(p,l)
 B.a.X(k,new A.kn(r))
-j=B.a.gaI(k)
+j=B.a.gaB(k)
 p.ah(0,j)
 if(j===a1){s=q.h(0,j)
 s.toString
@@ -12137,7 +12146,7 @@ s.bindRenderbuffer(A.a(r.WebGL2RenderingContext.RENDERBUFFER),b)
 q=a.w
 if(q>0)A.aJ(s,"renderbufferStorageMultisample",[A.a(r.WebGL2RenderingContext.RENDERBUFFER),q,c,d,e],t.H)
 else s.renderbufferStorage(A.a(r.WebGL2RenderingContext.RENDERBUFFER),c,d,e)},
-aD(a,b,c){var s,r,q,p,o,n=this
+aE(a,b,c){var s,r,q,p,o,n=this
 if(a.x===b&&a.y===c)return
 a.x=b
 a.y=c
@@ -12183,7 +12192,7 @@ s.drawBuffers(A.f([A.a(q.WebGL2RenderingContext.NONE),A.a(q.WebGL2RenderingConte
 s.clearColor(0,0,0,1)
 s.clear(A.a(q.WebGL2RenderingContext.COLOR_BUFFER_BIT))
 s.drawBuffers(A.f([A.a(q.WebGL2RenderingContext.COLOR_ATTACHMENT0),A.a(q.WebGL2RenderingContext.COLOR_ATTACHMENT1)],r))},
-aG(a){var s=this.a,r=A.a(v.G.WebGL2RenderingContext.FRAMEBUFFER),q=a==null,p=q?null:a.a
+aH(a){var s=this.a,r=A.a(v.G.WebGL2RenderingContext.FRAMEBUFFER),q=a==null,p=q?null:a.a
 s.bindFramebuffer(r,p)
 r=q?null:a.x
 if(r==null)r=A.a(s.drawingBufferWidth)
@@ -12318,7 +12327,7 @@ p=o.as
 p===$&&A.j()
 s.uniform1f(p,0.0025)
 p=o.b
-p.aG(n)
+p.aH(n)
 q=o.CW
 q===$&&A.j()
 s.bindVertexArray(q)
@@ -12330,13 +12339,13 @@ s.activeTexture(A.a(r.WebGL2RenderingContext.TEXTURE0))
 q=o.at
 q===$&&A.j()
 s.uniform1i(q,0)
-p.aG(l)
+p.aH(l)
 s.bindTexture(A.a(r.WebGL2RenderingContext.TEXTURE_2D),n.b)
 q=o.ax
 q===$&&A.j()
 s.uniform2f(q,1/n.x,0)
 s.drawArrays(A.a(r.WebGL2RenderingContext.TRIANGLES),0,3)
-p.aG(m)
+p.aH(m)
 s.bindTexture(A.a(r.WebGL2RenderingContext.TEXTURE_2D),l.b)
 s.uniform2f(q,0,1/n.y)
 s.drawArrays(A.a(r.WebGL2RenderingContext.TRIANGLES),0,3)
@@ -12967,7 +12976,7 @@ this.fQ=a
 s=this.dx
 s===$&&A.j()
 this.ar.uniformMatrix4fv(s,!1,a.a)},
-aC(a,b){var s,r,q,p,o,n,m,l,k,j=this
+aD(a,b){var s,r,q,p,o,n,m,l,k,j=this
 j.aV=a
 j.aW=b
 j.dr=b/a
@@ -12978,23 +12987,23 @@ s.ay=r
 q=B.c.K(b,2)
 s.ch=q
 p=s.d
-if(p!=null)s.b.aD(p,r,q)
+if(p!=null)s.b.aE(p,r,q)
 r=s.e
-if(r!=null)s.b.aD(r,s.ay,s.ch)
+if(r!=null)s.b.aE(r,s.ay,s.ch)
 r=s.f
-if(r!=null)s.b.aD(r,s.ay,s.ch)
+if(r!=null)s.b.aE(r,s.ay,s.ch)
 r=s.r
-if(r!=null)s.b.aD(r,384,216)
+if(r!=null)s.b.aE(r,384,216)
 o=j.aU
 n=j.bu
 m=j.c7
 l=j.c8
 k=j.c9
-if(o!=null)j.aA.aD(o,a,b)
-if(n!=null)j.aA.aD(n,a,b)
-if(m!=null)j.aA.aD(m,j.gbM(),j.gbL())
-if(l!=null)j.aA.aD(l,j.gbM(),j.gbL())
-if(k!=null)j.aA.aD(k,a,b)},
+if(o!=null)j.aA.aE(o,a,b)
+if(n!=null)j.aA.aE(n,a,b)
+if(m!=null)j.aA.aE(m,j.gbM(),j.gbL())
+if(l!=null)j.aA.aE(l,j.gbM(),j.gbL())
+if(k!=null)j.aA.aE(k,a,b)},
 jG(a){var s,r,q,p,o,n,m
 for(s=this.fH,r=this.fG,q=1;q<a;++q){if(!(q<800))return A.d(s,q)
 p=s[q]
@@ -13123,17 +13132,17 @@ p.activeTexture(A.a(o.WebGL2RenderingContext.TEXTURE0))
 g=b2.hd
 g===$&&A.j()
 p.uniform1i(g,0)
-s.aG(a4)
+s.aH(a4)
 p.bindTexture(A.a(o.WebGL2RenderingContext.TEXTURE_2D),a9)
 g=b2.ds
 g===$&&A.j()
 p.uniform2f(g,1/a4.x,0)
 p.drawArrays(A.a(o.WebGL2RenderingContext.TRIANGLES),0,3)
-s.aG(a3)
+s.aH(a3)
 p.bindTexture(A.a(o.WebGL2RenderingContext.TEXTURE_2D),a4.b)
 p.uniform2f(b2.ds,0,1/a4.y)
 p.drawArrays(A.a(o.WebGL2RenderingContext.TRIANGLES),0,3)}a6=b2.c9
-if(b2.c6>0&&a6!=null){s.aG(a6)
+if(b2.c6>0&&a6!=null){s.aH(a6)
 g=b2.ac
 g===$&&A.j()
 p.useProgram(g.e)
@@ -13166,7 +13175,7 @@ p.bindVertexArray(m)
 p.drawArrays(A.a(o.WebGL2RenderingContext.TRIANGLES),0,3)}g=b2.c5
 g===$&&A.j()
 b0=g.li(a8,0.5)
-s.aG(null)
+s.aH(null)
 s=b2.ac
 s===$&&A.j()
 p.useProgram(s.c)
@@ -13635,7 +13644,7 @@ if(e==null||d==null){n.d=null
 return}s=c.d
 r=A.L(s)
 q=new A.Q(s,r.i("t(1)").a(new A.kI(e)),r.i("Q<1>"))
-p=!q.gu(0).m()?null:q.gaI(0)
+p=!q.gu(0).m()?null:q.gaB(0)
 if(p==null){n.d=null
 return}if(!(n.bS(b,p.f)&&a==="hall"))o=n.bS(b,p.r)&&a==="landing"
 else o=!0
@@ -14218,8 +14227,8 @@ r=l.b
 if(s==null||r==null||a!==s||b<r){l.a=a
 l.b=b
 return B.ew}q=A.f([],t.iG)
-p=B.d.aB(r)+1
-o=B.d.aB(b)
+p=B.d.aC(r)+1
+o=B.d.aC(b)
 for(n=p;n<=o;++n){m=B.c.V(n,24)
 B.a.k(q,new A.f1("tick"))
 if(B.c.V(m,6)===0)B.a.k(q,new A.f1("chime"))}l.b=b
@@ -14233,7 +14242,7 @@ r=n.b
 if(s==null||r==null||a!==s||b<r){n.a=a
 n.b=b
 return B.ev}q=A.f([],t.dL)
-for(p=B.d.aB(r)+1;p<=B.d.aB(b);++p){o=B.c.V(p,24)
+for(p=B.d.aC(r)+1;p<=B.d.aC(b);++p){o=B.c.V(p,24)
 if(B.c.V(o,4)===2)B.a.k(q,B.dZ)
 if(B.c.V(o,3)===1)B.a.k(q,B.e_)
 if(B.c.V(o,8)===5)B.a.k(q,B.e0)}n.b=b
@@ -14376,16 +14385,16 @@ aJ(){if(this.e===B.bC)throw A.c(A.l("legacy backend is disposed"))
 var s=this.b
 if(s!=null)s.aJ()
 this.e=B.v},
-aC(a,b){var s
+aD(a,b){var s
 if(a<=0||b<=0)throw A.c(A.w("legacy surface size must be positive",null))
 if(this.e!==B.v)A.k(A.l("legacy backend is not ready"))
 s=this.b
-if(s!=null)s.aC(a,b)},
-aE(a){var s
+if(s!=null)s.aD(a,b)},
+aF(a){var s
 if(this.e!==B.v)A.k(A.l("legacy backend is not ready"))
 B.p.b9(A.T(["backend","legacy","interpolation",0,"facts",A.jO(a.a.a)],t.N,t.X),null)
 s=this.b
-if(s!=null)s.aE(a)},
+if(s!=null)s.aF(a)},
 aX(a){var s
 if(this.e!==B.v)A.k(A.l("legacy backend is not ready"))
 B.p.b9(A.T(["id",a.a,"pressed",a.b,"value",a.c],t.N,t.X),null)
@@ -14400,12 +14409,12 @@ aJ(){if(this.c===B.bC)throw A.c(A.l("pixeldart backend is disposed"))
 var s=this.b
 if(s!=null)s.aJ()
 this.c=B.v},
-aC(a,b){var s
+aD(a,b){var s
 if(this.c!==B.v)A.k(A.l("pixeldart backend is not ready"))
 if(a<=0||b<=0)throw A.c(A.w("pixeldart surface size must be positive",null))
 s=this.b
-if(s!=null)s.aC(a,b)},
-aE(a){var s=this,r="pixeldart backend is not ready",q=s.b,p=s.c
+if(s!=null)s.aD(a,b)},
+aF(a){var s=this,r="pixeldart backend is not ready",q=s.b,p=s.c
 if(p===B.a2){p=q==null
 if(p||!q.gcY()){if(s.c!==B.a2)A.k(A.l("pixeldart backend is not context-lost"))
 s.c=B.v
@@ -14415,7 +14424,7 @@ B.p.b9(A.T(["backend","next","interpolation",0,"facts",A.jO(a.a.a)],t.N,t.X),nul
 if(q!=null){if(q.gcY()){if(s.c!==B.v)A.k(A.l(r))
 s.c=B.a2
 q.hw()
-return}q.aE(a)}},
+return}q.aF(a)}},
 aX(a){var s
 if(this.c!==B.v)A.k(A.l("pixeldart backend is not ready"))
 B.p.b9(A.T(["id",a.a,"pressed",a.b,"value",a.c],t.N,t.X),null)
@@ -14602,7 +14611,7 @@ jK(a){var s,r,q,p,o,n,m,l=this
 t.io.a(a)
 s=l.c
 r=t.N
-q=B.c.Z(B.d.aB(l.b/l.ge3()*A.am(s,r).length),0,A.am(s,r).length)
+q=B.c.Z(B.d.aC(l.b/l.ge3()*A.am(s,r).length),0,A.am(s,r).length)
 p=l.d
 for(;;){o=A.aw(p,!1,r)
 o.$flags=3
@@ -14813,41 +14822,46 @@ s.textContent=q
 r=r?"broadcast":"broadcast visible"
 s.className=r}}
 A.kR.prototype={
-iu(a){var s,r,q,p,o,n,m,l=this,k="div",j=null,i=A.Z(a,k,"door-speaker",j)
+iu(a){var s,r,q,p,o,n,m,l=this,k=null,j="div",i=l.a
+i.setAttribute("role","dialog")
+i.setAttribute("aria-modal","true")
+i.setAttribute("aria-label","Front door visitor")
+i.setAttribute("tabindex","-1")
+i.setAttribute("hidden","")
+s=A.Z(a,j,"door-speaker",k)
 l.b!==$&&A.y()
-l.b=i
-s=A.Z(a,k,"door-line",j)
+l.b=s
+r=A.Z(a,j,"door-line",k)
 l.c!==$&&A.y()
-l.c=s
-r=l.a
-A.e(r.appendChild(i))
-A.e(r.appendChild(s))
-s=A.Z(a,k,"door-cite-list",j)
+l.c=r
+A.e(i.appendChild(s))
+A.e(i.appendChild(r))
+r=A.Z(a,j,"door-cite-list",k)
 l.e!==$&&A.y()
-l.e=s
-i=A.Z(a,k,"door-cite-result",j)
+l.e=r
+s=A.Z(a,j,"door-cite-result",k)
 l.f!==$&&A.y()
-l.f=i
-A.e(r.appendChild(s))
-A.e(r.appendChild(i))
-for(i=A.jN,s=l.r,q=0;q<5;++q){p=B.ek[q]
+l.f=s
+A.e(i.appendChild(r))
+A.e(i.appendChild(s))
+for(s=A.jN,r=l.r,q=0;q<5;++q){p=B.ek[q]
 o=A.e(a.createElement("button"))
 o.className="door-choice"
 o.textContent=p
 o.setAttribute("type","button")
 n=new A.kS(l,p)
-if(typeof n=="function")A.k(A.w("Attempting to rewrap a JS function.",j))
-m=function(b,c){return function(d){return b(c,d,arguments.length)}}(i,n)
+if(typeof n=="function")A.k(A.w("Attempting to rewrap a JS function.",k))
+m=function(b,c){return function(d){return b(c,d,arguments.length)}}(s,n)
 m[$.eL()]=n
 o.addEventListener("click",m)
-A.e(r.appendChild(o))
-B.a.k(s,o)}i=A.Z(a,"button","door-continue","continue")
+A.e(i.appendChild(o))
+B.a.k(r,o)}s=A.Z(a,"button","door-continue","continue")
 l.d!==$&&A.y()
-l.d=i
-i.setAttribute("type","button")
-i.addEventListener("click",A.al(new A.kT(l)))
-A.e(r.appendChild(i))
-A.e(A.i(a.body).appendChild(r))},
+l.d=s
+s.setAttribute("type","button")
+s.addEventListener("click",A.al(new A.kT(l)))
+A.e(i.appendChild(s))
+A.e(A.i(a.body).appendChild(i))},
 e1(a,b){var s,r,q,p=this
 p.z=!0
 s=p.b
@@ -14857,16 +14871,19 @@ s=p.c
 s===$&&A.j()
 s.textContent=b
 for(s=p.r,r=s.length,q=0;q<s.length;s.length===r||(0,A.p)(s),++q)A.e(s[q].style).display=""
-s=p.d
-s===$&&A.j()
-A.e(s.style).display="none"
-s=p.e
-s===$&&A.j()
-s.textContent=""
-s=p.f
-s===$&&A.j()
-s.textContent=""
-p.a.className="door visible"},
+r=p.d
+r===$&&A.j()
+A.e(r.style).display="none"
+r=p.e
+r===$&&A.j()
+r.textContent=""
+r=p.f
+r===$&&A.j()
+r.textContent=""
+r=p.a
+r.className="door visible"
+r.removeAttribute("hidden")
+B.a.gaB(s).focus()},
 cu(a){var s,r,q=this,p=q.c
 p===$&&A.j()
 p.textContent=a
@@ -14874,9 +14891,10 @@ for(p=q.r,s=p.length,r=0;r<p.length;p.length===s||(0,A.p)(p),++r)A.e(p[r].style)
 p=q.d
 p===$&&A.j()
 A.e(p.style).display=""
-p=q.f
-p===$&&A.j()
-p.textContent=""},
+s=q.f
+s===$&&A.j()
+s.textContent=""
+p.focus()},
 i7(a,b){var s,r,q,p,o,n,m,l
 t.jz.a(b)
 s=this.e
@@ -14904,7 +14922,9 @@ s.textContent=""
 s=r.f
 s===$&&A.j()
 s.textContent=""
-r.a.className="door"},
+s=r.a
+s.className="door"
+s.setAttribute("hidden","")},
 sl2(a){this.w=t.ov.a(a)},
 sl4(a){this.x=t.jE.a(a)},
 sl3(a){this.y=t.bZ.a(a)}}
@@ -14960,7 +14980,7 @@ A.kY.prototype={
 $1(a){var s
 A.e(a)
 s=this.a
-s.aH()
+s.aI()
 s=s.w
 if(s!=null)s.$0()
 return null},
@@ -14978,7 +14998,7 @@ r.addEventListener("click",A.al(new A.lr(this)))
 A.e(p.appendChild(r))}}
 A.lr.prototype={
 $1(a){A.e(a)
-return this.a.aH()},
+return this.a.aI()},
 $S:1}
 A.lV.prototype={
 iI(){var s,r=this,q=r.a,p=A.Z(q,"div","page-turn",null),o=A.Z(q,"button","turn-prev","\u2039 earlier")
@@ -15099,7 +15119,7 @@ A.e(A.i(this.a.body).appendChild(s))},
 cm(){var s,r,q,p,o=this,n=o.b
 if(B.b.v(A.G(n.className),"open"))return
 s=$.mp
-if(s!=null&&s!==o)s.aH()
+if(s!=null&&s!==o)s.aI()
 $.mp=o
 r=o.a
 o.d=A.i(r.activeElement)
@@ -15110,9 +15130,9 @@ q=A.al(o.gjq())
 o.e=q
 r.addEventListener("keydown",q)
 p=A.ta(n)
-if(p.length!==0)B.a.gaI(p).focus()
+if(p.length!==0)B.a.gaB(p).focus()
 else n.focus()},
-aH(){var s,r,q=this,p=q.b
+aI(){var s,r,q=this,p=q.b
 if(!B.b.v(A.G(p.className),"open"))return
 p.className="panel"
 p.setAttribute("hidden","")
@@ -15125,14 +15145,14 @@ p=q.c
 if(p!=null)p.$0()},
 jr(a){A.e(a)
 if(A.aY(a.defaultPrevented))return
-if(A.G(a.code)==="Escape"){this.aH()
+if(A.G(a.code)==="Escape"){this.aI()
 return}if(A.G(a.code)==="Tab")this.jJ(a)},
 jJ(a){var s,r=A.ta(this.b)
 if(r.length===0)return
 s=A.i(this.a.activeElement)
-if(A.aY(a.shiftKey)){if(s===B.a.gaI(r)||!B.a.v(r,s)){a.preventDefault()
+if(A.aY(a.shiftKey)){if(s===B.a.gaB(r)||!B.a.v(r,s)){a.preventDefault()
 B.a.gR(r).focus()}}else if(s===B.a.gR(r)||!B.a.v(r,s)){a.preventDefault()
-B.a.gaI(r).focus()}},
+B.a.gaB(r).focus()}},
 scl(a){this.c=t.jE.a(a)}}
 A.mC.prototype={
 i6(a){var s,r,q
@@ -15169,7 +15189,7 @@ A.e(a)
 s=this.a
 r=s.f
 if(r!=null)r.$2(this.b,this.c)
-s.aH()},
+s.aI()},
 $S:4}
 A.bP.prototype={}
 A.ka.prototype={
@@ -15450,7 +15470,7 @@ n=A.vK(l.w.a.b)
 B.a.k(l.d,n)
 m.f=n
 m.p3=!0},
-aC(a,b){var s,r=this
+aD(a,b){var s,r=this
 if(a<=0||b<=0)throw A.c(A.w("Pixeldart surface size must be positive",null))
 if(!r.p3){r.b=a
 r.c=b
@@ -15743,7 +15763,7 @@ h=Math.max(0.1,0.8*e)
 if(d===0)s=null
 else{this.ei(A.tS(d))
 s=new A.kQ(new A.z(j.a,j.b,j.c),1)}this.id=new A.hO(B.e7,1.5,14,B.bh,h,s,m)},
-aE(a){var s,r,q,p,o,n,m,l,k,j,i,h,g=this,f=null
+aF(a){var s,r,q,p,o,n,m,l,k,j,i,h,g=this,f=null
 if(!g.p3)throw A.c(A.l("Pixeldart runtime is not initialized"))
 s=g.go
 if(s==null){s=new Float32Array(16)
@@ -15993,14 +16013,14 @@ r.r!==$&&A.y()
 r.r=s
 s.fF=s.fE=s.fD=r.d
 r.w=!0},
-aC(a,b){var s,r=this
+aD(a,b){var s,r=this
 if(a<=0||b<=0)throw A.c(A.w("legacy surface size must be positive",null))
 r.b=a
 r.c=b
 if(r.w){s=r.r
 s===$&&A.j()
-s.aC(a,b)}},
-aE(a){var s,r,q,p,o,n,m,l,k,j=this
+s.aD(a,b)}},
+aF(a){var s,r,q,p,o,n,m,l,k,j=this
 if(!j.w)throw A.c(A.l("legacy runtime is not initialized"))
 if(j.x||$.oo==null)return;++j.y
 $.D.j().setAttribute("data-renderer-frame-submits",""+j.y)
@@ -16029,7 +16049,7 @@ p=s.ca
 l=p==null?s.bu:p
 if(l==null)l=s.aU
 p=s.aA
-p.aG(l)
+p.aH(l)
 s.ar.depthMask(!0)
 p.kf(l,s.dj/255,s.dk/255,s.dl/255)
 s.da=s.cb=0
@@ -16109,11 +16129,11 @@ r=s.r.a-1
 if(r<1)r=1
 s.CW=s.ec(s.CW,r)
 s.jw()
-s.eE()}else if(s===$.ey.j())$.ey.j().aH()}if(A.G(a.code)==="KeyL"&&!A.aY(a.repeat)&&!$.aF.j().z){s=$.bh
+s.eE()}else if(s===$.ey.j())$.ey.j().aI()}if(A.G(a.code)==="KeyL"&&!A.aY(a.repeat)&&!$.aF.j().z){s=$.bh
 if(s==null){$.bh=$.jM.j()
-$.jM.j().cm()}else if(s===$.jM.j())$.jM.j().aH()}if(A.G(a.code)==="KeyH"&&!A.aY(a.repeat)&&!$.aF.j().z){s=$.bh
+$.jM.j().cm()}else if(s===$.jM.j())$.jM.j().aI()}if(A.G(a.code)==="KeyH"&&!A.aY(a.repeat)&&!$.aF.j().z){s=$.bh
 if(s==null){$.bh=$.jK.j()
-$.jK.j().cm()}else if(s===$.jK.j())$.jK.j().aH()}if(A.G(a.code)==="KeyK"&&!A.aY(a.repeat))A.qn("saved")},
+$.jK.j().cm()}else if(s===$.jK.j())$.jK.j().aI()}if(A.G(a.code)==="KeyK"&&!A.aY(a.repeat))A.qn("saved")},
 $S:4}
 A.pj.prototype={
 $1(a){A.e(a)
@@ -16676,7 +16696,7 @@ B.eK=new A.a4(B.fe,[0,1],t.I)
 B.fb={uScene:0,uHistory:1}
 B.eL=new A.a4(B.fb,[0,1],t.I)
 B.eZ={RENDERER_SHA:0,GAME_SHA:1,DART_SDK_VERSION:2,LOCKFILE_SHA256:3}
-B.eM=new A.a4(B.eZ,["d004e52a550696538afaab098008c0e195ce13dc","8f1007e8d369e0048b7e8d9ebc2bc4c11cfcb4bb","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29"],t.D)
+B.eM=new A.a4(B.eZ,["d004e52a550696538afaab098008c0e195ce13dc","02c7570a3cbd3d06319a8f86f5e92b9f48a7a918","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29"],t.D)
 B.f4={aPosition:0,aUvMat:1}
 B.bu=new A.a4(B.f4,[0,4],t.I)
 B.fc={uScene:0,uLut:1}
