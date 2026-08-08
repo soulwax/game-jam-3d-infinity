@@ -153,9 +153,9 @@ function assertHealthy(failures, label) {
         throw new Error(`${name}: browser save path failed ${JSON.stringify(save)}`);
       }
       for (const [key, marker] of [
-        ['KeyJ', '.journal-title'],
-        ['KeyL', '.entry-picker'],
-        ['KeyH', '.help-copy'],
+        ['j', '.journal-title'],
+        ['l', '.entry-picker'],
+        ['h', '.help-copy'],
       ]) {
         await page.keyboard.press(key);
         await page.waitForTimeout(50);
