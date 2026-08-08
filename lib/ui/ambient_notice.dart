@@ -7,6 +7,10 @@ import 'panel.dart';
 class AmbientNotice {
   AmbientNotice(web.Document document)
     : root = buildElement(document, 'div', cls: 'ambient-notice') {
+    root
+      ..setAttribute('role', 'status')
+      ..setAttribute('aria-live', 'polite')
+      ..setAttribute('aria-atomic', 'true');
     document.body!.appendChild(root);
   }
 

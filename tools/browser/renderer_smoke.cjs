@@ -75,6 +75,29 @@ function assertHealthy(failures, label) {
         houseSoundEmitterCount: canvas.getAttribute('data-house-sound-emitter-count'),
         audioPlanner: canvas.getAttribute('data-audio-planner'),
         audioSpatialActive: canvas.getAttribute('data-audio-spatial-active'),
+        door: (() => {
+          const door = document.querySelector('.door');
+          return {
+            role: door?.getAttribute('role'),
+            modal: door?.getAttribute('aria-modal'),
+            label: door?.getAttribute('aria-label'),
+            hidden: door?.getAttribute('hidden'),
+          };
+        })(),
+        prompt: (() => {
+          const prompt = document.querySelector('.prompt');
+          return {
+            role: prompt?.getAttribute('role'),
+            live: prompt?.getAttribute('aria-live'),
+          };
+        })(),
+        broadcast: (() => {
+          const broadcast = document.querySelector('.broadcast');
+          return {
+            role: broadcast?.getAttribute('role'),
+            live: broadcast?.getAttribute('aria-live'),
+          };
+        })(),
         wallTexture: canvas.getAttribute('data-renderer-texture-wall-plaster'),
         grimeTexture: canvas.getAttribute('data-renderer-texture-grime'),
       }));
@@ -145,6 +168,16 @@ function assertHealthy(failures, label) {
       }
       if (result.audioPlanner !== 'validated') {
         throw new Error(`${name}: acoustic planner was not wired ${JSON.stringify(result)}`);
+      }
+      if (result.door.role !== 'dialog' ||
+          result.door.modal !== 'true' ||
+          result.door.label !== 'Front door visitor' ||
+          result.door.hidden !== '') {
+        throw new Error(`${name}: visitor door semantics were incomplete ${JSON.stringify(result.door)}`);
+      }
+      if (result.prompt.role !== 'status' || result.prompt.live !== 'polite' ||
+          result.broadcast.role !== 'status' || result.broadcast.live !== 'polite') {
+        throw new Error(`${name}: live-region semantics were incomplete ${JSON.stringify(result)}`);
       }
       if (buttons.some((button) => !button.text && !button.label)) {
         throw new Error(`${name}: unlabeled button in accessibility smoke`);

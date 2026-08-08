@@ -6,7 +6,12 @@ class Broadcast {
   final web.HTMLElement root;
   String? _shownText;
 
-  Broadcast(web.Document document) : root = buildElement(document, 'div', cls: 'broadcast') {
+  Broadcast(web.Document document)
+    : root = buildElement(document, 'div', cls: 'broadcast') {
+    root
+      ..setAttribute('role', 'status')
+      ..setAttribute('aria-live', 'polite')
+      ..setAttribute('aria-atomic', 'true');
     document.body!.appendChild(root);
   }
 

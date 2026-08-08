@@ -7,7 +7,12 @@ class Prompt {
   final web.HTMLElement root;
   String? _shown;
 
-  Prompt(web.Document document) : root = buildElement(document, 'div', cls: 'prompt') {
+  Prompt(web.Document document)
+    : root = buildElement(document, 'div', cls: 'prompt') {
+    root
+      ..setAttribute('role', 'status')
+      ..setAttribute('aria-live', 'polite')
+      ..setAttribute('aria-atomic', 'true');
     root.style.setProperty('transition-duration', '${promptFadeSeconds}s');
     document.body!.appendChild(root);
   }

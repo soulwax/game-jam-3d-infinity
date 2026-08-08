@@ -27,6 +27,12 @@ class Door {
 
   Door(web.Document document)
     : root = buildElement(document, 'div', cls: 'door') {
+    root
+      ..setAttribute('role', 'dialog')
+      ..setAttribute('aria-modal', 'true')
+      ..setAttribute('aria-label', 'Front door visitor')
+      ..setAttribute('tabindex', '-1')
+      ..setAttribute('hidden', '');
     _speaker = buildElement(document, 'div', cls: 'door-speaker');
     _line = buildElement(document, 'div', cls: 'door-line');
     root.appendChild(_speaker);
@@ -70,6 +76,8 @@ class Door {
     _citeList.textContent = '';
     _citeResult.textContent = '';
     root.className = 'door visible';
+    root.removeAttribute('hidden');
+    _choiceButtons.first.focus();
   }
 
   void showConversation(String line) {
@@ -79,6 +87,7 @@ class Door {
     }
     _continueButton.style.display = '';
     _citeResult.textContent = '';
+    _continueButton.focus();
   }
 
   void showCitableEntries(web.Document document, List<(int, String)> entries) {
@@ -105,5 +114,6 @@ class Door {
     _citeList.textContent = '';
     _citeResult.textContent = '';
     root.className = 'door';
+    root.setAttribute('hidden', '');
   }
 }
