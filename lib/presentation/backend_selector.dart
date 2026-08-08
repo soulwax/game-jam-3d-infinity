@@ -3,12 +3,14 @@ import 'renderer_backend.dart';
 class BackendSelection {
   final RendererBackendKind kind;
   final bool explicit;
+  final bool automatic;
   final bool fallback;
   final String? fallbackReason;
 
   const BackendSelection(
     this.kind, {
     required this.explicit,
+    this.automatic = false,
     this.fallback = false,
     this.fallbackReason,
   });
@@ -19,8 +21,12 @@ class BackendSelector {
 
   BackendSelection select(String? rendererQuery) {
     final value = rendererQuery?.trim().toLowerCase();
-    if (value == 'next') {
-      return const BackendSelection(RendererBackendKind.next, explicit: true);
+    if (value == 'next' || value == 'auto') {
+      return BackendSelection(
+        RendererBackendKind.next,
+        explicit: value == 'next',
+        automatic: value == 'auto',
+      );
     }
     final unknown = value != null && value != 'legacy';
     return BackendSelection(

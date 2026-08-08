@@ -1125,6 +1125,7 @@ Future<void> main() async {
     _backendSelection = BackendSelection(
       RendererBackendKind.legacy,
       explicit: _backendSelection.explicit,
+      automatic: _backendSelection.automatic,
       fallback: true,
       fallbackReason: 'webgl2 unavailable',
     );
@@ -1157,6 +1158,7 @@ Future<void> main() async {
     _backendSelection = BackendSelection(
       RendererBackendKind.legacy,
       explicit: true,
+      automatic: _backendSelection.automatic,
       fallback: true,
       fallbackReason: 'pixeldart initialization failed',
     );

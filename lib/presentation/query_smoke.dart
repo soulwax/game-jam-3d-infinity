@@ -11,7 +11,7 @@ final class QuerySmokeResult {
 List<QuerySmokeResult> rendererQuerySmoke() {
   const selector = BackendSelector();
   return [
-    for (final query in ['', 'legacy', 'next', 'unknown'])
+    for (final query in ['', 'legacy', 'next', 'auto', 'unknown'])
       QuerySmokeResult(query, selector.select(query.isEmpty ? null : query)),
   ];
 }

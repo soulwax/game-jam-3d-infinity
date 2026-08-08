@@ -23,6 +23,13 @@ void main() {
     selector.select(' NEXT ').kind == RendererBackendKind.next,
     'query is normalized',
   );
+  final automatic = selector.select(' auto ');
+  _expect(
+    automatic.kind == RendererBackendKind.next &&
+        !automatic.explicit &&
+        automatic.automatic,
+    'auto selects the capability-aware next candidate',
+  );
   _expect(
     selector.select('unknown').kind == RendererBackendKind.legacy,
     'unknown query falls back safely',
@@ -32,5 +39,7 @@ void main() {
     selector.select('unknown').fallbackReason != null,
     'fallback reason is observable',
   );
-  print('backend selector: explicit next opt-in and legacy fallback pass');
+  print(
+    'backend selector: explicit next, auto candidate, and legacy fallback pass',
+  );
 }

@@ -4,6 +4,7 @@ const routes = [
   ['legacy-default', '/'],
   ['legacy-explicit', '/?renderer=legacy'],
   ['pixeldart-next', '/?renderer=next'],
+  ['pixeldart-auto-candidate', '/?renderer=auto'],
   ['unknown-fallback', '/?renderer=unknown'],
 ];
 
@@ -110,6 +111,10 @@ function assertHealthy(failures, label) {
           (diagnostics.fallback !== true ||
            diagnostics.fallbackReason !== 'unknown renderer query')) {
         throw new Error(`${name}: fallback diagnostics were incomplete ${JSON.stringify(diagnostics)}`);
+      }
+      if (name === 'pixeldart-auto-candidate' &&
+          (result.backend !== 'next' || result.fallback === 'true')) {
+        throw new Error(`${name}: auto candidate did not select Pixeldart ${JSON.stringify(result)}`);
       }
       if (result.houseManifest !== 'validated' ||
           !['res/house/house.json', '/res/house/house.json'].includes(
