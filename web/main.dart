@@ -1744,6 +1744,10 @@ void _raf(num ts) {
           _dispatchSound(audio, s);
         }
         _pendingSounds.clear();
+        _canvas.setAttribute(
+          'data-audio-spatial-active',
+          '${audio.activeSpatialSources}',
+        );
       }
     }
 

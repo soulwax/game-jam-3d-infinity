@@ -54,7 +54,7 @@ class Audio {
   final math.Random _rng = math.Random();
 
   String? _listenerRoom;
-  final Map<web.BiquadFilterNode, (String, web.GainNode)> _filterChains = {};
+  final Map<web.BiquadFilterNode, _SpatialChain> _filterChains = {};
 
   bool _musicStarted = false;
   web.AudioBufferSourceNode? _musicSrc;
@@ -63,6 +63,8 @@ class Audio {
   String? _roomIr;
 
   bool _silent = false;
+
+  int get activeSpatialSources => _filterChains.length;
 
   late final web.BiquadFilterNode _vhsHpFilter;
   late final web.BiquadFilterNode _vhsLpFilter;
@@ -115,7 +117,7 @@ class Audio {
     if (_ctx.state == 'suspended') _ctx.resume();
   }
 
-  web.GainNode _slot(String name) {
+  web.GainNode _slotForCue(String name) {
     // Voice clips must not feed the convolver (_send → _verb). Visitor audio
     // already has reverb baked in via --set during synthesis; the listener's
     // room reverb is ambient to the listener's space, not to the speaker at
@@ -176,7 +178,11 @@ class Audio {
     src.playbackRate.value = rate * (0.94 + _rng.nextDouble() * 0.12);
     final g = _ctx.createGain()..gain.value = gain;
     src.connect(g);
-    g.connect(_slot(sfxSlot[name] ?? 'transient'));
+    g.connect(_slotForCue(name));
+    src.onended = ((web.Event _) {
+      src.disconnect();
+      g.disconnect();
+    }).toJS;
     src.start();
   }
 
@@ -201,14 +207,23 @@ class Audio {
       final (gainDb, freqHz) = _computeOcclusion(path);
       filter.frequency.value = freqHz;
       attenuationGain.gain.value = math.pow(10.0, gainDb / 20.0).toDouble();
-      _filterChains[filter] = (sourceRoom, attenuationGain);
     }
+    final chain = _SpatialChain(
+      source: src,
+      sourceGain: g,
+      attenuationGain: attenuationGain,
+      filter: filter,
+      panner: p,
+      sourceRoom: sourceRoom,
+    );
+    _filterChains[filter] = chain;
+    src.onended = ((web.Event _) => _disposeSpatial(filter)).toJS;
 
     src.connect(g);
     g.connect(attenuationGain);
     attenuationGain.connect(filter);
     filter.connect(p);
-    p.connect(_slot(sfxSlot[name] ?? 'transient'));
+    p.connect(_slotForCue(name));
     src.start();
   }
 
@@ -350,17 +365,52 @@ class Audio {
 
     for (final entry in _filterChains.entries) {
       final filter = entry.key;
-      final (sourceRoom, gain) = entry.value;
+      final chain = entry.value;
+      final sourceRoom = chain.sourceRoom;
+      if (sourceRoom == null) continue;
 
       final path = house.pathBetweenRooms(sourceRoom, listenerRoom);
       final (gainDb, freqHz) = _computeOcclusion(path);
 
       filter.frequency.value = freqHz;
-      gain.gain.value = math.pow(10.0, gainDb / 20.0).toDouble();
+      chain.attenuationGain.gain.value = math
+          .pow(10.0, gainDb / 20.0)
+          .toDouble();
     }
+  }
+
+  void _disposeSpatial(web.BiquadFilterNode filter) {
+    final chain = _filterChains.remove(filter);
+    chain?.dispose();
   }
 
   void onDoorStateChanged() {
     _updateAllOcclusionFilters();
+  }
+}
+
+final class _SpatialChain {
+  final web.AudioBufferSourceNode source;
+  final web.GainNode sourceGain;
+  final web.GainNode attenuationGain;
+  final web.BiquadFilterNode filter;
+  final web.PannerNode panner;
+  final String? sourceRoom;
+
+  _SpatialChain({
+    required this.source,
+    required this.sourceGain,
+    required this.attenuationGain,
+    required this.filter,
+    required this.panner,
+    required this.sourceRoom,
+  });
+
+  void dispose() {
+    source.disconnect();
+    sourceGain.disconnect();
+    attenuationGain.disconnect();
+    filter.disconnect();
+    panner.disconnect();
   }
 }
