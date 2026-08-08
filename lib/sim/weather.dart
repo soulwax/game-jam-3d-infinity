@@ -1,53 +1,140 @@
+import 'dart:convert';
 import 'dart:math' as math;
+
 import '../engine/math3.dart';
-import '../config.dart';
 
-Vec3 sunDirection(double sunAngle) {
-  if (sunAngle == 0.0) return Vec3(0.0, 0.0, 1.0);
+class WeatherDay {
+  final int day;
+  final bool rain;
+  final double rainIntensity;
+  final double daylightHours;
 
-  const double maxElevation = 70.0 * math.pi / 180.0;
-  const double horizonOffset = 30.0;
-  final elevation = maxElevation * math.sin(math.pi * sunAngle);
-  final azimuth = (horizonOffset + (1.0 - sunAngle) * 180.0) * math.pi / 180.0;
+  const WeatherDay({
+    required this.day,
+    required this.rain,
+    required this.rainIntensity,
+    required this.daylightHours,
+  });
 
-  final y = math.sin(elevation);
-  final xy = math.cos(elevation);
-  final x = xy * math.cos(azimuth);
-  final z = xy * math.sin(azimuth);
-
-  return Vec3(x, y, z).normalized;
+  Map<String, dynamic> toJson() => {
+    'day': day,
+    'rain': rain,
+    'rainIntensity': rainIntensity,
+    'daylightHours': daylightHours,
+  };
 }
 
-int sunColor(double sunAngle) {
-  if (sunAngle == 0.0) {
-    return sunColorNight;
+/// Seeded, renderer-neutral weather facts for one authored run.
+class WeatherSchedule {
+  static const authoredDays = 21;
+
+  final int seed;
+  final List<WeatherDay> days;
+
+  WeatherSchedule({required this.seed, List<WeatherDay>? days})
+    : days = days == null
+          ? List.unmodifiable(_generate(seed))
+          : List.unmodifiable(_validate(days));
+
+  WeatherDay forDay(int day) {
+    if (day < 1 || day > days.length) {
+      throw RangeError.range(day, 1, days.length, 'day');
+    }
+    return days[day - 1];
   }
 
-  final r0 = (sunColorNight >> 16) & 0xFF;
-  final g0 = (sunColorNight >> 8) & 0xFF;
-  final b0 = sunColorNight & 0xFF;
+  String encode() => jsonEncode({
+    'seed': seed,
+    'days': [for (final day in days) day.toJson()],
+  });
 
-  final r1 = (sunColorNoon >> 16) & 0xFF;
-  final g1 = (sunColorNoon >> 8) & 0xFF;
-  final b1 = sunColorNoon & 0xFF;
-
-  final r2 = (sunColorDusk >> 16) & 0xFF;
-  final g2 = (sunColorDusk >> 8) & 0xFF;
-  final b2 = sunColorDusk & 0xFF;
-
-  late int r, g, b;
-
-  if (sunAngle < 0.5) {
-    final t = sunAngle * 2.0;
-    r = (r0 + (r1 - r0) * t).toInt();
-    g = (g0 + (g1 - g0) * t).toInt();
-    b = (b0 + (b1 - b0) * t).toInt();
-  } else {
-    final t = (sunAngle - 0.5) * 2.0;
-    r = (r1 + (r2 - r1) * t).toInt();
-    g = (g1 + (g2 - g1) * t).toInt();
-    b = (b1 + (b2 - b1) * t).toInt();
+  factory WeatherSchedule.fromJson(Object? raw) {
+    if (raw is String) raw = jsonDecode(raw);
+    if (raw is! Map || raw['seed'] is! int || raw['days'] is! List) {
+      throw const FormatException('weather schedule is malformed');
+    }
+    final rawDays = raw['days'] as List;
+    final decoded = <WeatherDay>[];
+    for (final value in rawDays) {
+      if (value is! Map ||
+          value['day'] is! int ||
+          value['rain'] is! bool ||
+          value['rainIntensity'] is! num ||
+          value['daylightHours'] is! num) {
+        throw const FormatException('weather day is malformed');
+      }
+      decoded.add(
+        WeatherDay(
+          day: value['day'] as int,
+          rain: value['rain'] as bool,
+          rainIntensity: (value['rainIntensity'] as num).toDouble(),
+          daylightHours: (value['daylightHours'] as num).toDouble(),
+        ),
+      );
+    }
+    return WeatherSchedule(seed: raw['seed'] as int, days: decoded);
   }
+}
 
-  return (r << 16) | (g << 8) | b;
+List<WeatherDay> _generate(int seed) => [
+  for (var day = 1; day <= WeatherSchedule.authoredDays; day++)
+    () {
+      final value = _mix(seed, day);
+      final rain = value % 5 == 0 || value % 7 == 0;
+      final intensity = rain ? 0.35 + (value % 66) / 100.0 : 0.0;
+      final daylight = 12.0 - (day - 1) * (2.0 / 20.0);
+      return WeatherDay(
+        day: day,
+        rain: rain,
+        rainIntensity: intensity,
+        daylightHours: daylight,
+      );
+    }(),
+];
+
+List<WeatherDay> _validate(List<WeatherDay> days) {
+  if (days.length != WeatherSchedule.authoredDays) {
+    throw const FormatException('weather schedule must cover 21 days');
+  }
+  for (var index = 0; index < days.length; index++) {
+    final day = days[index];
+    if (day.day != index + 1 ||
+        !day.rainIntensity.isFinite ||
+        day.rainIntensity < 0 ||
+        day.rainIntensity > 1 ||
+        !day.daylightHours.isFinite ||
+        day.daylightHours <= 0) {
+      throw const FormatException('weather day is out of bounds');
+    }
+  }
+  return days;
+}
+
+int _mix(int seed, int day) {
+  var value = (seed ^ (day * 0x45d9f3b)) & 0x7fffffff;
+  value = (value ^ (value >> 16)) * 0x45d9f3b & 0x7fffffff;
+  return (value ^ (value >> 16)) & 0x7fffffff;
+}
+
+int sunColor(double angle) {
+  final t = angle.clamp(0.0, 1.0).toDouble();
+  if (t <= 0.5) {
+    return _lerpColor(0x4488CC, 0xFFFFFF, t * 2.0);
+  }
+  return _lerpColor(0xFFFFFF, 0xFFBB55, (t - 0.5) * 2.0);
+}
+
+Vec3 sunDirection(double angle) {
+  final t = angle.clamp(0.0, 1.0).toDouble();
+  final azimuth = (t - 0.5) * math.pi;
+  return Vec3(math.cos(azimuth), math.sin(math.pi * t), -0.5).normalized;
+}
+
+int _lerpColor(int a, int b, double t) {
+  int channel(int shift) =>
+      (((a >> shift) & 0xff) +
+              ((((b >> shift) & 0xff) - ((a >> shift) & 0xff)) * t))
+          .round()
+          .clamp(0, 255);
+  return (channel(16) << 16) | (channel(8) << 8) | channel(0);
 }

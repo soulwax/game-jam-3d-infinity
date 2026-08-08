@@ -230,3 +230,28 @@ const double journalJitterMaxPx = 2.0;
 const double panelFadeSeconds = 0.25;
 const double promptFadeSeconds = 0.3;
 const double tapeRollWidthRem = 8.0;
+
+/// Frozen simulation-facing feature defaults. Renderer adapters may consume
+/// these values, but they do not define or mutate them.
+class FeatureConfig {
+  final double breathThresholdCelsius;
+  final double reducedMotionTapeScale;
+  final double mantleFlameScale;
+  final double mantleHissScale;
+
+  const FeatureConfig({
+    required this.breathThresholdCelsius,
+    required this.reducedMotionTapeScale,
+    required this.mantleFlameScale,
+    required this.mantleHissScale,
+  }) : assert(reducedMotionTapeScale >= 0),
+       assert(mantleFlameScale >= 0),
+       assert(mantleHissScale >= 0);
+
+  static const defaults = FeatureConfig(
+    breathThresholdCelsius: 6.0,
+    reducedMotionTapeScale: 0.35,
+    mantleFlameScale: 1.0,
+    mantleHissScale: 1.0,
+  );
+}
