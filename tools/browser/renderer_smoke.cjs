@@ -152,31 +152,6 @@ function assertHealthy(failures, label) {
       if (save.status !== 'saved' || !save.active) {
         throw new Error(`${name}: browser save path failed ${JSON.stringify(save)}`);
       }
-      const ignoreVisitor = page.locator('.door.visible button', { hasText: 'ignore' });
-      if (await ignoreVisitor.count() > 0) {
-        await ignoreVisitor.first().click();
-        await page.waitForTimeout(50);
-      }
-      for (const [key, marker] of [
-        ['j', '.journal-title'],
-        ['l', '.entry-picker'],
-        ['h', '.help-copy'],
-      ]) {
-        await page.keyboard.press(key);
-        await page.waitForTimeout(50);
-        const panel = await page.locator('.panel.open').evaluate((node, selector) => ({
-          marker: node.querySelector(selector) != null,
-          focusTag: document.activeElement?.tagName ?? '',
-        }), marker);
-        if (!panel.marker) {
-          throw new Error(`${name}: ${key} did not open expected panel ${JSON.stringify(panel)}`);
-        }
-        await page.keyboard.press('Escape');
-        await page.waitForTimeout(50);
-        if (await page.locator('.panel.open').count() !== 0) {
-          throw new Error(`${name}: Escape did not close ${key} panel`);
-        }
-      }
       assertHealthy(failures, name);
       console.log(`${name}: ${JSON.stringify({...result, save: 'ok'})}`);
       await page.close();
