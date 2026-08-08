@@ -19,11 +19,8 @@ final class RoomGeometry {
     required this.walls,
   });
 
-  Float32List get combined => Float32List.fromList([
-    ...floor,
-    ...ceiling,
-    ...walls,
-  ]);
+  Float32List get combined =>
+      Float32List.fromList([...floor, ...ceiling, ...walls]);
 }
 
 RoomGeometry buildRoomGeometry(House house, Room room) {

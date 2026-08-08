@@ -25,8 +25,10 @@ import 'package:quarantine/presentation/renderer_runtime.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/emitter.dart';
 import 'package:quarantine/house/focus.dart';
+import 'package:quarantine/house/geometry.dart';
 import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/interaction.dart';
+import 'package:quarantine/house/lighting.dart' as house_lighting;
 import 'package:quarantine/house/room.dart';
 import 'package:quarantine/journal/entry.dart' show Vocabulary;
 import 'package:quarantine/sim/interaction.dart';
@@ -78,8 +80,11 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   late px.RenderWorld _world;
   final List<px.MeshHandle> _sceneMeshes = [];
   final List<px.InstanceId> _sceneItems = [];
+  final Map<String, px.InstanceId> _sceneItemsByRoom = {};
+  final Map<String, px.RetainedItemDescriptor> _sceneDescriptors = {};
   px.MaterialHandle? _sceneMaterial;
   px.CameraView? _cameraView;
+  px.FrameEnvironment _environment = const px.FrameEnvironment();
   int _frameIndex = 0;
   bool _initialized = false;
 
@@ -88,6 +93,20 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   @override
   bool get contextLost =>
       _initialized && _device.status == pxdevice.GpuDeviceStatus.lost;
+
+  Iterable<String> get capabilityLabels {
+    if (!_initialized) return const [];
+    final caps = _renderer.capabilities;
+    return [
+      caps.webglVersion ?? 'webgl2',
+      'max-texture-${caps.maxTextureSize}',
+      'max-samples-${caps.maxSamples}',
+      if (caps.anisotropicFiltering) 'anisotropic-filtering',
+      if (caps.floatRenderTarget) 'float-render-target',
+      if (caps.halfFloatRenderTarget) 'half-float-render-target',
+      if (caps.contextLossExtension) 'context-loss',
+    ];
+  }
 
   @override
   void initialize() {
@@ -125,12 +144,102 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         debugLabel: 'room:${room.id}',
       );
       _sceneMeshes.add(handle);
-      _sceneItems.add(
-        _world.addItem(
-          px.RetainedItemDescriptor(mesh: handle, material: _sceneMaterial!),
+      final descriptor = px.RetainedItemDescriptor(
+        mesh: handle,
+        material: _sceneMaterial!,
+      );
+      final item = _world.addItem(descriptor);
+      _sceneItems.add(item);
+      _sceneItemsByRoom[room.id] = item;
+      _sceneDescriptors[room.id] = descriptor;
+    }
+  }
+
+  void setVisibleRooms(House house, String currentRoomId) {
+    final current = house.byId(currentRoomId);
+    if (current == null) return;
+    final visible = <String>{current.id};
+    for (final portal in house.portalsFor(current.id)) {
+      final adjacent = portal.other(current.id);
+      if (portal.passable && adjacent != null && house.byId(adjacent) != null) {
+        visible.add(adjacent);
+      }
+    }
+    for (final entry in _sceneItemsByRoom.entries) {
+      final base = _sceneDescriptors[entry.key]!;
+      final descriptor = px.RetainedItemDescriptor(
+        mesh: base.mesh,
+        material: base.material,
+        transform: base.transform,
+        visibilityMask: visible.contains(entry.key) ? -1 : 0,
+        drawMode: base.drawMode,
+        blendMode: base.blendMode,
+        castsShadow: base.castsShadow,
+        receivesShadow: base.receivesShadow,
+        sortTiebreaker: base.sortTiebreaker,
+        instanceFamilyKey: base.instanceFamilyKey,
+      );
+      _world.updateItem(entry.value, descriptor);
+      _sceneDescriptors[entry.key] = descriptor;
+    }
+  }
+
+  void setLighting(
+    House house,
+    String currentRoomId,
+    Vec3 eye,
+    double sunAngle,
+    double daylight,
+  ) {
+    final visible = <String>{currentRoomId};
+    final current = house.byId(currentRoomId);
+    if (current != null) {
+      for (final portal in house.portalsFor(current.id)) {
+        final adjacent = portal.other(current.id);
+        if (portal.passable &&
+            adjacent != null &&
+            house.byId(adjacent) != null) {
+          visible.add(adjacent);
+        }
+      }
+    }
+    final mantleLights = house_lighting.HouseLighting(
+      house,
+    ).visibleMantles(visible, eye);
+    final points = <px.PointLight>[];
+    for (var i = 0; i < mantleLights.length; i++) {
+      final light = mantleLights[i];
+      final color = _color(light.color);
+      points.add(
+        px.PointLight(
+          id: i,
+          position: px.Vec3(
+            light.position.x,
+            light.position.y,
+            light.position.z,
+          ),
+          color: color,
+          intensity: light.intensity,
+          radius: light.radius,
         ),
       );
     }
+    final sun = sunDirection(sunAngle);
+    _environment = px.FrameEnvironment(
+      ambientColor: px.LinearColor.white,
+      ambientIntensity: math.max(ambientFloor, ambientPeak * daylight),
+      directionalLight: sunAngle == 0
+          ? null
+          : px.DirectionalLight(
+              direction: px.Vec3(sun.x, sun.y, sun.z),
+              color: _color(sunColor(sunAngle)),
+              intensity: 1,
+            ),
+      pointLights: points,
+      fogColor: const px.LinearColor(0.03, 0.03, 0.04),
+      fogStart: fogStart,
+      fogEnd: fogEnd,
+    );
   }
 
   void setCamera(Camera camera) {
@@ -162,7 +271,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     if (!_initialized) throw StateError('Pixeldart runtime is not initialized');
     final input = px.FrameInput(
       camera: _cameraView ?? _defaultCamera(),
-      environment: const px.FrameEnvironment(),
+      environment: _environment,
       post: px.PostProcessState.off,
       frameIndex: _frameIndex++,
       historyEpoch: 0,
@@ -212,24 +321,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   }
 
   px.MeshData _roomMesh(House house, Room room) {
-    final builder = StaticMeshBuilder();
-    final o = room.origin;
-    final s = house.effectiveSize(room);
-    final a = Vec3(o.x, o.y, o.z);
-    final b = Vec3(o.x + s.x, o.y, o.z);
-    final c = Vec3(o.x + s.x, o.y, o.z + s.z);
-    final d = Vec3(o.x, o.y, o.z + s.z);
-    final at = Vec3(o.x, o.y + s.y, o.z);
-    final bt = Vec3(o.x + s.x, o.y + s.y, o.z);
-    final ct = Vec3(o.x + s.x, o.y + s.y, o.z + s.z);
-    final dt = Vec3(o.x, o.y + s.y, o.z + s.z);
-    builder.quad(a, d, c, b, 0xA8A8A8);
-    builder.quad(at, bt, ct, dt, 0xC0C0C0);
-    builder.quad(a, b, bt, at, 0x8B8B8B);
-    builder.quad(b, c, ct, bt, 0x8B8B8B);
-    builder.quad(c, d, dt, ct, 0x8B8B8B);
-    builder.quad(d, a, at, dt, 0x8B8B8B);
-    final vertices = builder.build();
+    final vertices = buildRoomGeometry(house, room).combined;
     final points = <px.Vec3>[];
     for (var i = 0; i < vertices.length; i += vertexStride) {
       points.add(px.Vec3(vertices[i], vertices[i + 1], vertices[i + 2]));
@@ -240,6 +332,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       localBounds: px.Aabb.fromPoints(points),
     );
   }
+
+  px.LinearColor _color(int rgb) => px.LinearColor(
+    ((rgb >> 16) & 0xff) / 255,
+    ((rgb >> 8) & 0xff) / 255,
+    (rgb & 0xff) / 255,
+  );
 }
 
 BackendSelection _selectRuntimeBackend() {
@@ -346,7 +444,12 @@ Future<void> main() async {
       ..initialize();
     _canvas.setAttribute('data-renderer-error', '$error');
   }
-  _publishRendererDiagnostics(capabilities: const ['webgl2']);
+  final runtimeCapabilities = _pixeldartRuntime?.capabilityLabels;
+  _publishRendererDiagnostics(
+    capabilities: runtimeCapabilities == null || runtimeCapabilities.isEmpty
+        ? const ['webgl2']
+        : runtimeCapabilities,
+  );
   try {
     _setBootPhase('initializing');
     _camera = Camera();
@@ -822,6 +925,14 @@ void _raf(num ts) {
     } else if (_backendSelection.kind == RendererBackendKind.next) {
       _camera.lookFrom(_viewEye, _simYaw, _simPitch);
       _pixeldartRuntime?.setCamera(_camera);
+      _pixeldartRuntime?.setVisibleRooms(_house, _currentRoom);
+      _pixeldartRuntime?.setLighting(
+        _house,
+        _currentRoom,
+        _viewEye,
+        _time.sunAngle,
+        _time.daylight,
+      );
       _presentationBackend.submit(
         RendererFrame(snapshot: _session.presentationSnapshot),
       );

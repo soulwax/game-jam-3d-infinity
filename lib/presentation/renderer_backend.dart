@@ -25,7 +25,12 @@ class RendererInputAction {
     required this.id,
     this.pressed = false,
     this.value = 0.0,
-  }) : assert(id != '');
+  }) : assert(id != ''),
+       assert(
+         value == value &&
+             value != double.infinity &&
+             value != double.negativeInfinity,
+       );
 }
 
 /// Renderer-neutral lifecycle contract. Implementations own GPU/DOM handles;
