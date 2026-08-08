@@ -128,6 +128,36 @@ void _addRoomFixtures(
           iron,
         );
       }
+      // Tile slips, mantel brackets and two small domestic objects keep the
+      // fireplace from reading as a single procedural block.
+      for (var i = 0; i < 4; i++) {
+        _box(
+          builder,
+          Vec3(fireX - 0.01, y + 1.55, fireZ - 0.34 + i * 0.20),
+          Vec3(fireX + 0.04, y + 1.70, fireZ - 0.18 + i * 0.20),
+          stone,
+        );
+      }
+      for (final bracketZ in [fireZ - 0.68, fireZ + 0.56]) {
+        _box(
+          builder,
+          Vec3(fireX - 0.42, y + 2.00, bracketZ),
+          Vec3(fireX - 0.26, y + 2.20, bracketZ + 0.16),
+          darkWood,
+        );
+      }
+      _box(
+        builder,
+        Vec3(fireX - 0.27, y + 2.34, fireZ - 0.58),
+        Vec3(fireX - 0.07, y + 2.52, fireZ - 0.38),
+        ceramic,
+      );
+      _box(
+        builder,
+        Vec3(fireX - 0.25, y + 2.34, fireZ + 0.34),
+        Vec3(fireX - 0.06, y + 2.49, fireZ + 0.52),
+        wood,
+      );
     case 'hall':
       _addStairRun(builder, house, room, size, darkWood, iron);
       // A narrow hall table and a framed clock sit outside the circulation
@@ -164,6 +194,26 @@ void _addRoomFixtures(
         Vec3(clockX - 0.025, y + 1.82, z + 0.08),
         Vec3(clockX + 0.025, y + 2.36, z + 0.13),
         iron,
+      );
+      for (var i = 0; i < 3; i++) {
+        _box(
+          builder,
+          Vec3(x + 1.70 + i * 0.36, y + 1.74, z + 0.08),
+          Vec3(x + 1.78 + i * 0.36, y + 1.84, z + 0.16),
+          iron,
+        );
+      }
+      _box(
+        builder,
+        Vec3(x + 0.86, y, z + 0.62),
+        Vec3(x + 1.10, y + 0.72, z + 0.90),
+        ceramic,
+      );
+      _box(
+        builder,
+        Vec3(x + 0.91, y + 0.72, z + 0.68),
+        Vec3(x + 1.05, y + 0.82, z + 0.84),
+        darkWood,
       );
     case 'kitchen':
       final rangeX = x + size.x - 0.62;
@@ -207,6 +257,32 @@ void _addRoomFixtures(
         Vec3(x + 2.55, y + 1.84, z + 2.88),
         darkWood,
       );
+      _box(
+        builder,
+        Vec3(x + 3.38, y + 0.94, z + 1.26),
+        Vec3(x + 4.48, y + 1.02, z + 2.22),
+        ceramic,
+      );
+      _box(
+        builder,
+        Vec3(x + 3.82, y + 1.02, z + 1.66),
+        Vec3(x + 3.90, y + 1.34, z + 1.74),
+        iron,
+      );
+      _box(
+        builder,
+        Vec3(x + 3.72, y + 1.30, z + 1.66),
+        Vec3(x + 4.00, y + 1.36, z + 1.74),
+        iron,
+      );
+      for (var i = 0; i < 2; i++) {
+        _box(
+          builder,
+          Vec3(x + 1.38 + i * 0.55, y + 0.95, z + 1.48),
+          Vec3(x + 1.78 + i * 0.55, y + 1.05, z + 1.88),
+          ceramic,
+        );
+      }
     case 'cellar':
       for (var i = 0; i < 4; i++) {
         _box(
@@ -227,6 +303,24 @@ void _addRoomFixtures(
         Vec3(x + 2.42, y + 1.28, z + 0.32),
         Vec3(x + 2.86, y + 1.38, z + 0.65),
         ceramic,
+      );
+      _box(
+        builder,
+        Vec3(x + 0.40, y + 1.72, z + 0.45),
+        Vec3(x + 3.40, y + 1.82, z + 0.58),
+        iron,
+      );
+      _box(
+        builder,
+        Vec3(x + 1.90, y + 1.58, z + 0.42),
+        Vec3(x + 2.06, y + 1.76, z + 0.61),
+        iron,
+      );
+      _box(
+        builder,
+        Vec3(x + 1.84, y + 1.62, z + 0.55),
+        Vec3(x + 2.12, y + 1.70, z + 0.64),
+        iron,
       );
     case 'bedroom':
       final bedX = x + 0.85;
@@ -261,6 +355,24 @@ void _addRoomFixtures(
         Vec3(x + size.x - 0.10, y + 1.57, z + 1.52),
         darkWood,
       );
+      for (final pillowZ in [bedZ + 0.22, bedZ + 0.78]) {
+        _box(
+          builder,
+          Vec3(bedX + 0.36, y + 0.75, pillowZ),
+          Vec3(bedX + 1.12, y + 0.92, pillowZ + 0.42),
+          ceramic,
+        );
+      }
+      for (final legX in [bedX + 0.12, bedX + 3.45]) {
+        for (final legZ in [bedZ + 0.12, bedZ + 1.72]) {
+          _box(
+            builder,
+            Vec3(legX, y + 0.08, legZ),
+            Vec3(legX + 0.10, y + 0.44, legZ + 0.10),
+            darkWood,
+          );
+        }
+      }
     case 'landing':
       _box(
         builder,
@@ -274,6 +386,14 @@ void _addRoomFixtures(
           Vec3(x + 0.48, y + 0.82 + i * 0.20, z + 1.68 + i * 0.22),
           Vec3(x + 2.14, y + 0.90 + i * 0.20, z + 1.76 + i * 0.22),
           wood,
+        );
+      }
+      for (var i = 0; i < 3; i++) {
+        _box(
+          builder,
+          Vec3(x + 0.62 + i * 0.46, y + 1.02, z + 1.74 + i * 0.22),
+          Vec3(x + 0.70 + i * 0.46, y + 1.78, z + 1.82 + i * 0.22),
+          darkWood,
         );
       }
     case 'bathroom':
@@ -301,6 +421,18 @@ void _addRoomFixtures(
         Vec3(x + size.x - 0.10, y + 1.82, z + size.z - 0.18),
         iron,
       );
+      _box(
+        builder,
+        Vec3(x + 0.86, y + 0.72, z + 0.68),
+        Vec3(x + 0.96, y + 1.18, z + 0.78),
+        iron,
+      );
+      _box(
+        builder,
+        Vec3(x + 0.70, y + 1.12, z + 0.68),
+        Vec3(x + 1.12, y + 1.18, z + 0.78),
+        iron,
+      );
     case 'spare-room':
       _box(
         builder,
@@ -320,6 +452,14 @@ void _addRoomFixtures(
         Vec3(x + size.x - 0.25, y + 0.72, z + size.z - 0.24),
         darkWood,
       );
+      for (var i = 0; i < 3; i++) {
+        _box(
+          builder,
+          Vec3(x + size.x - 0.98, y + 0.18 + i * 0.16, z + size.z - 1.12),
+          Vec3(x + size.x - 0.28, y + 0.24 + i * 0.16, z + size.z - 1.04),
+          iron,
+        );
+      }
   }
 }
 
