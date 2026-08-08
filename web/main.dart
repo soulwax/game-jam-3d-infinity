@@ -105,6 +105,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   List<InventoryPlacement> _inventoryPlacements = const [];
   final Map<String, px.TextureHandle> _textures = {};
   final Map<String, px.MaterialHandle> _roomMaterials = {};
+  final Map<String, px.MaterialHandle> _inventoryMaterials = {};
   px.MaterialHandle? _sceneMaterial;
   px.MaterialHandle? _exteriorMaterial;
   px.CameraView? _cameraView;
@@ -258,6 +259,29 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         uvScaleV: 1.0,
       ),
     );
+    for (final kind in const [
+      'architecture',
+      'furniture',
+      'fixture',
+      'service',
+      'story',
+      'decor',
+      'micro',
+    ]) {
+      final isService = kind == 'service';
+      _inventoryMaterials[kind] = _renderer.resources.registerMaterial(
+        px.MaterialDefinition(
+          key: 'quarantine-inventory-$kind',
+          albedoTexture: isService
+              ? _textures['grime']
+              : _textures['wall-plaster'],
+          tintR: _inventoryTint(kind).$1,
+          tintG: _inventoryTint(kind).$2,
+          tintB: _inventoryTint(kind).$3,
+          receivesShadow: true,
+        ),
+      );
+    }
     for (final room in house.rooms) {
       final mesh = _roomMesh(house, room);
       final handle = _renderer.resources.registerMesh(
@@ -352,7 +376,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       );
       final descriptor = px.RetainedItemDescriptor(
         mesh: mesh,
-        material: _sceneMaterial!,
+        material: _inventoryMaterial(asset.kind),
         transform: px.Transform(
           translation: px.Vec3(
             room.origin.x + position.x,
@@ -746,6 +770,20 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     'story' => 0xA69A83,
     'micro' => 0x6D6257,
     _ => 0x75665B,
+  };
+
+  px.MaterialHandle _inventoryMaterial(String kind) =>
+      _inventoryMaterials[kind] ?? _inventoryMaterials['furniture']!;
+
+  (double, double, double) _inventoryTint(String kind) => switch (kind) {
+    'architecture' => (0.86, 0.78, 0.66),
+    'furniture' => (0.72, 0.52, 0.37),
+    'fixture' => (0.82, 0.80, 0.73),
+    'service' => (0.54, 0.50, 0.44),
+    'story' => (0.78, 0.70, 0.54),
+    'decor' => (0.68, 0.62, 0.57),
+    'micro' => (0.60, 0.55, 0.48),
+    _ => (0.72, 0.52, 0.37),
   };
 
   void _inventoryBox(StaticMeshBuilder builder, Vec3 min, Vec3 max, int color) {
