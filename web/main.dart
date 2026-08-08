@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:math' as math;
@@ -19,14 +20,19 @@ import 'package:quarantine/game/rupture_gate.dart';
 import 'package:quarantine/game/session.dart';
 import 'package:quarantine/presentation/backend_selector.dart';
 import 'package:quarantine/presentation/backend_factory.dart';
+import 'package:quarantine/presentation/pixeldart_capability_bridge.dart';
 import 'package:quarantine/presentation/renderer_backend.dart';
 import 'package:quarantine/presentation/renderer_diagnostics.dart';
 import 'package:quarantine/presentation/renderer_runtime.dart';
 import 'package:quarantine/house/collision.dart';
+import 'package:quarantine/house/authored_manifest.dart';
 import 'package:quarantine/house/emitter.dart';
 import 'package:quarantine/house/focus.dart';
 import 'package:quarantine/house/geometry.dart';
 import 'package:quarantine/house/house.dart';
+import 'package:quarantine/house/exterior_mesh_adapter.dart';
+import 'package:quarantine/house/exterior_pvs.dart';
+import 'package:quarantine/house/exterior_scene.dart';
 import 'package:quarantine/house/interaction.dart';
 import 'package:quarantine/house/lighting.dart' as house_lighting;
 import 'package:quarantine/house/room.dart';
@@ -70,25 +76,48 @@ final BackendSelector _backendSelector = BackendSelector();
 late BackendSelection _backendSelection;
 late RendererBackend _presentationBackend;
 _PixeldartWebRuntime? _pixeldartRuntime;
+_LegacyWebRuntime? _legacyRuntime;
 
 final class _PixeldartWebRuntime implements RendererRuntime {
+  static const _capabilityBridge = PixeldartCapabilityBridge();
   final web.WebGL2RenderingContext context;
-  final int width;
-  final int height;
+  int width;
+  int height;
   late pxgl.WebGl2Device _device;
   late px.SceneRendererImpl _renderer;
   late px.RenderWorld _world;
+  late px.RenderCapabilities _queriedCapabilities;
+  late px.QualityProfile _profile;
+  String? _profileFallbackReason;
   final List<px.MeshHandle> _sceneMeshes = [];
   final List<px.InstanceId> _sceneItems = [];
   final Map<String, px.InstanceId> _sceneItemsByRoom = {};
   final Map<String, px.RetainedItemDescriptor> _sceneDescriptors = {};
+  px.InstanceId? _exteriorShellItem;
+  px.RetainedItemDescriptor? _exteriorShellDescriptor;
+  final List<_PixeldartDecoration> _decorations = [];
   px.MaterialHandle? _sceneMaterial;
+  px.MaterialHandle? _exteriorMaterial;
   px.CameraView? _cameraView;
   px.FrameEnvironment _environment = const px.FrameEnvironment();
+  px.PostProcessState _post = px.PostProcessState.off;
+  px.FrameStats? _lastFrameStats;
+  double _lastFrameMs = 0;
+  double _timeSeconds = 0;
+  int _historyEpoch = 0;
+  int _noiseSeed = 0;
   int _frameIndex = 0;
   bool _initialized = false;
 
   _PixeldartWebRuntime(this.context, this.width, this.height);
+
+  @override
+  RendererDiagnostics get diagnostics => RendererDiagnostics.fromEnvironment(
+    backend: 'next',
+    profile: _initialized ? _profile.kind.name : 'safe',
+    capabilities: _initialized ? capabilityLabels : const ['uninitialized'],
+    fallback: false,
+  );
 
   @override
   bool get contextLost =>
@@ -96,34 +125,92 @@ final class _PixeldartWebRuntime implements RendererRuntime {
 
   Iterable<String> get capabilityLabels {
     if (!_initialized) return const [];
-    final caps = _renderer.capabilities;
-    return [
-      caps.webglVersion ?? 'webgl2',
-      'max-texture-${caps.maxTextureSize}',
-      'max-samples-${caps.maxSamples}',
-      if (caps.anisotropicFiltering) 'anisotropic-filtering',
-      if (caps.floatRenderTarget) 'float-render-target',
-      if (caps.halfFloatRenderTarget) 'half-float-render-target',
-      if (caps.contextLossExtension) 'context-loss',
-    ];
+    return _capabilityBridge.capabilityLabels(
+      _queriedCapabilities,
+      profile: _profile,
+    );
   }
+
+  String get profileName => _profile.kind.name;
+
+  String get surfaceLabel => '${width}x$height';
+
+  String? get frameStatsLabel {
+    final stats = _lastFrameStats;
+    if (stats == null) return null;
+    return 'draws=${stats.drawCalls};triangles=${stats.trianglesSubmitted};'
+        'instances=${stats.instancesSubmitted};gpuBytes=${stats.liveGpuBytes};'
+        'creates=${stats.resourceCreateCount};deletes=${stats.resourceDeleteCount};'
+        'frameMs=${_lastFrameMs.toStringAsFixed(3)}';
+  }
+
+  bool get frameBudgetWithinLimits {
+    final stats = _lastFrameStats;
+    if (stats == null) return false;
+    return stats.drawCalls <= 64 &&
+        stats.trianglesSubmitted <= 100000 &&
+        stats.liveGpuBytes <= 64 * 1024 * 1024 &&
+        _lastFrameMs <= 100;
+  }
+
+  String? get profileFallbackReason => _profileFallbackReason;
 
   @override
   void initialize() {
     _device = pxgl.WebGl2Device(context);
-    _renderer = px.SceneRendererImpl(_device);
-    _renderer.initialize(
-      px.RendererConfiguration.safe,
-      px.SurfaceMetrics(
-        cssWidth: width,
-        cssHeight: height,
-        pixelWidth: width,
-        pixelHeight: height,
-      ),
+    _queriedCapabilities = _device.queryCapabilities();
+    _profile = _capabilityBridge.runtimeProfile(_queriedCapabilities);
+    final surface = px.SurfaceMetrics(
+      cssWidth: width,
+      cssHeight: height,
+      pixelWidth: width,
+      pixelHeight: height,
     );
+    _renderer = px.SceneRendererImpl(_device);
+    try {
+      _renderer.initialize(_configurationForProfile(_profile), surface);
+    } catch (error) {
+      if (_profile == px.QualityProfile.safe) rethrow;
+      _profileFallbackReason =
+          '${_profile.kind.name} profile failed; using safe graph: $error';
+      _profile = px.QualityProfile.safe;
+      _renderer = px.SceneRendererImpl(_device)
+        ..initialize(px.RendererConfiguration.safe, surface);
+    }
     _world = _renderer.createWorld();
     _initialized = true;
   }
+
+  @override
+  void resize(int nextWidth, int nextHeight) {
+    if (nextWidth <= 0 || nextHeight <= 0) {
+      throw ArgumentError('Pixeldart surface size must be positive');
+    }
+    if (!_initialized) {
+      width = nextWidth;
+      height = nextHeight;
+      return;
+    }
+    _renderer.resize(
+      px.SurfaceMetrics(
+        cssWidth: nextWidth,
+        cssHeight: nextHeight,
+        pixelWidth: nextWidth,
+        pixelHeight: nextHeight,
+      ),
+    );
+    width = nextWidth;
+    height = nextHeight;
+  }
+
+  px.RendererConfiguration _configurationForProfile(
+    px.QualityProfile profile,
+  ) => px.RendererConfiguration(
+    profile: profile,
+    internalWidth: 384,
+    internalHeight: 216,
+    shadowMapCount: profile.installs(px.PipelineFeatures.shadows) ? 1 : 0,
+  );
 
   /// Installs the retained room shells once. Simulation-owned room facts are
   /// read here, while the Pixeldart world owns only renderer handles.
@@ -153,6 +240,47 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _sceneItemsByRoom[room.id] = item;
       _sceneDescriptors[room.id] = descriptor;
     }
+    for (final room in house.rooms) {
+      for (final window in room.windows) {
+        _addDecoration(
+          room.id,
+          _windowMesh(room, window),
+          () => !window.shutterOpen,
+        );
+      }
+    }
+    for (final portal in house.portals) {
+      if (portal.stair) continue;
+      final room = house.byId(portal.a);
+      if (room == null) continue;
+      _addDecoration(
+        room.id,
+        _portalMesh(room, portal),
+        () => !portal.passable,
+      );
+    }
+    final exteriorMesh = toPixeldartMeshData(buildHouseExteriorMesh(house));
+    _exteriorMaterial = _renderer.resources.registerMaterial(
+      const px.MaterialDefinition(
+        key: 'quarantine-house-exterior-shell',
+        tintR: 0.5,
+        tintG: 0.5,
+        tintB: 0.5,
+        doubleSided: true,
+      ),
+    );
+    final exteriorHandle = _renderer.resources.registerMesh(
+      exteriorMesh,
+      debugLabel: 'exterior:main-shell',
+    );
+    _sceneMeshes.add(exteriorHandle);
+    final exteriorDescriptor = px.RetainedItemDescriptor(
+      mesh: exteriorHandle,
+      material: _exteriorMaterial!,
+      visibilityMask: -1,
+    );
+    _exteriorShellDescriptor = exteriorDescriptor;
+    _exteriorShellItem = _world.addItem(exteriorDescriptor);
   }
 
   void setVisibleRooms(House house, String currentRoomId) {
@@ -167,20 +295,34 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     }
     for (final entry in _sceneItemsByRoom.entries) {
       final base = _sceneDescriptors[entry.key]!;
-      final descriptor = px.RetainedItemDescriptor(
-        mesh: base.mesh,
-        material: base.material,
-        transform: base.transform,
-        visibilityMask: visible.contains(entry.key) ? -1 : 0,
-        drawMode: base.drawMode,
-        blendMode: base.blendMode,
-        castsShadow: base.castsShadow,
-        receivesShadow: base.receivesShadow,
-        sortTiebreaker: base.sortTiebreaker,
-        instanceFamilyKey: base.instanceFamilyKey,
+      final descriptor = _withVisibility(
+        base,
+        visible.contains(entry.key) ? -1 : 0,
       );
       _world.updateItem(entry.value, descriptor);
       _sceneDescriptors[entry.key] = descriptor;
+    }
+    for (final decoration in _decorations) {
+      final mask = visible.contains(decoration.roomId) && decoration.isVisible()
+          ? -1
+          : 0;
+      _world.updateItem(
+        decoration.item,
+        _withVisibility(decoration.base, mask),
+      );
+    }
+    final exteriorVisible = ExteriorPvs()
+        .cellsForRoom(currentRoomId)
+        .isNotEmpty;
+    final exteriorItem = _exteriorShellItem;
+    final exteriorBase = _exteriorShellDescriptor;
+    if (exteriorItem != null && exteriorBase != null) {
+      final descriptor = _withVisibility(
+        exteriorBase,
+        exteriorVisible ? -1 : 0,
+      );
+      _world.updateItem(exteriorItem, descriptor);
+      _exteriorShellDescriptor = descriptor;
     }
   }
 
@@ -266,20 +408,73 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     );
   }
 
+  /// Maps simulation-owned rupture stages into renderer effect weights without
+  /// teaching Pixeldart game rules.
+  void setPostProcess(RuptureState rupture, {required bool reducedMotion}) {
+    final step = rupture.step;
+    final duration = rupture.stageDuration;
+    final progress = duration > 0
+        ? (rupture.stepElapsed / duration).clamp(0.0, 1.0)
+        : 0.0;
+    final afterGrade = step.index >= RuptureStep.gradeLUT.index;
+    final afterWarp = step.index >= RuptureStep.affineWarp.index;
+    final afterSnap = step.index >= RuptureStep.vertexSnap.index;
+    final tape = step == RuptureStep.tapeGiveup;
+    final lightsOut = step == RuptureStep.lightsOut;
+    _post = px.PostProcessState(
+      exposure: lightsOut ? 0.45 : 1.0,
+      colorGradeStrength: afterGrade
+          ? (step == RuptureStep.gradeLUT ? progress : 1.0)
+          : 0.0,
+      affineWarpStrength: afterWarp
+          ? (step == RuptureStep.affineWarp ? progress : 1.0)
+          : 0.0,
+      vertexSnapGrid: afterSnap ? 320.0 : 0.0,
+      quantizationBits: afterSnap ? 5 : 8,
+      vhsChromaWeight: tape ? 1.0 : 0.0,
+      vhsTrackingWeight: tape ? progress : 0.0,
+      vhsNoiseWeight: tape ? progress : 0.0,
+      vhsHeadSwitchWeight: tape ? progress : 0.0,
+      vhsDropoutWeight: tape ? progress : 0.0,
+      vhsGhostWeight: tape ? progress : 0.0,
+      reducedMotion: reducedMotion,
+    );
+  }
+
+  void setFrameClock({
+    required double timeSeconds,
+    required int historyEpoch,
+    required int noiseSeed,
+  }) {
+    if (!timeSeconds.isFinite || timeSeconds < 0) {
+      throw ArgumentError.value(timeSeconds, 'timeSeconds');
+    }
+    if (historyEpoch < 0 || noiseSeed < 0) {
+      throw ArgumentError('frame clock seeds must be non-negative');
+    }
+    _timeSeconds = timeSeconds;
+    _historyEpoch = historyEpoch;
+    _noiseSeed = noiseSeed;
+  }
+
   @override
   void submit(RendererFrame frame) {
     if (!_initialized) throw StateError('Pixeldart runtime is not initialized');
     final input = px.FrameInput(
       camera: _cameraView ?? _defaultCamera(),
       environment: _environment,
-      post: px.PostProcessState.off,
+      post: _post,
       frameIndex: _frameIndex++,
-      historyEpoch: 0,
-      noiseSeed: 0,
-      timeSeconds: 0,
+      historyEpoch: _historyEpoch,
+      noiseSeed: _noiseSeed,
+      timeSeconds: _timeSeconds,
     );
+    final stopwatch = Stopwatch()..start();
     _renderer.beginFrame(_world, input);
-    _renderer.endFrame();
+    _lastFrameStats = _renderer.endFrame();
+    stopwatch.stop();
+    _lastFrameMs =
+        stopwatch.elapsedMicroseconds / Duration.microsecondsPerMillisecond;
   }
 
   @override
@@ -289,7 +484,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   void loseContext() {}
 
   @override
-  void recover() {}
+  void recover() {
+    _historyEpoch++;
+  }
 
   @override
   void dispose() {
@@ -333,11 +530,233 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     );
   }
 
+  void _addDecoration(
+    String roomId,
+    px.MeshData mesh,
+    bool Function() visible,
+  ) {
+    final handle = _renderer.resources.registerMesh(
+      mesh,
+      debugLabel: 'decoration:$roomId',
+    );
+    _sceneMeshes.add(handle);
+    final base = px.RetainedItemDescriptor(
+      mesh: handle,
+      material: _sceneMaterial!,
+      visibilityMask: 0,
+    );
+    final item = _world.addItem(base);
+    _decorations.add(
+      _PixeldartDecoration(
+        roomId: roomId,
+        item: item,
+        base: base,
+        isVisible: visible,
+      ),
+    );
+  }
+
+  px.RetainedItemDescriptor _withVisibility(
+    px.RetainedItemDescriptor base,
+    int visibilityMask,
+  ) => px.RetainedItemDescriptor(
+    mesh: base.mesh,
+    material: base.material,
+    transform: base.transform,
+    visibilityMask: visibilityMask,
+    drawMode: base.drawMode,
+    blendMode: base.blendMode,
+    castsShadow: base.castsShadow,
+    receivesShadow: base.receivesShadow,
+    sortTiebreaker: base.sortTiebreaker,
+    instanceFamilyKey: base.instanceFamilyKey,
+  );
+
+  px.MeshData _windowMesh(Room room, Window window) {
+    return _panelMesh(
+      room,
+      window.facing,
+      window.offset,
+      window.offset + window.w,
+      window.sill,
+      window.sill + window.h,
+      0x7895A8,
+    );
+  }
+
+  px.MeshData _portalMesh(Room room, Portal portal) => _panelMesh(
+    room,
+    portal.facingFor(room.id),
+    portal.offsetFor(room.id),
+    portal.offsetFor(room.id) + portal.width,
+    0,
+    portal.height,
+    0x5A4335,
+  );
+
+  px.MeshData _panelMesh(
+    Room room,
+    Facing facing,
+    double u0,
+    double u1,
+    double v0,
+    double v1,
+    int color,
+  ) {
+    final size = _house.effectiveSize(room);
+    final x = room.origin.x;
+    final y = room.origin.y;
+    final z = room.origin.z;
+    final inset = 0.002;
+    final points = switch (facing) {
+      Facing.north => [
+        Vec3(x + u0, y + v0, z + inset),
+        Vec3(x + u1, y + v0, z + inset),
+        Vec3(x + u1, y + v1, z + inset),
+        Vec3(x + u0, y + v1, z + inset),
+      ],
+      Facing.south => [
+        Vec3(x + u1, y + v0, z + size.z - inset),
+        Vec3(x + u0, y + v0, z + size.z - inset),
+        Vec3(x + u0, y + v1, z + size.z - inset),
+        Vec3(x + u1, y + v1, z + size.z - inset),
+      ],
+      Facing.east => [
+        Vec3(x + size.x - inset, y + v1, z + u1),
+        Vec3(x + size.x - inset, y + v1, z + u0),
+        Vec3(x + size.x - inset, y + v0, z + u0),
+        Vec3(x + size.x - inset, y + v0, z + u1),
+      ],
+      Facing.west => [
+        Vec3(x + inset, y + v1, z + u0),
+        Vec3(x + inset, y + v1, z + u1),
+        Vec3(x + inset, y + v0, z + u1),
+        Vec3(x + inset, y + v0, z + u0),
+      ],
+    };
+    final builder = StaticMeshBuilder()
+      ..quad(points[0], points[1], points[2], points[3], color);
+    final vertices = builder.build();
+    return px.MeshData(
+      layout: px.VertexLayoutDescriptor.compatibility14,
+      vertices: vertices,
+      localBounds: px.Aabb.fromPoints([
+        for (var i = 0; i < vertices.length; i += vertexStride)
+          px.Vec3(vertices[i], vertices[i + 1], vertices[i + 2]),
+      ]),
+    );
+  }
+
   px.LinearColor _color(int rgb) => px.LinearColor(
     ((rgb >> 16) & 0xff) / 255,
     ((rgb >> 8) & 0xff) / 255,
     (rgb & 0xff) / 255,
   );
+}
+
+/// Browser-owned legacy runtime. The legacy engine remains unchanged, but its
+/// concrete draw is now entered through the same neutral backend lifecycle as
+/// Pixeldart. Renderer and DOM handles never leave this web-only runtime.
+final class _LegacyWebRuntime implements RendererRuntime {
+  final web.WebGL2RenderingContext context;
+  int width;
+  int height;
+  final bool imageEffects;
+  final bool fallback;
+  final String? fallbackReason;
+  late final Renderer renderer;
+  bool _initialized = false;
+  bool _contextLost = false;
+  int _submittedFrames = 0;
+
+  int get submittedFrames => _submittedFrames;
+
+  _LegacyWebRuntime(
+    this.context,
+    this.width,
+    this.height, {
+    required this.imageEffects,
+    this.fallback = false,
+    this.fallbackReason,
+  });
+
+  @override
+  RendererDiagnostics get diagnostics => RendererDiagnostics.fromEnvironment(
+    backend: 'legacy',
+    profile: 'legacy',
+    capabilities: const [],
+    fallback: fallback,
+    fallbackReason: fallbackReason,
+  );
+
+  @override
+  bool get contextLost => _contextLost;
+
+  @override
+  void initialize() {
+    if (_initialized) return;
+    renderer = Renderer(context, width, height);
+    renderer.configureImageEffects(
+      affineTexture: imageEffects,
+      vertexSnapping: imageEffects,
+      colorQuantize: imageEffects,
+    );
+    _initialized = true;
+  }
+
+  @override
+  void resize(int nextWidth, int nextHeight) {
+    if (nextWidth <= 0 || nextHeight <= 0) {
+      throw ArgumentError('legacy surface size must be positive');
+    }
+    width = nextWidth;
+    height = nextHeight;
+    if (_initialized) renderer.resize(nextWidth, nextHeight);
+  }
+
+  @override
+  void submit(RendererFrame frame) {
+    if (!_initialized) {
+      throw StateError('legacy runtime is not initialized');
+    }
+    if (_contextLost || _emitter == null) return;
+    _submittedFrames++;
+    _canvas.setAttribute('data-renderer-frame-submits', '$_submittedFrames');
+    _render(renderer, _legacyFrameTime, _rupture);
+  }
+
+  @override
+  void handleInput(RendererInputAction action) {}
+
+  @override
+  void loseContext() {
+    _contextLost = true;
+  }
+
+  @override
+  void recover() {
+    _contextLost = false;
+  }
+
+  @override
+  void dispose() {
+    _initialized = false;
+    _contextLost = false;
+  }
+}
+
+final class _PixeldartDecoration {
+  final String roomId;
+  final px.InstanceId item;
+  final px.RetainedItemDescriptor base;
+  final bool Function() isVisible;
+
+  const _PixeldartDecoration({
+    required this.roomId,
+    required this.item,
+    required this.base,
+    required this.isVisible,
+  });
 }
 
 BackendSelection _selectRuntimeBackend() {
@@ -361,10 +780,12 @@ web.Element? _fpsDiv;
 
 Audio? _audio;
 bool _audioArmed = false;
+bool _reducedMotion = false;
 
 bool _paused = false;
 bool _haveLastTime = false;
 double _lastTime = 0;
+double _legacyFrameTime = 0;
 double _accumulator = 0;
 bool _shadersLive = false;
 String _bootPhase = 'booting';
@@ -379,6 +800,8 @@ String _currentRoom = 'hall';
 late Capsule _playerCapsule;
 late ExamineState _examineState;
 late RuptureState _rupture;
+RuptureStep? _lastRendererRuptureStep;
+int _rendererHistoryEpoch = 0;
 final FpsMotion _motion = FpsMotion();
 
 Panel? _activePanel;
@@ -418,7 +841,7 @@ Future<void> main() async {
     );
     _presentationBackend = const BackendFactory().create(_backendSelection)
       ..initialize();
-    _publishRendererDiagnostics(capabilities: const ['webgl2-unavailable']);
+    _publishRendererDiagnostics();
     _setBootPhase('no-webgl2');
     web.document.getElementById('credits')?.textContent =
         'this browser has no webgl2.';
@@ -427,8 +850,16 @@ Future<void> main() async {
   try {
     final runtime = _backendSelection.kind == RendererBackendKind.next
         ? _PixeldartWebRuntime(ctx, _canvas.width, _canvas.height)
-        : null;
-    _pixeldartRuntime = runtime;
+        : _LegacyWebRuntime(
+            ctx,
+            _canvas.width,
+            _canvas.height,
+            imageEffects: _legacyRenderProfile,
+            fallback: _backendSelection.fallback,
+            fallbackReason: _backendSelection.fallbackReason,
+          );
+    _pixeldartRuntime = runtime is _PixeldartWebRuntime ? runtime : null;
+    _legacyRuntime = runtime is _LegacyWebRuntime ? runtime : null;
     _presentationBackend = const BackendFactory().create(
       _backendSelection,
       runtime: runtime,
@@ -440,23 +871,28 @@ Future<void> main() async {
       fallback: true,
       fallbackReason: 'pixeldart initialization failed',
     );
-    _presentationBackend = const BackendFactory().create(_backendSelection)
-      ..initialize();
+    _legacyRuntime = _LegacyWebRuntime(
+      ctx,
+      _canvas.width,
+      _canvas.height,
+      imageEffects: _legacyRenderProfile,
+      fallback: true,
+      fallbackReason: _backendSelection.fallbackReason,
+    );
+    _presentationBackend = const BackendFactory().create(
+      _backendSelection,
+      runtime: _legacyRuntime,
+    )..initialize();
     _canvas.setAttribute('data-renderer-error', '$error');
   }
-  final runtimeCapabilities = _pixeldartRuntime?.capabilityLabels;
-  _publishRendererDiagnostics(
-    capabilities: runtimeCapabilities == null || runtimeCapabilities.isEmpty
-        ? const ['webgl2']
-        : runtimeCapabilities,
-  );
+  _publishRendererDiagnostics();
   try {
     _setBootPhase('initializing');
     _camera = Camera();
-    _camera.breathScale =
-        web.window.matchMedia('(prefers-reduced-motion: reduce)').matches
-        ? 0.5
-        : 1.0;
+    _reducedMotion = web.window
+        .matchMedia('(prefers-reduced-motion: reduce)')
+        .matches;
+    _camera.breathScale = _reducedMotion ? 0.5 : 1.0;
     _input = Input(web.window);
     _hud = Hud<Object>();
 
@@ -464,12 +900,10 @@ Future<void> main() async {
     _canvas.height = web.window.innerHeight > 0 ? web.window.innerHeight : 600;
     _setBootPhase('renderer');
     if (_backendSelection.kind == RendererBackendKind.legacy) {
-      _renderer = Renderer(ctx, _canvas.width, _canvas.height);
-      _renderer!.configureImageEffects(
-        affineTexture: _legacyRenderProfile,
-        vertexSnapping: _legacyRenderProfile,
-        colorQuantize: _legacyRenderProfile,
-      );
+      _renderer = _legacyRuntime?.renderer;
+      if (_renderer == null) {
+        throw StateError('legacy runtime did not initialize its renderer');
+      }
     }
 
     _setBootPhase('text');
@@ -728,24 +1162,25 @@ void _setBootPhase(String phase) {
   _canvas.setAttribute('data-boot-phase', phase);
 }
 
-void _publishRendererDiagnostics({Iterable<String> capabilities = const []}) {
-  final diagnostics = RendererDiagnostics.fromEnvironment(
-    backend: _backendSelection.kind.name,
-    profile: _backendSelection.kind == RendererBackendKind.next
-        ? 'safe'
-        : 'legacy',
-    capabilities: capabilities,
-    fallback: _backendSelection.fallback,
-    fallbackReason: _backendSelection.fallbackReason,
-  );
+void _publishRendererDiagnostics() {
+  final diagnostics = _presentationBackend.diagnostics;
   _canvas
     ..setAttribute(
       'data-renderer-request',
       Uri.base.queryParameters['renderer'] ?? 'legacy',
     )
     ..setAttribute('data-renderer-backend', diagnostics.backend)
+    ..setAttribute('data-renderer-profile', diagnostics.profile)
     ..setAttribute('data-renderer-fallback', diagnostics.fallback.toString())
     ..setAttribute('data-renderer-diagnostics', diagnostics.encode());
+  final profileFallback = _pixeldartRuntime?.profileFallbackReason;
+  if (profileFallback != null) {
+    _canvas.setAttribute('data-renderer-profile-fallback', profileFallback);
+  }
+  final legacyFrames = _legacyRuntime?.submittedFrames;
+  if (legacyFrames != null) {
+    _canvas.setAttribute('data-renderer-frame-submits', '$legacyFrames');
+  }
 }
 
 void _saveSession(String status) {
@@ -783,12 +1218,9 @@ void _showSaveStatus(String message) {
   if (status == null) return;
   status.textContent = message;
   status.className = 'visible';
-  web.window.setTimeout(
-    ((JSAny? _) {
-      status.className = '';
-    }).toJS,
-    2400.toJS,
-  );
+  Future<void>.delayed(const Duration(milliseconds: 2400), () {
+    status.className = '';
+  });
 }
 
 void _reportBootError(Object error, [StackTrace? stack]) {
@@ -809,6 +1241,7 @@ void _armAudio() {
 }
 
 void _loadManifest() async {
+  await _loadAuthoredHouseManifest();
   JSObject? data;
   try {
     final resp = await web.window.fetch('res/manifest.json'.toJS).toDart;
@@ -817,6 +1250,26 @@ void _loadManifest() async {
   _applyCredits(data);
 
   await Future.wait([_loadTextures(data), _initAudio(data)]);
+}
+
+Future<void> _loadAuthoredHouseManifest() async {
+  const urls = ['res/house/house.json', 'assets/house/house.json'];
+  Object? lastError;
+  for (final url in urls) {
+    try {
+      final response = await web.window.fetch(url.toJS).toDart;
+      final source = (await response.text().toDart).toString();
+      final manifest = AuthoredHouseManifest.decode(source);
+      manifest.validateAgainst(_house);
+      _canvas.setAttribute('data-house-manifest', 'validated');
+      _canvas.setAttribute('data-house-manifest-source', url);
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  _canvas.setAttribute('data-house-manifest', 'unavailable');
+  web.console.warn('authored house manifest unavailable: $lastError'.toJS);
 }
 
 void _collectUrls(
@@ -866,6 +1319,9 @@ void _resize() {
   _canvas.width = w > 0 ? w : 800;
   _canvas.height = h > 0 ? h : 600;
   _renderer?.resize(_canvas.width, _canvas.height);
+  _presentationBackend.resize(_canvas.width, _canvas.height);
+  final surface = _pixeldartRuntime?.surfaceLabel;
+  if (surface != null) _canvas.setAttribute('data-renderer-surface', surface);
 }
 
 void _raf(num ts) {
@@ -921,7 +1377,10 @@ void _raf(num ts) {
       renderer.depthOfFieldStrength = _activePanel == _journal
           ? depthOfFieldStrength
           : 0;
-      _render(renderer, frameTime, _rupture);
+      _legacyFrameTime = frameTime;
+      _presentationBackend.submit(
+        RendererFrame(snapshot: _session.presentationSnapshot),
+      );
     } else if (_backendSelection.kind == RendererBackendKind.next) {
       _camera.lookFrom(_viewEye, _simYaw, _simPitch);
       _pixeldartRuntime?.setCamera(_camera);
@@ -933,9 +1392,33 @@ void _raf(num ts) {
         _time.sunAngle,
         _time.daylight,
       );
+      if (_lastRendererRuptureStep != _rupture.step) {
+        _lastRendererRuptureStep = _rupture.step;
+        _rendererHistoryEpoch++;
+      }
+      _pixeldartRuntime?.setFrameClock(
+        timeSeconds: now / 1000.0,
+        historyEpoch: _rendererHistoryEpoch,
+        noiseSeed: math.max(0, _session.runSeed),
+      );
+      _pixeldartRuntime?.setPostProcess(
+        _rupture,
+        reducedMotion: _reducedMotion,
+      );
       _presentationBackend.submit(
         RendererFrame(snapshot: _session.presentationSnapshot),
       );
+      final runtime = _pixeldartRuntime;
+      if (runtime != null) {
+        final stats = runtime.frameStatsLabel;
+        if (stats != null) {
+          _canvas.setAttribute('data-renderer-frame-stats', stats);
+          _canvas.setAttribute(
+            'data-renderer-budget',
+            runtime.frameBudgetWithinLimits ? 'ok' : 'exceeded',
+          );
+        }
+      }
     }
 
     _setBootPhase('running');

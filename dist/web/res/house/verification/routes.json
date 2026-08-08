@@ -1,0 +1,13 @@
+{
+  "houseId":"quarantine-house-main",
+  "sourceRef":"assets/house/house.json",
+  "capsuleRadius":0.3,
+  "routes":[
+    {"id":"ground-circuit","rooms":["hall","living-room","kitchen","hall"],"portals":["hall-living","kitchen-living","hall-kitchen"]},
+    {"id":"upper-circuit","rooms":["hall","landing","bedroom","landing","bathroom","landing","spare-room","landing"],"portals":["hall-landing","landing-bedroom","landing-bedroom","landing-bathroom","landing-bathroom","landing-spare","landing-spare"]},
+    {"id":"cellar-return","rooms":["hall","cellar","hall"],"portals":["hall-cellar","hall-cellar"]},
+    {"id":"front-threshold","rooms":["outside","hall","outside"],"portals":["front-door","front-door"]}
+  ],
+  "requiredTargets":["front-door","hall-clock","journal-desk","bathroom-mirror","mantle-living","mantle-kitchen","previous-tenant-post","ration-book"],
+  "cameraSets":["room-daylight","room-night","exterior-front","exterior-rear","opposite-house","ration-run"]
+}

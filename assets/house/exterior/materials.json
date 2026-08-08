@@ -1,0 +1,14 @@
+{
+  "format": "QHMX-materials-v1",
+  "sourceRef": "assets/house/exterior/main_shell.qhmx",
+  "slots": [
+    {"slot":0,"id":"red-brick-weathered","uvMetres":0.48,"roughness":0.86,"notes":"main shell brick, slight soot at chimney returns"},
+    {"slot":1,"id":"engineering-brick-plinth","uvMetres":0.32,"roughness":0.9,"notes":"splashback-darkened base course"},
+    {"slot":2,"id":"pale-stone","uvMetres":0.28,"roughness":0.68,"notes":"sills, lintels, threshold and coping"},
+    {"slot":3,"id":"stained-front-door","uvMetres":0.22,"roughness":0.62,"notes":"recessed timber door surround/leaf"},
+    {"slot":4,"id":"blue-black-slate","uvMetres":0.22,"roughness":0.93,"notes":"roof planes, broad field texture with sparse moss"},
+    {"slot":5,"id":"ceramic-and-lead","uvMetres":0.18,"roughness":0.72,"notes":"ridge, chimney caps and flashing"},
+    {"slot":6,"id":"painted-cast-iron","uvMetres":0.16,"roughness":0.8,"notes":"gutters, downpipes, railings and gate"},
+    {"slot":7,"id":"street-cobbles","uvMetres":0.42,"roughness":0.95,"notes":"street apron and drainage edge"}
+  ]
+}

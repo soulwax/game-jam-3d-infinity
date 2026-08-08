@@ -137,6 +137,13 @@ function copyStatic() {
   } else {
     console.log('web/res missing, shipping without assets');
   }
+  const authoredHouse = path.join(root, 'assets', 'house');
+  if (fs.existsSync(authoredHouse)) {
+    fs.cpSync(authoredHouse, path.join(out, 'res', 'house'), {
+      recursive: true,
+    });
+    console.log('copied authored house manifest to release assets');
+  }
 }
 
 function compileArgs(kind, dest) {

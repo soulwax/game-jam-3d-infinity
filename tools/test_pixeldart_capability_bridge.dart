@@ -39,6 +39,24 @@ void main() {
         .installs(PipelineFeatures.msaa),
     'Pixeldart quality profile is selected at the adapter edge',
   );
+  final runtimeProfile = bridge.runtimeProfile(
+    _caps(samples: 4, floatTargets: true),
+  );
+  _expect(
+    runtimeProfile.kind == QualityProfileKind.high,
+    'rich capabilities select the executable clean profile',
+  );
+  final labels = bridge.capabilityLabels(
+    _caps(samples: 4, floatTargets: true),
+    profile: runtimeProfile,
+  );
+  _expect(
+    labels.contains('max-color-attachments-4') &&
+        labels.contains('max-texture-array-layers-4') &&
+        labels.contains('profile-high') &&
+        labels.contains('feature-bloom'),
+    'diagnostics expose limits and installed runtime features',
+  );
   _expect(
     bridge.supportsContextRecovery(_caps()),
     'context-loss support remains observable',

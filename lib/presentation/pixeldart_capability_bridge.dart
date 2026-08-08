@@ -28,6 +28,47 @@ final class PixeldartCapabilityBridge {
     pixeldart.RenderCapabilities capabilities,
   ) => const pixeldart.CapabilityProfileSelector().select(capabilities);
 
+  /// Selects the profile that is currently executable by the Pixeldart
+  /// renderer. [qualityProfile] intentionally remains available for callers
+  /// that need the raw negotiated feature set; the game runtime must use this
+  /// method so it cannot accidentally install an unfinished graph profile.
+  pixeldart.QualityProfile runtimeProfile(
+    pixeldart.RenderCapabilities capabilities,
+  ) => const pixeldart.CapabilityProfileSelector().selectRuntimeProfile(
+    capabilities,
+  );
+
+  /// Returns stable, human-readable capability labels for game diagnostics.
+  /// Keep the raw limits here rather than only publishing enabled features:
+  /// constrained adapters need to be distinguishable from ordinary safe
+  /// fallback on the same machine.
+  List<String> capabilityLabels(
+    pixeldart.RenderCapabilities capabilities, {
+    pixeldart.QualityProfile? profile,
+  }) {
+    capabilities.validate();
+    final selected = profile ?? runtimeProfile(capabilities);
+    return [
+      capabilities.webglVersion ?? 'webgl2',
+      if (capabilities.vendorString case final vendor?) 'vendor-$vendor',
+      if (capabilities.rendererString case final renderer?)
+        'renderer-$renderer',
+      'max-texture-${capabilities.maxTextureSize}',
+      'max-texture-array-layers-${capabilities.maxTextureArrayLayers}',
+      'max-samples-${capabilities.maxSamples}',
+      'max-vertex-attributes-${capabilities.maxVertexAttributes}',
+      'max-color-attachments-${capabilities.maxColorAttachments}',
+      'profile-${selected.kind.name}',
+      for (final feature in (selected.installedFeatures.toList()..sort()))
+        'feature-$feature',
+      if (capabilities.anisotropicFiltering) 'anisotropic-filtering',
+      if (capabilities.disjointTimerQuery) 'disjoint-timer-query',
+      if (capabilities.floatRenderTarget) 'float-render-target',
+      if (capabilities.halfFloatRenderTarget) 'half-float-render-target',
+      if (capabilities.contextLossExtension) 'context-loss',
+    ];
+  }
+
   bool supportsContextRecovery(pixeldart.RenderCapabilities capabilities) =>
       capabilities.contextLossExtension;
 

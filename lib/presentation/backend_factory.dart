@@ -15,6 +15,7 @@ final class BackendFactory {
       return PixeldartBackend(runtime: runtime);
     }
     return LegacyBackend(
+      runtime: runtime,
       fallback: selection.fallback,
       fallbackReason: selection.fallbackReason,
     );

@@ -39,10 +39,15 @@ abstract interface class RendererBackend {
   RendererBackendKind get kind;
   RendererBackendState get state;
   RendererDiagnostics get diagnostics;
+  RendererFrame? get lastFrame;
   String? get lastFrameEncoding;
   String? get lastInputEncoding;
 
   void initialize();
+
+  /// Updates backend-owned surface metrics between frames. Dimensions are
+  /// structural values; DOM/GPU surface handles stay behind the adapter.
+  void resize(int width, int height);
 
   void loseContext();
 

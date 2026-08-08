@@ -22,8 +22,15 @@ void main() {
     'window discrepancy must remain authored',
   );
   _expect(
-    house.stairs.single.landingHeights.join(',') == '1.4,2.8,4.2',
+    house.stairs.single.landingHeights.join(',') == '2.1,4.2,6.3',
     'stair landing heights must remain stable',
+  );
+  final living = house.byId('living-room')!;
+  _expect(
+    (living.size.x - 6.75).abs() < 0.0001 &&
+        (living.size.y - 3.9).abs() < 0.0001 &&
+        (living.size.z - 6.0).abs() < 0.0001,
+    'MVP rooms must be 1.5x wider, taller, and deeper',
   );
 
   for (final room in house.rooms) {
@@ -39,7 +46,7 @@ void main() {
   final bedroom = house.byId('bedroom')!;
   final bedside = bedroom.mantles.singleWhere((m) => m.id == 'mantle-bedroom');
   _expect(
-    bedroom.toWorld(bedside.localAt).y == 4.1,
+    bedroom.toWorld(bedside.localAt).y == 6.15,
     'fixture coordinates must be room-local before world conversion',
   );
 

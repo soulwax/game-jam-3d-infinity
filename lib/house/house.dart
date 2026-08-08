@@ -13,8 +13,103 @@ class House {
   House(this.seed) {
     _buildRooms();
     _buildPortals();
+    _applyMvpHorizontalScale();
     _index();
     _validate();
+  }
+
+  /// The first authored-house MVP uses a 1.5x wider/deeper envelope. Vertical
+  /// room values are authored explicitly above; this pass keeps every x/z
+  /// origin, opening, placement, and stair landmark proportional without
+  /// duplicating a second hand-maintained house graph.
+  void _applyMvpHorizontalScale() {
+    const scale = 1.5;
+    Vec3 xz(Vec3 value) => Vec3(value.x * scale, value.y, value.z * scale);
+    final originalRooms = List<Room>.from(rooms);
+    rooms
+      ..clear()
+      ..addAll([
+        for (final room in originalRooms)
+          Room(
+            id: room.id,
+            floor: room.floor,
+            size: xz(room.size),
+            origin: xz(room.origin),
+            windows: [
+              for (final window in room.windows)
+                Window(
+                  id: window.id,
+                  facing: window.facing,
+                  offset: window.offset * scale,
+                  sill: window.sill,
+                  w: window.w * scale,
+                  h: window.h,
+                  frosted: window.frosted,
+                  shutterOpen: window.shutterOpen,
+                ),
+            ],
+            portalIds: room.portalIds,
+            mantles: [
+              for (final mantle in room.mantles)
+                Mantle(
+                  id: mantle.id,
+                  name: mantle.name,
+                  localAt: xz(mantle.localAt),
+                  lit: mantle.lit,
+                  broken: mantle.broken,
+                  examineTag: mantle.examineTag,
+                ),
+            ],
+            objects: [
+              for (final object in room.objects)
+                PlacedObject(
+                  id: object.id,
+                  examineTag: object.examineTag,
+                  localAt: xz(object.localAt),
+                ),
+            ],
+            surfaceWall: room.surfaceWall,
+            surfaceFloor: room.surfaceFloor,
+            surfaceCeiling: room.surfaceCeiling,
+            doorframeHeightMarks: room.doorframeHeightMarks,
+          ),
+      ]);
+    final originalPortals = List<Portal>.from(portals);
+    portals
+      ..clear()
+      ..addAll([
+        for (final portal in originalPortals)
+          Portal(
+            id: portal.id,
+            a: portal.a,
+            b: portal.b,
+            facingA: portal.facingA,
+            facingB: portal.facingB,
+            offsetA: portal.offsetA * scale,
+            offsetB: portal.offsetB * scale,
+            width: portal.width * scale,
+            height: portal.height,
+            hingeAtStart: portal.hingeAtStart,
+            sticks: portal.sticks,
+            exterior: portal.exterior,
+            stair: portal.stair,
+            doorKit: portal.doorKit,
+            open: portal.open,
+            locked: portal.locked,
+          ),
+      ]);
+    for (var i = 0; i < stairs.length; i++) {
+      final stair = stairs[i];
+      stairs[i] = StairTransition(
+        id: stair.id,
+        portalId: stair.portalId,
+        landingHeights: stair.landingHeights,
+        min: xz(stair.min),
+        max: xz(stair.max),
+        lowerEye: xz(stair.lowerEye),
+        upperEye: xz(stair.upperEye),
+      );
+    }
   }
 
   void _buildRooms() {
@@ -22,24 +117,24 @@ class House {
       Room(
         id: 'living-room',
         floor: Floor.ground,
-        size: Vec3(4.5, 2.6, 4.0),
+        size: Vec3(4.5, 3.9, 4.0),
         origin: Vec3(0, 0, 0),
         windows: [
           Window(
             id: 'living-north-west',
             facing: Facing.north,
             offset: 0.5,
-            sill: 0.6,
+            sill: 0.9,
             w: 1.2,
-            h: 1.2,
+            h: 1.8,
           ),
           Window(
             id: 'living-north-east',
             facing: Facing.north,
             offset: 2.7,
-            sill: 0.6,
+            sill: 0.9,
             w: 1.2,
-            h: 1.2,
+            h: 1.8,
           ),
         ],
         portalIds: ['hall-living', 'kitchen-living'],
@@ -47,13 +142,13 @@ class House {
           Mantle(
             id: 'mantle-living',
             name: 'the mantle by the door',
-            localAt: Vec3(1.0, 1.3, 1.0),
+            localAt: Vec3(1.0, 1.95, 1.0),
             examineTag: 'mantle-living',
           ),
           Mantle(
             id: 'mantle-living-second',
             name: 'the mantle by the window',
-            localAt: Vec3(3.0, 1.3, 3.0),
+            localAt: Vec3(3.0, 1.95, 3.0),
             examineTag: 'mantle-living-second',
           ),
         ],
@@ -65,16 +160,16 @@ class House {
       Room(
         id: 'hall',
         floor: Floor.ground,
-        size: Vec3(2.5, 2.6, 7.0),
+        size: Vec3(2.5, 3.9, 7.0),
         origin: Vec3(4.5, 0, 0),
         windows: [
           Window(
             id: 'hall-fanlight',
             facing: Facing.north,
             offset: 0.85,
-            sill: 2.15,
+            sill: 3.225,
             w: 0.8,
-            h: 0.35,
+            h: 0.525,
           ),
         ],
         portalIds: [
@@ -88,24 +183,24 @@ class House {
           Mantle(
             id: 'mantle-hall',
             name: 'the hall mantle',
-            localAt: Vec3(1.0, 1.3, 3.5),
+            localAt: Vec3(1.0, 1.95, 3.5),
           ),
         ],
         objects: [
           PlacedObject(
             id: 'compliance-card',
             examineTag: 'compliance-card',
-            localAt: Vec3(0.2, 1.45, 0.35),
+            localAt: Vec3(0.2, 2.175, 0.35),
           ),
           PlacedObject(
             id: 'hall-clock',
             examineTag: 'hall-clock',
-            localAt: Vec3(2.2, 1.7, 3.0),
+            localAt: Vec3(2.2, 2.55, 3.0),
           ),
           PlacedObject(
             id: 'ration-book',
             examineTag: 'ration-book',
-            localAt: Vec3(0.4, 0.9, 4.1),
+            localAt: Vec3(0.4, 1.35, 4.1),
           ),
         ],
         surfaceWall: 'wallpaper-damask',
@@ -115,24 +210,24 @@ class House {
       Room(
         id: 'kitchen',
         floor: Floor.ground,
-        size: Vec3(4.5, 2.5, 3.0),
+        size: Vec3(4.5, 3.75, 3.0),
         origin: Vec3(0, 0, 4.0),
         windows: [
           Window(
             id: 'kitchen-south',
             facing: Facing.south,
             offset: 1.5,
-            sill: 0.7,
+            sill: 1.05,
             w: 1.2,
-            h: 1.1,
+            h: 1.65,
           ),
           Window(
             id: 'kitchen-west',
             facing: Facing.west,
             offset: 1.0,
-            sill: 0.8,
+            sill: 1.2,
             w: 0.9,
-            h: 1.0,
+            h: 1.5,
           ),
         ],
         portalIds: ['hall-kitchen', 'kitchen-living'],
@@ -140,33 +235,33 @@ class House {
           Mantle(
             id: 'mantle-kitchen',
             name: 'the mantle by the stove',
-            localAt: Vec3(0.8, 1.2, 0.5),
+            localAt: Vec3(0.8, 1.8, 0.5),
             examineTag: 'mantle-kitchen',
           ),
           Mantle(
             id: 'mantle-kitchen-second',
             name: 'the mantle by the door',
-            localAt: Vec3(2.2, 1.2, 2.0),
+            localAt: Vec3(2.2, 1.8, 2.0),
           ),
           Mantle(
             id: 'mantle-kitchen-third',
             name: 'the mantle by the window',
-            localAt: Vec3(3.8, 1.2, 1.2),
+            localAt: Vec3(3.8, 1.8, 1.2),
           ),
         ],
         objects: [
           PlacedObject(
             id: 'shopping-list',
             examineTag: 'shopping-list',
-            localAt: Vec3(1.2, 1.1, 2.65),
+            localAt: Vec3(1.2, 1.65, 2.65),
           ),
         ],
         doorframeHeightMarks: const [
-          DoorframeHeightMark(label: 'A.J.', heightMetres: 0.85),
-          DoorframeHeightMark(label: 'A.J.', heightMetres: 1.02),
-          DoorframeHeightMark(label: 'A.J.', heightMetres: 1.18),
-          DoorframeHeightMark(label: 'A.J.', heightMetres: 1.35),
-          DoorframeHeightMark(label: 'A.J.', heightMetres: 3.2),
+          DoorframeHeightMark(label: 'A.J.', heightMetres: 1.275),
+          DoorframeHeightMark(label: 'A.J.', heightMetres: 1.53),
+          DoorframeHeightMark(label: 'A.J.', heightMetres: 1.77),
+          DoorframeHeightMark(label: 'A.J.', heightMetres: 2.025),
+          DoorframeHeightMark(label: 'A.J.', heightMetres: 4.8),
         ],
         surfaceWall: 'wallpaper-floral',
         surfaceFloor: 'floor-linoleum',
@@ -175,8 +270,8 @@ class House {
       Room(
         id: 'cellar',
         floor: Floor.ground,
-        size: Vec3(4.0, 2.0, 4.0),
-        origin: Vec3(1.0, -2.0, 2.0),
+        size: Vec3(4.0, 3.0, 4.0),
+        origin: Vec3(1.0, -3.0, 2.0),
         windows: const [],
         portalIds: ['hall-cellar'],
         mantles: const [],
@@ -188,24 +283,24 @@ class House {
       Room(
         id: 'bedroom',
         floor: Floor.first,
-        size: Vec3(4.5, 2.4, 4.0),
-        origin: Vec3(0, 2.8, 0),
+        size: Vec3(4.5, 3.6, 4.0),
+        origin: Vec3(0, 4.2, 0),
         windows: [
           Window(
             id: 'bedroom-north-west',
             facing: Facing.north,
             offset: 0.7,
-            sill: 0.7,
+            sill: 1.05,
             w: 1.1,
-            h: 1.1,
+            h: 1.65,
           ),
           Window(
             id: 'bedroom-north-east',
             facing: Facing.north,
             offset: 2.7,
-            sill: 0.7,
+            sill: 1.05,
             w: 1.0,
-            h: 1.1,
+            h: 1.65,
           ),
         ],
         portalIds: ['landing-bedroom'],
@@ -213,25 +308,25 @@ class House {
           Mantle(
             id: 'mantle-bedroom',
             name: 'the bedroom mantle',
-            localAt: Vec3(1.0, 1.3, 1.0),
+            localAt: Vec3(1.0, 1.95, 1.0),
             examineTag: 'mantle-bedroom',
           ),
           Mantle(
             id: 'mantle-bedroom-bedside',
             name: 'the bedside mantle',
-            localAt: Vec3(3.5, 1.0, 3.0),
+            localAt: Vec3(3.5, 1.5, 3.0),
           ),
         ],
         objects: [
           PlacedObject(
             id: 'journal-desk',
             examineTag: 'journal-desk',
-            localAt: Vec3(2.2, 0.75, 2.5),
+            localAt: Vec3(2.2, 1.125, 2.5),
           ),
           PlacedObject(
             id: 'half-written-letter',
             examineTag: 'half-written-letter',
-            localAt: Vec3(2.4, 0.76, 2.45),
+            localAt: Vec3(2.4, 1.14, 2.45),
           ),
         ],
         surfaceWall: 'wallpaper-faded',
@@ -241,8 +336,8 @@ class House {
       Room(
         id: 'landing',
         floor: Floor.first,
-        size: Vec3(2.5, 2.4, 3.0),
-        origin: Vec3(4.5, 2.8, 0),
+        size: Vec3(2.5, 3.6, 3.0),
+        origin: Vec3(4.5, 4.2, 0),
         windows: const [],
         portalIds: [
           'hall-landing',
@@ -254,7 +349,7 @@ class House {
           Mantle(
             id: 'mantle-landing',
             name: 'the landing mantle',
-            localAt: Vec3(1.0, 1.2, 1.5),
+            localAt: Vec3(1.0, 1.8, 1.5),
           ),
         ],
         objects: const [],
@@ -265,16 +360,16 @@ class House {
       Room(
         id: 'bathroom',
         floor: Floor.first,
-        size: Vec3(2.5, 2.4, 2.5),
-        origin: Vec3(4.5, 2.8, 3.0),
+        size: Vec3(2.5, 3.6, 2.5),
+        origin: Vec3(4.5, 4.2, 3.0),
         windows: [
           Window(
             id: 'bathroom-east',
             facing: Facing.east,
             offset: 0.9,
-            sill: 1.0,
+            sill: 1.5,
             w: 0.7,
-            h: 1.0,
+            h: 1.5,
             frosted: true,
           ),
         ],
@@ -283,14 +378,14 @@ class House {
           Mantle(
             id: 'mantle-bathroom',
             name: 'the bathroom mantle',
-            localAt: Vec3(1.5, 1.2, 1.0),
+            localAt: Vec3(1.5, 1.8, 1.0),
           ),
         ],
         objects: [
           PlacedObject(
             id: 'bathroom-mirror',
             examineTag: 'bathroom-mirror',
-            localAt: Vec3(2.35, 1.45, 1.2),
+            localAt: Vec3(2.35, 2.175, 1.2),
           ),
         ],
         surfaceWall: 'wallpaper-tiles',
@@ -300,16 +395,16 @@ class House {
       Room(
         id: 'spare-room',
         floor: Floor.first,
-        size: Vec3(4.5, 2.1, 3.0),
-        origin: Vec3(0, 2.8, 4.0),
+        size: Vec3(4.5, 3.15, 3.0),
+        origin: Vec3(0, 4.2, 4.0),
         windows: [
           Window(
             id: 'spare-south',
             facing: Facing.south,
             offset: 1.8,
-            sill: 0.7,
+            sill: 1.05,
             w: 0.9,
-            h: 0.9,
+            h: 1.35,
           ),
         ],
         portalIds: ['landing-spare'],
@@ -317,7 +412,7 @@ class House {
           Mantle(
             id: 'mantle-spare',
             name: 'the broken mantle',
-            localAt: Vec3(2.0, 1.3, 1.0),
+            localAt: Vec3(2.0, 1.95, 1.0),
             broken: true,
           ),
         ],
@@ -325,17 +420,17 @@ class House {
           PlacedObject(
             id: 'previous-tenant-post',
             examineTag: 'previous-tenant-post',
-            localAt: Vec3(0.5, 1.2, 0.3),
+            localAt: Vec3(0.5, 1.8, 0.3),
           ),
           PlacedObject(
             id: 'calendar',
             examineTag: 'calendar',
-            localAt: Vec3(3.7, 1.4, 2.7),
+            localAt: Vec3(3.7, 2.1, 2.7),
           ),
           PlacedObject(
             id: 'undone-task',
             examineTag: 'undone-task',
-            localAt: Vec3(3.5, 0.75, 1.8),
+            localAt: Vec3(3.5, 1.125, 1.8),
           ),
         ],
         surfaceWall: 'wallpaper-peeling',
@@ -356,8 +451,9 @@ class House {
         offsetA: 0.8,
         offsetB: 0,
         width: 0.9,
-        height: 2.1,
+        height: 3.15,
         exterior: true,
+        doorKit: 'kit-front-door-recessed',
       ),
       Portal(
         id: 'hall-living',
@@ -368,7 +464,8 @@ class House {
         offsetA: 1.8,
         offsetB: 1.8,
         width: 0.9,
-        height: 2.1,
+        height: 3.15,
+        doorKit: 'kit-internal-four-panel-door',
       ),
       Portal(
         id: 'hall-kitchen',
@@ -379,7 +476,8 @@ class House {
         offsetA: 4.9,
         offsetB: 1.0,
         width: 0.9,
-        height: 2.1,
+        height: 3.15,
+        doorKit: 'kit-internal-four-panel-door',
       ),
       Portal(
         id: 'kitchen-living',
@@ -390,7 +488,8 @@ class House {
         offsetA: 2.0,
         offsetB: 2.0,
         width: 0.9,
-        height: 2.1,
+        height: 3.15,
+        doorKit: 'kit-internal-four-panel-door',
       ),
       Portal(
         id: 'hall-cellar',
@@ -401,9 +500,10 @@ class House {
         offsetA: 0.5,
         offsetB: 1.5,
         width: 0.9,
-        height: 2.0,
+        height: 3.0,
         sticks: true,
         open: false,
+        doorKit: 'kit-cellar-door-grille',
       ),
       Portal(
         id: 'hall-landing',
@@ -414,7 +514,7 @@ class House {
         offsetA: 4.0,
         offsetB: 0.7,
         width: 1.2,
-        height: 2.1,
+        height: 3.15,
         stair: true,
       ),
       Portal(
@@ -426,7 +526,8 @@ class House {
         offsetA: 1.0,
         offsetB: 1.0,
         width: 0.9,
-        height: 2.1,
+        height: 3.15,
+        doorKit: 'kit-internal-four-panel-door',
       ),
       Portal(
         id: 'landing-bathroom',
@@ -437,7 +538,8 @@ class House {
         offsetA: 1.0,
         offsetB: 0.8,
         width: 0.9,
-        height: 2.1,
+        height: 3.15,
+        doorKit: 'kit-internal-four-panel-door',
       ),
       Portal(
         id: 'landing-spare',
@@ -448,18 +550,19 @@ class House {
         offsetA: 0.1,
         offsetB: 2.0,
         width: 0.9,
-        height: 2.1,
+        height: 3.15,
+        doorKit: 'kit-internal-four-panel-door',
       ),
     ]);
     stairs.add(
       StairTransition(
         id: 'hall-stairs',
         portalId: 'hall-landing',
-        landingHeights: const [1.4, 2.8, 4.2],
+        landingHeights: const [2.1, 4.2, 6.3],
         min: Vec3(5.0, 0, 2.8),
-        max: Vec3(6.5, 4.2, 6.0),
-        lowerEye: Vec3(5.75, 1.65, 5.8),
-        upperEye: Vec3(5.75, 4.45, 2.2),
+        max: Vec3(6.5, 6.3, 6.0),
+        lowerEye: Vec3(5.75, 2.475, 5.8),
+        upperEye: Vec3(5.75, 6.675, 2.2),
       ),
     );
   }
@@ -486,8 +589,8 @@ class House {
     if (windowsFromInside != 9 || windowsFromOutside != 11) {
       throw StateError('window discrepancy must be 9 inside / 11 outside');
     }
-    if (landings != 3 || stairs.single.landingHeights.last != 4.2) {
-      throw StateError('stairs must expose landings at 1.4, 2.8 and 4.2');
+    if (landings != 3 || stairs.single.landingHeights.last != 6.3) {
+      throw StateError('stairs must expose landings at 2.1, 4.2 and 6.3');
     }
     if (portals.length != 9) throw StateError('expected nine physical portals');
     _validateNoOverlaps();

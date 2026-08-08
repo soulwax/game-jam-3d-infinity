@@ -47,6 +47,10 @@ class Portal {
   final bool sticks;
   final bool exterior;
   final bool stair;
+
+  /// Authored opening model kit. Null is reserved for non-door transitions
+  /// such as the open stair throat.
+  final String? doorKit;
   bool open;
   bool locked;
 
@@ -64,6 +68,7 @@ class Portal {
     this.sticks = false,
     this.exterior = false,
     this.stair = false,
+    this.doorKit,
     this.open = true,
     this.locked = false,
   });
@@ -107,6 +112,7 @@ class Mantle {
     this.lit = false,
     this.broken = false,
     this.examineTag,
+    this.examined = false,
   });
 }
 

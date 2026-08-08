@@ -42,14 +42,16 @@ final class PixeldartBackend implements RendererBackend {
   RendererBackendState get state => _state;
 
   @override
-  RendererDiagnostics get diagnostics => RendererDiagnostics(
-    backend: 'next',
-    profile: 'safe',
-    buildId: 'boundary',
-    capabilities: [],
-    fallback: false,
-  );
+  RendererDiagnostics get diagnostics =>
+      runtime?.diagnostics ??
+      RendererDiagnostics.fromEnvironment(
+        backend: 'next',
+        profile: 'safe',
+        capabilities: [],
+        fallback: false,
+      );
 
+  @override
   RendererFrame? get lastFrame => _lastFrame;
 
   @override
@@ -65,6 +67,15 @@ final class PixeldartBackend implements RendererBackend {
     }
     runtime?.initialize();
     _state = RendererBackendState.ready;
+  }
+
+  @override
+  void resize(int width, int height) {
+    _requireReady();
+    if (width <= 0 || height <= 0) {
+      throw ArgumentError('pixeldart surface size must be positive');
+    }
+    runtime?.resize(width, height);
   }
 
   @override

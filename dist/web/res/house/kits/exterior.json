@@ -1,0 +1,13 @@
+{
+  "kitFamily": "exterior-envelope",
+  "status": "authored-shell-v0",
+  "sourceRef": "assets/house/house.json",
+  "modules": [
+    {"id":"kit-front-brick-elevation","kind":"facade","pivot":"explicit","parts":["plinth","brick-field","sills","lintels","corbels","front-door-surround"],"materialSlots":["red-brick","mortar","stone","weathering"],"lod":"architecture","collision":"envelope-shell"},
+    {"id":"kit-slate-roof-main","kind":"roof","pivot":"explicit","parts":["slate-field","eaves","verge","ridge","flashing"],"materialSlots":["slate","lead","moss"],"lod":"context","collision":"roof-shell"},
+    {"id":"kit-chimney-stack-pot","kind":"roof-drainage","pivot":"explicit","parts":["stack","cap","pot","soot"],"materialSlots":["brick","mortar","ceramic","soot"],"lod":"architecture","collision":"static-shell"},
+    {"id":"kit-cast-iron-gutter-downpipe","kind":"roof-drainage","pivot":"wallBack","parts":["gutter","hopper","downpipe","brackets","shoe"],"materialSlots":["painted-iron","rust","water"],"lod":"architecture","collision":"none"},
+    {"id":"kit-front-step-railings","kind":"threshold","pivot":"explicit","parts":["step","plinth","railings","boot-scraper","cellar-grille"],"materialSlots":["stone","iron","dirt"],"lod":"hero","collision":"front-threshold"},
+    {"id":"kit-boundary-wall-gate","kind":"hardscape","pivot":"explicit","parts":["wall","coping","gate","hinges","post"],"materialSlots":["brick","stone","painted-iron","rust"],"lod":"context","collision":"view-only"}
+  ]
+}

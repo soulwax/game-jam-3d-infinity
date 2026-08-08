@@ -53,6 +53,12 @@ Future<void> main() async {
     );
   }
 
+  final authoredHouse = Directory('assets/house');
+  if (authoredHouse.existsSync()) {
+    copyDir(authoredHouse, Directory('web/res/house'));
+    stdout.writeln('copied authored house manifest to web/res/house');
+  }
+
   await run('dart', ['run', 'tools/asset_audit.dart', '--build']);
   await run('dart', ['run', 'tools/gen_shaders.dart']);
 

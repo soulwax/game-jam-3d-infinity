@@ -33,23 +33,24 @@ void _expect(bool value, String message) {
 
 void main() {
   final stableHouse = House(42);
+  final hall = stableHouse.byId('hall')!;
+  final hallSize = stableHouse.effectiveSize(hall);
+  final hallStart = Vec3(
+    hall.origin.x + hallSize.x * 0.4,
+    hall.origin.y + 1.65,
+    hall.origin.z + hallSize.z * 0.35,
+  );
   final at30 = _move(
     stableHouse,
-    Vec3(5.5, 1.65, 3.5),
+    hallStart,
     'hall',
     Vec3(0, 0, 0.4),
     frames: 30,
   );
-  final at60 = _move(
-    House(42),
-    Vec3(5.5, 1.65, 3.5),
-    'hall',
-    Vec3(0, 0, 0.4),
-    frames: 60,
-  );
+  final at60 = _move(House(42), hallStart, 'hall', Vec3(0, 0, 0.4), frames: 60);
   final at120 = _move(
     House(42),
-    Vec3(5.5, 1.65, 3.5),
+    hallStart,
     'hall',
     Vec3(0, 0, 0.4),
     frames: 120,
@@ -59,25 +60,35 @@ void main() {
     'swept movement must be frame-rate independent',
   );
 
-  final wall = _move(House(42), Vec3(6.7, 1.65, 3.5), 'hall', Vec3(1, 0, 0));
-  _expect(wall.eye.x <= 6.7, 'a solid wall must reject movement');
+  final wallStart = Vec3(
+    hall.origin.x + hallSize.x - 0.1,
+    hallStart.y,
+    hallStart.z,
+  );
+  final wall = _move(House(42), wallStart, 'hall', Vec3(1, 0, 0));
+  _expect(wall.eye.x <= wallStart.x, 'a solid wall must reject movement');
 
   final closedHouse = House(42);
   closedHouse.portalById('hall-living')!.open = false;
   final closed = _move(
     closedHouse,
-    Vec3(4.9, 1.65, 2.2),
+    Vec3(hall.origin.x + 0.2, hallStart.y, hall.origin.z + 3.4),
     'hall',
     Vec3(-1, 0, 0),
   );
   _expect(
-    closed.room == 'hall' && closed.eye.x >= 4.8,
+    closed.room == 'hall' && closed.eye.x >= hall.origin.x - 0.1,
     'a closed canonical portal must block crossing',
   );
 
-  final open = _move(House(42), Vec3(4.9, 1.65, 2.2), 'hall', Vec3(-1, 0, 0));
+  final open = _move(
+    House(42),
+    Vec3(hall.origin.x + 0.2, hallStart.y, hall.origin.z + 3.4),
+    'hall',
+    Vec3(-1, 0, 0),
+  );
   _expect(
-    open.room == 'living-room' && open.eye.x < 4.5,
+    open.room == 'living-room' && open.eye.x < hall.origin.x,
     'an open canonical portal must allow crossing',
   );
 
@@ -87,7 +98,7 @@ void main() {
     stairHouse,
     stair.lowerEye,
     'hall',
-    Vec3(0, 0, -3.6),
+    Vec3(0, 0, -5.4),
     frames: 90,
   );
   _expect(
@@ -98,7 +109,7 @@ void main() {
     House(42),
     stair.upperEye,
     'landing',
-    Vec3(0, 0, 3.6),
+    Vec3(0, 0, 5.4),
     frames: 90,
   );
   _expect(

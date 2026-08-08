@@ -1,0 +1,17 @@
+{
+  "kitFamily": "structure",
+  "status": "authored-shell-v0",
+  "sourceRef": "assets/house/house.json",
+  "modules": [
+    {"id":"kit-wall-exterior-0p28","kind":"wall","section":[0.28,2.6],"runtimeThickness":0.42,"pivot":"wallBack","materialSlots":["brick","mortar","weathering"],"lod":"architecture","collision":"canonical-wall-plane"},
+    {"id":"kit-wall-partition-0p12","kind":"partition","section":[0.12,2.5],"runtimeThickness":0.18,"pivot":"wallBack","materialSlots":["plaster","paint"],"lod":"architecture","collision":"canonical-partition-plane"},
+    {"id":"kit-floor-structure-0p20","kind":"floor-slab","section":[0.2,0.2],"pivot":"floorCenter","materialSlots":["timber","plaster-ceiling"],"lod":"architecture","collision":"canonical-floor-plane"},
+    {"id":"kit-ceiling-rose-stepped","kind":"ceiling-ornament","dimensions":[0.48,0.048,0.48],"pivot":"explicit","materialSlots":["painted-plaster"],"lod":"hero","collision":"none"},
+    {"id":"kit-cornice-modest-straight-1m","kind":"trim","dimensions":[1.0,0.13,0.055],"pivot":"wallBack","materialSlots":["painted-timber-or-plaster"],"lod":"architecture","collision":"none"},
+    {"id":"kit-dado-rail-modest-1m","kind":"trim","dimensions":[1.0,0.06,0.022],"pivot":"wallBack","materialSlots":["painted-timber"],"lod":"architecture","collision":"none"},
+    {"id":"kit-picture-rail-modest-1m","kind":"trim","dimensions":[1.0,0.055,0.022],"pivot":"wallBack","materialSlots":["painted-timber"],"lod":"architecture","collision":"none"},
+    {"id":"kit-skirting-modest-1m","kind":"trim","dimensions":[1.0,0.17,0.032],"pivot":"wallBack","materialSlots":["stained-timber"],"lod":"architecture","collision":"none"},
+    {"id":"kit-stair-flight-wood","kind":"stair","dimensions":[1.5,4.2,3.2],"pivot":"explicit","materialSlots":["stained-timber","painted-plaster","runner"],"lod":"hero","collision":"stair-transition"},
+    {"id":"kit-chimney-breast-compact","kind":"fireplace-architecture","dimensions":[1.1,2.6,0.35],"pivot":"wallBack","materialSlots":["brick","plaster","stone"],"lod":"hero","collision":"static-wall"}
+  ]
+}

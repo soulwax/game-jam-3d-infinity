@@ -38,6 +38,8 @@ class RoomEmitter {
       renderer.addStaticMesh(geometry.floor, materialIndex: 1),
       renderer.addStaticMesh(geometry.ceiling, materialIndex: 2),
       renderer.addStaticMesh(geometry.walls, materialIndex: 0),
+      if (geometry.doors.isNotEmpty)
+        renderer.addStaticMesh(geometry.doors, materialIndex: 0),
     ];
   }
 
