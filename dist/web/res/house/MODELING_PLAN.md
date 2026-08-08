@@ -171,7 +171,10 @@ and worktable, cellar coal stack and pipe, bedroom bed/washstand, landing guard,
 bathroom tub/cistern, and spare-room sheeted furniture. These are render-only
 boxes authored from the scaled room envelope; they are deliberately kept out of
 collision and focus queries, and the stair run is clipped to the hall's canonical
-render bounds at the landing transition.
+render bounds at the landing transition. A second micro-detail pass adds fireplace
+tiles/brackets and mantel objects, hall hooks and umbrella stand, kitchen sink,
+faucet and crockery, cellar valve/pipe fittings, bed pillows/legs, landing
+balusters, bath taps, and spare-room crate bindings.
 
 ### Kit dimensions and variants
 
