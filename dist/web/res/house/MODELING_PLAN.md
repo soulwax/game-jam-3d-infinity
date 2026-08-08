@@ -176,6 +176,13 @@ tiles/brackets and mantel objects, hall hooks and umbrella stand, kitchen sink,
 faucet and crockery, cellar valve/pipe fittings, bed pillows/legs, landing
 balusters, bath taps, and spare-room crate bindings.
 
+The floor pass now carries shallow, non-collision finish geometry: alternating
+wood-board courses in domestic rooms, a worn inset runner and border in the hall
+and landing, a subdued living-room rug, service-grade linoleum seams in the
+kitchen, a checker tile grid in the bathroom, and a damp concrete slab/drain
+patch in the cellar. These overlays sit on a controlled millimetre offset to
+avoid z-fighting with the canonical floor planes.
+
 ### Data-driven inventory
 
 `assets/house/inventory.json` is the placement authority for future normalized
