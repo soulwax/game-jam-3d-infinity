@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'renderer_backend.dart';
 import 'renderer_diagnostics.dart';
 
@@ -21,10 +23,18 @@ class LegacyBackendMapper {
 
 final class LegacyBackend implements RendererBackend {
   final LegacyBackendMapper mapper;
+  final bool fallback;
+  final String? fallbackReason;
   RendererBackendState _state = RendererBackendState.constructed;
   RendererFrame? _lastFrame;
+  String? _lastFrameEncoding;
+  String? _lastInputEncoding;
 
-  LegacyBackend({this.mapper = const LegacyBackendMapper()});
+  LegacyBackend({
+    this.mapper = const LegacyBackendMapper(),
+    this.fallback = false,
+    this.fallbackReason,
+  });
 
   @override
   RendererBackendKind get kind => RendererBackendKind.legacy;
@@ -38,9 +48,17 @@ final class LegacyBackend implements RendererBackend {
     profile: 'legacy',
     buildId: 'boundary',
     capabilities: [],
+    fallback: fallback,
+    fallbackReason: fallbackReason,
   );
 
   RendererFrame? get lastFrame => _lastFrame;
+
+  @override
+  String? get lastFrameEncoding => _lastFrameEncoding;
+
+  @override
+  String? get lastInputEncoding => _lastInputEncoding;
 
   @override
   void initialize() {
@@ -51,16 +69,32 @@ final class LegacyBackend implements RendererBackend {
   }
 
   @override
+  void loseContext() {
+    if (_state != RendererBackendState.ready) {
+      throw StateError('legacy backend is not ready');
+    }
+    _state = RendererBackendState.lost;
+  }
+
+  @override
+  void recover() {
+    if (_state != RendererBackendState.lost) {
+      throw StateError('legacy backend is not context-lost');
+    }
+    _state = RendererBackendState.ready;
+  }
+
+  @override
   void submit(RendererFrame frame) {
     _requireReady();
-    mapper.mapFrame(frame);
+    _lastFrameEncoding = jsonEncode(mapper.mapFrame(frame));
     _lastFrame = frame;
   }
 
   @override
   void handleInput(RendererInputAction action) {
     _requireReady();
-    mapper.mapInput(action);
+    _lastInputEncoding = jsonEncode(mapper.mapInput(action));
   }
 
   @override

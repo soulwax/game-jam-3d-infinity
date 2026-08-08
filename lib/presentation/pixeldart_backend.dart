@@ -1,5 +1,8 @@
+import 'dart:convert';
+
 import 'renderer_backend.dart';
 import 'renderer_diagnostics.dart';
+import 'renderer_runtime.dart';
 
 /// Pixeldart-facing mapping seam. The eventual backend owns Pixeldart/WebGL
 /// objects; the game exposes only this structural frame and action contract.
@@ -21,10 +24,16 @@ class PixeldartBackendMapper {
 
 final class PixeldartBackend implements RendererBackend {
   final PixeldartBackendMapper mapper;
+  final RendererRuntime? runtime;
   RendererBackendState _state = RendererBackendState.constructed;
   RendererFrame? _lastFrame;
+  String? _lastFrameEncoding;
+  String? _lastInputEncoding;
 
-  PixeldartBackend({this.mapper = const PixeldartBackendMapper()});
+  PixeldartBackend({
+    this.mapper = const PixeldartBackendMapper(),
+    this.runtime,
+  });
 
   @override
   RendererBackendKind get kind => RendererBackendKind.next;
@@ -38,33 +47,75 @@ final class PixeldartBackend implements RendererBackend {
     profile: 'safe',
     buildId: 'boundary',
     capabilities: [],
+    fallback: false,
   );
 
   RendererFrame? get lastFrame => _lastFrame;
+
+  @override
+  String? get lastFrameEncoding => _lastFrameEncoding;
+
+  @override
+  String? get lastInputEncoding => _lastInputEncoding;
 
   @override
   void initialize() {
     if (_state == RendererBackendState.disposed) {
       throw StateError('pixeldart backend is disposed');
     }
+    runtime?.initialize();
     _state = RendererBackendState.ready;
   }
 
   @override
+  void loseContext() {
+    if (_state != RendererBackendState.ready) {
+      throw StateError('pixeldart backend is not ready');
+    }
+    _state = RendererBackendState.lost;
+    runtime?.loseContext();
+  }
+
+  @override
+  void recover() {
+    if (_state != RendererBackendState.lost) {
+      throw StateError('pixeldart backend is not context-lost');
+    }
+    _state = RendererBackendState.ready;
+    runtime?.recover();
+  }
+
+  @override
   void submit(RendererFrame frame) {
+    final activeRuntime = runtime;
+    if (_state == RendererBackendState.lost) {
+      if (activeRuntime == null || !activeRuntime.contextLost) recover();
+      if (_state == RendererBackendState.lost) return;
+    }
     _requireReady();
-    mapper.mapFrame(frame);
+    _lastFrameEncoding = jsonEncode(mapper.mapFrame(frame));
+    if (activeRuntime != null) {
+      if (activeRuntime.contextLost) {
+        loseContext();
+        return;
+      }
+      activeRuntime.submit(frame);
+    }
     _lastFrame = frame;
   }
 
   @override
   void handleInput(RendererInputAction action) {
     _requireReady();
-    mapper.mapInput(action);
+    _lastInputEncoding = jsonEncode(mapper.mapInput(action));
+    runtime?.handleInput(action);
   }
 
   @override
-  void dispose() => _state = RendererBackendState.disposed;
+  void dispose() {
+    if (_state != RendererBackendState.disposed) runtime?.dispose();
+    _state = RendererBackendState.disposed;
+  }
 
   void _requireReady() {
     if (_state != RendererBackendState.ready) {

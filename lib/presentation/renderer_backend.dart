@@ -3,7 +3,7 @@ import 'renderer_diagnostics.dart';
 
 enum RendererBackendKind { legacy, next }
 
-enum RendererBackendState { constructed, ready, disposed }
+enum RendererBackendState { constructed, ready, lost, disposed }
 
 class RendererFrame {
   final PresentationSnapshot snapshot;
@@ -34,8 +34,14 @@ abstract interface class RendererBackend {
   RendererBackendKind get kind;
   RendererBackendState get state;
   RendererDiagnostics get diagnostics;
+  String? get lastFrameEncoding;
+  String? get lastInputEncoding;
 
   void initialize();
+
+  void loseContext();
+
+  void recover();
 
   void submit(RendererFrame frame);
 

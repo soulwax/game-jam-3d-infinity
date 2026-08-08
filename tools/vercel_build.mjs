@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,6 +17,19 @@ const sourceMaps = !process.argv.includes('--no-source-maps') && process.env.VER
 const win = process.platform === 'win32';
 const entry = path.join('web', 'main.dart');
 const indexTag = '<script defer src="main.dart.js"></script>';
+
+function gitValue(args, cwd = root) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8' }).trim();
+}
+
+const gameSha = gitValue(['rev-parse', 'HEAD']);
+const rendererSha = gitValue(['-C', 'external/pixeldart', 'rev-parse', 'HEAD']);
+const lockfileDigest = createHash('sha256')
+  .update(fs.readFileSync(path.join(root, 'pubspec.lock')))
+  .digest('hex');
+const dirty = gitValue(['status', '--porcelain']).length > 0 ||
+  gitValue(['-C', 'external/pixeldart', 'status', '--porcelain']).length > 0;
+const buildId = `${gameSha.slice(0, 12)}-${rendererSha.slice(0, 12)}${dirty ? '-dirty' : ''}`;
 
 function spawn(cmd, args, stdio) {
   if (!win) return spawnSync(cmd, args, { stdio });
@@ -129,6 +142,13 @@ function copyStatic() {
 function compileArgs(kind, dest) {
   const a = ['compile', kind, '-O2'];
   if (!sourceMaps) a.push('--no-source-maps');
+  a.push(
+    `-DRENDERER_SHA=${rendererSha}`,
+    `-DGAME_SHA=${gameSha}`,
+    `-DDART_SDK_VERSION=${sdkVersion}`,
+    `-DLOCKFILE_SHA256=${lockfileDigest}`,
+    `-DRENDERER_BUILD_ID=${buildId}`,
+  );
   return a.concat(['-o', dest, entry]);
 }
 

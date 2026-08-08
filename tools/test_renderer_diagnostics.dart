@@ -33,5 +33,26 @@ void main() {
     rejected = error is ArgumentError;
   }
   _expect(rejected, 'incomplete diagnostics reject');
+  final boundary = RendererDiagnostics.fromEnvironment(
+    backend: 'legacy',
+    profile: 'legacy',
+    capabilities: const [],
+  );
+  _expect(!boundary.provenancePinned, 'missing release defines stay visible');
+  final pinned = RendererDiagnostics(
+    backend: 'next',
+    profile: 'safe',
+    buildId: 'game-renderer',
+    capabilities: const ['webgl2'],
+    rendererSha: 'renderer-sha',
+    gameSha: 'game-sha',
+    sdkVersion: '3.12.2',
+    lockfileDigest: 'lock-sha',
+  );
+  _expect(pinned.provenancePinned, 'complete provenance is accepted');
+  _expect(
+    pinned.toJson()['provenancePinned'] == true,
+    'complete provenance is serialized',
+  );
   print('renderer diagnostics: backend/profile/build identity fixture passes');
 }

@@ -10,12 +10,18 @@ import 'package:quarantine/engine/hud.dart';
 import 'package:quarantine/engine/input.dart';
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/engine/renderer.dart';
+import 'package:quarantine/engine/vertex_format.dart';
 import 'package:quarantine/game/ambient_audio.dart';
 import 'package:quarantine/game/browser_save_store.dart';
 import 'package:quarantine/game/ending.dart';
 import 'package:quarantine/game/player_state.dart';
 import 'package:quarantine/game/rupture_gate.dart';
 import 'package:quarantine/game/session.dart';
+import 'package:quarantine/presentation/backend_selector.dart';
+import 'package:quarantine/presentation/backend_factory.dart';
+import 'package:quarantine/presentation/renderer_backend.dart';
+import 'package:quarantine/presentation/renderer_diagnostics.dart';
+import 'package:quarantine/presentation/renderer_runtime.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/emitter.dart';
 import 'package:quarantine/house/focus.dart';
@@ -43,6 +49,9 @@ import 'package:quarantine/visitors/ambient.dart';
 import 'package:quarantine/visitors/director.dart';
 import 'package:quarantine/visitors/stand_ins.dart';
 import 'package:quarantine/visitors/state.dart';
+import 'package:pixeldart/rendering/rendering.dart' as px;
+import 'package:pixeldart/rendering/webgl/device_api.dart' as pxdevice;
+import 'package:pixeldart/rendering/webgl/webgl2_device.dart' as pxgl;
 import 'package:web/web.dart' as web;
 
 @JS('Object.keys')
@@ -55,6 +64,187 @@ const double _maxFrameTime = 0.25;
 const double _bgHue = 0.0;
 
 bool get _legacyRenderProfile => Uri.base.queryParameters['render'] == 'legacy';
+final BackendSelector _backendSelector = BackendSelector();
+late BackendSelection _backendSelection;
+late RendererBackend _presentationBackend;
+_PixeldartWebRuntime? _pixeldartRuntime;
+
+final class _PixeldartWebRuntime implements RendererRuntime {
+  final web.WebGL2RenderingContext context;
+  final int width;
+  final int height;
+  late pxgl.WebGl2Device _device;
+  late px.SceneRendererImpl _renderer;
+  late px.RenderWorld _world;
+  final List<px.MeshHandle> _sceneMeshes = [];
+  final List<px.InstanceId> _sceneItems = [];
+  px.MaterialHandle? _sceneMaterial;
+  px.CameraView? _cameraView;
+  int _frameIndex = 0;
+  bool _initialized = false;
+
+  _PixeldartWebRuntime(this.context, this.width, this.height);
+
+  @override
+  bool get contextLost =>
+      _initialized && _device.status == pxdevice.GpuDeviceStatus.lost;
+
+  @override
+  void initialize() {
+    _device = pxgl.WebGl2Device(context);
+    _renderer = px.SceneRendererImpl(_device);
+    _renderer.initialize(
+      px.RendererConfiguration.safe,
+      px.SurfaceMetrics(
+        cssWidth: width,
+        cssHeight: height,
+        pixelWidth: width,
+        pixelHeight: height,
+      ),
+    );
+    _world = _renderer.createWorld();
+    _initialized = true;
+  }
+
+  /// Installs the retained room shells once. Simulation-owned room facts are
+  /// read here, while the Pixeldart world owns only renderer handles.
+  void attachHouse(House house) {
+    if (!_initialized || _sceneItems.isNotEmpty) return;
+    _sceneMaterial = _renderer.resources.registerMaterial(
+      const px.MaterialDefinition(
+        key: 'quarantine-house-safe',
+        tintR: 0.58,
+        tintG: 0.58,
+        tintB: 0.58,
+      ),
+    );
+    for (final room in house.rooms) {
+      final mesh = _roomMesh(house, room);
+      final handle = _renderer.resources.registerMesh(
+        mesh,
+        debugLabel: 'room:${room.id}',
+      );
+      _sceneMeshes.add(handle);
+      _sceneItems.add(
+        _world.addItem(
+          px.RetainedItemDescriptor(mesh: handle, material: _sceneMaterial!),
+        ),
+      );
+    }
+  }
+
+  void setCamera(Camera camera) {
+    final eye = px.Vec3(camera.eye.x, camera.eye.y, camera.eye.z);
+    final forward = px.Vec3(camera.fwd.x, camera.fwd.y, camera.fwd.z);
+    final up = px.Vec3(camera.up.x, camera.up.y, camera.up.z);
+    final aspect = width / height;
+    final view = px.Mat4.lookAt(eye: eye, forward: forward, up: up);
+    final projection = px.Mat4.perspective(
+      fovYRadians: math.pi / 3,
+      aspect: aspect,
+      near: glDepthNear,
+      far: glDepthFar,
+    );
+    _cameraView = px.CameraView(
+      view: view,
+      projection: projection,
+      viewProjection: projection * view,
+      eye: eye,
+      forward: forward,
+      near: glDepthNear,
+      far: glDepthFar,
+      aspect: aspect,
+    );
+  }
+
+  @override
+  void submit(RendererFrame frame) {
+    if (!_initialized) throw StateError('Pixeldart runtime is not initialized');
+    final input = px.FrameInput(
+      camera: _cameraView ?? _defaultCamera(),
+      environment: const px.FrameEnvironment(),
+      post: px.PostProcessState.off,
+      frameIndex: _frameIndex++,
+      historyEpoch: 0,
+      noiseSeed: 0,
+      timeSeconds: 0,
+    );
+    _renderer.beginFrame(_world, input);
+    _renderer.endFrame();
+  }
+
+  @override
+  void handleInput(RendererInputAction action) {}
+
+  @override
+  void loseContext() {}
+
+  @override
+  void recover() {}
+
+  @override
+  void dispose() {
+    if (!_initialized) return;
+    _renderer.dispose();
+    _device.disposeListeners();
+    _initialized = false;
+  }
+
+  px.CameraView _defaultCamera() {
+    final eye = px.Vec3.zero;
+    final view = px.Mat4.identity();
+    final projection = px.Mat4.perspective(
+      fovYRadians: math.pi / 3,
+      aspect: width / height,
+      near: glDepthNear,
+      far: glDepthFar,
+    );
+    return px.CameraView(
+      view: view,
+      projection: projection,
+      viewProjection: projection * view,
+      eye: eye,
+      forward: const px.Vec3(0, 0, 1),
+      near: glDepthNear,
+      far: glDepthFar,
+      aspect: width / height,
+    );
+  }
+
+  px.MeshData _roomMesh(House house, Room room) {
+    final builder = StaticMeshBuilder();
+    final o = room.origin;
+    final s = house.effectiveSize(room);
+    final a = Vec3(o.x, o.y, o.z);
+    final b = Vec3(o.x + s.x, o.y, o.z);
+    final c = Vec3(o.x + s.x, o.y, o.z + s.z);
+    final d = Vec3(o.x, o.y, o.z + s.z);
+    final at = Vec3(o.x, o.y + s.y, o.z);
+    final bt = Vec3(o.x + s.x, o.y + s.y, o.z);
+    final ct = Vec3(o.x + s.x, o.y + s.y, o.z + s.z);
+    final dt = Vec3(o.x, o.y + s.y, o.z + s.z);
+    builder.quad(a, d, c, b, 0xA8A8A8);
+    builder.quad(at, bt, ct, dt, 0xC0C0C0);
+    builder.quad(a, b, bt, at, 0x8B8B8B);
+    builder.quad(b, c, ct, bt, 0x8B8B8B);
+    builder.quad(c, d, dt, ct, 0x8B8B8B);
+    builder.quad(d, a, at, dt, 0x8B8B8B);
+    final vertices = builder.build();
+    final points = <px.Vec3>[];
+    for (var i = 0; i < vertices.length; i += vertexStride) {
+      points.add(px.Vec3(vertices[i], vertices[i + 1], vertices[i + 2]));
+    }
+    return px.MeshData(
+      layout: px.VertexLayoutDescriptor.compatibility14,
+      vertices: vertices,
+      localBounds: px.Aabb.fromPoints(points),
+    );
+  }
+}
+
+BackendSelection _selectRuntimeBackend() {
+  return _backendSelector.select(Uri.base.queryParameters['renderer']);
+}
 
 int _mintRunSeed() => 1 + math.Random().nextInt(0x7FFFFFFF);
 
@@ -116,14 +306,47 @@ Future<void> main() async {
   if (canvas == null) return;
   _canvas = canvas;
   _fpsDiv = web.document.getElementById('fps');
+  _backendSelection = _selectRuntimeBackend();
   _installBootDiagnostics();
+  _canvas.width = web.window.innerWidth > 0 ? web.window.innerWidth : 800;
+  _canvas.height = web.window.innerHeight > 0 ? web.window.innerHeight : 600;
   final ctx = canvas.getContext('webgl2') as web.WebGL2RenderingContext?;
   if (ctx == null) {
+    _backendSelection = BackendSelection(
+      RendererBackendKind.legacy,
+      explicit: _backendSelection.explicit,
+      fallback: true,
+      fallbackReason: 'webgl2 unavailable',
+    );
+    _presentationBackend = const BackendFactory().create(_backendSelection)
+      ..initialize();
+    _publishRendererDiagnostics(capabilities: const ['webgl2-unavailable']);
     _setBootPhase('no-webgl2');
     web.document.getElementById('credits')?.textContent =
         'this browser has no webgl2.';
     return;
   }
+  try {
+    final runtime = _backendSelection.kind == RendererBackendKind.next
+        ? _PixeldartWebRuntime(ctx, _canvas.width, _canvas.height)
+        : null;
+    _pixeldartRuntime = runtime;
+    _presentationBackend = const BackendFactory().create(
+      _backendSelection,
+      runtime: runtime,
+    )..initialize();
+  } catch (error) {
+    _backendSelection = BackendSelection(
+      RendererBackendKind.legacy,
+      explicit: true,
+      fallback: true,
+      fallbackReason: 'pixeldart initialization failed',
+    );
+    _presentationBackend = const BackendFactory().create(_backendSelection)
+      ..initialize();
+    _canvas.setAttribute('data-renderer-error', '$error');
+  }
+  _publishRendererDiagnostics(capabilities: const ['webgl2']);
   try {
     _setBootPhase('initializing');
     _camera = Camera();
@@ -137,12 +360,14 @@ Future<void> main() async {
     _canvas.width = web.window.innerWidth > 0 ? web.window.innerWidth : 800;
     _canvas.height = web.window.innerHeight > 0 ? web.window.innerHeight : 600;
     _setBootPhase('renderer');
-    _renderer = Renderer(ctx, _canvas.width, _canvas.height);
-    _renderer!.configureImageEffects(
-      affineTexture: _legacyRenderProfile,
-      vertexSnapping: _legacyRenderProfile,
-      colorQuantize: _legacyRenderProfile,
-    );
+    if (_backendSelection.kind == RendererBackendKind.legacy) {
+      _renderer = Renderer(ctx, _canvas.width, _canvas.height);
+      _renderer!.configureImageEffects(
+        affineTexture: _legacyRenderProfile,
+        vertexSnapping: _legacyRenderProfile,
+        colorQuantize: _legacyRenderProfile,
+      );
+    }
 
     _setBootPhase('text');
     await textLibrary.load();
@@ -180,6 +405,9 @@ Future<void> main() async {
             vocabulary: vocabulary,
             snapshot: saved.snapshot!,
           );
+    _presentationBackend.submit(
+      RendererFrame(snapshot: _session.presentationSnapshot),
+    );
     if (saved.recovery != null) _showSaveStatus(saved.recovery!);
     _visitorDirector.standIns = drawStandIns(
       _session.runSeed,
@@ -187,6 +415,7 @@ Future<void> main() async {
     ).toSet();
     _setBootPhase('house');
     _house = _session.house;
+    _pixeldartRuntime?.attachHouse(_house);
     _time = _session.time;
 
     _simEye = Vec3(5.5, 1.65, 3.5);
@@ -314,6 +543,11 @@ Future<void> main() async {
     web.window.addEventListener(
       'keydown',
       ((web.KeyboardEvent e) {
+        if (!e.repeat) {
+          _presentationBackend.handleInput(
+            RendererInputAction(id: e.code, pressed: true, value: 1),
+          );
+        }
         if (e.code == 'KeyP' && !e.repeat) _paused = !_paused;
         if (e.code == 'KeyR' && !e.repeat && _shadersLive) {
           _renderer?.reloadShadersLive();
@@ -343,6 +577,14 @@ Future<void> main() async {
           }
         }
         if (e.code == 'KeyK' && !e.repeat) _saveSession('saved');
+      }).toJS,
+    );
+    web.window.addEventListener(
+      'keyup',
+      ((web.KeyboardEvent e) {
+        _presentationBackend.handleInput(
+          RendererInputAction(id: e.code, value: 0),
+        );
       }).toJS,
     );
     web.window.addEventListener('keydown', ((web.Event _) => _armAudio()).toJS);
@@ -381,6 +623,26 @@ void _setBootPhase(String phase) {
   if (_bootPhase == phase) return;
   _bootPhase = phase;
   _canvas.setAttribute('data-boot-phase', phase);
+}
+
+void _publishRendererDiagnostics({Iterable<String> capabilities = const []}) {
+  final diagnostics = RendererDiagnostics.fromEnvironment(
+    backend: _backendSelection.kind.name,
+    profile: _backendSelection.kind == RendererBackendKind.next
+        ? 'safe'
+        : 'legacy',
+    capabilities: capabilities,
+    fallback: _backendSelection.fallback,
+    fallbackReason: _backendSelection.fallbackReason,
+  );
+  _canvas
+    ..setAttribute(
+      'data-renderer-request',
+      Uri.base.queryParameters['renderer'] ?? 'legacy',
+    )
+    ..setAttribute('data-renderer-backend', diagnostics.backend)
+    ..setAttribute('data-renderer-fallback', diagnostics.fallback.toString())
+    ..setAttribute('data-renderer-diagnostics', diagnostics.encode());
 }
 
 void _saveSession(String status) {
@@ -557,6 +819,12 @@ void _raf(num ts) {
           ? depthOfFieldStrength
           : 0;
       _render(renderer, frameTime, _rupture);
+    } else if (_backendSelection.kind == RendererBackendKind.next) {
+      _camera.lookFrom(_viewEye, _simYaw, _simPitch);
+      _pixeldartRuntime?.setCamera(_camera);
+      _presentationBackend.submit(
+        RendererFrame(snapshot: _session.presentationSnapshot),
+      );
     }
 
     _setBootPhase('running');

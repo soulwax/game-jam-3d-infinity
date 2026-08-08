@@ -27,5 +27,10 @@ void main() {
     selector.select('unknown').kind == RendererBackendKind.legacy,
     'unknown query falls back safely',
   );
+  _expect(selector.select('unknown').fallback, 'fallback is observable');
+  _expect(
+    selector.select('unknown').fallbackReason != null,
+    'fallback reason is observable',
+  );
   print('backend selector: explicit next opt-in and legacy fallback pass');
 }
