@@ -44,7 +44,7 @@ void main() {
 
   final queries = rendererQuerySmoke();
   _expect(
-    queries.length == 4 && queries.every(queryIsSafe),
+    queries.length == 5 && queries.every(queryIsSafe),
     'query matrix is safe',
   );
   _expect(queries.last.selection.fallback, 'unknown query is visible fallback');
