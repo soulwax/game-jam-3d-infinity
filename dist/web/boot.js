@@ -3,7 +3,7 @@
   if ((WebAssembly.validate(new Uint8Array([0,97,115,109,1,0,0,0,1,5,1,95,1,120,0])))) {
     try {
       const m = await import(app + 'main.c8cfe64f.mjs');
-      const compiled = await m.compileStreaming(fetch(app + 'main.f67c7c78.wasm'));
+      const compiled = await m.compileStreaming(fetch(app + 'main.17ef1142.wasm'));
       (await compiled.instantiate({})).invokeMain();
       return;
     } catch (e) {
@@ -11,6 +11,6 @@
     }
   }
   const s = document.createElement('script');
-  s.src = app + 'main.804a9d7b.js';
+  s.src = app + 'main.63c4ff63.js';
   document.body.appendChild(s);
 })();
