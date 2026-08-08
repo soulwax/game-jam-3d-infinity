@@ -5,7 +5,8 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 
 const root = process.cwd();
-const out = path.join(root, 'dist', 'web');
+const finalOut = path.join(root, 'dist', 'web');
+const out = path.join(root, 'dist', `.web-staging-${process.pid}`);
 const appDir = path.join(out, 'app');
 const cacheDir = path.join(root, '.vercel', 'cache');
 const sdkVersion = process.env.DART_SDK_VERSION || '3.12.2';
@@ -97,8 +98,7 @@ async function ensureDart() {
     try {
       await download(`${base}/${sdkVersion}/${asset}`, zip);
     } catch (e) {
-      console.log(`${e}, falling back to latest ${sdkChannel}`);
-      await download(`${base}/latest/${asset}`, zip);
+      throw new Error(`pinned Dart ${sdkVersion} download failed: ${e}`);
     }
     unzip(zip, sdkRoot);
     fs.rmSync(zip, { force: true });
@@ -227,10 +227,16 @@ if (!['js', 'wasm'].includes(target)) {
 
 const dart = await ensureDart();
 const pkgConfig = path.join(root, '.dart_tool', 'package_config.json');
+const lockfile = path.join(root, 'pubspec.lock');
+if (!fs.existsSync(lockfile)) {
+  console.error('pubspec.lock is required for a reproducible release build');
+  process.exit(1);
+}
 const pubFresh = fs.existsSync(pkgConfig) &&
-  fs.statSync(pkgConfig).mtimeMs >= fs.statSync(path.join(root, 'pubspec.yaml')).mtimeMs;
+  fs.statSync(pkgConfig).mtimeMs >= fs.statSync(path.join(root, 'pubspec.yaml')).mtimeMs &&
+  fs.statSync(pkgConfig).mtimeMs >= fs.statSync(lockfile).mtimeMs;
 if (pubFresh) console.log('pub deps up to date, skipping dart pub get');
-else sh(dart, ['pub', 'get']);
+else sh(dart, ['pub', 'get', '--enforce-lockfile']);
 
 sh(dart, ['run', 'tools/asset_audit.dart', '--build']);
 fs.rmSync(out, { recursive: true, force: true });
@@ -244,4 +250,6 @@ const kb = (p) => `${(fs.statSync(p).size / 1024).toFixed(0)} kB`;
 const detail = target === 'wasm'
   ? fs.readdirSync(appDir).filter((f) => !f.endsWith('.map')).map((f) => `${f} ${kb(path.join(appDir, f))}`).join(', ')
   : `main.dart.js ${kb(primary)}`;
+fs.rmSync(finalOut, { recursive: true, force: true });
+fs.renameSync(out, finalOut);
 console.log(`dist/web ready [${target}] — ${detail}, source maps ${sourceMaps ? 'on' : 'off'}`);
