@@ -31,6 +31,7 @@ import 'package:quarantine/house/emitter.dart';
 import 'package:quarantine/house/focus.dart';
 import 'package:quarantine/house/geometry.dart';
 import 'package:quarantine/house/house.dart';
+import 'package:quarantine/house/inventory.dart';
 import 'package:quarantine/house/exterior_mesh_adapter.dart';
 import 'package:quarantine/house/exterior_pvs.dart';
 import 'package:quarantine/house/exterior_scene.dart';
@@ -91,12 +92,14 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   late px.QualityProfile _profile;
   String? _profileFallbackReason;
   final List<px.MeshHandle> _sceneMeshes = [];
+  final Map<String, px.MeshHandle> _roomMeshesById = {};
   final List<px.InstanceId> _sceneItems = [];
   final Map<String, px.InstanceId> _sceneItemsByRoom = {};
   final Map<String, px.RetainedItemDescriptor> _sceneDescriptors = {};
   px.InstanceId? _exteriorShellItem;
   px.RetainedItemDescriptor? _exteriorShellDescriptor;
   final List<_PixeldartDecoration> _decorations = [];
+  List<InventoryPlacement> _inventoryPlacements = const [];
   final Map<String, px.TextureHandle> _textures = {};
   final Map<String, px.MaterialHandle> _roomMaterials = {};
   px.MaterialHandle? _sceneMaterial;
@@ -258,6 +261,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         debugLabel: 'room:${room.id}',
       );
       _sceneMeshes.add(handle);
+      _roomMeshesById[room.id] = handle;
       final descriptor = px.RetainedItemDescriptor(
         mesh: handle,
         material: _materialForRoom(room.id),
@@ -311,6 +315,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _exteriorShellItem = _world.addItem(exteriorDescriptor);
   }
 
+  /// Records the authored placement index for this runtime. Geometry remains
+  /// renderer-neutral; model handles can be swapped in later without
+  /// changing room visibility or simulation ownership.
+  void setInventory(HouseInventory inventory) {
+    _inventoryPlacements = List<InventoryPlacement>.unmodifiable(
+      inventory.placements,
+    );
+  }
+
   void setVisibleRooms(House house, String currentRoomId) {
     final current = house.byId(currentRoomId);
     if (current == null) return;
@@ -353,6 +366,52 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _exteriorShellDescriptor = descriptor;
     }
   }
+
+  /// Rebuilds one retained room after an authoritative overnight drift. The
+  /// simulation owns the changed room dimensions; Pixeldart only replaces the
+  /// renderer-owned mesh and keeps the stable scene item/material identity.
+  /// Releasing the old mesh in the same operation prevents a sleep cycle from
+  /// accumulating GPU resources.
+  void refreshRoomGeometry(House house, String roomId) {
+    if (!_initialized) return;
+    final item = _sceneItemsByRoom[roomId];
+    final descriptor = _sceneDescriptors[roomId];
+    final oldMesh = _roomMeshesById[roomId];
+    final room = house.byId(roomId);
+    if (item == null || descriptor == null || oldMesh == null || room == null) {
+      return;
+    }
+    final nextMesh = _renderer.resources.registerMesh(
+      _roomMesh(house, room),
+      debugLabel: 'room:$roomId:drift-${house.drift.landedCount}',
+    );
+    final nextDescriptor = px.RetainedItemDescriptor(
+      mesh: nextMesh,
+      material: descriptor.material,
+      transform: descriptor.transform,
+      visibilityMask: descriptor.visibilityMask,
+      drawMode: descriptor.drawMode,
+      blendMode: descriptor.blendMode,
+      castsShadow: descriptor.castsShadow,
+      receivesShadow: descriptor.receivesShadow,
+      sortTiebreaker: descriptor.sortTiebreaker,
+      instanceFamilyKey: descriptor.instanceFamilyKey,
+    );
+    _world.updateItem(item, nextDescriptor);
+    _sceneDescriptors[roomId] = nextDescriptor;
+    _roomMeshesById[roomId] = nextMesh;
+    _sceneMeshes
+      ..remove(oldMesh)
+      ..add(nextMesh);
+    _renderer.resources.releaseMesh(oldMesh);
+    _canvas.setAttribute(
+      'data-renderer-geometry-refreshes',
+      '${_geometryRefreshes + 1}',
+    );
+    _geometryRefreshes++;
+  }
+
+  int _geometryRefreshes = 0;
 
   void setLighting(
     House house,
@@ -843,6 +902,7 @@ late Input _input;
 late Hud<Object> _hud;
 Renderer? _renderer;
 late House _house;
+HouseInventory? _houseInventory;
 RoomEmitter? _emitter;
 late GameTime _time;
 late GameSession _session;
@@ -1113,7 +1173,9 @@ Future<void> main() async {
         _session.sleep(quality, location, currentRoom: _currentRoom);
         final driftedAfter = _house.drift.landedCount;
         for (var i = driftedBefore; i < driftedAfter; i++) {
-          _emitter?.rebuildRoom(_house.drift.schedule[i].roomId);
+          final roomId = _house.drift.schedule[i].roomId;
+          _emitter?.rebuildRoom(roomId);
+          _pixeldartRuntime?.refreshRoomGeometry(_house, roomId);
         }
         _saveSession('saved after sleep');
       }
@@ -1335,6 +1397,7 @@ Future<void> _loadAuthoredHouseManifest() async {
       manifest.validateAgainst(_house);
       _canvas.setAttribute('data-house-manifest', 'validated');
       _canvas.setAttribute('data-house-manifest-source', url);
+      await _loadAuthoredHouseInventory();
       return;
     } catch (error) {
       lastError = error;
@@ -1342,6 +1405,32 @@ Future<void> _loadAuthoredHouseManifest() async {
   }
   _canvas.setAttribute('data-house-manifest', 'unavailable');
   web.console.warn('authored house manifest unavailable: $lastError'.toJS);
+}
+
+Future<void> _loadAuthoredHouseInventory() async {
+  const urls = ['res/house/inventory.json', 'assets/house/inventory.json'];
+  Object? lastError;
+  for (final url in urls) {
+    try {
+      final response = await web.window.fetch(url.toJS).toDart;
+      final source = (await response.text().toDart).toString();
+      final inventory = HouseInventory.decode(source);
+      inventory.validateAgainst(_house);
+      _houseInventory = inventory;
+      _pixeldartRuntime?.setInventory(inventory);
+      _canvas.setAttribute('data-house-inventory', 'validated');
+      _canvas.setAttribute('data-house-inventory-source', url);
+      _canvas.setAttribute(
+        'data-house-inventory-count',
+        '${inventory.placements.length}',
+      );
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  _canvas.setAttribute('data-house-inventory', 'unavailable');
+  web.console.warn('authored house inventory unavailable: $lastError'.toJS);
 }
 
 void _collectUrls(
