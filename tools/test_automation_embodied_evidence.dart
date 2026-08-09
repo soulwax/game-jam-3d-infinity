@@ -104,6 +104,117 @@ Future<void> main() async {
       'movement distance parses',
     );
 
+    final canonicalPayload = Map<String, Object?>.from(_payload())
+      ..['routeName'] = 'pixeldart-canonical'
+      ..['routePath'] = '/?renderer=pixeldart'
+      ..['requestedRenderer'] = 'pixeldart'
+      ..['effectiveRenderer'] = 'pixeldart';
+    final canonicalResolvedRun = <String, Object?>{
+      'schemaVersion': 2,
+      'canonical': {
+        'scenario': 'days-1-3',
+        'renderer': 'pixeldart',
+        'profile': 'safe',
+        'viewport': {'width': 640, 'height': 480},
+      },
+      'compatibilityAliases': <String, Object?>{},
+    };
+    canonicalPayload['resolvedRun'] = canonicalResolvedRun;
+    final canonicalMetadata = File('${root.path}/browser-canonical.json')
+      ..writeAsStringSync(
+        jsonEncode({
+          'schemaVersion': 1,
+          'scenario': 'days-1-3',
+          'requestedRenderer': 'pixeldart',
+          'requestedProfile': 'safe',
+          'negotiatedProfile': 'high',
+          'profileNegotiation': 'capability-negotiated',
+          'viewport': {'width': 640, 'height': 480},
+          'routeName': 'pixeldart-canonical',
+          'routePath': '/?renderer=pixeldart',
+          'screenshot': 'browser-valid.png',
+          'resolvedRun': canonicalResolvedRun,
+        }),
+      );
+    final canonicalDigest = File('${root.path}/browser-canonical.digest.json')
+      ..writeAsStringSync(
+        jsonEncode({
+          'schemaVersion': 1,
+          'screenshot': 'browser-valid.png',
+          'metadata': 'browser-canonical.json',
+          'screenshotSha256': await runner.sha256File(
+            File('${root.path}/browser-valid.png'),
+          ),
+          'metadataSha256': await runner.sha256File(canonicalMetadata),
+        }),
+      );
+    final capture = canonicalPayload['capture'] as Map<String, Object?>;
+    capture['metadata'] = canonicalMetadata.uri.pathSegments.last;
+    capture['digest'] = canonicalDigest.uri.pathSegments.last;
+    final canonicalCycle =
+        (canonicalPayload['evidence'] as Map)['dayCycle'] as Map;
+    final canonicalCheckpoints = canonicalCycle['checkpoints'] as List;
+    for (var index = 0; index < canonicalCheckpoints.length; index++) {
+      final checkpoint = canonicalCheckpoints[index] as Map;
+      final checkpointCapture = checkpoint['capture'] as Map<String, Object?>;
+      final day = index + 1;
+      final screenshot = checkpointCapture['screenshot'] as String;
+      final metadataName = 'browser-canonical-day-$day.json';
+      final digestName = 'browser-canonical-day-$day.digest.json';
+      final metadataFile = File('${root.path}/$metadataName')
+        ..writeAsStringSync(
+          jsonEncode({
+            'schemaVersion': 1,
+            'scenario': 'days-1-3',
+            'requestedRenderer': 'pixeldart',
+            'requestedProfile': 'safe',
+            'negotiatedProfile': 'high',
+            'profileNegotiation': 'capability-negotiated',
+            'viewport': {'width': 640, 'height': 480},
+            'routeName': 'pixeldart-canonical',
+            'routePath': '/?renderer=pixeldart',
+            'screenshot': screenshot,
+            'resolvedRun': canonicalResolvedRun,
+          }),
+        );
+      final digestFile = File('${root.path}/$digestName')
+        ..writeAsStringSync(
+          jsonEncode({
+            'schemaVersion': 1,
+            'screenshot': screenshot,
+            'metadata': metadataName,
+            'screenshotSha256': await runner.sha256File(
+              File('${root.path}/$screenshot'),
+            ),
+            'metadataSha256': await runner.sha256File(metadataFile),
+          }),
+        );
+      checkpointCapture['metadata'] = metadataName;
+      checkpointCapture['digest'] = digestFile.uri.pathSegments.last;
+    }
+    final canonicalFile = File('${root.path}/browser-canonical-embodied.json')
+      ..writeAsStringSync(jsonEncode(canonicalPayload));
+    final canonicalParsed = await runner.parseEmbodiedEvidence(canonicalFile);
+    _expect(
+      canonicalParsed['embodiedRequestedRenderer'] == 'pixeldart' &&
+          canonicalParsed['embodiedEffectiveRenderer'] == 'pixeldart' &&
+          canonicalParsed['resolvedRunSchemaVersion'] == '2' &&
+          canonicalParsed['resolvedRenderer'] == 'pixeldart',
+      'canonical Pixeldart renderer evidence parses',
+    );
+    final malformedResolved = jsonDecode(jsonEncode(canonicalPayload)) as Map;
+    ((malformedResolved['resolvedRun'] as Map)['canonical']
+        as Map)['viewport'] = {
+      'width': 1,
+      'height': 480,
+    };
+    await _expectFormatFailure(
+      root,
+      'browser-malformed-resolved-run-embodied.json',
+      jsonEncode(malformedResolved),
+      'resolved-run viewport drift rejects',
+    );
+
     await _expectFormatFailure(
       root,
       'browser-list-embodied.json',

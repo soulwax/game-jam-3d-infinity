@@ -3,6 +3,8 @@ import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 import 'panel.dart';
+import 'accessibility_presentation.dart';
+import 'accessibility_settings.dart';
 
 class AmbientNotice {
   AmbientNotice(web.Document document)
@@ -23,6 +25,17 @@ class AmbientNotice {
   final web.HTMLElement _captionRoot;
   bool _captionsEnabled = false;
   int _captionSequence = 0;
+  AccessibilityAnnouncementPolicy _announcementPolicy =
+      const AccessibilityAnnouncementPolicy(
+        AccessibilityScreenReaderVerbosity.standard,
+      );
+
+  void setAccessibilityProfile(AccessibilitySettingsProfile profile) {
+    _announcementPolicy = AccessibilityAnnouncementPolicy(
+      profile.screenReaderVerbosity ??
+          AccessibilityScreenReaderVerbosity.standard,
+    );
+  }
 
   void setCaptionsEnabled(bool enabled) {
     _captionsEnabled = enabled;
@@ -34,9 +47,14 @@ class AmbientNotice {
   }
 
   void show(String channel, String text) {
-    root.textContent = '$channel: $text';
+    final announcement = _announcementPolicy.format(
+      channel: channel,
+      text: text,
+    );
+    if (announcement.isEmpty) return;
+    root.textContent = announcement;
     root.className = 'ambient-notice visible';
-    showCaption('$channel: $text');
+    showCaption(announcement);
     web.window.setTimeout(
       ((JSAny? _) => root.className = 'ambient-notice').toJS,
       7000.toJS,

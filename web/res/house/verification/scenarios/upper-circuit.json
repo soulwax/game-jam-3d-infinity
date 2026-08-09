@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "id": "upper-circuit",
+  "tags": ["embodied-route", "upper-floor"],
+  "fixture": {
+    "seed": 42017,
+    "day": 1,
+    "hour": 8,
+    "weather": "overcast",
+    "startPose": "upper-hall-stair-out",
+    "doors": {
+      "landing-bedroom": "open",
+      "landing-bathroom": "open",
+      "landing-spare": "open"
+    }
+  },
+  "runtime": {
+    "fixedDt": 0.0166666667,
+    "maxTicks": 10800
+  },
+  "poses": [
+    {
+      "id": "upper-hall-stair-out",
+      "position": [9.95, 1.65, 6.9],
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "room": "hall"
+    }
+  ],
+  "routes": [
+    {
+      "id": "upper-circuit",
+      "rooms": [
+        "hall",
+        "landing",
+        "bedroom",
+        "landing",
+        "bathroom",
+        "landing",
+        "spare-room",
+        "landing"
+      ],
+      "portals": [
+        "hall-landing",
+        "landing-bedroom",
+        "landing-bedroom",
+        "landing-bathroom",
+        "landing-bathroom",
+        "landing-spare",
+        "landing-spare"
+      ],
+      "tickBudget": 3600,
+      "waypoints": [
+        {"id": "upper-hall-stair-out", "room": "hall", "position": [9.95, 1.65, 6.9], "radius": 0.35},
+        {"id": "upper-landing-stair-in", "room": "landing", "position": [9.95, 5.85, 1.95], "radius": 0.35},
+        {"id": "upper-landing-bedroom-out", "room": "landing", "position": [7.3, 5.85, 2.175], "radius": 0.35},
+        {"id": "upper-bedroom-in", "room": "bedroom", "position": [6.2, 5.85, 2.175], "radius": 0.35},
+        {"id": "upper-bedroom-out", "room": "bedroom", "position": [6.2, 5.85, 2.175], "radius": 0.35},
+        {"id": "upper-landing-bedroom-return", "room": "landing", "position": [7.3, 5.85, 2.175], "radius": 0.35},
+        {"id": "upper-landing-bathroom-out", "room": "landing", "position": [8.925, 5.85, 3.95], "radius": 0.35},
+        {"id": "upper-bathroom-in", "room": "bathroom", "position": [8.625, 5.85, 5.05], "radius": 0.35},
+        {"id": "upper-bathroom-out", "room": "bathroom", "position": [8.625, 5.85, 5.05], "radius": 0.35},
+        {"id": "upper-landing-bathroom-return", "room": "landing", "position": [8.925, 5.85, 3.95], "radius": 0.35},
+        {"id": "upper-landing-spare-out", "room": "landing", "position": [7.575, 5.85, 3.95], "radius": 0.35},
+        {"id": "upper-spare-in", "room": "spare-room", "position": [3.675, 5.85, 6.55], "radius": 0.35},
+        {"id": "upper-spare-out", "room": "spare-room", "position": [3.675, 5.85, 6.55], "radius": 0.35},
+        {"id": "upper-landing-spare-return", "room": "landing", "position": [7.575, 5.85, 3.95], "radius": 0.35}
+      ]
+    }
+  ],
+  "steps": [
+    {"id": "ready", "do": "awaitReady", "phase": "fixture"},
+    {"id": "fixture", "do": "loadFixture", "phase": "fixture"},
+    {"id": "upper-route", "do": "moveRoute", "route": "upper-circuit", "tickBudget": 3600}
+  ]
+}

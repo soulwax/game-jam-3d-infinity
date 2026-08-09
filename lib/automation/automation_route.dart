@@ -76,6 +76,62 @@ final class AutomationRoutePlan {
   }
 }
 
+enum AutomationRouteIssueCode {
+  topology,
+  unknownPortal,
+  blockedPortal,
+  unknownRoom,
+  nonFiniteWaypoint,
+  invalidRadius,
+  blockedWaypoint,
+  segmentClearance,
+}
+
+/// Structured route failure data for reports and world-space debug overlays.
+/// `message` remains human-readable, while the IDs and sample coordinates are
+/// stable enough for a replay to point at the same failure again.
+final class AutomationRouteValidationIssue {
+  final AutomationRouteIssueCode code;
+  final String routeId;
+  final String message;
+  final String? roomId;
+  final String? waypointId;
+  final String? fromWaypointId;
+  final String? toWaypointId;
+  final int? sampleIndex;
+  final int? sampleCount;
+  final Vec3? position;
+  final String? nearestObstruction;
+
+  const AutomationRouteValidationIssue({
+    required this.code,
+    required this.routeId,
+    required this.message,
+    this.roomId,
+    this.waypointId,
+    this.fromWaypointId,
+    this.toWaypointId,
+    this.sampleIndex,
+    this.sampleCount,
+    this.position,
+    this.nearestObstruction,
+  });
+
+  Map<String, Object?> toJson() => {
+    'code': code.name,
+    'route': routeId,
+    'message': message,
+    if (roomId != null) 'room': roomId,
+    if (waypointId != null) 'waypoint': waypointId,
+    if (fromWaypointId != null) 'fromWaypoint': fromWaypointId,
+    if (toWaypointId != null) 'toWaypoint': toWaypointId,
+    if (sampleIndex != null) 'sampleIndex': sampleIndex,
+    if (sampleCount != null) 'sampleCount': sampleCount,
+    if (position != null) 'position': [position!.x, position!.y, position!.z],
+    if (nearestObstruction != null) 'nearestObstruction': nearestObstruction,
+  };
+}
+
 final class AutomationRouteValidator {
   final House house;
   final double sampleStep;
@@ -85,43 +141,144 @@ final class AutomationRouteValidator {
     this.sampleStep = playerSweepStep,
   });
 
-  List<String> validate(AutomationRoutePlan plan) {
-    final errors = <String>[];
+  List<String> validate(AutomationRoutePlan plan) => [
+    for (final issue in diagnose(plan)) issue.message,
+  ];
+
+  List<AutomationRouteValidationIssue> diagnose(AutomationRoutePlan plan) {
+    final issues = <AutomationRouteValidationIssue>[];
     if (plan.rooms.length != plan.portals.length + 1) {
-      errors.add('route rooms must equal portals plus one');
+      issues.add(
+        _issue(
+          plan,
+          code: AutomationRouteIssueCode.topology,
+          message: 'route rooms must equal portals plus one',
+        ),
+      );
     }
-    if (plan.waypoints.isEmpty) errors.add('route has no waypoints');
+    if (plan.waypoints.isEmpty) {
+      issues.add(
+        _issue(
+          plan,
+          code: AutomationRouteIssueCode.topology,
+          message: 'route has no waypoints',
+        ),
+      );
+    }
+    final observedRooms = <String>[];
+    for (final waypoint in plan.waypoints) {
+      if (observedRooms.isEmpty || observedRooms.last != waypoint.room) {
+        observedRooms.add(waypoint.room);
+      }
+    }
+    if (observedRooms.length != plan.rooms.length ||
+        observedRooms.indexed.any(
+          (entry) => entry.$2 != plan.rooms[entry.$1],
+        )) {
+      issues.add(
+        _issue(
+          plan,
+          code: AutomationRouteIssueCode.topology,
+          message:
+              'waypoint room sequence ${observedRooms.join(" → ")} does not match declared route ${plan.rooms.join(" → ")}',
+          nearestObstruction: 'portal-sequence',
+        ),
+      );
+    }
     for (var i = 0; i < plan.portals.length; i++) {
       final portal = house.portalById(plan.portals[i]);
       if (portal == null) {
-        errors.add('unknown portal ${plan.portals[i]}');
+        issues.add(
+          _issue(
+            plan,
+            code: AutomationRouteIssueCode.unknownPortal,
+            message: 'unknown portal ${plan.portals[i]}',
+          ),
+        );
         continue;
+      }
+      if (!portal.passable) {
+        issues.add(
+          _issue(
+            plan,
+            code: AutomationRouteIssueCode.blockedPortal,
+            message: 'portal ${portal.id} is not passable in authored state',
+            nearestObstruction: 'portal:${portal.id}',
+          ),
+        );
       }
       if (!portal.touches(plan.rooms[i]) ||
           !portal.touches(plan.rooms[i + 1])) {
-        errors.add(
-          'portal ${portal.id} does not connect route rooms ${plan.rooms[i]} → ${plan.rooms[i + 1]}',
+        issues.add(
+          _issue(
+            plan,
+            code: AutomationRouteIssueCode.topology,
+            message:
+                'portal ${portal.id} does not connect route rooms ${plan.rooms[i]} → ${plan.rooms[i + 1]}',
+            nearestObstruction: 'portal:${portal.id}',
+          ),
         );
       }
     }
     for (final waypoint in plan.waypoints) {
       final room = house.byId(waypoint.room);
       if (room == null) {
-        errors.add('waypoint ${waypoint.id} has unknown room ${waypoint.room}');
+        issues.add(
+          _issue(
+            plan,
+            code: AutomationRouteIssueCode.unknownRoom,
+            message:
+                'waypoint ${waypoint.id} has unknown room ${waypoint.room}',
+            roomId: waypoint.room,
+            waypointId: waypoint.id,
+            position: waypoint.eye,
+            nearestObstruction: 'unknown-room',
+          ),
+        );
         continue;
       }
       if (!waypoint.eye.x.isFinite ||
           !waypoint.eye.y.isFinite ||
           !waypoint.eye.z.isFinite) {
-        errors.add('waypoint ${waypoint.id} is non-finite');
+        issues.add(
+          _issue(
+            plan,
+            code: AutomationRouteIssueCode.nonFiniteWaypoint,
+            message: 'waypoint ${waypoint.id} is non-finite',
+            roomId: room.id,
+            waypointId: waypoint.id,
+            position: waypoint.eye,
+            nearestObstruction: 'non-finite-position',
+          ),
+        );
         continue;
       }
       if (waypoint.radius <= 0) {
-        errors.add('waypoint ${waypoint.id} radius is not positive');
+        issues.add(
+          _issue(
+            plan,
+            code: AutomationRouteIssueCode.invalidRadius,
+            message: 'waypoint ${waypoint.id} radius is not positive',
+            roomId: room.id,
+            waypointId: waypoint.id,
+            position: waypoint.eye,
+            nearestObstruction: 'waypoint-tolerance',
+          ),
+        );
       }
       final capsule = _capsule(waypoint.eye);
       if (capsule.intersectsStaticGeometry(house, room.id)) {
-        errors.add('waypoint ${waypoint.id} is blocked in ${room.id}');
+        issues.add(
+          _issue(
+            plan,
+            code: AutomationRouteIssueCode.blockedWaypoint,
+            message: 'waypoint ${waypoint.id} is blocked in ${room.id}',
+            roomId: room.id,
+            waypointId: waypoint.id,
+            position: waypoint.eye,
+            nearestObstruction: _nearestObstruction(room, waypoint.eye),
+          ),
+        );
       }
     }
     for (var i = 1; i < plan.waypoints.length; i++) {
@@ -134,14 +291,29 @@ final class AutomationRouteValidator {
         final t = sample / samples;
         final eye = Vec3.lerp(from.eye, to.eye, t);
         if (_capsule(eye).intersectsStaticGeometry(house, from.room)) {
-          errors.add(
-            'segment ${from.id} → ${to.id} clips geometry at sample $sample/$samples',
+          issues.add(
+            _issue(
+              plan,
+              code: AutomationRouteIssueCode.segmentClearance,
+              message:
+                  'segment ${from.id} → ${to.id} clips geometry at sample $sample/$samples',
+              roomId: from.room,
+              fromWaypointId: from.id,
+              toWaypointId: to.id,
+              sampleIndex: sample,
+              sampleCount: samples,
+              position: eye,
+              nearestObstruction: _nearestObstruction(
+                house.byId(from.room)!,
+                eye,
+              ),
+            ),
           );
           break;
         }
       }
     }
-    return errors;
+    return issues;
   }
 
   AutomationRoutePlan compile(AutomationRoutePlan plan) {
@@ -157,6 +329,46 @@ final class AutomationRouteValidator {
         Vec3(0, playerEyeHeight - playerCapsuleHeight + playerCapsuleRadius, 0),
     radius: playerCapsuleRadius,
   );
+
+  AutomationRouteValidationIssue _issue(
+    AutomationRoutePlan plan, {
+    required AutomationRouteIssueCode code,
+    required String message,
+    String? roomId,
+    String? waypointId,
+    String? fromWaypointId,
+    String? toWaypointId,
+    int? sampleIndex,
+    int? sampleCount,
+    Vec3? position,
+    String? nearestObstruction,
+  }) => AutomationRouteValidationIssue(
+    code: code,
+    routeId: plan.id,
+    message: message,
+    roomId: roomId,
+    waypointId: waypointId,
+    fromWaypointId: fromWaypointId,
+    toWaypointId: toWaypointId,
+    sampleIndex: sampleIndex,
+    sampleCount: sampleCount,
+    position: position,
+    nearestObstruction: nearestObstruction,
+  );
+
+  String _nearestObstruction(Room room, Vec3 eye) {
+    final size = house.effectiveSize(room);
+    if (eye.x < room.origin.x || eye.x > room.origin.x + size.x) {
+      return 'room-boundary-x';
+    }
+    if (eye.z < room.origin.z || eye.z > room.origin.z + size.z) {
+      return 'room-boundary-z';
+    }
+    if (eye.y < room.origin.y || eye.y > room.origin.y + size.y) {
+      return 'room-boundary-y';
+    }
+    return 'static-geometry';
+  }
 }
 
 AutomationRouteWaypoint _approach(

@@ -56,6 +56,13 @@
   --brass: #b7894c;
   --focus: #ffe0a1;
   color-scheme: dark;
+  --brush-ink: #07070a;
+  --brush-bone: #e7dfcf;
+  --brush-ash: #a9a194;
+  --brush-amber: #c6ac71;
+  --brush-rust: #7c4a38;
+  --brush-danger: #bd6d61;
+  --brush-focus: #f2c879;
 }
 
 :root.high-contrast {
@@ -139,6 +146,140 @@ button:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 3px;
+}
+
+/* PF-01 brush-cut specimen: transforms decorate native controls without
+   moving their semantic order or changing their hit rectangles. */
+.brush-button {
+  position: relative;
+  isolation: isolate;
+  border: 1px solid var(--brush-rust);
+  border-radius: 0;
+  color: var(--brush-bone);
+  background:
+    linear-gradient(100deg, rgba(198, 172, 113, 0.08), transparent 72%),
+    var(--brush-ink);
+  box-shadow: 3px 2px 0 rgba(198, 172, 113, 0.18);
+  clip-path: polygon(0.35rem 0, 100% 0, calc(100% - 0.2rem) 100%, 0 100%);
+  letter-spacing: 0.06rem;
+  text-transform: lowercase;
+}
+
+.brush-button:hover,
+.brush-state-hover {
+  border-color: var(--brush-amber);
+  background-color: rgba(198, 172, 113, 0.16);
+}
+
+.brush-button:active,
+.brush-state-pressed {
+  transform: translate(2px, 1px);
+  box-shadow: 1px 1px 0 rgba(198, 172, 113, 0.18);
+}
+
+.brush-button.brush-state-selected,
+.brush-state-selected {
+  border-left: 4px solid var(--brush-amber);
+  background-color: rgba(198, 172, 113, 0.2);
+  font-weight: 600;
+}
+
+.brush-button:focus-visible,
+.brush-state-focus {
+  outline: 2px solid var(--brush-focus);
+  outline-offset: 3px;
+}
+
+.brush-button.brush-state-remapping,
+.brush-state-remapping {
+  border-style: dashed;
+  color: var(--brush-focus);
+}
+
+.brush-button:disabled,
+.brush-state-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.brush-state-error {
+  border-color: var(--brush-danger);
+}
+
+.brush-button.brush-state-destructive,
+.brush-state-destructive {
+  border-width: 2px;
+  border-style: double;
+  color: var(--brush-bone);
+  box-shadow: 3px 2px 0 var(--brush-danger);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+}
+
+.brush-page-frame,
+.brush-dialog {
+  border-left: 3px solid var(--brush-amber);
+  background: rgba(7, 7, 10, 0.76);
+}
+
+.brush-frame {
+  position: relative;
+  overflow: visible;
+}
+
+.brush-heading {
+  color: var(--brush-bone);
+  letter-spacing: 0.08rem;
+  text-transform: lowercase;
+}
+
+:root.high-contrast .brush-button,
+:root.high-contrast .brush-page-frame,
+:root.high-contrast .brush-dialog {
+  border-color: var(--brush-focus);
+  color: var(--bone);
+  background-color: #000;
+  box-shadow: 3px 2px 0 var(--brush-focus);
+}
+
+:root.high-contrast .brush-button:disabled,
+:root.high-contrast .brush-state-disabled {
+  opacity: 0.72;
+}
+
+@media (max-width: 36rem) {
+  .brush-button {
+    width: 100%;
+    min-height: 2.6rem;
+    padding-inline: 0.8rem;
+  }
+
+  .brush-page-frame,
+  .brush-dialog {
+    width: min(100%, 34rem);
+    border-left-width: 2px;
+  }
+}
+
+@media (min-width: 37rem) {
+  .brush-button {
+    min-width: 9rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .brush-button,
+  .brush-page-frame,
+  .brush-dialog,
+  .brush-toast {
+    transition: none !important;
+  }
+}
+
+.brush-toast {
+  border-left: 2px solid var(--brush-amber);
+  color: var(--brush-bone);
 }
 
 #hud {

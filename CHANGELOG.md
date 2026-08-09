@@ -6,6 +6,65 @@ on changes players or contributors can feel. Detailed renderer notes belong in
 
 ## Unreleased
 
+- Added the original brush-cut UI contract: stable palette/scale/motion tokens
+  and semantic component states for the upcoming pause-root specimen.
+- Added native semantic brush component wrappers and applied the first
+  brush-cut treatment to pause-root actions without changing their DOM order.
+- Added an executable PF-01 state matrix for ordinary/keybind states and the
+  100/150/200% text-scale, high-contrast, narrow, and reduced-motion paths.
+- Completed PF-01's selected and destructive semantic states with structural,
+  typographic, and contrast distinctions that do not rely on red alone.
+- Added a backward-compatible Controls v2 multi-binding contract with v1
+  migration, reserved/conflict validation, and transactional alternative-key
+  capture.
+- Extended the public input seam to consume alternative movement and interaction
+  bindings while preserving one-shot hold behavior and primary-map compatibility.
+- Added the named PF-03 action vocabulary—directional movement, interact,
+  secondary, run, crouch, rotate, reach, journal, rest, and pause—to the
+  Controls/Input semantic surfaces.
+- Added stable mouse-button and wheel binding tokens with accessible labels,
+  validation, and transactional conflict capture in the Controls editor.
+- Added the renderer-neutral S-05 gameplay presentation profile for interaction
+  comfort, prompt/text pacing, journal layout, confirmations, save feedback,
+  focus-loss behavior, and contextual reminders, with strict JSON validation.
+- Exposed S-05 gameplay preferences through the semantic Settings panel with
+  stable `settings.gameplay.*` control IDs and profile callbacks.
+- Added requested/effective persistence for gameplay presentation preferences,
+  with independent reset and versioned store round-tripping.
+- Added a typed gameplay presentation policy projection with focus-loss,
+  prompt, pacing, journal, confirmation, save-feedback, and reminder decisions;
+  its outcome-neutral guard is executable.
+- Added screen-reader verbosity with system-default precedence, a semantic
+  accessibility control, versioned persistence, and an always-available
+  essential-cue guard.
+- Added the shared accessibility announcement policy and connected AmbientNotice
+  to verbosity-aware status/caption formatting without suppressing essential
+  context.
+- Connected Prompt and Broadcast to the same announcement policy; interaction
+  prompts retain essential text while optional broadcast context follows the
+  selected verbosity.
+- Connected the visitor Door dialogue and citation result status to the same
+  policy, preserving essential spoken/text cues at every verbosity level.
+- Added requested/effective accessibility profile persistence with explicit
+  reset semantics, keeping platform-default resolution separate from user
+  overrides.
+- Added the first clearance-aware ground-circuit waypoint chain from canonical house geometry, with capsule validation and malformed-waypoint coverage.
+- Added the canonical living-room-to-kitchen crossing with validated portal approaches.
+- Added explicit scenario readiness diagnostics: invalid, draft, and runnable entries now stay distinct.
+- Added typed route failure diagnostics with waypoint identity, sample position, and obstruction labels for future overlays.
+- Added two fixed embodied hero capture pairs with canonical camera, fixture, profile, and metadata validation.
+- Bound capture source waypoints to the decoded scenario so manifest provenance cannot drift silently.
+- Added the authored upper-circuit route with both-way bedroom, bathroom, and spare-room checkpoints.
+- Route validation now rejects waypoint chains that omit a declared portal room crossing.
+- Route validation now reports the canonical non-passable cellar portal as an explicit blocker (VIS-038).
+- Browser automation now validates the fixed capture manifest and records its hash in capture sidecars.
+- Browser capture selection now accepts a manifest ID, checks request compatibility, and records when pose evidence is still absent.
+- Automation builds now expose a validated live player pose/room snapshot for movement-settle evidence.
+- Added a bounded visual-capture dispatcher that plans real mouse/keyboard input and fails on stalled pose arrival.
+- Browser gate diagnostics now retain renderer initialization stacks; Firefox exposed the open optional-extension null-check blocker (VIS-039) instead of producing a false Pixeldart capture.
+- The automation runner now forwards visual-capture selection into the browser child and rejects selected captures on renderer fallback.
+- Renderer fixture evidence is green across all 44 scripts; the remaining Firefox blocker is isolated to real optional-extension interop.
+- Pixeldart's aggregate runner now discovers all 44 fixtures and works from either repository root or package root.
 - Turned the `days-1-3` browser scenario into a playable Day 1 → Day 2 → Day 3
   loop through the real Rest panel, with save-backed checkpoints and captures.
 - Day-cycle evidence now rejects missing checkpoints or mismatched capture

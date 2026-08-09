@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "houseId": "quarantine-house-main",
+  "captures": [
+    {
+      "id": "hero-hall-entry-clean",
+      "pairId": "hero-hall-entry",
+      "owner": "embodied",
+      "mode": "clean",
+      "source": {"scenario": "ground-circuit", "waypoint": "hall-entry"},
+      "camera": {
+        "position": [8.625, 1.65, 0.55],
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 1,
+        "hour": 8,
+        "weather": "overcast",
+        "room": "hall",
+        "portals": {"hall-living": "open", "hall-kitchen": "closed"},
+        "shutters": {"hall-fanlight": "open"},
+        "mantles": {"mantle-hall": "off"}
+      },
+      "requiredMetadata": [
+        "buildId",
+        "scenario",
+        "cameraId",
+        "requestedRenderer",
+        "effectiveRenderer",
+        "requestedProfile",
+        "effectiveProfile",
+        "viewport",
+        "fixture",
+        "screenshotSha256",
+        "domainDigest",
+        "rendererDigest"
+      ]
+    },
+    {
+      "id": "hero-hall-entry-final",
+      "pairId": "hero-hall-entry",
+      "owner": "embodied",
+      "mode": "final",
+      "source": {"scenario": "ground-circuit", "waypoint": "hall-entry"},
+      "camera": {
+        "position": [8.625, 1.65, 0.55],
+        "yaw": 0.0,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 1,
+        "hour": 8,
+        "weather": "overcast",
+        "room": "hall",
+        "portals": {"hall-living": "open", "hall-kitchen": "closed"},
+        "shutters": {"hall-fanlight": "open"},
+        "mantles": {"mantle-hall": "off"}
+      },
+      "requiredMetadata": [
+        "buildId",
+        "scenario",
+        "cameraId",
+        "requestedRenderer",
+        "effectiveRenderer",
+        "requestedProfile",
+        "effectiveProfile",
+        "viewport",
+        "fixture",
+        "screenshotSha256",
+        "domainDigest",
+        "rendererDigest"
+      ]
+    },
+    {
+      "id": "hero-living-portal-clean",
+      "pairId": "hero-living-portal",
+      "owner": "embodied",
+      "mode": "clean",
+      "source": {
+        "scenario": "ground-circuit",
+        "waypoint": "living-hall-living-in"
+      },
+      "camera": {
+        "position": [6.2, 1.65, 3.375],
+        "yaw": -1.5707963268,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 1,
+        "hour": 8,
+        "weather": "overcast",
+        "room": "living-room",
+        "portals": {"hall-living": "open", "kitchen-living": "open"},
+        "shutters": {"living-north-west": "open", "living-north-east": "open"},
+        "mantles": {"mantle-living": "off", "mantle-living-second": "off"}
+      },
+      "requiredMetadata": [
+        "buildId",
+        "scenario",
+        "cameraId",
+        "requestedRenderer",
+        "effectiveRenderer",
+        "requestedProfile",
+        "effectiveProfile",
+        "viewport",
+        "fixture",
+        "screenshotSha256",
+        "domainDigest",
+        "rendererDigest"
+      ]
+    },
+    {
+      "id": "hero-living-portal-final",
+      "pairId": "hero-living-portal",
+      "owner": "embodied",
+      "mode": "final",
+      "source": {
+        "scenario": "ground-circuit",
+        "waypoint": "living-hall-living-in"
+      },
+      "camera": {
+        "position": [6.2, 1.65, 3.375],
+        "yaw": -1.5707963268,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 1,
+        "hour": 8,
+        "weather": "overcast",
+        "room": "living-room",
+        "portals": {"hall-living": "open", "kitchen-living": "open"},
+        "shutters": {"living-north-west": "open", "living-north-east": "open"},
+        "mantles": {"mantle-living": "off", "mantle-living-second": "off"}
+      },
+      "requiredMetadata": [
+        "buildId",
+        "scenario",
+        "cameraId",
+        "requestedRenderer",
+        "effectiveRenderer",
+        "requestedProfile",
+        "effectiveProfile",
+        "viewport",
+        "fixture",
+        "screenshotSha256",
+        "domainDigest",
+        "rendererDigest"
+      ]
+    }
+  ]
+}

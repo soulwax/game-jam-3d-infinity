@@ -44,10 +44,14 @@ void main() {
 
   final queries = rendererQuerySmoke();
   _expect(
-    queries.length == 5 && queries.every(queryIsSafe),
-    'query matrix is safe',
+    queries.length == 6 &&
+        queries.where((query) => query.query != 'unknown').every(queryIsSafe),
+    'known query matrix is safe',
   );
-  _expect(queries.last.selection.fallback, 'unknown query is visible fallback');
+  _expect(
+    queries.last.selection.fallback && queries.last.selection.rejected,
+    'unknown query is visible and explicitly rejected before bootstrap',
+  );
 
   final leases = ResourceLeaseTable();
   leases.retain('mesh');

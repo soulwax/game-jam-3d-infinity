@@ -21,6 +21,7 @@ import 'package:quarantine/game/ending.dart';
 import 'package:quarantine/game/player_state.dart';
 import 'package:quarantine/game/rupture_gate.dart';
 import 'package:quarantine/game/session.dart';
+import 'package:quarantine/presentation/backend_bootstrap.dart';
 import 'package:quarantine/presentation/backend_selector.dart';
 import 'package:quarantine/presentation/backend_factory.dart';
 import 'package:quarantine/presentation/pixeldart_capability_bridge.dart';
@@ -92,6 +93,7 @@ const double _bgHue = 0.0;
 
 bool get _legacyRenderProfile => Uri.base.queryParameters['render'] == 'legacy';
 final BackendSelector _backendSelector = BackendSelector();
+const BackendBootstrapPolicy _backendBootstrapPolicy = BackendBootstrapPolicy();
 late BackendSelection _backendSelection;
 late RendererBackend _presentationBackend;
 _PixeldartWebRuntime? _pixeldartRuntime;
@@ -140,7 +142,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
 
   @override
   RendererDiagnostics get diagnostics => RendererDiagnostics.fromEnvironment(
-    backend: 'next',
+    backend: 'pixeldart',
     profile: _initialized ? _profile.kind.name : 'safe',
     capabilities: _initialized ? capabilityLabels : const ['uninitialized'],
     fallback: false,
@@ -1309,6 +1311,8 @@ double _legacyFrameTime = 0;
 double _accumulator = 0;
 bool _shadersLive = false;
 String _bootPhase = 'booting';
+final bool _automationDiagnosticsEnabled =
+    Uri.base.queryParameters['automation'] == '1';
 
 Vec3 _simEye = Vec3(0, 0, 0);
 Vec3 _prevEye = Vec3(0, 0, 0);
@@ -1772,12 +1776,9 @@ Future<void> main() async {
   _canvas.height = web.window.innerHeight > 0 ? web.window.innerHeight : 600;
   final ctx = canvas.getContext('webgl2') as web.WebGL2RenderingContext?;
   if (ctx == null) {
-    _backendSelection = BackendSelection(
-      RendererBackendKind.legacy,
-      explicit: _backendSelection.explicit,
-      automatic: _backendSelection.automatic,
-      fallback: true,
-      fallbackReason: 'webgl2 unavailable',
+    _backendSelection = _backendBootstrapPolicy.fallback(
+      _backendSelection,
+      BackendFallbackReason.webglUnavailable,
     );
     _presentationBackend = const BackendFactory().create(_backendSelection)
       ..initialize();
@@ -1788,7 +1789,7 @@ Future<void> main() async {
     return;
   }
   try {
-    final runtime = _backendSelection.kind == RendererBackendKind.next
+    final runtime = _backendSelection.kind == RendererBackendKind.pixeldart
         ? _PixeldartWebRuntime(ctx, _canvas.width, _canvas.height)
         : _LegacyWebRuntime(
             ctx,
@@ -1804,13 +1805,10 @@ Future<void> main() async {
       _backendSelection,
       runtime: runtime,
     )..initialize();
-  } catch (error) {
-    _backendSelection = BackendSelection(
-      RendererBackendKind.legacy,
-      explicit: true,
-      automatic: _backendSelection.automatic,
-      fallback: true,
-      fallbackReason: 'pixeldart initialization failed',
+  } catch (error, stack) {
+    _backendSelection = _backendBootstrapPolicy.fallback(
+      _backendSelection,
+      BackendFallbackReason.pixeldartInitializationFailed,
     );
     _legacyRuntime = _LegacyWebRuntime(
       ctx,
@@ -1825,6 +1823,9 @@ Future<void> main() async {
       runtime: _legacyRuntime,
     )..initialize();
     _canvas.setAttribute('data-renderer-error', '$error');
+    if (_automationDiagnosticsEnabled) {
+      _canvas.setAttribute('data-renderer-error-stack', '$stack');
+    }
   }
   _publishRendererDiagnostics();
   try {
@@ -1988,7 +1989,6 @@ Future<void> main() async {
         _openPanel(_helpPanel);
       }
       ..onClose = () => _panelClosed(_pauseRoot);
-    ;
     _interactionEngine = InteractionEngine(
       journal: _session.journal,
       time: _time,
@@ -2203,6 +2203,29 @@ void _publishRendererDiagnostics() {
   }
 }
 
+void _publishAutomationPlayerState() {
+  if (!_automationDiagnosticsEnabled) return;
+  _canvas.setAttribute(
+    'data-automation-player',
+    jsonEncode({
+      'schemaVersion': 1,
+      'phase': _bootPhase,
+      'roomId': _currentRoom,
+      'eye': {
+        'x': _simEye.x,
+        'y': _simEye.y,
+        'z': _simEye.z,
+      },
+      'yaw': _simYaw,
+      'pitch': _simPitch,
+      'modal': _activePanel != null || _door.visitorPresent,
+      'inputEnabled': _input.gameplayEnabled,
+      'day': _session.snapshot.day,
+      'hour': _session.snapshot.hour,
+    }),
+  );
+}
+
 void _saveSession(String status) {
   if (_rupture.isActive) {
     _showSaveStatus('save unavailable during rupture');
@@ -2251,6 +2274,9 @@ void _reportBootError(Object error, [StackTrace? stack]) {
   web.document.getElementById('credits')?.textContent = 'boot error: $message';
   final detail = stack == null ? '$error' : '$error\n$stack';
   _canvas.setAttribute('data-boot-error', detail);
+  if (_automationDiagnosticsEnabled && stack != null) {
+    _canvas.setAttribute('data-boot-stack', '$stack');
+  }
   web.console.error(detail.toJS);
 }
 
@@ -2681,7 +2707,7 @@ void _raf(num ts) {
       _presentationBackend.submit(
         RendererFrame(snapshot: _session.presentationSnapshot),
       );
-    } else if (_backendSelection.kind == RendererBackendKind.next) {
+    } else if (_backendSelection.kind == RendererBackendKind.pixeldart) {
       _camera.lookFrom(_viewEye, _simYaw, _simPitch);
       _pixeldartRuntime?.setCamera(_camera);
       _pixeldartRuntime?.setVisibleRooms(_house, _currentRoom);
@@ -2722,6 +2748,7 @@ void _raf(num ts) {
     }
 
     _setBootPhase('running');
+    _publishAutomationPlayerState();
     _input.endFrame();
     web.window.requestAnimationFrame(_raf.toJS);
   } catch (error, stack) {

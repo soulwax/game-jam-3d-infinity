@@ -12,6 +12,7 @@ class RendererDiagnostics {
   final String? projectVersion;
   final bool fallback;
   final String? fallbackReason;
+  final Map<String, Object?>? selection;
 
   RendererDiagnostics({
     required this.backend,
@@ -25,7 +26,9 @@ class RendererDiagnostics {
     this.projectVersion,
     this.fallback = false,
     this.fallbackReason,
-  }) : capabilities = List.unmodifiable(capabilities.toSet().toList()..sort()) {
+    Map<String, Object?>? selection,
+  }) : capabilities = List.unmodifiable(capabilities.toSet().toList()..sort()),
+       selection = selection == null ? null : Map.unmodifiable(selection) {
     if (backend.isEmpty || profile.isEmpty || buildId.isEmpty) {
       throw ArgumentError('renderer diagnostics identity must be non-empty');
     }
@@ -51,6 +54,7 @@ class RendererDiagnostics {
     required Iterable<String> capabilities,
     bool fallback = false,
     String? fallbackReason,
+    Map<String, Object?>? selection,
   }) => RendererDiagnostics(
     backend: backend,
     profile: profile,
@@ -66,7 +70,26 @@ class RendererDiagnostics {
     projectVersion: _environmentValue('PROJECT_VERSION'),
     fallback: fallback,
     fallbackReason: fallbackReason,
+    selection: selection,
   );
+
+  /// Adds bootstrap selection facts without changing the established backend,
+  /// profile, capability, or provenance fields.
+  RendererDiagnostics withSelection(Map<String, Object?> selection) =>
+      RendererDiagnostics(
+        backend: backend,
+        profile: profile,
+        buildId: buildId,
+        capabilities: capabilities,
+        rendererSha: rendererSha,
+        gameSha: gameSha,
+        sdkVersion: sdkVersion,
+        lockfileDigest: lockfileDigest,
+        projectVersion: projectVersion,
+        fallback: fallback,
+        fallbackReason: fallbackReason,
+        selection: selection,
+      );
 
   bool get provenancePinned =>
       rendererSha != null &&
@@ -83,6 +106,7 @@ class RendererDiagnostics {
     'provenancePinned': provenancePinned,
     'fallback': fallback,
     if (fallbackReason != null) 'fallbackReason': fallbackReason,
+    if (selection != null) 'selection': selection,
     if (rendererSha != null) 'rendererSha': rendererSha,
     if (gameSha != null) 'gameSha': gameSha,
     if (sdkVersion != null) 'sdkVersion': sdkVersion,

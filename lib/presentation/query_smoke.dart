@@ -11,11 +11,12 @@ final class QuerySmokeResult {
 List<QuerySmokeResult> rendererQuerySmoke() {
   const selector = BackendSelector();
   return [
-    for (final query in ['', 'legacy', 'next', 'auto', 'unknown'])
+    for (final query in ['', 'legacy', 'pixeldart', 'next', 'auto', 'unknown'])
       QuerySmokeResult(query, selector.select(query.isEmpty ? null : query)),
   ];
 }
 
 bool queryIsSafe(QuerySmokeResult result) =>
-    result.selection.kind == RendererBackendKind.legacy ||
-    result.selection.kind == RendererBackendKind.next;
+    !result.selection.rejected &&
+    (result.selection.kind == RendererBackendKind.legacy ||
+        result.selection.kind == RendererBackendKind.pixeldart);

@@ -1,9 +1,9 @@
-import 'dart:js_interop';
-
 import 'package:web/web.dart' as web;
 
 import 'panel.dart';
 import 'pause_root_contract.dart';
+import 'brush_components.dart';
+import 'brush_theme.dart';
 
 /// The first semantic surface of the pause ledger.
 ///
@@ -49,15 +49,14 @@ class PauseRootPanel extends Panel {
     PauseRootAction action,
     String label,
   ) {
-    final button =
-        buildElement(document, 'button', cls: 'door-continue', text: label)
-              as web.HTMLButtonElement
-          ..setAttribute('type', 'button')
-          ..id = actionIds[action]!
-          ..setAttribute('aria-label', label);
-    button.addEventListener(
-      'click',
-      ((web.Event _) {
+    final button = BrushComponents.button(
+      document,
+      BrushComponentContract(
+        id: actionIds[action]!,
+        kind: BrushComponentKind.button,
+        label: label,
+      ),
+      onPressed: () {
         switch (action) {
           case PauseRootAction.resume:
             onResume?.call();
@@ -72,7 +71,7 @@ class PauseRootPanel extends Panel {
           case PauseRootAction.back:
             onBack?.call();
         }
-      }).toJS,
+      },
     );
     parent.appendChild(button);
   }

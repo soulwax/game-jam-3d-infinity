@@ -3,6 +3,8 @@ import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 import 'panel.dart';
+import 'accessibility_presentation.dart';
+import 'accessibility_settings.dart';
 
 class Door {
   static const List<String> choices = [
@@ -25,6 +27,10 @@ class Door {
   void Function()? onContinue;
   void Function(int ordinal)? onCite;
   bool visitorPresent = false;
+  AccessibilityAnnouncementPolicy _announcementPolicy =
+      const AccessibilityAnnouncementPolicy(
+        AccessibilityScreenReaderVerbosity.standard,
+      );
 
   Door(web.Document document)
     : root = buildElement(document, 'div', cls: 'door') {
@@ -96,10 +102,21 @@ class Door {
     document.body!.appendChild(root);
   }
 
+  void setAccessibilityProfile(AccessibilitySettingsProfile profile) {
+    _announcementPolicy = AccessibilityAnnouncementPolicy(
+      profile.screenReaderVerbosity ??
+          AccessibilityScreenReaderVerbosity.standard,
+    );
+  }
+
   void showArrival(String visitor, String line) {
     visitorPresent = true;
     _speaker.textContent = visitor;
-    _line.textContent = line;
+    _line.textContent = _announcementPolicy.format(
+      channel: '',
+      text: line,
+      essential: true,
+    );
     for (final button in _choiceButtons) {
       button.style.display = '';
     }
@@ -112,7 +129,11 @@ class Door {
   }
 
   void showConversation(String line) {
-    _line.textContent = line;
+    _line.textContent = _announcementPolicy.format(
+      channel: '',
+      text: line,
+      essential: true,
+    );
     for (final button in _choiceButtons) {
       button.style.display = 'none';
     }
@@ -137,7 +158,11 @@ class Door {
   }
 
   void showCiteResult(String message) {
-    _citeResult.textContent = message;
+    _citeResult.textContent = _announcementPolicy.format(
+      channel: '',
+      text: message,
+      essential: true,
+    );
   }
 
   void hide() {

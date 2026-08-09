@@ -8,6 +8,7 @@ void main() {
   _parsesExplicitValues();
   _rejectsInvalidValues();
   _rejectsConflictingHeadlessFlags();
+  _helpListsCanonicalRendererNames();
   _roundTripsResolvedJson();
   _runnerPropagatesResolvedConfig();
   print('automation args: contract, validation, modes, and JSON pass');
@@ -39,7 +40,7 @@ void _parsesExplicitValues() {
     'http://localhost:8181/',
     '--browser',
     'chromium',
-    '--renderer=next',
+    '--renderer=pixeldart',
     '--profile',
     'clean',
     '--viewport=1280x720',
@@ -60,6 +61,58 @@ void _parsesExplicitValues() {
   _expect(
     !args.headless && args.browser == AutomationBrowser.chromium,
     'headed browser',
+  );
+  _expect(
+    args.renderer == AutomationRenderer.pixeldart &&
+        args.renderer == AutomationRenderer.next,
+    'Pixeldart renderer uses canonical enum identity and next alias equality',
+  );
+  _expect(
+    args.profile == AutomationProfile.high &&
+        args.profile == AutomationProfile.clean,
+    'high profile uses canonical enum identity and clean alias equality',
+  );
+  final resolved = jsonDecode(args.encode()) as Map<String, dynamic>;
+  _expect(
+    resolved['renderer'] == 'pixeldart',
+    'canonical renderer remains canonical in the resolved handoff',
+  );
+  _expect(
+    resolved['profile'] == 'clean',
+    'existing automation wire schema retains the clean alias during migration',
+  );
+  final resolvedRun = resolved['resolvedRun'] as Map<String, dynamic>;
+  final canonical = resolvedRun['canonical'] as Map<String, dynamic>;
+  final aliases = resolvedRun['compatibilityAliases'] as Map<String, dynamic>;
+  _expect(resolvedRun['schemaVersion'] == 2, 'resolved run schema version');
+  _expect(
+    canonical['renderer'] == 'pixeldart' && canonical['profile'] == 'high',
+    'resolved run stores canonical renderer/profile names',
+  );
+  _expect(
+    !aliases.containsKey('renderer') && aliases['profile'] == 'clean',
+    'resolved run records the profile compatibility alias',
+  );
+  final compatibility = parseAutomationArgs(const [
+    'validate',
+    '--renderer=next',
+    '--profile=clean',
+  ]);
+  final compatibilityJson =
+      jsonDecode(compatibility.args!.encode()) as Map<String, dynamic>;
+  _expect(
+    compatibilityJson['renderer'] == 'next' &&
+        compatibilityJson['profile'] == 'clean',
+    'compatibility input retains its legacy wire spellings',
+  );
+  final compatibilityRun =
+      compatibilityJson['resolvedRun'] as Map<String, dynamic>;
+  final compatibilityAliases =
+      compatibilityRun['compatibilityAliases'] as Map<String, dynamic>;
+  _expect(
+    compatibilityAliases['renderer'] == 'next' &&
+        compatibilityAliases['profile'] == 'clean',
+    'resolved run records both compatibility aliases',
   );
   _expect(args.serverRoot == 'dist/web release', 'path with spaces');
 }
@@ -92,6 +145,16 @@ void _rejectsConflictingHeadlessFlags() {
   _expect(!result.isSuccess && result.exitCode == 2, 'headless conflict');
 }
 
+void _helpListsCanonicalRendererNames() {
+  _expect(
+    automationHelp.contains('pixeldart') &&
+        automationHelp.contains('next alias') &&
+        automationHelp.contains('standard, high') &&
+        automationHelp.contains('clean alias'),
+    'help lists canonical renderer/profile names and compatibility aliases',
+  );
+}
+
 void _roundTripsResolvedJson() {
   final args = parseAutomationArgs(const [
     'validate',
@@ -102,6 +165,9 @@ void _roundTripsResolvedJson() {
   _expect(json['mode'] == 'validate', 'JSON mode');
   _expect(json['port'] == 8123, 'JSON port');
   _expect((json['viewport'] as Map)['width'] == 640, 'JSON viewport');
+  final canonical = ((json['resolvedRun'] as Map)['canonical'] as Map);
+  _expect(canonical['renderer'] == 'auto', 'resolved run default renderer');
+  _expect(canonical['profile'] == 'safe', 'resolved run default profile');
 }
 
 void _expect(bool condition, String message) {

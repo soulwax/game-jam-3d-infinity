@@ -27,6 +27,7 @@ final class LegacyBackend implements RendererBackend {
   final RendererRuntime? runtime;
   final bool fallback;
   final String? fallbackReason;
+  final Map<String, Object?>? selectionDiagnostics;
   RendererBackendState _state = RendererBackendState.constructed;
   RendererFrame? _lastFrame;
   String? _lastFrameEncoding;
@@ -37,6 +38,7 @@ final class LegacyBackend implements RendererBackend {
     this.runtime,
     this.fallback = false,
     this.fallbackReason,
+    this.selectionDiagnostics,
   });
 
   @override
@@ -46,15 +48,19 @@ final class LegacyBackend implements RendererBackend {
   RendererBackendState get state => _state;
 
   @override
-  RendererDiagnostics get diagnostics =>
-      runtime?.diagnostics ??
-      RendererDiagnostics.fromEnvironment(
-        backend: 'legacy',
-        profile: 'legacy',
-        capabilities: [],
-        fallback: fallback,
-        fallbackReason: fallbackReason,
-      );
+  RendererDiagnostics get diagnostics {
+    final base =
+        runtime?.diagnostics ??
+        RendererDiagnostics.fromEnvironment(
+          backend: 'legacy',
+          profile: 'legacy',
+          capabilities: [],
+          fallback: fallback,
+          fallbackReason: fallbackReason,
+        );
+    final selection = selectionDiagnostics;
+    return selection == null ? base : base.withSelection(selection);
+  }
 
   @override
   RendererFrame? get lastFrame => _lastFrame;

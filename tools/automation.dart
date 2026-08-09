@@ -58,16 +58,23 @@ Future<void> _run(AutomationArgs args) async {
       data: {'phase': 'server-ready', 'baseUrl': baseUrl.toString()},
     );
     await reporter.record('runner.config', tick: 0, data: args.toJson());
+    final browserEnvironment = <String, String>{
+      ...Platform.environment,
+      'AUTOMATION_ARGS': args.encode(),
+      'AUTOMATION_BASE_URL': baseUrl.toString(),
+      'AUTOMATION_RUN_DIR': reporter.runDirectory.path,
+      'RENDERER_HEADLESS': args.headless ? '1' : '0',
+    };
+    for (final key in const ['VISUAL_CAPTURE_ID', 'VISUAL_CAPTURE_MANIFEST']) {
+      final value = Platform.environment[key];
+      if (value != null && value.trim().isNotEmpty) {
+        browserEnvironment[key] = value;
+      }
+    }
     final process = await Process.start(
       'node',
       ['tools/browser/renderer_smoke.cjs'],
-      environment: {
-        ...Platform.environment,
-        'AUTOMATION_ARGS': args.encode(),
-        'AUTOMATION_BASE_URL': baseUrl.toString(),
-        'AUTOMATION_RUN_DIR': reporter.runDirectory.path,
-        'RENDERER_HEADLESS': args.headless ? '1' : '0',
-      },
+      environment: browserEnvironment,
       runInShell: false,
     );
     lifecycle.cleanup.add(() async {
@@ -287,6 +294,63 @@ Future<Map<String, String>> parseCaptureDigest(File file) async {
   return Map.unmodifiable(result);
 }
 
+Map<String, Object?>? parseResolvedRun(
+  Object? value, {
+  required String requestedRenderer,
+  required String requestedProfile,
+  required String scenario,
+  required int width,
+  required int height,
+  required String label,
+}) {
+  if (value == null) return null;
+  if (value is! Map || value['schemaVersion'] != 2) {
+    throw FormatException('resolved run has unsupported schema: $label');
+  }
+  final canonical = value['canonical'];
+  final aliases = value['compatibilityAliases'];
+  if (canonical is! Map || aliases is! Map) {
+    throw FormatException(
+      'resolved run is missing canonical/alias maps: $label',
+    );
+  }
+  final canonicalRenderer = canonical['renderer'];
+  final canonicalProfile = canonical['profile'];
+  final canonicalScenario = canonical['scenario'];
+  final canonicalViewport = canonical['viewport'];
+  if (canonicalRenderer is! String ||
+      !const ['auto', 'legacy', 'pixeldart'].contains(canonicalRenderer) ||
+      canonicalProfile is! String ||
+      !const ['safe', 'standard', 'high'].contains(canonicalProfile) ||
+      canonicalScenario != scenario ||
+      canonicalViewport is! Map ||
+      canonicalViewport['width'] != width ||
+      canonicalViewport['height'] != height) {
+    throw FormatException('resolved run disagrees with request: $label');
+  }
+  final rendererAlias = aliases['renderer'];
+  final profileAlias = aliases['profile'];
+  if ((rendererAlias != null && rendererAlias != 'next') ||
+      (profileAlias != null && profileAlias != 'clean') ||
+      (requestedRenderer == 'next' &&
+          (canonicalRenderer != 'pixeldart' || rendererAlias != 'next')) ||
+      (requestedRenderer != 'next' &&
+          (canonicalRenderer != requestedRenderer || rendererAlias != null)) ||
+      (requestedProfile == 'clean' &&
+          (canonicalProfile != 'high' || profileAlias != 'clean')) ||
+      (requestedProfile != 'clean' &&
+          (canonicalProfile != requestedProfile || profileAlias != null))) {
+    throw FormatException('resolved run alias mapping is invalid: $label');
+  }
+  return Map.unmodifiable(<String, Object?>{
+    'resolvedRunSchemaVersion': '2',
+    'resolvedRenderer': canonicalRenderer,
+    'resolvedProfile': canonicalProfile,
+    if (rendererAlias is String) 'resolvedRendererAlias': rendererAlias,
+    if (profileAlias is String) 'resolvedProfileAlias': profileAlias,
+  });
+}
+
 /// Computes a file SHA-256 without invoking a shell.
 ///
 /// The automation runner is currently packaged for Unix-like CI hosts. Keep
@@ -341,8 +405,13 @@ Future<Map<String, Object?>> parseCaptureMetadata(File file) async {
   final viewport = decoded['viewport'];
   final width = viewport is Map ? viewport['width'] : null;
   final height = viewport is Map ? viewport['height'] : null;
-  if (!const ['auto', 'legacy', 'next'].contains(requestedRenderer) ||
-      !const ['safe', 'standard', 'clean'].contains(requestedProfile) ||
+  if (!const [
+        'auto',
+        'legacy',
+        'pixeldart',
+        'next',
+      ].contains(requestedRenderer) ||
+      !const ['safe', 'standard', 'high', 'clean'].contains(requestedProfile) ||
       !const [
         'legacy',
         'safe',
@@ -365,6 +434,15 @@ Future<Map<String, Object?>> parseCaptureMetadata(File file) async {
       !RegExp(r'^browser-[a-z0-9._-]+\.png$').hasMatch(screenshot)) {
     throw FormatException('capture metadata has invalid route/profile: $name');
   }
+  final resolvedRun = parseResolvedRun(
+    decoded['resolvedRun'],
+    requestedRenderer: requestedRenderer,
+    requestedProfile: requestedProfile,
+    scenario: scenario,
+    width: width,
+    height: height,
+    label: name,
+  );
   final screenshotFile = File('${file.parent.path}/$screenshot');
   if (!screenshotFile.existsSync()) {
     throw FormatException(
@@ -383,6 +461,7 @@ Future<Map<String, Object?>> parseCaptureMetadata(File file) async {
     'captureScreenshot': screenshot,
     'captureWidth': width,
     'captureHeight': height,
+    if (resolvedRun != null) ...resolvedRun,
   });
 }
 
@@ -450,9 +529,14 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
   final digest = await parseCaptureDigest(
     File('${file.parent.path}/$captureDigest'),
   );
-  if (!const ['auto', 'legacy', 'next'].contains(requestedRenderer) ||
-      !const ['safe', 'standard', 'clean'].contains(requestedProfile) ||
-      !const ['legacy', 'next'].contains(effectiveRenderer) ||
+  if (!const [
+        'auto',
+        'legacy',
+        'pixeldart',
+        'next',
+      ].contains(requestedRenderer) ||
+      !const ['safe', 'standard', 'high', 'clean'].contains(requestedProfile) ||
+      !const ['legacy', 'pixeldart', 'next'].contains(effectiveRenderer) ||
       !const [
         'legacy',
         'safe',
@@ -484,6 +568,25 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
       digest['metadata'] != captureMetadata) {
     throw FormatException(
       'embodied evidence disagrees with capture metadata: $name',
+    );
+  }
+
+  final resolvedRun = decoded['resolvedRun'] == null
+      ? null
+      : parseResolvedRun(
+          decoded['resolvedRun'],
+          requestedRenderer: requestedRenderer,
+          requestedProfile: requestedProfile,
+          scenario: scenario,
+          width: metadata['captureWidth'] as int,
+          height: metadata['captureHeight'] as int,
+          label: name,
+        );
+  if (resolvedRun != null &&
+      metadata['resolvedRunSchemaVersion'] !=
+          resolvedRun['resolvedRunSchemaVersion']) {
+    throw FormatException(
+      'embodied evidence resolved run disagrees with capture metadata: $name',
     );
   }
 
@@ -853,5 +956,6 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
     'embodiedFocusCleared': true,
     'embodiedDenialStable': true,
     'embodiedDayCycleDays': scenario == 'days-1-3' ? 3 : 0,
+    if (resolvedRun != null) ...resolvedRun,
   });
 }

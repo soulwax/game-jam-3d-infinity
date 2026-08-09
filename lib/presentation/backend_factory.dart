@@ -11,13 +11,18 @@ final class BackendFactory {
     BackendSelection selection, {
     RendererRuntime? runtime,
   }) {
-    if (selection.kind == RendererBackendKind.next && !selection.fallback) {
-      return PixeldartBackend(runtime: runtime);
+    if (selection.kind == RendererBackendKind.pixeldart &&
+        !selection.fallback) {
+      return PixeldartBackend(
+        runtime: runtime,
+        selectionDiagnostics: selection.toJson(),
+      );
     }
     return LegacyBackend(
       runtime: runtime,
       fallback: selection.fallback,
       fallbackReason: selection.fallbackReason,
+      selectionDiagnostics: selection.toJson(),
     );
   }
 }

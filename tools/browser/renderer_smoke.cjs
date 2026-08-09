@@ -2,10 +2,25 @@ const { firefox } = require('playwright');
 const { createHash } = require('crypto');
 const fs = require('fs');
 const pathModule = require('path');
+const {
+  decodeAutomationPlayerState,
+  loadVisualCaptureManifest,
+  selectVisualCapture,
+  visualCaptureManifestSummary,
+} = require('./visual_capture_manifest.cjs');
+const {
+  planKeyboardStep,
+  planMouseDelta,
+  poseReached,
+} = require('./visual_capture_dispatch.cjs');
 
 const projectVersion = fs.readFileSync('VERSION', 'utf8').trim();
 
 const baseUrl = process.env.AUTOMATION_BASE_URL || 'http://127.0.0.1:8090';
+
+function isPixeldartBackend(value) {
+  return value === 'pixeldart' || value === 'next';
+}
 
 function readAutomationArgs() {
   const raw = process.env.AUTOMATION_ARGS;
@@ -21,17 +36,76 @@ function readAutomationArgs() {
   const scenario = parsed?.scenario;
   const width = parsed?.viewport?.width;
   const height = parsed?.viewport?.height;
-  if (!['auto', 'legacy', 'next'].includes(renderer) ||
-      !['safe', 'standard', 'clean'].includes(profile) ||
+  const resolvedRun = parsed?.resolvedRun;
+  const canonical = resolvedRun?.canonical;
+  const aliases = resolvedRun?.compatibilityAliases;
+  if (!['auto', 'legacy', 'pixeldart', 'next'].includes(renderer) ||
+      !['safe', 'standard', 'high', 'clean'].includes(profile) ||
       typeof scenario !== 'string' || !/^[a-z0-9][a-z0-9._-]*$/.test(scenario) ||
       !Number.isInteger(width) || width < 1 ||
-      !Number.isInteger(height) || height < 1) {
+      !Number.isInteger(height) || height < 1 ||
+      !resolvedRun || resolvedRun.schemaVersion !== 2 ||
+      !canonical || typeof canonical !== 'object' || Array.isArray(canonical) ||
+      !aliases || typeof aliases !== 'object' || Array.isArray(aliases) ||
+      (aliases.renderer != null && aliases.renderer !== 'next') ||
+      (aliases.profile != null && aliases.profile !== 'clean') ||
+      !['auto', 'legacy', 'pixeldart'].includes(canonical.renderer) ||
+      !['safe', 'standard', 'high'].includes(canonical.profile) ||
+      canonical.scenario !== scenario ||
+      canonical.viewport?.width !== width || canonical.viewport?.height !== height ||
+      (renderer === 'next' &&
+        (canonical.renderer !== 'pixeldart' || aliases?.renderer !== 'next')) ||
+      (renderer !== 'next' &&
+        (canonical.renderer !== renderer || aliases?.renderer != null)) ||
+      (profile === 'clean' &&
+        (canonical.profile !== 'high' || aliases?.profile !== 'clean')) ||
+      (profile !== 'clean' &&
+        (canonical.profile !== profile || aliases?.profile != null))) {
     throw new Error('AUTOMATION_ARGS has an invalid renderer/profile/scenario/viewport');
   }
-  return { renderer, profile, scenario, width, height };
+  return {
+    renderer,
+    profile,
+    canonicalRenderer: canonical.renderer,
+    canonicalProfile: canonical.profile,
+    scenario,
+    width,
+    height,
+    resolvedRun,
+  };
 }
 
 const automationArgs = readAutomationArgs();
+const visualCaptureManifest = automationArgs
+  ? loadVisualCaptureManifest(
+      process.env.VISUAL_CAPTURE_MANIFEST ||
+      pathModule.join(
+        process.cwd(),
+        'assets',
+        'house',
+        'verification',
+        'captures.json',
+      ),
+    )
+  : null;
+const visualCaptureManifestInfo = visualCaptureManifest
+  ? visualCaptureManifestSummary(visualCaptureManifest)
+  : null;
+const visualCaptureId = process.env.VISUAL_CAPTURE_ID?.trim() || null;
+const visualCaptureSelection = visualCaptureManifest && visualCaptureId
+  ? selectVisualCapture(visualCaptureManifest, visualCaptureId, {
+      scenario: automationArgs.scenario,
+      profile: automationArgs.profile,
+      width: automationArgs.width,
+      height: automationArgs.height,
+    })
+  : null;
+if (visualCaptureId && !visualCaptureManifest) {
+  throw new Error('VISUAL_CAPTURE_ID requires automation arguments and a visual capture manifest');
+}
+if (visualCaptureSelection?.status === 'incompatible') {
+  throw new Error(`VISUAL_CAPTURE_ID is incompatible with automation request: ${JSON.stringify(visualCaptureSelection)}`);
+}
 
 function profileNegotiationStatus(requested, effective, diagnostics) {
   if (!requested || !effective) return null;
@@ -41,6 +115,36 @@ function profileNegotiationStatus(requested, effective, diagnostics) {
     return 'capability-negotiated';
   }
   return 'unexplained';
+}
+
+function assertSelectionDiagnostics(name, result, diagnostics) {
+  const selection = diagnostics?.selection;
+  if (!selection || typeof selection !== 'object' || Array.isArray(selection) ||
+      selection.kind !== result.backend ||
+      typeof selection.explicit !== 'boolean' ||
+      typeof selection.automatic !== 'boolean' ||
+      typeof selection.fallback !== 'boolean' ||
+      typeof selection.rejected !== 'boolean' ||
+      typeof selection.aliasUsed !== 'boolean') {
+    throw new Error(`${name}: selection diagnostics were incomplete ${JSON.stringify({ result, diagnostics })}`);
+  }
+  if (selection.fallback !== diagnostics.fallback ||
+      (selection.fallback && typeof selection.fallbackReason !== 'string') ||
+      (selection.rejected && typeof selection.rejectionReason !== 'string') ||
+      (selection.aliasUsed && typeof selection.aliasReason !== 'string')) {
+    throw new Error(`${name}: selection diagnostics did not preserve explanations ${JSON.stringify({ result, diagnostics })}`);
+  }
+  if (name === 'pixeldart-canonical' && selection.aliasUsed) {
+    throw new Error(`${name}: canonical query was reported as an alias ${JSON.stringify(selection)}`);
+  }
+  if (name === 'pixeldart-next' &&
+      (!selection.aliasUsed || !selection.aliasReason.includes('pixeldart'))) {
+    throw new Error(`${name}: compatibility alias was not diagnosed ${JSON.stringify(selection)}`);
+  }
+  if (name === 'unknown-fallback' &&
+      (!selection.rejected || !selection.rejectionReason.includes('unsupported renderer query'))) {
+    throw new Error(`${name}: rejected query was not preserved ${JSON.stringify(selection)}`);
+  }
 }
 
 function decodeSavedPlayer(raw, label) {
@@ -226,6 +330,78 @@ async function waitForPanelOpen(page, ariaLabel, label) {
   }
 }
 
+async function readAutomationPlayer(page, label) {
+  const raw = await page.locator('#game').getAttribute('data-automation-player');
+  return decodeAutomationPlayerState(raw, label);
+}
+
+async function driveToVisualCapture(page, selection, label) {
+  if (!selection?.camera) throw new Error(`${label}: selected capture has no camera target`);
+  const target = selection.camera;
+  let observed = await readAutomationPlayer(page, `${label}: initial pose`);
+  const before = observed;
+  await page.mouse.click(480, 270);
+  await page.waitForTimeout(80);
+  let bestDistance = Number.POSITIVE_INFINITY;
+  let stagnant = 0;
+  for (let step = 0; step < 180; step++) {
+    if (poseReached(observed, target)) {
+      return { before, after: observed, steps: step };
+    }
+    const lookPixels = Math.max(
+      Math.abs(planMouseDelta(observed, target, { maxPixels: 8 }).yawError),
+      Math.abs(planMouseDelta(observed, target, { maxPixels: 8 }).pitchError),
+    ) < 0.2 ? 2 : 8;
+    const look = planMouseDelta(observed, target, { maxPixels: lookPixels });
+    if (Math.abs(look.yawError) > 0.025 || Math.abs(look.pitchError) > 0.025) {
+      // Dispatch the same pointer-lock movement event the game consumes. This
+      // avoids Playwright's absolute-cursor edge saturation while preserving
+      // the production Input listener and sensitivity path.
+      await page.evaluate(({ dx, dy }) => {
+        window.dispatchEvent(new MouseEvent('mousemove', {
+          movementX: dx,
+          movementY: dy,
+        }));
+      }, { dx: look.x, dy: look.y });
+      await page.waitForTimeout(80);
+    } else {
+      const plan = planKeyboardStep(observed, target);
+      if (plan.keys.length === 0) {
+        await page.waitForTimeout(80);
+      } else {
+        try {
+          for (const key of plan.keys) await page.keyboard.down(key);
+          await page.waitForTimeout(220);
+        } finally {
+          for (const key of plan.keys) await page.keyboard.up(key);
+        }
+        await page.waitForTimeout(80);
+      }
+    }
+    observed = await readAutomationPlayer(page, `${label}: step ${step + 1}`);
+    const distance = Math.hypot(
+      target.position[0] - observed.eye.x,
+      target.position[2] - observed.eye.z,
+    );
+    // Turning in place cannot improve horizontal distance. Do not classify
+    // the intentional look convergence as a movement stall.
+    if (Math.abs(look.yawError) > 0.025 || Math.abs(look.pitchError) > 0.025) {
+      stagnant = 0;
+      continue;
+    }
+    if (distance + 0.02 < bestDistance) {
+      bestDistance = distance;
+      stagnant = 0;
+    } else {
+      stagnant++;
+    }
+    if (stagnant >= 12) {
+      throw new Error(`${label}: pose dispatch made no progress ${JSON.stringify({ observed, target, distance, step })}`);
+    }
+  }
+  throw new Error(`${label}: pose dispatch exceeded 180 steps ${JSON.stringify({ observed, target })}`);
+}
+
 async function captureAutomationScreenshot(page, routeName, routePath, result, suffix = '') {
   const runDir = process.env.AUTOMATION_RUN_DIR;
   if (!automationArgs || !runDir) return null;
@@ -261,6 +437,13 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
   } catch (_) {
     // The normal diagnostics assertion below reports malformed JSON.
   }
+  const captureSelection = visualCaptureSelection
+    ? {
+        ...visualCaptureSelection,
+        poseEvidence: result.visualCapturePoseEvidence ||
+          visualCaptureSelection.poseEvidence,
+      }
+    : null;
   fs.writeFileSync(
     metadataFile,
     `${JSON.stringify({
@@ -268,6 +451,7 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
       scenario: automationArgs.scenario,
       requestedRenderer: automationArgs.renderer,
       requestedProfile: automationArgs.profile,
+      resolvedRun: automationArgs.resolvedRun,
       negotiatedProfile,
       profileNegotiation,
       viewport: { width: automationArgs.width, height: automationArgs.height },
@@ -275,6 +459,11 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
       routePath,
       screenshot: pathModule.basename(file),
       capture: { scale: 'css', animations: 'disabled', fullPage: false },
+      automationPlayer: result.automationPlayer
+        ? decodeAutomationPlayerState(result.automationPlayer, 'capture automation player')
+        : null,
+      visualCaptureManifest: visualCaptureManifestInfo,
+      visualCaptureSelection: captureSelection,
     }, null, 2)}\n`,
   );
   const digestFile = metadataFile.replace(/\.json$/, '.digest.json');
@@ -373,9 +562,11 @@ function writeEmbodiedEvidence(routeName, routePath, result, evidence, capture) 
     },
     requestedRenderer: automationArgs.renderer,
     requestedProfile: automationArgs.profile,
+    resolvedRun: automationArgs.resolvedRun,
     effectiveRenderer: result.backend,
-    effectiveProfile,
-    profileNegotiation,
+      effectiveProfile,
+      profileNegotiation,
+      visualCaptureSelection,
     actions: [
       'visitor.ignore-until-clear',
       'KeyS:1000ms',
@@ -405,6 +596,7 @@ function writeEmbodiedEvidence(routeName, routePath, result, evidence, capture) 
 const routes = [
   ['pixeldart-default', '/'],
   ['legacy-explicit', '/?renderer=legacy'],
+  ['pixeldart-canonical', '/?renderer=pixeldart'],
   ['pixeldart-next', '/?renderer=next'],
   ['pixeldart-auto-candidate', '/?renderer=auto'],
   ['unknown-fallback', '/?renderer=unknown'],
@@ -447,11 +639,15 @@ async function dismissVisitorDialogs(page, label) {
       ? [[
           automationArgs.renderer === 'legacy'
             ? 'legacy-explicit'
+            : automationArgs.renderer === 'pixeldart'
+              ? 'pixeldart-canonical'
             : automationArgs.renderer === 'next'
               ? 'pixeldart-next'
               : 'pixeldart-default',
           automationArgs.renderer === 'legacy'
             ? '/?renderer=legacy'
+            : automationArgs.renderer === 'pixeldart'
+              ? '/?renderer=pixeldart'
             : automationArgs.renderer === 'next'
               ? '/?renderer=next'
               : '/',
@@ -467,7 +663,10 @@ async function dismissVisitorDialogs(page, label) {
           : undefined,
       );
       const failures = trackPageHealth(page);
-      const response = await page.goto(`${baseUrl}${path}`);
+      const automationPath = automationArgs
+        ? `${path}${path.includes('?') ? '&' : '?'}automation=1`
+        : path;
+      const response = await page.goto(`${baseUrl}${automationPath}`);
       if (!response || response.status() !== 200) {
         throw new Error(`${name}: expected HTTP 200`);
       }
@@ -490,6 +689,8 @@ async function dismissVisitorDialogs(page, label) {
         fallback: canvas.getAttribute('data-renderer-fallback'),
         diagnostics: canvas.getAttribute('data-renderer-diagnostics'),
         error: canvas.getAttribute('data-renderer-error'),
+        errorStack: canvas.getAttribute('data-renderer-error-stack'),
+        bootStack: canvas.getAttribute('data-boot-stack'),
         webgl: (() => {
           const gl = canvas.getContext('webgl2');
           const debug = gl?.getExtension('WEBGL_debug_renderer_info');
@@ -507,6 +708,7 @@ async function dismissVisitorDialogs(page, label) {
         frameStats: canvas.getAttribute('data-renderer-frame-stats'),
         frameBudget: canvas.getAttribute('data-renderer-budget'),
         frameSubmits: canvas.getAttribute('data-renderer-frame-submits'),
+        automationPlayer: canvas.getAttribute('data-automation-player'),
         houseManifest: canvas.getAttribute('data-house-manifest'),
         houseManifestSource: canvas.getAttribute('data-house-manifest-source'),
         houseInventory: canvas.getAttribute('data-house-inventory'),
@@ -559,7 +761,9 @@ async function dismissVisitorDialogs(page, label) {
         wallTexture: canvas.getAttribute('data-renderer-texture-wall-plaster'),
         grimeTexture: canvas.getAttribute('data-renderer-texture-grime'),
       }));
-      await captureAutomationScreenshot(page, name, path, result);
+      if (!visualCaptureSelection) {
+        await captureAutomationScreenshot(page, name, path, result);
+      }
       const buttons = await page.locator('button').evaluateAll((nodes) =>
         nodes.map((node) => ({
           text: node.textContent?.trim() ?? '',
@@ -572,7 +776,20 @@ async function dismissVisitorDialogs(page, label) {
       } catch (_) {
         throw new Error(`${name}: diagnostics were not valid JSON`);
       }
-      if (!/^(legacy|next)$/.test(result.backend ?? '') ||
+      if (automationArgs) {
+        const player = decodeAutomationPlayerState(
+          result.automationPlayer,
+          `${name}: automation player state`,
+        );
+        if (player.phase !== 'running' || !player.inputEnabled) {
+          throw new Error(`${name}: automation player was not running ${JSON.stringify(player)}`);
+        }
+        console.log(`automation-player: ${JSON.stringify({ route: name, roomId: player.roomId, eye: player.eye, yaw: player.yaw, pitch: player.pitch })}`);
+      }
+      if (visualCaptureSelection && !isPixeldartBackend(result.backend)) {
+        throw new Error(`${name}: selected visual capture requires Pixeldart, but startup fell back ${JSON.stringify({ backend: result.backend, error: result.error, errorStack: result.errorStack })}`);
+      }
+      if (!/^(legacy|pixeldart|next)$/.test(result.backend ?? '') ||
           !result.diagnostics || !result.bootPhase) {
         throw new Error(`${name}: incomplete diagnostics ${JSON.stringify(result)}`);
       }
@@ -585,13 +802,14 @@ async function dismissVisitorDialogs(page, label) {
           !/^[0-9a-f]{12}-[0-9a-f]{12}(?:-dirty)?$/.test(
             diagnostics.buildId,
           )) {
-        throw new Error(`${name}: incomplete provenance diagnostics ${JSON.stringify(diagnostics)}`);
+        throw new Error(`${name}: incomplete provenance diagnostics ${JSON.stringify({ result, diagnostics })}`);
       }
-      if (result.backend === 'next' &&
+      assertSelectionDiagnostics(name, result, diagnostics);
+      if (isPixeldartBackend(result.backend) &&
           !diagnostics.capabilities.includes(`profile-${diagnostics.profile}`)) {
         throw new Error(`${name}: selected profile is absent from capabilities ${JSON.stringify(diagnostics)}`);
       }
-      if (automationArgs && result.backend === 'next') {
+      if (automationArgs && isPixeldartBackend(result.backend)) {
         const negotiation = profileNegotiationStatus(
           automationArgs.profile,
           diagnostics.profile,
@@ -601,7 +819,7 @@ async function dismissVisitorDialogs(page, label) {
           throw new Error(`${name}: requested/effective profile change was not explained ${JSON.stringify({ requested: automationArgs.profile, effective: diagnostics.profile, negotiation, capabilities: diagnostics.capabilities })}`);
         }
       }
-      if (result.backend === 'next' &&
+      if (isPixeldartBackend(result.backend) &&
           (result.wallTexture !== 'loaded' || result.grimeTexture !== 'loaded')) {
         throw new Error(`${name}: authored Pixeldart textures did not load ${JSON.stringify(result)}`);
       }
@@ -611,11 +829,11 @@ async function dismissVisitorDialogs(page, label) {
         throw new Error(`${name}: fallback diagnostics were incomplete ${JSON.stringify(diagnostics)}`);
       }
       if (name === 'pixeldart-auto-candidate' &&
-          (result.backend !== 'next' || result.fallback === 'true')) {
+          (!isPixeldartBackend(result.backend) || result.fallback === 'true')) {
         throw new Error(`${name}: auto candidate did not select Pixeldart ${JSON.stringify(result)}`);
       }
       if (name === 'pixeldart-default' &&
-          (result.backend !== 'next' || result.fallback === 'true' ||
+          (!isPixeldartBackend(result.backend) || result.fallback === 'true' ||
            result.requested !== 'auto')) {
         throw new Error(`${name}: query-free startup did not select canonical Pixeldart ${JSON.stringify(result)}`);
       }
@@ -637,14 +855,14 @@ async function dismissVisitorDialogs(page, label) {
           ) || Number(result.houseSoundEmitterCount) !== 4) {
         throw new Error(`${name}: authored house soundscape was not validated ${JSON.stringify(result)}`);
       }
-      if (result.audioSpatialActive === null ||
-          !/^\d+$/.test(result.audioSpatialActive)) {
+      if (!visualCaptureSelection && (result.audioSpatialActive === null ||
+          !/^\d+$/.test(result.audioSpatialActive))) {
         throw new Error(`${name}: audio lifecycle telemetry was not published ${JSON.stringify(result)}`);
       }
-      if (result.audioMusicStarted !== 'true') {
+      if (!visualCaptureSelection && result.audioMusicStarted !== 'true') {
         throw new Error(`${name}: persistent music loop was not started ${JSON.stringify(result)}`);
       }
-      if (result.audioRoomIr !== 'ir-stone') {
+      if (!visualCaptureSelection && result.audioRoomIr !== 'ir-stone') {
         throw new Error(`${name}: active room impulse response was not published ${JSON.stringify(result)}`);
       }
       if (result.audioPlanner !== 'validated') {
@@ -677,7 +895,7 @@ async function dismissVisitorDialogs(page, label) {
           result.accessibility.saveLive !== 'polite') {
         throw new Error(`${name}: incomplete accessibility surface ${JSON.stringify(result.accessibility)}`);
       }
-      if (result.backend === 'next' &&
+      if (isPixeldartBackend(result.backend) &&
           (!result.frameStats || result.frameBudget !== 'ok')) {
         throw new Error(`${name}: renderer budget evidence failed ${JSON.stringify(result)}`);
       }
@@ -688,6 +906,45 @@ async function dismissVisitorDialogs(page, label) {
       const focusedId = await page.evaluate(() => document.activeElement?.id ?? '');
       if (focusedId !== 'game') {
         throw new Error(`${name}: game viewport did not accept keyboard focus`);
+      }
+      if (visualCaptureSelection) {
+        await dismissVisitorDialogs(page, `${name}: visual capture`);
+        const dispatched = await driveToVisualCapture(
+          page,
+          visualCaptureSelection,
+          `${name}: ${visualCaptureSelection.captureId}`,
+        );
+        const capturedPlayer = await readAutomationPlayer(
+          page,
+          `${name}: captured pose`,
+        );
+        if (!poseReached(capturedPlayer, visualCaptureSelection.camera)) {
+          throw new Error(`${name}: selected capture pose did not settle ${JSON.stringify({ capturedPlayer, target: visualCaptureSelection.camera })}`);
+        }
+        const captureResult = {
+          ...result,
+          automationPlayer: JSON.stringify(capturedPlayer),
+          visualCapturePoseEvidence: 'settled-live-player',
+        };
+        const capture = await captureAutomationScreenshot(
+          page,
+          name,
+          path,
+          captureResult,
+          `manifest-${visualCaptureSelection.mode}`,
+        );
+        if (!capture) {
+          throw new Error(`${name}: selected visual capture did not produce an artifact`);
+        }
+        console.log(`visual-capture-dispatch: ${JSON.stringify({
+          captureId: visualCaptureSelection.captureId,
+          mode: visualCaptureSelection.mode,
+          source: visualCaptureSelection.source,
+          steps: dispatched.steps,
+          poseEvidence: 'settled-live-player',
+        })}`);
+        await page.close();
+        continue;
       }
       if (name === 'pixeldart-next') {
         await page.keyboard.press('Escape');
@@ -970,6 +1227,11 @@ async function dismissVisitorDialogs(page, label) {
       console.log(`${name}: ${JSON.stringify({...result, save: 'ok'})}`);
       await page.close();
     }
+    // A manifest capture is a focused evidence run. The capability-loss,
+    // context-recovery, scaling, and reduced-motion probes remain part of the
+    // full smoke suite, but are intentionally omitted here so a capture
+    // cannot be invalidated by an unrelated secondary browser profile.
+    if (!visualCaptureSelection) {
     const noWebglBrowser = await firefox.launch({
       headless: true,
       firefoxUserPrefs: { 'webgl.disabled': true },
@@ -994,6 +1256,17 @@ async function dismissVisitorDialogs(page, label) {
           !noWebgl.diagnostics?.includes('webgl2 unavailable')) {
         throw new Error(`WebGL2-unavailable fallback failed ${JSON.stringify(noWebgl)}`);
       }
+      let noWebglDiagnostics;
+      try {
+        noWebglDiagnostics = JSON.parse(noWebgl.diagnostics);
+      } catch (error) {
+        throw new Error(`WebGL2-unavailable diagnostics were not valid JSON: ${error}`);
+      }
+      assertSelectionDiagnostics(
+        'webgl2-unavailable-fallback',
+        { backend: noWebgl.backend },
+        noWebglDiagnostics,
+      );
       assertHealthy(noWebglFailures, 'webgl2-unavailable-fallback');
       console.log(`webgl2-unavailable-fallback: ${JSON.stringify(noWebgl)}`);
       await noWebglPage.close();
@@ -1021,9 +1294,9 @@ async function dismissVisitorDialogs(page, label) {
         fallback: canvas.getAttribute('data-renderer-fallback'),
         diagnostics: canvas.getAttribute('data-renderer-diagnostics'),
       }));
-      if (!/^(legacy|next)$/.test(constrained.backend ?? '') ||
+      if (!/^(legacy|pixeldart|next)$/.test(constrained.backend ?? '') ||
           !constrained.diagnostics ||
-          (constrained.phase === 'running' && constrained.backend !== 'next' &&
+          (constrained.phase === 'running' && !isPixeldartBackend(constrained.backend) &&
            constrained.fallback !== 'true')) {
         throw new Error(`constrained capability negotiation failed ${JSON.stringify(constrained)}`);
       }
@@ -1066,7 +1339,7 @@ async function dismissVisitorDialogs(page, label) {
       frameStats: canvas.getAttribute('data-renderer-frame-stats'),
       frameBudget: canvas.getAttribute('data-renderer-budget'),
     }));
-    if (recovery.bootPhase !== 'running' || recovery.backend !== 'next' ||
+    if (recovery.bootPhase !== 'running' || !isPixeldartBackend(recovery.backend) ||
         recovery.fallback !== 'false' || !recovery.frameStats ||
         recovery.frameBudget !== 'ok') {
       throw new Error(`context recovery failed ${JSON.stringify(recovery)}`);
@@ -1131,7 +1404,7 @@ async function dismissVisitorDialogs(page, label) {
       frameStats: canvas.getAttribute('data-renderer-frame-stats'),
       frameBudget: canvas.getAttribute('data-renderer-budget'),
     }));
-    if (comfort.bootPhase !== 'running' || comfort.backend !== 'next' ||
+    if (comfort.bootPhase !== 'running' || !isPixeldartBackend(comfort.backend) ||
         comfort.width <= 0 || comfort.height <= 0 || comfort.surface !== '800x500' ||
         !comfort.frameStats || comfort.frameBudget !== 'ok') {
       throw new Error(`comfort/input/resize smoke failed ${JSON.stringify(comfort)}`);
@@ -1139,6 +1412,7 @@ async function dismissVisitorDialogs(page, label) {
     console.log(`next-comfort-input-resize: ${JSON.stringify(comfort)}`);
     assertHealthy(comfortFailures, 'next-comfort-input-resize');
     await comfortContext.close();
+    }
   } finally {
     await browser.close();
   }

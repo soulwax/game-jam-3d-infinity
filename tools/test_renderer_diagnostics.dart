@@ -8,7 +8,7 @@ void _expect(bool value, String message) {
 
 void main() {
   final diagnostics = RendererDiagnostics(
-    backend: 'next',
+    backend: 'pixeldart',
     profile: 'standard',
     buildId: 'dev-test',
     capabilities: const ['shadows', 'msaa', 'shadows'],
@@ -18,7 +18,7 @@ void main() {
     'capabilities are canonical',
   );
   _expect(
-    diagnostics.encode().contains('"backend":"next"'),
+    diagnostics.encode().contains('"backend":"pixeldart"'),
     'backend identity is observable',
   );
   var rejected = false;
@@ -40,7 +40,7 @@ void main() {
   );
   _expect(!boundary.provenancePinned, 'missing release defines stay visible');
   final pinned = RendererDiagnostics(
-    backend: 'next',
+    backend: 'pixeldart',
     profile: 'safe',
     buildId: 'game-renderer',
     capabilities: const ['webgl2'],
@@ -54,6 +54,18 @@ void main() {
   _expect(
     pinned.toJson()['provenancePinned'] == true,
     'complete provenance is serialized',
+  );
+  final withSelection = pinned.withSelection(const {
+    'kind': 'pixeldart',
+    'rejected': false,
+    'aliasUsed': true,
+  });
+  final selection = withSelection.toJson()['selection'];
+  _expect(
+    selection is Map &&
+        selection['kind'] == 'pixeldart' &&
+        selection['aliasUsed'] == true,
+    'selection diagnostics preserve canonical alias facts',
   );
   print('renderer diagnostics: backend/profile/build identity fixture passes');
 }

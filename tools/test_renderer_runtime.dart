@@ -8,7 +8,7 @@ import 'package:quarantine/presentation/renderer_runtime.dart';
 final class _RuntimeProbe implements RendererRuntime {
   @override
   RendererDiagnostics get diagnostics => RendererDiagnostics(
-    backend: 'next',
+    backend: 'pixeldart',
     profile: 'probe',
     buildId: 'probe',
     capabilities: const ['probe-capability'],

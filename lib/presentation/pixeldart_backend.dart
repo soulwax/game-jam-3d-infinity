@@ -10,7 +10,7 @@ class PixeldartBackendMapper {
   const PixeldartBackendMapper();
 
   Map<String, Object?> mapFrame(RendererFrame frame) => {
-    'backend': 'next',
+    'backend': 'pixeldart',
     'interpolation': frame.interpolation,
     'facts': frame.snapshot.toJson(),
   };
@@ -25,6 +25,7 @@ class PixeldartBackendMapper {
 final class PixeldartBackend implements RendererBackend {
   final PixeldartBackendMapper mapper;
   final RendererRuntime? runtime;
+  final Map<String, Object?>? selectionDiagnostics;
   RendererBackendState _state = RendererBackendState.constructed;
   RendererFrame? _lastFrame;
   String? _lastFrameEncoding;
@@ -33,23 +34,28 @@ final class PixeldartBackend implements RendererBackend {
   PixeldartBackend({
     this.mapper = const PixeldartBackendMapper(),
     this.runtime,
+    this.selectionDiagnostics,
   });
 
   @override
-  RendererBackendKind get kind => RendererBackendKind.next;
+  RendererBackendKind get kind => RendererBackendKind.pixeldart;
 
   @override
   RendererBackendState get state => _state;
 
   @override
-  RendererDiagnostics get diagnostics =>
-      runtime?.diagnostics ??
-      RendererDiagnostics.fromEnvironment(
-        backend: 'next',
-        profile: 'safe',
-        capabilities: [],
-        fallback: false,
-      );
+  RendererDiagnostics get diagnostics {
+    final base =
+        runtime?.diagnostics ??
+        RendererDiagnostics.fromEnvironment(
+          backend: 'pixeldart',
+          profile: 'safe',
+          capabilities: [],
+          fallback: false,
+        );
+    final selection = selectionDiagnostics;
+    return selection == null ? base : base.withSelection(selection);
+  }
 
   @override
   RendererFrame? get lastFrame => _lastFrame;

@@ -45,24 +45,15 @@ class ControlsSettingsPanel extends Panel {
     _addToggle(document, grid, 'holdToInteract', 'Hold to interact');
     root.appendChild(grid);
     final reference = buildElement(document, 'div', cls: 'settings-grid');
-    const actions = <String, String>{
-      'Move': 'W A S D',
-      'Interact': 'E',
-      'Journal': 'J',
-      'Rest': 'L',
-      'Pause': 'Escape',
-    };
-    for (final entry in actions.entries) {
-      final action = switch (entry.key) {
-        'Move' => 'moveForward',
-        'Interact' => 'interact',
-        'Journal' => 'journal',
-        'Rest' => 'sleep',
-        _ => 'pause',
-      };
+    for (final entry in controlsActionLabels.entries) {
+      final action = entry.key;
+      final bindingValues = ControlsSettingsProfile().bindingsByAction[action];
+      final bindingLabel = bindingValues == null || bindingValues.isEmpty
+          ? 'unbound'
+          : bindingValues.join(' / ');
       final row = buildElement(document, 'div', cls: 'setting-row');
-      row.setAttribute('aria-label', '${entry.key}: ${entry.value}');
-      row.appendChild(buildElement(document, 'span', text: entry.key));
+      row.setAttribute('aria-label', '${entry.value}: $bindingLabel');
+      row.appendChild(buildElement(document, 'span', text: entry.value));
       final button =
           buildElement(document, 'button', cls: 'door-continue')
                 as web.HTMLButtonElement

@@ -65,9 +65,30 @@ void main() {
     'legacy selection must forward its neutral runtime',
   );
   final next = factory.create(
-    const BackendSelection(RendererBackendKind.next, explicit: true),
+    const BackendSelection(RendererBackendKind.pixeldart, explicit: true),
   );
-  _expect(next is PixeldartBackend, 'explicit next creates Pixeldart backend');
+  _expect(
+    next is PixeldartBackend,
+    'explicit Pixeldart creates Pixeldart backend',
+  );
+  final nextSelection = next.diagnostics.toJson()['selection'];
+  _expect(
+    nextSelection is Map &&
+        nextSelection['kind'] == 'pixeldart' &&
+        nextSelection['rejected'] == false,
+    'Pixeldart diagnostics publish canonical selection facts',
+  );
+  final aliasRequest = const BackendSelector().select('next');
+  final aliasBackend = factory.create(aliasRequest);
+  final aliasSelection = aliasBackend.diagnostics.toJson()['selection'];
+  _expect(
+    aliasSelection is Map &&
+        aliasSelection['kind'] == 'pixeldart' &&
+        aliasSelection['aliasUsed'] == true &&
+        aliasSelection['aliasReason'] ==
+            'renderer query "next" is a compatibility alias; use "pixeldart"',
+    'next alias guidance reaches adapter diagnostics',
+  );
   final fallback = factory.create(
     const BackendSelection(
       RendererBackendKind.legacy,
@@ -79,6 +100,16 @@ void main() {
   _expect(
     fallback is LegacyBackend && fallback.diagnostics.fallback,
     'fallback remains observable on legacy backend',
+  );
+  final unknownSelection = const BackendSelector().select('typo');
+  final unknown = factory.create(unknownSelection);
+  final unknownDiagnostics = unknown.diagnostics.toJson()['selection'];
+  _expect(
+    unknownDiagnostics is Map &&
+        unknownDiagnostics['rejected'] == true &&
+        unknownDiagnostics['rejectionReason'] ==
+            'unsupported renderer query "typo"',
+    'legacy fallback diagnostics publish rejected query facts',
   );
   print('backend factory: explicit selection and fallback pass');
 }

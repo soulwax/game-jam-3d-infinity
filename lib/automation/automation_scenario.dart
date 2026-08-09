@@ -56,12 +56,31 @@ final class AutomationRoute {
   final List<String> rooms;
   final List<String> portals;
   final int tickBudget;
+  final List<AutomationRouteWaypointSpec> waypoints;
 
   const AutomationRoute({
     required this.id,
     required this.rooms,
     required this.portals,
     required this.tickBudget,
+    this.waypoints = const [],
+  });
+}
+
+/// A route-local, authored movement checkpoint. The canonical house remains
+/// authoritative for collision and portal topology; this record only supplies
+/// a finite, clearance-aware path for an executable automation scenario.
+final class AutomationRouteWaypointSpec {
+  final String id;
+  final String room;
+  final AutomationVec3 position;
+  final double radius;
+
+  const AutomationRouteWaypointSpec({
+    required this.id,
+    required this.room,
+    required this.position,
+    this.radius = 0.35,
   });
 }
 
@@ -201,6 +220,97 @@ final class AutomationScenarioCatalog {
   }
 }
 
+enum AutomationScenarioReadiness { invalid, draft, runnable }
+
+/// A stable, machine-readable summary for scenario discovery and diagnostics.
+/// Structural validity alone is not enough to claim that a scenario can run:
+/// it must also have executable waypoint data and be explicitly registered by
+/// the protocol/bootstrap owner.
+final class AutomationScenarioCatalogEntry {
+  final String id;
+  final Set<String> tags;
+  final AutomationScenarioReadiness readiness;
+  final List<String> issues;
+
+  const AutomationScenarioCatalogEntry({
+    required this.id,
+    required this.tags,
+    required this.readiness,
+    this.issues = const [],
+  });
+
+  bool get runnable => readiness == AutomationScenarioReadiness.runnable;
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'tags': tags.toList()..sort(),
+    'readiness': readiness.name,
+    if (issues.isNotEmpty) 'issues': List<String>.unmodifiable(issues),
+  };
+}
+
+/// Builds the scenario list used by `list`/diagnostic surfaces without
+/// conflating a valid draft with a runnable automation target.
+final class AutomationScenarioRegistry {
+  final List<AutomationScenarioCatalogEntry> entries;
+
+  const AutomationScenarioRegistry({required this.entries});
+
+  factory AutomationScenarioRegistry.build({
+    required Iterable<AutomationScenario> scenarios,
+    required AutomationScenarioCompiler compiler,
+    Set<String> registeredScenarioIds = const {},
+  }) {
+    final entries = <AutomationScenarioCatalogEntry>[];
+    for (final scenario in scenarios) {
+      final errors = compiler.validate(scenario);
+      if (errors.isNotEmpty) {
+        entries.add(
+          AutomationScenarioCatalogEntry(
+            id: scenario.id,
+            tags: Set.unmodifiable(scenario.tags),
+            readiness: AutomationScenarioReadiness.invalid,
+            issues: List.unmodifiable(errors),
+          ),
+        );
+        continue;
+      }
+      final issues = <String>[];
+      for (final route in scenario.routes) {
+        if (route.waypoints.isEmpty) {
+          issues.add('route ${route.id} has no executable waypoints');
+        }
+      }
+      if (!registeredScenarioIds.contains(scenario.id)) {
+        issues.add('scenario is not registered with the automation protocol');
+      }
+      entries.add(
+        AutomationScenarioCatalogEntry(
+          id: scenario.id,
+          tags: Set.unmodifiable(scenario.tags),
+          readiness: issues.isEmpty
+              ? AutomationScenarioReadiness.runnable
+              : AutomationScenarioReadiness.draft,
+          issues: List.unmodifiable(issues),
+        ),
+      );
+    }
+    entries.sort((a, b) => a.id.compareTo(b.id));
+    return AutomationScenarioRegistry(entries: List.unmodifiable(entries));
+  }
+
+  AutomationScenarioCatalogEntry? find(String id) {
+    for (final entry in entries) {
+      if (entry.id == id) return entry;
+    }
+    return null;
+  }
+
+  List<Map<String, Object?>> toJson() => [
+    for (final entry in entries) entry.toJson(),
+  ];
+}
+
 final class AutomationScenarioCompiler {
   final AutomationScenarioCatalog catalog;
 
@@ -241,6 +351,28 @@ final class AutomationScenarioCompiler {
       }
       if (route.tickBudget <= 0) {
         errors.add('route ${route.id} tickBudget must be positive');
+      }
+      _unique(
+        route.waypoints.map((waypoint) => waypoint.id),
+        'route ${route.id} waypoint',
+        errors,
+      );
+      for (final waypoint in route.waypoints) {
+        if (!_stableId(waypoint.id)) {
+          errors.add(
+            'route ${route.id} waypoint ${waypoint.id} has an invalid ID',
+          );
+        }
+        if (!route.rooms.contains(waypoint.room)) {
+          errors.add(
+            'route ${route.id} waypoint ${waypoint.id} has an unknown route room',
+          );
+        }
+        if (!_finiteWaypoint(waypoint)) {
+          errors.add(
+            'route ${route.id} waypoint ${waypoint.id} contains an invalid value',
+          );
+        }
       }
       for (final room in route.rooms) {
         if (!catalog.rooms.contains(room)) {
@@ -328,6 +460,26 @@ AutomationRoute _decodeRoute(Object? value) {
     rooms: _strings(map['rooms'], 'route.rooms'),
     portals: _strings(map['portals'], 'route.portals'),
     tickBudget: _int(map['tickBudget'] ?? 1, 'route.tickBudget'),
+    waypoints: _list(
+      map['waypoints'] ?? const [],
+      'route.waypoints',
+    ).map(_decodeWaypoint).toList(),
+  );
+}
+
+AutomationRouteWaypointSpec _decodeWaypoint(Object? value) {
+  final map = _map(value, 'route.waypoint');
+  final position = AutomationVec3.parse(map['position']);
+  if (position == null) {
+    throw const FormatException(
+      'route.waypoint.position must be finite [x,y,z]',
+    );
+  }
+  return AutomationRouteWaypointSpec(
+    id: _string(map['id'], 'route.waypoint.id'),
+    room: _string(map['room'], 'route.waypoint.room'),
+    position: position,
+    radius: _double(map['radius'] ?? 0.35, 'route.waypoint.radius'),
   );
 }
 
@@ -428,6 +580,16 @@ bool _finitePose(AutomationPose pose) =>
     pose.position.z.abs() <= 1000 &&
     pose.yaw.abs() <= math.pi * 100 &&
     pose.pitch.abs() <= math.pi * 100;
+
+bool _finiteWaypoint(AutomationRouteWaypointSpec waypoint) =>
+    waypoint.position.x.isFinite &&
+    waypoint.position.y.isFinite &&
+    waypoint.position.z.isFinite &&
+    waypoint.position.x.abs() <= 1000 &&
+    waypoint.position.y.abs() <= 1000 &&
+    waypoint.position.z.abs() <= 1000 &&
+    waypoint.radius.isFinite &&
+    waypoint.radius > 0;
 
 void _unique(Iterable<String> values, String kind, List<String> errors) {
   final seen = <String>{};

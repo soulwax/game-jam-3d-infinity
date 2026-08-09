@@ -1,6 +1,8 @@
 import 'dart:io';
 
 import 'package:quarantine/automation/automation_route.dart';
+import 'package:quarantine/automation/automation_scenario.dart';
+import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/house/house.dart';
 
 void main() {
@@ -44,6 +46,39 @@ void main() {
     ],
   );
   _expect(validator.validate(upper).isEmpty, 'upper route clears geometry');
+  final authoredUpper = AutomationScenario.decode(
+    File(
+      'assets/house/verification/scenarios/upper-circuit.json',
+    ).readAsStringSync(),
+  );
+  final authoredUpperRoute = authoredUpper.routes.single;
+  final authoredUpperPlan = AutomationRoutePlan(
+    id: authoredUpperRoute.id,
+    rooms: authoredUpperRoute.rooms,
+    portals: authoredUpperRoute.portals,
+    waypoints: [
+      for (final waypoint in authoredUpperRoute.waypoints)
+        AutomationRouteWaypoint(
+          id: waypoint.id,
+          room: waypoint.room,
+          eye: Vec3(
+            waypoint.position.x,
+            waypoint.position.y,
+            waypoint.position.z,
+          ),
+          radius: waypoint.radius,
+        ),
+    ],
+  );
+  final authoredUpperErrors = validator.validate(authoredUpperPlan);
+  _expect(
+    authoredUpperErrors.isEmpty,
+    'authored upper route clears canonical geometry: $authoredUpperErrors',
+  );
+  _expect(
+    authoredUpperRoute.waypoints.length == 14,
+    'authored upper route has both-way branch checkpoints',
+  );
 
   final cellar = AutomationRoutePlan.fromTopology(
     id: 'cellar-return',
@@ -51,20 +86,72 @@ void main() {
     rooms: const ['hall', 'cellar', 'hall'],
     portals: const ['hall-cellar', 'hall-cellar'],
   );
-  _expect(validator.validate(cellar).isEmpty, 'cellar route clears geometry');
+  final cellarDiagnostics = validator.diagnose(cellar);
+  _expect(
+    cellarDiagnostics.any(
+      (issue) => issue.code == AutomationRouteIssueCode.blockedPortal,
+    ),
+    'cellar route reports its closed/stuck portal blocker',
+  );
+  _expect(
+    cellarDiagnostics
+        .where((issue) => issue.code == AutomationRouteIssueCode.blockedPortal)
+        .every((issue) => issue.nearestObstruction == 'portal:hall-cellar'),
+    'cellar blocker identifies the canonical portal',
+  );
 
   final bad = AutomationRoutePlan(
     id: 'bad',
     rooms: const ['hall', 'living-room'],
     portals: const ['hall-cellar'],
-    waypoints: ground.waypoints.take(2).toList(),
+    waypoints: ground.waypoints.take(1).toList(),
   );
   _expect(
     validator.validate(bad).isNotEmpty,
     'wrong portal topology is rejected',
   );
+  final missingCrossing = AutomationRoutePlan(
+    id: 'missing-crossing',
+    rooms: const ['hall', 'living-room'],
+    portals: const ['hall-living'],
+    waypoints: ground.waypoints.take(1).toList(),
+  );
+  final crossingDiagnostics = validator.diagnose(missingCrossing);
+  _expect(
+    crossingDiagnostics.any(
+      (issue) =>
+          issue.code == AutomationRouteIssueCode.topology &&
+          issue.message.contains('waypoint room sequence'),
+    ),
+    'missing waypoint room crossing is diagnosed',
+  );
+  final blocked = AutomationRoutePlan(
+    id: 'blocked-waypoint',
+    rooms: const ['hall'],
+    portals: const [],
+    waypoints: [
+      AutomationRouteWaypoint(
+        id: 'outside-hall',
+        room: 'hall',
+        eye: Vec3(6.0, 1.65, 1.0),
+      ),
+    ],
+  );
+  final diagnostics = validator.diagnose(blocked);
+  _expect(
+    diagnostics.length == 1 &&
+        diagnostics.single.code == AutomationRouteIssueCode.blockedWaypoint,
+    'blocked waypoint has a typed diagnostic',
+  );
+  final diagnosticJson = diagnostics.single.toJson();
+  _expect(
+    diagnosticJson['waypoint'] == 'outside-hall' &&
+        diagnosticJson['nearestObstruction'] == 'room-boundary-x' &&
+        diagnosticJson['position'] is List,
+    'blocked waypoint diagnostic carries overlay identity and position',
+  );
   stdout.writeln(
-    'automation route: canonical approaches, capsule clearance, topology pass',
+    'automation route: canonical approaches, capsule clearance, topology and diagnostics pass',
   );
 }
 

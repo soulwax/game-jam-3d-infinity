@@ -2,9 +2,32 @@ import 'dart:convert';
 
 enum AutomationMode { help, list, validate, run }
 
-enum AutomationRenderer { auto, legacy, next }
+enum AutomationRenderer {
+  auto,
+  legacy,
+  pixeldart;
 
-enum AutomationProfile { safe, standard, clean }
+  /// Compatibility symbol for the pre-C-01 automation identity.
+  @Deprecated('Use AutomationRenderer.pixeldart instead.')
+  static const AutomationRenderer next = AutomationRenderer.pixeldart;
+
+  /// Existing runner/report consumers still accept `next` for one schema
+  /// version while the in-memory enum uses the canonical Pixeldart identity.
+  String get wireName => this == AutomationRenderer.pixeldart ? 'next' : name;
+}
+
+enum AutomationProfile {
+  safe,
+  standard,
+  high;
+
+  /// Compatibility symbol for the pre-T-00 profile identity.
+  @Deprecated('Use AutomationProfile.high instead.')
+  static const AutomationProfile clean = AutomationProfile.high;
+
+  /// Existing capture/report consumers retain `clean` for one schema window.
+  String get wireName => this == AutomationProfile.high ? 'clean' : name;
+}
 
 enum AutomationBrowser { firefox, chromium }
 
@@ -38,6 +61,8 @@ final class AutomationArgs {
   final int timeoutTicks;
   final String artifacts;
   final bool headless;
+  final bool rendererAliasUsed;
+  final bool profileAliasUsed;
 
   const AutomationArgs({
     required this.mode,
@@ -55,6 +80,8 @@ final class AutomationArgs {
     required this.timeoutTicks,
     required this.artifacts,
     required this.headless,
+    this.rendererAliasUsed = false,
+    this.profileAliasUsed = false,
   });
 
   static AutomationArgs defaults({AutomationMode mode = AutomationMode.run}) =>
@@ -83,14 +110,39 @@ final class AutomationArgs {
     'port': port,
     'baseUrl': baseUrl.toString(),
     'browser': browser.name,
-    'renderer': renderer.name,
-    'profile': profile.name,
+    'renderer': rendererAliasUsed ? renderer.wireName : renderer.name,
+    'profile': profileAliasUsed ? profile.wireName : profile.name,
     'viewport': {'width': viewportWidth, 'height': viewportHeight},
     'seed': seed,
     'fixedDelta': fixedDelta,
     'timeoutTicks': timeoutTicks,
     'artifacts': artifacts,
     'headless': headless,
+    'resolvedRun': _resolvedRunJson(),
+  };
+
+  Map<String, Object> _resolvedRunJson() => {
+    'schemaVersion': 2,
+    'canonical': {
+      'mode': mode.name,
+      'scenario': scenario,
+      'serverRoot': serverRoot,
+      'port': port,
+      'baseUrl': baseUrl.toString(),
+      'browser': browser.name,
+      'renderer': renderer.name,
+      'profile': profile.name,
+      'viewport': {'width': viewportWidth, 'height': viewportHeight},
+      'seed': seed,
+      'fixedDelta': fixedDelta,
+      'timeoutTicks': timeoutTicks,
+      'artifacts': artifacts,
+      'headless': headless,
+    },
+    'compatibilityAliases': {
+      if (rendererAliasUsed) 'renderer': 'next',
+      if (profileAliasUsed) 'profile': 'clean',
+    },
   };
 
   String encode() => const JsonEncoder.withIndent('  ').convert(toJson());
@@ -111,6 +163,8 @@ final class AutomationArgs {
     int? timeoutTicks,
     String? artifacts,
     bool? headless,
+    bool? rendererAliasUsed,
+    bool? profileAliasUsed,
   }) => AutomationArgs(
     mode: mode ?? this.mode,
     scenario: scenario ?? this.scenario,
@@ -127,6 +181,8 @@ final class AutomationArgs {
     timeoutTicks: timeoutTicks ?? this.timeoutTicks,
     artifacts: artifacts ?? this.artifacts,
     headless: headless ?? this.headless,
+    rendererAliasUsed: rendererAliasUsed ?? this.rendererAliasUsed,
+    profileAliasUsed: profileAliasUsed ?? this.profileAliasUsed,
   );
 }
 
@@ -157,8 +213,8 @@ Options:
   --port <n|auto>       Server port (default: 8090; auto selects a free port).
   --base-url <url>      HTTP base URL (default: http://127.0.0.1:8090).
   --browser <name>      firefox or chromium (default: firefox).
-  --renderer <name>     auto, legacy, or next (default: auto).
-  --profile <name>      safe, standard, or clean (default: safe).
+  --renderer <name>     auto, legacy, pixeldart, or next alias (default: auto).
+  --profile <name>      safe, standard, high, or clean alias (default: safe).
   --viewport <WxH>      Viewport size (default: 800x500).
   --seed <integer>      Deterministic scenario seed (default: 7).
   --fixed-delta <secs>  Fixed simulation delta (default: 0.0166667).
@@ -247,6 +303,12 @@ AutomationParseResult parseAutomationArgs(List<String> argv) {
     final parsed = _applyOption(args, name, value);
     if (parsed.error != null) return _failure(parsed.error!);
     args = parsed.args!;
+    if (name == '--renderer') {
+      args = args.copyWith(rendererAliasUsed: value == 'next');
+    }
+    if (name == '--profile') {
+      args = args.copyWith(profileAliasUsed: value == 'clean');
+    }
     i++;
   }
   if (headed && headless) return _failure('--headed and --headless conflict');
@@ -316,14 +378,16 @@ int _parsePort(String value) => value == 'auto' ? 0 : int.parse(value);
 AutomationRenderer _parseRenderer(String value) => switch (value) {
   'auto' => AutomationRenderer.auto,
   'legacy' => AutomationRenderer.legacy,
-  'next' => AutomationRenderer.next,
+  'pixeldart' => AutomationRenderer.pixeldart,
+  'next' => AutomationRenderer.pixeldart,
   _ => throw FormatException('unsupported renderer'),
 };
 
 AutomationProfile _parseProfile(String value) => switch (value) {
   'safe' => AutomationProfile.safe,
   'standard' => AutomationProfile.standard,
-  'clean' => AutomationProfile.clean,
+  'high' => AutomationProfile.high,
+  'clean' => AutomationProfile.high,
   _ => throw FormatException('unsupported profile'),
 };
 

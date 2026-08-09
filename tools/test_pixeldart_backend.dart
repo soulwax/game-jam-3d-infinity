@@ -13,17 +13,20 @@ void main() {
   final mapped = mapper.mapFrame(
     RendererFrame(snapshot: PresentationSnapshot(values: const {'day': 1})),
   );
-  _expect(mapped['backend'] == 'next', 'next mapping identifies backend');
+  _expect(
+    mapped['backend'] == 'pixeldart',
+    'Pixeldart mapping identifies the canonical backend',
+  );
   _expect(
     mapped['facts'] is Map<String, dynamic>,
-    'next receives structural facts',
+    'Pixeldart receives structural facts',
   );
   final input = mapper.mapInput(
     const RendererInputAction(id: 'look', value: 0.5),
   );
   _expect(
     input['id'] == 'look' && input['value'] == 0.5,
-    'next receives public input',
+    'Pixeldart receives public input',
   );
   print('pixeldart backend: shared boundary mapping fixture passes');
 }

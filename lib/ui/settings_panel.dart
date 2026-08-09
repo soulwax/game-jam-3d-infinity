@@ -7,6 +7,7 @@ import 'audio_settings.dart';
 import 'accessibility_settings.dart';
 import 'pause_settings_contract.dart';
 import 'settings_registry.dart';
+import 'gameplay_settings.dart';
 
 class SettingsPanel extends Panel {
   final PauseSettingsCategory? page;
@@ -20,6 +21,7 @@ class SettingsPanel extends Panel {
   void Function()? onResetAll;
   void Function()? onBack;
   void Function(AudioSettingsProfile profile)? onAudioOptions;
+  void Function(GameplaySettingsProfile profile)? onGameplayOptions;
   void Function(AccessibilitySettingsProfile profile)? onAccessibilityProfile;
   void Function()? onResetAccessibilityProfile;
   final Map<String, web.HTMLInputElement> _levels = {};
@@ -29,6 +31,10 @@ class SettingsPanel extends Panel {
   web.HTMLInputElement? _mono;
   web.HTMLInputElement? _highContrast;
   web.HTMLInputElement? _strongHighlights;
+  final Map<String, web.HTMLSelectElement> _gameplaySelects = {};
+  web.HTMLInputElement? _contextualReminders;
+  GameplaySettingsProfile _gameplayOptions =
+      GameplaySettingsProfile.firstRun;
 
   SettingsPanel(web.Document document, {this.page}) : super(document) {
     final pageLabel = page == null
@@ -77,6 +83,9 @@ class SettingsPanel extends Panel {
     }
     if (page == PauseSettingsCategory.accessibility) {
       root.appendChild(_buildAccessibilityOptions(document));
+    }
+    if (page == PauseSettingsCategory.gameplay) {
+      root.appendChild(_buildGameplayOptions(document));
     }
 
     final resets = buildElement(document, 'div', cls: 'settings-grid');
@@ -169,6 +178,33 @@ class SettingsPanel extends Panel {
     );
     row.appendChild(scale);
     grid.appendChild(row);
+    final verbosityRow = buildElement(document, 'label', cls: 'setting-row');
+    verbosityRow.appendChild(
+      buildElement(document, 'span', text: 'screen-reader verbosity'),
+    );
+    final verbosity = document.createElement('select') as web.HTMLSelectElement
+      ..id = 'settings.accessibility.screen-reader-verbosity';
+    for (final value in AccessibilityScreenReaderVerbosity.values) {
+      verbosity.appendChild(
+        document.createElement('option') as web.HTMLOptionElement
+          ..value = value.name
+          ..textContent = value.name,
+      );
+    }
+    verbosity.addEventListener(
+      'change',
+      ((web.Event _) {
+        _accessibilityProfile = _accessibilityProfile.copyWith(
+          screenReaderVerbosity:
+              AccessibilityScreenReaderVerbosity.values.firstWhere(
+            (value) => value.name == verbosity.value,
+          ),
+        );
+        onAccessibilityProfile?.call(_accessibilityProfile);
+      }).toJS,
+    );
+    verbosityRow.appendChild(verbosity);
+    grid.appendChild(verbosityRow);
     final reset =
         buildElement(
             document,
@@ -193,6 +229,7 @@ class SettingsPanel extends Panel {
       'captions': captions,
       'uiScale': scale,
     });
+    _accessibilitySelects['screenReaderVerbosity'] = verbosity;
     return grid;
   }
 
@@ -231,6 +268,7 @@ class SettingsPanel extends Panel {
   AccessibilitySettingsProfile _accessibilityProfile =
       const AccessibilitySettingsProfile();
   final Map<String, web.HTMLInputElement> _accessibilityInputs = {};
+  final Map<String, web.HTMLSelectElement> _accessibilitySelects = {};
 
   void setAccessibilityProfile(AccessibilitySettingsProfile profile) {
     _accessibilityProfile = profile;
@@ -240,6 +278,143 @@ class SettingsPanel extends Panel {
         profile.photosensitivitySafe ?? false;
     _accessibilityInputs['captions']?.checked = profile.captions ?? false;
     _accessibilityInputs['uiScale']?.value = profile.resolvedUiScale.toString();
+    _accessibilitySelects['screenReaderVerbosity']?.value =
+        (profile.screenReaderVerbosity ??
+                AccessibilityScreenReaderVerbosity.standard)
+            .name;
+  }
+
+  web.HTMLElement _buildGameplayOptions(web.Document document) {
+    final grid = buildElement(document, 'div', cls: 'settings-grid');
+    _addGameplaySelect(
+      document, grid, 'interactionMode', 'interaction mode',
+      GameplayInteractionMode.values,
+    );
+    _addGameplaySelect(
+      document, grid, 'promptDensity', 'prompt density',
+      GameplayPromptDensity.values,
+    );
+    _addGameplaySelect(
+      document, grid, 'textPacing', 'dialogue text pacing',
+      GameplayTextPacing.values,
+    );
+    _addGameplaySelect(
+      document, grid, 'journalLayout', 'journal layout',
+      GameplayJournalLayout.values,
+    );
+    _addGameplaySelect(
+      document, grid, 'confirmations', 'confirmations',
+      GameplayConfirmationLevel.values,
+    );
+    _addGameplaySelect(
+      document, grid, 'saveFeedback', 'save feedback',
+      GameplaySaveFeedback.values,
+    );
+    _addGameplaySelect(
+      document, grid, 'focusLossBehavior', 'when the window loses focus',
+      GameplayFocusLossBehavior.values,
+    );
+    final row = buildElement(document, 'label', cls: 'setting-toggle');
+    final reminders = document.createElement('input') as web.HTMLInputElement
+      ..type = 'checkbox'
+      ..checked = _gameplayOptions.contextualReminders;
+    reminders.addEventListener(
+      'change',
+      ((web.Event _) {
+        _gameplayOptions = _gameplayOptions.copyWith(
+          contextualReminders: reminders.checked,
+        );
+        onGameplayOptions?.call(_gameplayOptions);
+      }).toJS,
+    );
+    row
+      ..appendChild(reminders)
+      ..appendChild(buildElement(document, 'span', text: 'contextual reminders'));
+    grid.appendChild(row);
+    _contextualReminders = reminders;
+    return grid;
+  }
+
+  void _addGameplaySelect<T extends Enum>(
+    web.Document document,
+    web.HTMLElement parent,
+    String key,
+    String label,
+    List<T> values,
+  ) {
+    final row = buildElement(document, 'label', cls: 'setting-row');
+    row.appendChild(buildElement(document, 'span', text: label));
+    final select = document.createElement('select') as web.HTMLSelectElement
+      ..id = 'settings.gameplay.$key';
+    for (final value in values) {
+      select.appendChild(
+        document.createElement('option') as web.HTMLOptionElement
+          ..value = value.name
+          ..textContent = value.name,
+      );
+    }
+    select.addEventListener(
+      'change',
+      ((web.Event _) {
+        _gameplayOptions = switch (key) {
+          'interactionMode' => _gameplayOptions.copyWith(
+            interactionMode: GameplayInteractionMode.values.firstWhere(
+              (value) => value.name == select.value,
+            ),
+          ),
+          'promptDensity' => _gameplayOptions.copyWith(
+            promptDensity: GameplayPromptDensity.values.firstWhere(
+              (value) => value.name == select.value,
+            ),
+          ),
+          'textPacing' => _gameplayOptions.copyWith(
+            textPacing: GameplayTextPacing.values.firstWhere(
+              (value) => value.name == select.value,
+            ),
+          ),
+          'journalLayout' => _gameplayOptions.copyWith(
+            journalLayout: GameplayJournalLayout.values.firstWhere(
+              (value) => value.name == select.value,
+            ),
+          ),
+          'confirmations' => _gameplayOptions.copyWith(
+            confirmations: GameplayConfirmationLevel.values.firstWhere(
+              (value) => value.name == select.value,
+            ),
+          ),
+          'saveFeedback' => _gameplayOptions.copyWith(
+            saveFeedback: GameplaySaveFeedback.values.firstWhere(
+              (value) => value.name == select.value,
+            ),
+          ),
+          _ => _gameplayOptions.copyWith(
+            focusLossBehavior: GameplayFocusLossBehavior.values.firstWhere(
+              (value) => value.name == select.value,
+            ),
+          ),
+        };
+        onGameplayOptions?.call(_gameplayOptions);
+      }).toJS,
+    );
+    row.appendChild(select);
+    parent.appendChild(row);
+    _gameplaySelects[key] = select;
+  }
+
+  void setGameplayProfile(GameplaySettingsProfile profile) {
+    _gameplayOptions = profile;
+    for (final entry in _gameplaySelects.entries) {
+      entry.value.value = switch (entry.key) {
+        'interactionMode' => profile.interactionMode.name,
+        'promptDensity' => profile.promptDensity.name,
+        'textPacing' => profile.textPacing.name,
+        'journalLayout' => profile.journalLayout.name,
+        'confirmations' => profile.confirmations.name,
+        'saveFeedback' => profile.saveFeedback.name,
+        _ => profile.focusLossBehavior.name,
+      };
+    }
+    _contextualReminders?.checked = profile.contextualReminders;
   }
 
   web.HTMLElement _buildAudioOptions(web.Document document) {

@@ -20,7 +20,7 @@ async function main() {
     const page = await browser.newPage();
     const failures = [];
     page.on('pageerror', (error) => failures.push(String(error)));
-    await page.goto('http://127.0.0.1:8090/?renderer=next');
+    await page.goto('http://127.0.0.1:8090/?renderer=pixeldart');
     await page.waitForFunction(
       () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'running',
       null,
@@ -49,9 +49,13 @@ async function main() {
     const diagnostics = await page.locator('#game').getAttribute(
       'data-renderer-diagnostics',
     );
+    const parsedDiagnostics = JSON.parse(diagnostics ?? 'null');
+    if (parsedDiagnostics?.backend !== 'pixeldart') {
+      throw new Error(`audio smoke expected canonical Pixeldart diagnostics: ${diagnostics}`);
+    }
     console.log(JSON.stringify({
       audioSinkInput: 'observed',
-      backend: 'next',
+      backend: 'pixeldart',
       diagnostics,
       sinkEvents: events.match(/Event '[^\n]+/g) ?? [],
       sinkInputs,

@@ -20,7 +20,7 @@
   "poses": [
     {
       "id": "hall-entry",
-      "position": [0.0, 1.6, 0.0],
+      "position": [8.625, 1.65, 0.55],
       "yaw": 0.0,
       "pitch": 0.0,
       "room": "hall"
@@ -31,13 +31,22 @@
       "id": "hall-to-living",
       "rooms": ["hall", "living-room"],
       "portals": ["hall-living"],
-      "tickBudget": 900
+      "tickBudget": 900,
+      "waypoints": [
+        {"id": "hall-entry", "room": "hall", "position": [8.625, 1.65, 0.55], "radius": 0.35},
+        {"id": "hall-living-out", "room": "hall", "position": [7.3, 1.65, 3.375], "radius": 0.35},
+        {"id": "living-hall-living-in", "room": "living-room", "position": [6.2, 1.65, 3.375], "radius": 0.35}
+      ]
     },
     {
       "id": "living-to-kitchen",
       "rooms": ["living-room", "kitchen"],
       "portals": ["kitchen-living"],
-      "tickBudget": 900
+      "tickBudget": 900,
+      "waypoints": [
+        {"id": "living-kitchen-out", "room": "living-room", "position": [3.675, 1.65, 5.45], "radius": 0.35},
+        {"id": "kitchen-living-in", "room": "kitchen", "position": [3.675, 1.65, 6.55], "radius": 0.35}
+      ]
     }
   ],
   "steps": [
