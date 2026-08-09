@@ -514,6 +514,7 @@ class CompiledApp {
       _1081: x0 => x0.height,
       _1082: x0 => x0.naturalWidth,
       _1083: x0 => x0.naturalHeight,
+      _1569: (x0,x1) => { x0.checked = x1 },
       _1570: x0 => x0.checked,
       _1593: (x0,x1) => { x0.max = x1 },
       _1597: (x0,x1) => { x0.min = x1 },
