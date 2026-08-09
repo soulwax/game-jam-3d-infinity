@@ -298,14 +298,14 @@ Future<String> sha256File(File file) async {
     ('shasum', <String>['-a', '256']),
   ]) {
     try {
-      final result = await Process.run(
-        candidate.$1,
-        [...candidate.$2, file.path],
-      );
+      final result = await Process.run(candidate.$1, [
+        ...candidate.$2,
+        file.path,
+      ]);
       if (result.exitCode != 0) continue;
-      final match = RegExp(r'^([0-9a-f]{64})\s').firstMatch(
-        (result.stdout as String).trim(),
-      );
+      final match = RegExp(
+        r'^([0-9a-f]{64})\s',
+      ).firstMatch((result.stdout as String).trim());
       if (match != null) return match.group(1)!;
     } on ProcessException {
       continue;
@@ -447,6 +447,9 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
   final metadata = await parseCaptureMetadata(
     File('${file.parent.path}/$captureMetadata'),
   );
+  final digest = await parseCaptureDigest(
+    File('${file.parent.path}/$captureDigest'),
+  );
   if (!const ['auto', 'legacy', 'next'].contains(requestedRenderer) ||
       !const ['safe', 'standard', 'clean'].contains(requestedProfile) ||
       !const ['legacy', 'next'].contains(effectiveRenderer) ||
@@ -476,7 +479,9 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
       metadata['captureRequestedProfile'] != requestedProfile ||
       metadata['captureNegotiatedProfile'] != effectiveProfile ||
       metadata['captureProfileNegotiation'] != profileNegotiation ||
-      metadata['captureScreenshot'] != captureScreenshot) {
+      metadata['captureScreenshot'] != captureScreenshot ||
+      digest['screenshot'] != captureScreenshot ||
+      digest['metadata'] != captureMetadata) {
     throw FormatException(
       'embodied evidence disagrees with capture metadata: $name',
     );
@@ -669,19 +674,100 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
   if (restore is! Map ||
       restoredPlayer is! Map ||
       restoredPlayer['roomId'] is! String ||
-      restoreValues.any((value) => value is! num || !value.toDouble().isFinite) ||
+      restoreValues.any(
+        (value) => value is! num || !value.toDouble().isFinite,
+      ) ||
       restoreDistance is! num ||
       !restoreDistance.toDouble().isFinite ||
       restoreDistance.toDouble() > 0.05 ||
       !computedRestoreDistance.isFinite ||
       computedRestoreDistance > 0.05 ||
       (computedRestoreDistance - restoreDistance.toDouble()).abs() > 0.01) {
-    throw FormatException('embodied evidence restore checkpoint is invalid: $name');
+    throw FormatException(
+      'embodied evidence restore checkpoint is invalid: $name',
+    );
   }
   final restoredMantle = mantleState(restore['mantle'], 'restore.mantle');
   if (restoredMantle['lit'] != denialAfter['lit'] ||
       restoredMantle['examined'] != denialAfter['examined']) {
     throw FormatException('embodied evidence restore mantle diverged: $name');
+  }
+  final dayCycle = evidence['dayCycle'];
+  if (scenario == 'days-1-3') {
+    if (dayCycle is! Map ||
+        dayCycle['schemaVersion'] != 1 ||
+        dayCycle['startDay'] != 1 ||
+        dayCycle['endDay'] != 3 ||
+        dayCycle['transitions'] is! List ||
+        (dayCycle['transitions'] as List).length != 2 ||
+        !const ['Rest:day-1→day-2', 'Rest:day-2→day-3'].every(
+          (expected) => (dayCycle['transitions'] as List).contains(expected),
+        ) ||
+        (dayCycle['transitions'] as List)[0] != 'Rest:day-1→day-2' ||
+        (dayCycle['transitions'] as List)[1] != 'Rest:day-2→day-3') {
+      throw FormatException('embodied day-cycle evidence is incomplete: $name');
+    }
+    final checkpoints = dayCycle['checkpoints'];
+    if (checkpoints is! List || checkpoints.length != 3) {
+      throw FormatException(
+        'embodied day-cycle checkpoints are incomplete: $name',
+      );
+    }
+    for (var index = 0; index < checkpoints.length; index++) {
+      final checkpoint = checkpoints[index];
+      final expectedDay = index + 1;
+      if (checkpoint is! Map || checkpoint['day'] != expectedDay) {
+        throw FormatException(
+          'embodied day-cycle checkpoint day is invalid ($expectedDay): $name',
+        );
+      }
+      final hour = checkpoint['hour'];
+      if (hour is! num ||
+          !hour.toDouble().isFinite ||
+          hour.toDouble() < 0 ||
+          hour.toDouble() >= 24) {
+        throw FormatException(
+          'embodied day-cycle checkpoint hour is invalid ($expectedDay): $name',
+        );
+      }
+      final capture = checkpoint['capture'];
+      if (capture is! Map) {
+        throw FormatException(
+          'embodied day-cycle checkpoint capture is missing ($expectedDay): $name',
+        );
+      }
+      for (final entry in const {
+        'screenshot': '.png',
+        'metadata': '.json',
+        'digest': '.digest.json',
+      }.entries) {
+        final value = capture[entry.key];
+        if (value is! String ||
+            !RegExp(r'^browser-[a-z0-9._-]+\.(?:png|json)$').hasMatch(value) ||
+            !value.endsWith(entry.value) ||
+            !File('${file.parent.path}/$value').existsSync()) {
+          throw FormatException(
+            'embodied day-cycle checkpoint artifact is invalid (${entry.key}, $expectedDay): $name',
+          );
+        }
+      }
+      final metadata = await parseCaptureMetadata(
+        File('${file.parent.path}/${capture['metadata']}'),
+      );
+      final digest = await parseCaptureDigest(
+        File('${file.parent.path}/${capture['digest']}'),
+      );
+      if (metadata['captureScenario'] != scenario ||
+          metadata['captureRoute'] != routeName ||
+          metadata['capturePath'] != routePath ||
+          metadata['captureScreenshot'] != capture['screenshot'] ||
+          digest['screenshot'] != capture['screenshot'] ||
+          digest['metadata'] != capture['metadata']) {
+        throw FormatException(
+          'embodied day-cycle checkpoint disagrees with capture metadata ($expectedDay): $name',
+        );
+      }
+    }
   }
   final settle = evidence['settle'];
   final positiveSettleMs = settle is Map ? settle['positiveMs'] : null;
@@ -692,7 +778,9 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
       denialClearMs is! num ||
       !denialClearMs.toDouble().isFinite ||
       denialClearMs.toDouble() < 0) {
-    throw FormatException('embodied evidence prompt settle timing is invalid: $name');
+    throw FormatException(
+      'embodied evidence prompt settle timing is invalid: $name',
+    );
   }
   final inputTrace = evidence['inputTrace'];
   if (inputTrace is! List || inputTrace.isEmpty) {
@@ -764,5 +852,6 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
     'embodiedReplayKey': decoded['replayKey'],
     'embodiedFocusCleared': true,
     'embodiedDenialStable': true,
+    'embodiedDayCycleDays': scenario == 'days-1-3' ? 3 : 0,
   });
 }

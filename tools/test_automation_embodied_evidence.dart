@@ -8,10 +8,7 @@ Future<void> main() async {
   try {
     final valid = File('${root.path}/browser-valid-embodied.json')
       ..writeAsStringSync(jsonEncode(_payload()));
-    for (final name in const [
-      'browser-valid.png',
-      'browser-valid.digest.json',
-    ]) {
+    for (final name in const ['browser-valid.png']) {
       File('${root.path}/$name').writeAsStringSync('{}');
     }
     File('${root.path}/browser-valid.json').writeAsStringSync(
@@ -28,6 +25,47 @@ Future<void> main() async {
         'screenshot': 'browser-valid.png',
       }),
     );
+    File('${root.path}/browser-valid.digest.json').writeAsStringSync(
+      jsonEncode({
+        'schemaVersion': 1,
+        'screenshot': 'browser-valid.png',
+        'metadata': 'browser-valid.json',
+        'screenshotSha256': await runner.sha256File(
+          File('${root.path}/browser-valid.png'),
+        ),
+        'metadataSha256': await runner.sha256File(
+          File('${root.path}/browser-valid.json'),
+        ),
+      }),
+    );
+    for (var day = 1; day <= 3; day++) {
+      final screenshot = File('${root.path}/browser-day-$day.png')
+        ..writeAsStringSync('{}');
+      final metadata = File('${root.path}/browser-day-$day.json')
+        ..writeAsStringSync(
+          jsonEncode({
+            'schemaVersion': 1,
+            'scenario': 'days-1-3',
+            'requestedRenderer': 'next',
+            'requestedProfile': 'safe',
+            'negotiatedProfile': 'high',
+            'profileNegotiation': 'capability-negotiated',
+            'viewport': {'width': 640, 'height': 480},
+            'routeName': 'pixeldart-next',
+            'routePath': '/?renderer=next',
+            'screenshot': screenshot.uri.pathSegments.last,
+          }),
+        );
+      File('${root.path}/browser-day-$day.digest.json').writeAsStringSync(
+        jsonEncode({
+          'schemaVersion': 1,
+          'screenshot': screenshot.uri.pathSegments.last,
+          'metadata': metadata.uri.pathSegments.last,
+          'screenshotSha256': await runner.sha256File(screenshot),
+          'metadataSha256': await runner.sha256File(metadata),
+        }),
+      );
+    }
     final metadata = await runner.parseCaptureMetadata(
       File('${root.path}/browser-valid.json'),
     );
@@ -51,9 +89,16 @@ Future<void> main() async {
       parsed['embodiedCaptureScreenshot'] == 'browser-valid.png',
       'capture screenshot binding parses',
     );
-    _expect(parsed['embodiedFocusSettleMs'] == 120, 'focus settle timing parses');
+    _expect(
+      parsed['embodiedFocusSettleMs'] == 120,
+      'focus settle timing parses',
+    );
     _expect(parsed['embodiedInputTraceCount'] == 5, 'input trace parses');
-    _expect(parsed['embodiedRestoreStable'] == true, 'restore checkpoint parses');
+    _expect(
+      parsed['embodiedRestoreStable'] == true,
+      'restore checkpoint parses',
+    );
+    _expect(parsed['embodiedDayCycleDays'] == 3, 'three-day cycle parses');
     _expect(
       (parsed['embodiedMovementDistance'] as double) > 0.005,
       'movement distance parses',
@@ -186,6 +231,28 @@ Future<void> main() async {
       jsonEncode(contradictoryMetadata),
       'contradictory capture metadata rejects',
     );
+    final contradictoryDigest = _payload();
+    (contradictoryDigest['capture'] as Map)['digest'] =
+        'browser-other.digest.json';
+    File('${root.path}/browser-other.digest.json').writeAsStringSync(
+      jsonEncode({
+        'schemaVersion': 1,
+        'screenshot': 'browser-valid.png',
+        'metadata': 'browser-other.json',
+        'screenshotSha256': await runner.sha256File(
+          File('${root.path}/browser-valid.png'),
+        ),
+        'metadataSha256': await runner.sha256File(
+          File('${root.path}/browser-other.json'),
+        ),
+      }),
+    );
+    await _expectFormatFailure(
+      root,
+      'browser-contradictory-digest-embodied.json',
+      jsonEncode(contradictoryDigest),
+      'contradictory capture digest rejects',
+    );
     final unexplainedProfile = _payload()..['profileNegotiation'] = 'honored';
     await _expectFormatFailure(
       root,
@@ -199,6 +266,26 @@ Future<void> main() async {
       'browser-false-negotiation-embodied.json',
       jsonEncode(falseNegotiation),
       'same profile cannot be capability-negotiated',
+    );
+    final missingDayCheckpoint = _payload();
+    final dayEvidence = missingDayCheckpoint['evidence'] as Map;
+    final dayCycle = dayEvidence['dayCycle'] as Map;
+    (dayCycle['checkpoints'] as List).removeLast();
+    await _expectFormatFailure(
+      root,
+      'browser-missing-day-checkpoint-embodied.json',
+      jsonEncode(missingDayCheckpoint),
+      'three-day playable evidence requires all checkpoints',
+    );
+    final mislabeledDayTransition = _payload();
+    final mislabeledEvidence = mislabeledDayTransition['evidence'] as Map;
+    final mislabeledCycle = mislabeledEvidence['dayCycle'] as Map;
+    (mislabeledCycle['transitions'] as List)[0] = 'teleport:day-1→day-2';
+    await _expectFormatFailure(
+      root,
+      'browser-mislabeled-day-transition-embodied.json',
+      jsonEncode(mislabeledDayTransition),
+      'day-cycle evidence requires the authored Rest transitions',
     );
     stdout.writeln(
       'automation embodied evidence: valid and failure fixtures pass',
@@ -232,7 +319,7 @@ Map<String, Object?> _payload() => {
     'saveAuthoritative': true,
     'movementAuthoritative': true,
   },
-    'evidence': {
+  'evidence': {
     'before': _pose('living-room', 5.5, 1.65, 3.5),
     'approach': _pose('living-room', 4.2, 1.65, 2.4),
     'positive': {
@@ -258,6 +345,17 @@ Map<String, Object?> _payload() => {
       'mantle': {'lit': true, 'examined': true},
       'distance': 0.0,
     },
+    'dayCycle': {
+      'schemaVersion': 1,
+      'startDay': 1,
+      'endDay': 3,
+      'transitions': ['Rest:day-1→day-2', 'Rest:day-2→day-3'],
+      'checkpoints': [
+        _dayCheckpoint(1, 'browser-day-1'),
+        _dayCheckpoint(2, 'browser-day-2'),
+        _dayCheckpoint(3, 'browser-day-3'),
+      ],
+    },
   },
   'evidenceNormalized': {
     'before': _pose('living-room', 5.5, 1.7, 3.5),
@@ -276,6 +374,16 @@ Map<String, Object?> _payload() => {
   },
   'normalizationMeters': 0.5,
   'replayKey': 'fixture-replay-key',
+};
+
+Map<String, Object?> _dayCheckpoint(int day, String stem) => {
+  'day': day,
+  'hour': 6.0,
+  'capture': {
+    'screenshot': '$stem.png',
+    'metadata': '$stem.json',
+    'digest': '$stem.digest.json',
+  },
 };
 
 Map<String, Object?> _pose(String roomId, double x, double y, double z) => {

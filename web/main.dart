@@ -1609,6 +1609,7 @@ void _configureControlsSettingsPanel() {
     ..onChanged = (profile) {
       _controlsSettings = profile;
       _input.setBindings(profile.bindings);
+      _input.setHoldToInteract(profile.holdToInteract);
       _persistControlsSettings();
     }
     ..onBack = () {
@@ -1633,6 +1634,7 @@ void _loadControlsSettings() {
   }
   _controlsSettingsPanel.setProfile(_controlsSettings);
   _input.setBindings(_controlsSettings.bindings);
+  _input.setHoldToInteract(_controlsSettings.holdToInteract);
   _persistControlsSettings();
 }
 
@@ -2825,6 +2827,7 @@ void _update(double dt) {
   }
 
   final moveDir = _input.moveVector;
+  _input.step(dt);
   final mouseDx = _input.mouseDx;
   final mouseDy = _input.mouseDy;
 

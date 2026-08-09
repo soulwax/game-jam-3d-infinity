@@ -6,6 +6,12 @@ on changes players or contributors can feel. Detailed renderer notes belong in
 
 ## Unreleased
 
+- Turned the `days-1-3` browser scenario into a playable Day 1 → Day 2 → Day 3
+  loop through the real Rest panel, with save-backed checkpoints and captures.
+- Day-cycle evidence now rejects missing checkpoints or mismatched capture
+  sidecars before it enters an automation report.
+- Day-cycle evidence now requires the ordered authored Rest transitions, so a
+  mislabeled or synthetic day advance cannot look like playable progress.
 - Added authored inventory focus and inspection feedback, so pickable house
   objects can participate in the normal focus path.
 - Made repeated release builds safe when generated house manifests are present,
@@ -72,6 +78,13 @@ on changes players or contributors can feel. Detailed renderer notes belong in
   pose and mantle state survive save/restore before accepting the final capture.
 - Capture digests now verify SHA-256 values against the actual screenshot and
   metadata bytes, rejecting stale or tampered hashes.
+- Embodied evidence now checks that screenshot, metadata, and digest sidecars
+  form one referentially consistent capture triplet; direct mismatch fixtures
+  cover the failure path.
+- Settings smoke failures now include bounded panel/focus/door/boot diagnostics
+  instead of an opaque 30-second timeout.
+- Browser smoke now follows semantic Pause and Settings child IDs; it records
+  the current pause-stack focus handoff as VIS-037 when Escape collapses to play.
 - Recorded an inventory reachability blocker: the post-mantle room/pose handoff
   can leave the player outside the living-room boundary, so inventory coverage
   is not reported as passing yet.
@@ -98,6 +111,8 @@ on changes players or contributors can feel. Detailed renderer notes belong in
   changes, and existing ambient/audio cues can surface as non-speech captions.
 - Completed the accessibility precedence matrix, added a follow-system reset,
   and captioned authored door, shutter, mantle, rupture, and service cues.
+- Made the persisted Controls “hold to interact” option gameplay-effective with
+  a single thresholded action edge and no held-key repeats.
 
 ## [0.1.2.0] — 2026-08-09
 

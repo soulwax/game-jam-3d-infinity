@@ -589,6 +589,7 @@ class CompiledApp {
       _4214: () => globalThis.WebGL2RenderingContext.MAX_TEXTURE_SIZE,
       _4236: () => globalThis.WebGL2RenderingContext.UNSIGNED_BYTE,
       _4238: () => globalThis.WebGL2RenderingContext.UNSIGNED_SHORT,
+      _4240: () => globalThis.WebGL2RenderingContext.UNSIGNED_INT,
       _4241: () => globalThis.WebGL2RenderingContext.FLOAT,
       _4245: () => globalThis.WebGL2RenderingContext.RGBA,
       _4251: () => globalThis.WebGL2RenderingContext.FRAGMENT_SHADER,

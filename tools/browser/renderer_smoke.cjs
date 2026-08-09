@@ -66,6 +66,65 @@ function decodeSavedPlayer(raw, label) {
   };
 }
 
+function decodeSavedCalendar(raw, label) {
+  if (!raw) throw new Error(`${label}: save payload missing`);
+  let snapshot;
+  try {
+    snapshot = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`${label}: save payload was not JSON: ${error}`);
+  }
+  const time = snapshot?.run?.time;
+  if (snapshot?.version !== 2 || !time ||
+      !Number.isInteger(time.day) || time.day < 1 ||
+      typeof time.hour !== 'number' || !Number.isFinite(time.hour) ||
+      time.hour < 0 || time.hour >= 24) {
+    throw new Error(`${label}: authoritative calendar state was incomplete`);
+  }
+  return { day: time.day, hour: time.hour };
+}
+
+async function waitForSavedDay(page, expectedDay, label) {
+  try {
+    await page.waitForFunction(
+      (day) => {
+        try {
+          const raw = window.localStorage.getItem('quarantine.save.active');
+          const snapshot = raw ? JSON.parse(raw) : null;
+          return snapshot?.version === 2 && snapshot?.run?.time?.day === day;
+        } catch (_) {
+          return false;
+        }
+      },
+      expectedDay,
+      { timeout: 5000, polling: 50 },
+    );
+  } catch (error) {
+    const observed = await page.evaluate(() =>
+      window.localStorage.getItem('quarantine.save.active'));
+    throw new Error(`${label}: saved day did not settle ${JSON.stringify({ expectedDay, observed, error: String(error) })}`);
+  }
+  return decodeSavedCalendar(
+    await page.evaluate(() => window.localStorage.getItem('quarantine.save.active')),
+    label,
+  );
+}
+
+async function sleepToDay(page, expectedDay, label) {
+  await page.keyboard.press('l');
+  await waitForPanelOpen(page, 'Rest', `${label}: rest open`);
+  const rest = page.locator('.panel[aria-label="Rest"].open');
+  const choice = rest.locator('button').first();
+  await choice.waitFor({ state: 'visible', timeout: 5000 });
+  await choice.click();
+  await page.waitForFunction(
+    () => !document.querySelector('.panel[aria-label="Rest"]')?.classList.contains('open'),
+    null,
+    { timeout: 5000, polling: 50 },
+  );
+  return waitForSavedDay(page, expectedDay, `${label}: day ${expectedDay}`);
+}
+
 function playerDistance(a, b) {
   return Math.hypot(
     a.eye.x - b.eye.x,
@@ -105,6 +164,66 @@ async function waitForPrompt(page, expected, label) {
     throw new Error(`${label}: prompt did not settle ${JSON.stringify({ expected, observed, error: String(error) })}`);
   }
   return Date.now() - started;
+}
+
+async function waitForSettingsState(
+  page,
+  expectedOpen,
+  label,
+  ariaLabel = 'House settings',
+) {
+  try {
+    await page.waitForFunction(
+      ({ open, expectedLabel }) => document
+        .querySelector(`.panel[aria-label="${expectedLabel}"]`)
+        ?.classList.contains('open') === open,
+      { open: expectedOpen, expectedLabel: ariaLabel },
+      { timeout: 5000, polling: 50 },
+    );
+  } catch (error) {
+    const observed = await page.evaluate((expectedLabel) => {
+      const panel = document.querySelector(`.panel[aria-label="${expectedLabel}"]`);
+      const door = document.querySelector('.door');
+      const game = document.querySelector('#game');
+      return {
+        panel: panel ? {
+          className: panel.className,
+          hidden: panel.getAttribute('hidden'),
+          active: panel.contains(document.activeElement),
+        } : null,
+        activeId: document.activeElement?.id ?? '',
+        door: door ? {
+          visible: door.classList.contains('visible'),
+          focused: door.contains(document.activeElement),
+        } : null,
+        bootPhase: game?.getAttribute('data-boot-phase'),
+        renderer: game?.getAttribute('data-renderer-backend'),
+      };
+    }, ariaLabel);
+    throw new Error(`${label}: settings state did not settle ${JSON.stringify({ expectedOpen, ariaLabel, observed, error: String(error) })}`);
+  }
+}
+
+async function waitForPanelOpen(page, ariaLabel, label) {
+  try {
+    await page.waitForFunction(
+      (expectedLabel) => document
+        .querySelector(`.panel[aria-label="${expectedLabel}"]`)
+        ?.classList.contains('open') === true,
+      ariaLabel,
+      { timeout: 5000, polling: 50 },
+    );
+  } catch (error) {
+    const observed = await page.evaluate((expectedLabel) => {
+      const panel = document.querySelector(`.panel[aria-label="${expectedLabel}"]`);
+      return {
+        className: panel?.className ?? null,
+        hidden: panel?.getAttribute('hidden') ?? null,
+        activeId: document.activeElement?.id ?? '',
+      };
+    }, ariaLabel);
+    throw new Error(`${label}: panel did not open ${JSON.stringify({ ariaLabel, observed, error: String(error) })}`);
+  }
 }
 
 async function captureAutomationScreenshot(page, routeName, routePath, result, suffix = '') {
@@ -572,24 +691,21 @@ async function dismissVisitorDialogs(page, label) {
       }
       if (name === 'pixeldart-next') {
         await page.keyboard.press('Escape');
-        await page.waitForFunction(
-          () => document.querySelector('.panel[aria-label="House settings"]')?.classList.contains('open') === true,
-          null,
+        await waitForPanelOpen(page, 'Pause menu', `${name}: pause open`);
+        await page.locator('[id="pause.settings"]').click();
+        await waitForPanelOpen(page, 'Settings categories', `${name}: settings index open`);
+        await page.locator('[id="settings.visual"]').click();
+        await waitForSettingsState(page, true, `${name}: visual settings open`, 'visual settings');
+        const visualPanel = page.locator('.panel[aria-label="visual settings"].open');
+        const visualBrightness = visualPanel.locator('#setting-brightness');
+        await visualBrightness.waitFor({ state: 'visible', timeout: 5000 });
+        const visualFocused = await visualPanel.evaluate((panel) =>
+          panel.contains(document.activeElement),
         );
-        const openedSettings = await page.evaluate(() => {
-          const panel = document.querySelector('.panel[aria-label="House settings"]');
-          const brightness = document.querySelector('#setting-brightness');
-          return {
-            open: panel?.classList.contains('open') === true,
-            focusedInside: panel?.contains(document.activeElement) === true,
-            brightnessExists: brightness instanceof HTMLInputElement,
-          };
-        });
-        if (!openedSettings.open || !openedSettings.focusedInside ||
-            !openedSettings.brightnessExists) {
-          throw new Error(`Escape settings open/focus failed ${JSON.stringify(openedSettings)}`);
+        if (!visualFocused) {
+          throw new Error(`Visual settings did not retain focus: ${await page.evaluate(() => document.activeElement?.id ?? '')}`);
         }
-        await page.locator('#setting-brightness').evaluate((input) => {
+        await visualBrightness.evaluate((input) => {
           input.value = '1.25';
           input.dispatchEvent(new Event('input', { bubbles: true }));
         });
@@ -601,13 +717,22 @@ async function dismissVisitorDialogs(page, label) {
           throw new Error(`brightness preference routed incorrectly ${JSON.stringify(displayPreference)}`);
         }
         await page.keyboard.press('Escape');
-        await page.waitForFunction(
-          () => document.querySelector('.panel[aria-label="House settings"]')?.hasAttribute('hidden') === true,
-          null,
-        );
+        await waitForSettingsState(page, false, `${name}: visual settings close`, 'visual settings');
+        await waitForPanelOpen(page, 'Settings categories', `${name}: settings index restore`);
+        const indexFocus = await page.evaluate(() => document.activeElement?.id ?? '');
+        if (indexFocus !== 'settings.visual') {
+          throw new Error(`Escape visual settings focus restore failed: ${indexFocus}`);
+        }
+        await page.keyboard.press('Escape');
+        await waitForPanelOpen(page, 'Pause menu', `${name}: pause restore`);
+        const pauseFocus = await page.evaluate(() => document.activeElement?.id ?? '');
+        if (pauseFocus !== 'pause.settings') {
+          throw new Error(`Escape settings index focus restore failed: ${pauseFocus}`);
+        }
+        await page.keyboard.press('Escape');
         const resumedFocus = await page.evaluate(() => document.activeElement?.id ?? '');
         if (resumedFocus !== 'game') {
-          throw new Error(`Escape settings close/focus failed: ${resumedFocus}`);
+          throw new Error(`Escape pause close/focus failed: ${resumedFocus}`);
         }
       }
       if (name === 'pixeldart-next') {
@@ -771,6 +896,47 @@ async function dismissVisitorDialogs(page, label) {
           result,
           'embodied-capture',
         );
+        // The named days-1-3 scenario is a playable calendar slice: advance
+        // through the real Rest panel and retain save-backed checkpoints for
+        // each of the first three days. No state teleport or direct storage
+        // mutation is permitted here.
+        const dayCycle = [];
+        const captureDay = async (day, suffix) => {
+          await page.keyboard.press('k');
+          await page.waitForTimeout(80);
+          const calendar = decodeSavedCalendar(
+            await page.evaluate(() => window.localStorage.getItem('quarantine.save.active')),
+            `${name}: day ${day}`,
+          );
+          if (calendar.day !== day) {
+            throw new Error(`${name}: expected playable day ${day} ${JSON.stringify(calendar)}`);
+          }
+          const capture = await captureAutomationScreenshot(
+            page,
+            name,
+            path,
+            result,
+            suffix,
+          );
+          dayCycle.push({
+            day: calendar.day,
+            hour: calendar.hour,
+            capture: {
+              screenshot: pathModule.basename(capture.file),
+              metadata: pathModule.basename(capture.metadataFile),
+              digest: pathModule.basename(capture.digestFile),
+            },
+          });
+        };
+        await captureDay(1, 'day-1');
+        traceInput('KeyL:sleep-day-1');
+        await sleepToDay(page, 2, `${name}: day 1 sleep`);
+        await dismissVisitorDialogs(page, `${name}: day 2`);
+        await captureDay(2, 'day-2');
+        traceInput('KeyL:sleep-day-2');
+        await sleepToDay(page, 3, `${name}: day 2 sleep`);
+        await dismissVisitorDialogs(page, `${name}: day 3`);
+        await captureDay(3, 'day-3');
         writeEmbodiedEvidence(name, path, result, {
           before,
           approach,
@@ -780,6 +946,13 @@ async function dismissVisitorDialogs(page, label) {
           settle: { positiveMs: focusSettleMs, denialClearMs },
           inputTrace,
           restore: { player: restored, mantle: restoredMantle, distance: restoreDistance },
+          dayCycle: {
+            schemaVersion: 1,
+            startDay: 1,
+            endDay: 3,
+            transitions: ['Rest:day-1→day-2', 'Rest:day-2→day-3'],
+            checkpoints: dayCycle,
+          },
         }, embodiedCapture);
         console.log(`embodied-denial: ${JSON.stringify({ route: name, prompt: clearedPrompt, mantle: denialAfter })}`);
         console.log(`embodied-input: ${JSON.stringify({ route: name, roomBefore: before.roomId, roomAfter: after.roomId, distance })}`);

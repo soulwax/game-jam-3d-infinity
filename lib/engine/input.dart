@@ -3,6 +3,7 @@ import 'dart:js_interop_unsafe';
 
 import 'package:web/web.dart' as web;
 
+import 'interaction_press_policy.dart';
 import 'math3.dart';
 
 class Input {
@@ -15,6 +16,7 @@ class Input {
   bool _locked = false;
   bool _moveThisFrame = false;
   bool _gameplayEnabled = true;
+  final InteractionPressPolicy _interactPolicy = InteractionPressPolicy();
   final Map<String, String> _bindings = {
     'moveForward': 'KeyW',
     'moveBack': 'KeyS',
@@ -44,6 +46,11 @@ class Input {
       final code = bindings[action];
       if (code != null && code.isNotEmpty) _bindings[action] = code;
     }
+    _clearGameplayState();
+  }
+
+  void setHoldToInteract(bool enabled) {
+    _interactPolicy.configure(holdToInteract: enabled);
     _clearGameplayState();
   }
 
@@ -84,6 +91,15 @@ class Input {
 
   bool get interactPressed => wasPressed(_bindings['interact']!);
 
+  /// Advances the optional hold interaction without generating repeat edges.
+  /// A held interaction becomes one action after the comfort threshold; a
+  /// normal interaction remains an immediate key edge.
+  void step(double dt) {
+    if (_interactPolicy.step(dt)) {
+      _pressed.add(_bindings['interact']!);
+    }
+  }
+
   bool isDown(String code) => _held.contains(code);
 
   bool wasPressed(String code) => _pressed.remove(code);
@@ -98,11 +114,20 @@ class Input {
   void _onKeyDown(web.KeyboardEvent e) {
     if (e.repeat) return;
     if (!_gameplayEnabled) return;
-    if (_held.add(e.code)) _pressed.add(e.code);
+    if (_held.add(e.code)) {
+      if (e.code == _bindings['interact']) {
+        if (_interactPolicy.keyDown()) _pressed.add(e.code);
+      } else {
+        _pressed.add(e.code);
+      }
+    }
   }
 
   void _onKeyUp(web.KeyboardEvent e) {
     _held.remove(e.code);
+    if (e.code == _bindings['interact']) {
+      _interactPolicy.keyUp();
+    }
   }
 
   void _onMouseMove(web.MouseEvent e) {
@@ -126,5 +151,6 @@ class Input {
     _mouseDx = 0;
     _mouseDy = 0;
     _moveThisFrame = false;
+    _interactPolicy.reset();
   }
 }
