@@ -13,6 +13,7 @@ class SettingsPanel extends Panel {
   void Function(bool strongHighlights)? onStrongHighlights;
   final Map<String, web.HTMLInputElement> _levels = {};
   final Map<String, web.HTMLElement> _values = {};
+  final Map<String, (double, double)> _ranges = {};
   web.HTMLInputElement? _mute;
   web.HTMLInputElement? _mono;
   web.HTMLInputElement? _highContrast;
@@ -161,6 +162,7 @@ class SettingsPanel extends Panel {
     row.appendChild(value);
     _levels[key] = input;
     _values[key] = value;
+    _ranges[key] = (min, max);
     return row;
   }
 
@@ -168,7 +170,8 @@ class SettingsPanel extends Panel {
     final input = _levels[key];
     final output = _values[key];
     if (input == null || output == null) return;
-    final clamped = value.clamp(0.0, 1.0).toDouble();
+    final range = _ranges[key] ?? (0.0, 1.0);
+    final clamped = value.clamp(range.$1, range.$2).toDouble();
     input.value = clamped.toString();
     output.textContent = '${(clamped * 100).round()}%';
   }
