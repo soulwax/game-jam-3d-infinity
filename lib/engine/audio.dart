@@ -75,6 +75,7 @@ class Audio {
 
   int get activeSpatialSources => _filterChains.length;
   bool get musicStarted => _musicStarted;
+  String get roomIr => _roomIr ?? 'ir-fallback';
 
   late final web.BiquadFilterNode _vhsHpFilter;
   late final web.BiquadFilterNode _vhsLpFilter;

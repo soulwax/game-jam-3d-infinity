@@ -1853,6 +1853,7 @@ void _raf(num ts) {
           'data-audio-music-started',
           audio.musicStarted ? 'true' : 'false',
         );
+        _canvas.setAttribute('data-audio-room-ir', audio.roomIr);
       }
     }
 
