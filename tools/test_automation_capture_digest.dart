@@ -6,18 +6,20 @@ import 'automation.dart' as runner;
 Future<void> main() async {
   final root = await Directory.systemTemp.createTemp('capture digest ');
   try {
+    final screenshot = File('${root.path}/browser-valid.png')
+      ..writeAsBytesSync(const [1, 2, 3]);
+    final metadata = File('${root.path}/browser-valid.json')
+      ..writeAsStringSync('{}');
     final valid = File('${root.path}/browser-valid.digest.json')
       ..writeAsStringSync(
         jsonEncode({
           'schemaVersion': 1,
           'screenshot': 'browser-valid.png',
           'metadata': 'browser-valid.json',
-          'screenshotSha256': 'a' * 64,
-          'metadataSha256': 'b' * 64,
+          'screenshotSha256': await runner.sha256File(screenshot),
+          'metadataSha256': await runner.sha256File(metadata),
         }),
       );
-    File('${root.path}/browser-valid.png').writeAsBytesSync(const [1, 2, 3]);
-    File('${root.path}/browser-valid.json').writeAsStringSync('{}');
     final parsed = await runner.parseCaptureDigest(valid);
     _expect(parsed['schemaVersion'] == '1', 'schema version parses');
     _expect(
@@ -25,8 +27,27 @@ Future<void> main() async {
       'screenshot name parses',
     );
     _expect(parsed['metadata'] == 'browser-valid.json', 'metadata name parses');
-    _expect(parsed['screenshotSha256'] == 'a' * 64, 'screenshot hash parses');
-    _expect(parsed['metadataSha256'] == 'b' * 64, 'metadata hash parses');
+    _expect(
+      parsed['screenshotSha256'] == await runner.sha256File(screenshot),
+      'screenshot hash parses',
+    );
+    _expect(
+      parsed['metadataSha256'] == await runner.sha256File(metadata),
+      'metadata hash parses',
+    );
+
+    await _expectFormatFailure(
+      root,
+      'browser-mismatch.digest.json',
+      jsonEncode({
+        'schemaVersion': 1,
+        'screenshot': 'browser-valid.png',
+        'metadata': 'browser-valid.json',
+        'screenshotSha256': '0' * 64,
+        'metadataSha256': await runner.sha256File(metadata),
+      }),
+      'hash mismatch rejects',
+    );
 
     await _expectFormatFailure(
       root,

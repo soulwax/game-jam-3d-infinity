@@ -15,6 +15,13 @@ class Input {
   bool _locked = false;
   bool _moveThisFrame = false;
   bool _gameplayEnabled = true;
+  final Map<String, String> _bindings = {
+    'moveForward': 'KeyW',
+    'moveBack': 'KeyS',
+    'moveLeft': 'KeyA',
+    'moveRight': 'KeyD',
+    'interact': 'KeyE',
+  };
 
   Input(web.Window window) : _document = window.document {
     window.addEventListener('keydown', _onKeyDown.toJS);
@@ -31,6 +38,14 @@ class Input {
   bool get locked => _locked;
 
   bool get gameplayEnabled => _gameplayEnabled;
+
+  void setBindings(Map<String, String> bindings) {
+    for (final action in _bindings.keys) {
+      final code = bindings[action];
+      if (code != null && code.isNotEmpty) _bindings[action] = code;
+    }
+    _clearGameplayState();
+  }
 
   /// Suspends gameplay input while a modal panel owns focus.
   ///
@@ -56,10 +71,10 @@ class Input {
   Vec3 get moveVector {
     var x = 0.0;
     var z = 0.0;
-    if (_held.contains('KeyA')) x -= 1;
-    if (_held.contains('KeyD')) x += 1;
-    if (_held.contains('KeyW')) z += 1;
-    if (_held.contains('KeyS')) z -= 1;
+    if (isDown(_bindings['moveLeft']!)) x -= 1;
+    if (isDown(_bindings['moveRight']!)) x += 1;
+    if (isDown(_bindings['moveForward']!)) z += 1;
+    if (isDown(_bindings['moveBack']!)) z -= 1;
     final v = Vec3(x, 0, z);
     _moveThisFrame = x != 0 || z != 0;
     return v.length > 1 ? v.normalized : v;
@@ -67,7 +82,7 @@ class Input {
 
   bool get movePressed => _moveThisFrame;
 
-  bool get interactPressed => wasPressed('KeyE');
+  bool get interactPressed => wasPressed(_bindings['interact']!);
 
   bool isDown(String code) => _held.contains(code);
 

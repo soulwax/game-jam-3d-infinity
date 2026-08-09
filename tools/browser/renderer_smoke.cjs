@@ -33,13 +33,88 @@ function readAutomationArgs() {
 
 const automationArgs = readAutomationArgs();
 
-async function captureAutomationScreenshot(page, routeName, routePath, result) {
+function profileNegotiationStatus(requested, effective, diagnostics) {
+  if (!requested || !effective) return null;
+  if (requested === effective) return 'honored';
+  if (Array.isArray(diagnostics?.capabilities) &&
+      diagnostics.capabilities.includes(`negotiated-profile-${effective}`)) {
+    return 'capability-negotiated';
+  }
+  return 'unexplained';
+}
+
+function decodeSavedPlayer(raw, label) {
+  if (!raw) throw new Error(`${label}: save payload missing`);
+  let snapshot;
+  try {
+    snapshot = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`${label}: save payload was not JSON: ${error}`);
+  }
+  const player = snapshot?.meta?.player;
+  const eye = player?.eye;
+  if (snapshot?.version !== 2 || typeof player?.roomId !== 'string' ||
+      !eye || ![eye.x, eye.y, eye.z, player.yaw, player.pitch]
+        .every((value) => typeof value === 'number' && Number.isFinite(value))) {
+    throw new Error(`${label}: authoritative player state was incomplete`);
+  }
+  return {
+    roomId: player.roomId,
+    eye: { x: eye.x, y: eye.y, z: eye.z },
+    yaw: player.yaw,
+    pitch: player.pitch,
+  };
+}
+
+function playerDistance(a, b) {
+  return Math.hypot(
+    a.eye.x - b.eye.x,
+    a.eye.y - b.eye.y,
+    a.eye.z - b.eye.z,
+  );
+}
+
+function savedMantleState(raw, mantleId, label) {
+  if (!raw) throw new Error(`${label}: save payload missing`);
+  let snapshot;
+  try {
+    snapshot = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`${label}: save payload was not JSON: ${error}`);
+  }
+  const mantle = snapshot?.run?.house?.mantles?.[mantleId];
+  if (typeof mantle?.lit !== 'boolean' || typeof mantle?.examined !== 'boolean') {
+    throw new Error(`${label}: mantle state missing for ${mantleId}`);
+  }
+  return { lit: mantle.lit, examined: mantle.examined };
+}
+
+async function waitForPrompt(page, expected, label) {
+  const started = Date.now();
+  try {
+    await page.waitForFunction(
+      (needle) => {
+        const value = document.querySelector('.prompt')?.textContent?.trim() ?? '';
+        return needle === '' ? value === '' : value.includes(needle);
+      },
+      expected,
+      { timeout: 2000, polling: 50 },
+    );
+  } catch (error) {
+    const observed = await page.locator('.prompt').textContent();
+    throw new Error(`${label}: prompt did not settle ${JSON.stringify({ expected, observed, error: String(error) })}`);
+  }
+  return Date.now() - started;
+}
+
+async function captureAutomationScreenshot(page, routeName, routePath, result, suffix = '') {
   const runDir = process.env.AUTOMATION_RUN_DIR;
   if (!automationArgs || !runDir) return null;
   const safeRoute = routeName.replace(/[^a-z0-9._-]/gi, '-');
+  const safeSuffix = suffix ? `-${suffix.replace(/[^a-z0-9._-]/gi, '-')}` : '';
   const file = pathModule.join(
     runDir,
-    `browser-${automationArgs.scenario}-${safeRoute}.png`,
+    `browser-${automationArgs.scenario}-${safeRoute}${safeSuffix}.png`,
   );
   await page.screenshot({
     path: file,
@@ -55,8 +130,15 @@ async function captureAutomationScreenshot(page, routeName, routePath, result) {
   }
   const metadataFile = file.replace(/\.png$/, '.json');
   let negotiatedProfile = null;
+  let profileNegotiation = null;
   try {
-    negotiatedProfile = JSON.parse(result.diagnostics ?? '{}').profile ?? null;
+    const diagnostics = JSON.parse(result.diagnostics ?? '{}');
+    negotiatedProfile = diagnostics.profile ?? null;
+    profileNegotiation = profileNegotiationStatus(
+      automationArgs.profile,
+      negotiatedProfile,
+      diagnostics,
+    );
   } catch (_) {
     // The normal diagnostics assertion below reports malformed JSON.
   }
@@ -68,6 +150,7 @@ async function captureAutomationScreenshot(page, routeName, routePath, result) {
       requestedRenderer: automationArgs.renderer,
       requestedProfile: automationArgs.profile,
       negotiatedProfile,
+      profileNegotiation,
       viewport: { width: automationArgs.width, height: automationArgs.height },
       routeName,
       routePath,
@@ -91,6 +174,115 @@ async function captureAutomationScreenshot(page, routeName, routePath, result) {
   return { file, metadataFile, digestFile };
 }
 
+function writeEmbodiedEvidence(routeName, routePath, result, evidence, capture) {
+  const runDir = process.env.AUTOMATION_RUN_DIR;
+  if (!automationArgs || !runDir) return null;
+  const safeRoute = routeName.replace(/[^a-z0-9._-]/gi, '-');
+  const file = pathModule.join(
+    runDir,
+    `browser-${automationArgs.scenario}-${safeRoute}-embodied.json`,
+  );
+  if (!capture?.file || !capture.metadataFile || !capture.digestFile) {
+    throw new Error(`${routeName}: embodied capture bundle was not produced`);
+  }
+  let effectiveProfile = null;
+  let profileNegotiation = null;
+  try {
+    const diagnostics = JSON.parse(result.diagnostics ?? '{}');
+    effectiveProfile = diagnostics.profile ?? null;
+    profileNegotiation = profileNegotiationStatus(
+      automationArgs.profile,
+      effectiveProfile,
+      diagnostics,
+    );
+  } catch (_) {
+    // The normal diagnostics assertion reports malformed renderer metadata.
+  }
+  // Browser wall-clock key holds can vary by a few centimetres. Keep exact
+  // poses for diagnostics, but use an explicit half-metre semantic bucket for
+  // replay identity so timing jitter cannot masquerade as route divergence.
+  const roundSemantic = (value) => Math.round(value * 2) / 2;
+  const normalizePose = (pose) => ({
+    roomId: pose.roomId,
+    eye: {
+      x: roundSemantic(pose.eye.x),
+      y: roundSemantic(pose.eye.y),
+      z: roundSemantic(pose.eye.z),
+    },
+    yaw: roundSemantic(pose.yaw),
+    pitch: roundSemantic(pose.pitch),
+  });
+  const normalized = {
+    before: normalizePose(evidence.before),
+    approach: normalizePose(evidence.approach),
+    after: normalizePose(evidence.after),
+    positive: evidence.positive,
+    denial: evidence.denial,
+    movementDistance: roundSemantic(playerDistance(evidence.before, evidence.after)),
+  };
+  const replayKey = [
+    automationArgs.scenario,
+    routeName,
+    routePath,
+    automationArgs.renderer,
+    automationArgs.profile,
+    effectiveProfile,
+    normalized.before.roomId,
+    normalized.before.eye.x,
+    normalized.before.eye.y,
+    normalized.before.eye.z,
+    normalized.approach.roomId,
+    normalized.approach.eye.x,
+    normalized.approach.eye.y,
+    normalized.approach.eye.z,
+    normalized.after.roomId,
+    normalized.after.eye.x,
+    normalized.after.eye.y,
+    normalized.after.eye.z,
+    'mantle-living-second',
+  ].join('|');
+  const payload = {
+    schemaVersion: 1,
+    kind: 'embodied-route-v1',
+    scenario: automationArgs.scenario,
+    routeName,
+    routePath,
+    capture: {
+      screenshot: pathModule.basename(capture.file),
+      metadata: pathModule.basename(capture.metadataFile),
+      digest: pathModule.basename(capture.digestFile),
+    },
+    requestedRenderer: automationArgs.renderer,
+    requestedProfile: automationArgs.profile,
+    effectiveRenderer: result.backend,
+    effectiveProfile,
+    profileNegotiation,
+    actions: [
+      'visitor.ignore-until-clear',
+      'KeyS:1000ms',
+      'KeyA:600ms',
+      'KeyW:500ms',
+      'KeyE:mantle-living-second',
+      'departure:cardinal-probes+KeyS:800ms',
+      'KeyE:denied-after-focus-clear',
+    ],
+    assertions: {
+      focus: 'mantle-living-second',
+      positiveAction: 'lit-and-examined',
+      negativeAction: 'no-mutation-after-clear',
+      saveAuthoritative: true,
+      movementAuthoritative: true,
+    },
+    evidence,
+    evidenceNormalized: normalized,
+    normalizationMeters: 0.5,
+    replayKey,
+  };
+  fs.writeFileSync(file, `${JSON.stringify(payload, null, 2)}\n`);
+  console.log(`embodied-evidence: ${file}`);
+  return file;
+}
+
 const routes = [
   ['pixeldart-default', '/'],
   ['legacy-explicit', '/?renderer=legacy'],
@@ -112,6 +304,19 @@ function trackPageHealth(page) {
 
 function assertHealthy(failures, label) {
   if (failures.length) throw new Error(`${label}: ${failures.join('; ')}`);
+}
+
+async function dismissVisitorDialogs(page, label) {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const ignoreChoice = page.locator('.door.visible .door-choice').filter({ hasText: 'ignore' });
+    if (!(await ignoreChoice.count())) return;
+    // The canvas owns the container's hit-test layer in headless Firefox;
+    // dispatch the button's own click handler rather than mutating door state
+    // or bypassing the event contract with a forced pointer click.
+    await ignoreChoice.evaluate((button) => button.click());
+    await page.waitForTimeout(100);
+  }
+  throw new Error(`${label}: visitor modal kept reopening after eight real choices`);
 }
 
 (async () => {
@@ -267,6 +472,16 @@ function assertHealthy(failures, label) {
           !diagnostics.capabilities.includes(`profile-${diagnostics.profile}`)) {
         throw new Error(`${name}: selected profile is absent from capabilities ${JSON.stringify(diagnostics)}`);
       }
+      if (automationArgs && result.backend === 'next') {
+        const negotiation = profileNegotiationStatus(
+          automationArgs.profile,
+          diagnostics.profile,
+          diagnostics,
+        );
+        if (!negotiation || negotiation === 'unexplained') {
+          throw new Error(`${name}: requested/effective profile change was not explained ${JSON.stringify({ requested: automationArgs.profile, effective: diagnostics.profile, negotiation, capabilities: diagnostics.capabilities })}`);
+        }
+      }
       if (result.backend === 'next' &&
           (result.wallTexture !== 'loaded' || result.grimeTexture !== 'loaded')) {
         throw new Error(`${name}: authored Pixeldart textures did not load ${JSON.stringify(result)}`);
@@ -394,6 +609,180 @@ function assertHealthy(failures, label) {
         if (resumedFocus !== 'game') {
           throw new Error(`Escape settings close/focus failed: ${resumedFocus}`);
         }
+      }
+      if (name === 'pixeldart-next') {
+        // The canonical embodied slice starts from a clean gameplay state. The
+        // visitor modal is deliberately dismissed through its real button so
+        // movement is not a synthetic DOM mutation. Do this after the settings
+        // focus contract has been checked, since the modal owns focus on boot.
+        await dismissVisitorDialogs(page, name);
+        const inputTrace = [];
+        const inputTraceStarted = Date.now();
+        const traceInput = (label) => inputTrace.push({
+          label,
+          elapsedMs: Date.now() - inputTraceStarted,
+        });
+        traceInput('visitor.ignore-until-clear');
+        await page.keyboard.press('k');
+        traceInput('KeyK:save-before');
+        await page.waitForTimeout(100);
+        const beforeRaw = await page.evaluate(() => window.localStorage.getItem('quarantine.save.active'));
+        const before = decodeSavedPlayer(beforeRaw, `${name}: before movement`);
+        // Use short cardinal probes so a wall immediately ahead does not turn a
+        // valid movement path into a false negative. Re-arm pointer lock after
+        // the modal closes, then exercise all four cardinal inputs briefly.
+        // The authoritative save is the oracle; canvas pixels and UI counters
+        // are only corroborating.
+        await page.mouse.click(320, 240);
+        await page.waitForTimeout(100);
+        // Approach the authored living-room mantle with real
+        // movement, then settle its focus cone before sending KeyE. This is a
+        // bounded route probe, not a camera or state teleport.
+        traceInput('KeyS:down');
+        await page.keyboard.down('s');
+        await page.waitForTimeout(1000);
+        await page.keyboard.up('s');
+        traceInput('KeyS:up');
+        await page.waitForTimeout(120);
+        traceInput('KeyA:down');
+        await page.keyboard.down('a');
+        await page.waitForTimeout(600);
+        await page.keyboard.up('a');
+        traceInput('KeyA:up');
+        await page.waitForTimeout(120);
+        traceInput('KeyW:down');
+        await page.keyboard.down('w');
+        await page.waitForTimeout(500);
+        await page.keyboard.up('w');
+        traceInput('KeyW:up');
+        await page.waitForTimeout(180);
+        await page.keyboard.press('k');
+        traceInput('KeyK:save-approach');
+        await page.waitForTimeout(80);
+        const approachRaw = await page.evaluate(() => window.localStorage.getItem('quarantine.save.active'));
+        const approach = decodeSavedPlayer(approachRaw, `${name}: approach`);
+        const approachDistance = playerDistance(before, approach);
+        if (approachDistance < 0.005) {
+          throw new Error(`${name}: embodied approach did not change saved player eye ${JSON.stringify({ before, approach })}`);
+        }
+        const focusSettleMs = await waitForPrompt(
+          page,
+          'mantle',
+          `${name}: authored mantle focus`,
+        );
+        const focusedPrompt = await page.locator('.prompt').textContent();
+        await page.keyboard.press('k');
+        traceInput('KeyK:save-mantle-before');
+        await page.waitForTimeout(80);
+        const mantleBeforeRaw = await page.evaluate(() => window.localStorage.getItem('quarantine.save.active'));
+        const mantleBefore = savedMantleState(
+          mantleBeforeRaw,
+          'mantle-living-second',
+          `${name}: mantle before interaction`,
+        );
+        traceInput('KeyE:mantle-living-second');
+        await page.keyboard.press('e');
+        await page.waitForTimeout(120);
+        await page.keyboard.press('k');
+        await page.waitForTimeout(100);
+        const interactionSaveRaw = await page.evaluate(() => window.localStorage.getItem('quarantine.save.active'));
+        const mantleAfter = savedMantleState(
+          interactionSaveRaw,
+          'mantle-living-second',
+          `${name}: interaction save`,
+        );
+        if (mantleBefore.lit || mantleAfter.lit !== true || mantleAfter.examined !== true) {
+          throw new Error(`${name}: authored mantle interaction did not update state ${JSON.stringify({ prompt: focusedPrompt, approach, mantleBefore, mantleAfter })}`);
+        }
+        console.log(`embodied-interaction: ${JSON.stringify({ route: name, target: 'mantle-living-second', mantleBefore, mantleAfter })}`);
+        for (const key of ['s', 'a', 'd', 'w']) {
+          traceInput(`Key${key.toUpperCase()}:departure-down`);
+          await page.keyboard.down(key);
+          await page.waitForTimeout(300);
+          await page.keyboard.up(key);
+          traceInput(`Key${key.toUpperCase()}:departure-up`);
+          await page.waitForTimeout(80);
+        }
+        traceInput('KeyS:departure-final-down');
+        await page.keyboard.down('s');
+        await page.waitForTimeout(800);
+        await page.keyboard.up('s');
+        traceInput('KeyS:departure-final-up');
+        await page.waitForTimeout(180);
+        await page.keyboard.press('k');
+        traceInput('KeyK:save-after');
+        await page.waitForTimeout(100);
+        const afterRaw = await page.evaluate(() => window.localStorage.getItem('quarantine.save.active'));
+        const after = decodeSavedPlayer(afterRaw, `${name}: after movement`);
+        const distance = playerDistance(before, after);
+        if (distance < 0.005) {
+          throw new Error(`${name}: embodied movement did not change saved player eye ${JSON.stringify({ before, after })}`);
+        }
+        const denialClearMs = await waitForPrompt(
+          page,
+          '',
+          `${name}: mantle focus clear`,
+        );
+        const clearedPrompt = (await page.locator('.prompt').textContent())?.trim() ?? '';
+        const denialBefore = savedMantleState(
+          afterRaw,
+          'mantle-living-second',
+          `${name}: denial before interaction`,
+        );
+        traceInput('KeyE:denied-after-focus-clear');
+        await page.keyboard.press('e');
+        await page.waitForTimeout(120);
+        await page.keyboard.press('k');
+        await page.waitForTimeout(100);
+        const denialAfterRaw = await page.evaluate(() => window.localStorage.getItem('quarantine.save.active'));
+        const denialAfter = savedMantleState(
+          denialAfterRaw,
+          'mantle-living-second',
+          `${name}: denial after interaction`,
+        );
+        if (JSON.stringify(denialAfter) !== JSON.stringify(denialBefore)) {
+          throw new Error(`${name}: KeyE mutated mantle with cleared focus ${JSON.stringify({ denialBefore, denialAfter })}`);
+        }
+        traceInput('reload:restore-check');
+        await page.reload({ waitUntil: 'domcontentloaded' });
+        await page.waitForFunction(
+          () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'running',
+          null,
+          { timeout: 15000 },
+        );
+        await page.waitForTimeout(250);
+        await dismissVisitorDialogs(page, `${name}: restore`);
+        traceInput('visitor.restore-ignore-until-clear');
+        const restoredRaw = await page.evaluate(() => window.localStorage.getItem('quarantine.save.active'));
+        const restored = decodeSavedPlayer(restoredRaw, `${name}: restored player`);
+        const restoredMantle = savedMantleState(
+          restoredRaw,
+          'mantle-living-second',
+          `${name}: restored mantle`,
+        );
+        const restoreDistance = playerDistance(after, restored);
+        if (restoreDistance > 0.05 || JSON.stringify(restoredMantle) !== JSON.stringify(denialAfter)) {
+          throw new Error(`${name}: save restore diverged ${JSON.stringify({ after, restored, denialAfter, restoredMantle, restoreDistance })}`);
+        }
+        const embodiedCapture = await captureAutomationScreenshot(
+          page,
+          name,
+          path,
+          result,
+          'embodied-capture',
+        );
+        writeEmbodiedEvidence(name, path, result, {
+          before,
+          approach,
+          positive: { before: mantleBefore, after: mantleAfter },
+          after,
+          denial: { before: denialBefore, after: denialAfter, prompt: clearedPrompt },
+          settle: { positiveMs: focusSettleMs, denialClearMs },
+          inputTrace,
+          restore: { player: restored, mantle: restoredMantle, distance: restoreDistance },
+        }, embodiedCapture);
+        console.log(`embodied-denial: ${JSON.stringify({ route: name, prompt: clearedPrompt, mantle: denialAfter })}`);
+        console.log(`embodied-input: ${JSON.stringify({ route: name, roomBefore: before.roomId, roomAfter: after.roomId, distance })}`);
       }
       await page.keyboard.press('k');
       await page.waitForTimeout(100);

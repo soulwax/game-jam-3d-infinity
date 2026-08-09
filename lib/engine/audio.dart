@@ -9,6 +9,7 @@ import '../config.dart';
 import '../house/house.dart';
 import '../house/room.dart';
 import 'audio_planner.dart';
+import '../ui/audio_settings.dart';
 import 'math3.dart';
 
 const Map<String, String> sfxSlot = {
@@ -83,6 +84,8 @@ class Audio {
   late final web.ChannelMergerNode _outputMerger;
   late final web.GainNode _monoGain;
   bool _mono = false;
+  double _dynamicRangeScale = 1.0;
+  double _reverbScale = 1.0;
 
   Audio._(this._ctx, this._house)
     : _master = _ctx.createGain(),
@@ -358,7 +361,10 @@ class Audio {
     _wet.gain.cancelScheduledValues(t);
     _wet.gain.setValueAtTime(_wet.gain.value, t);
     _wet.gain.linearRampToValueAtTime(0, t + half);
-    _wet.gain.linearRampToValueAtTime(_silent ? 0 : reverbWet, t + half * 2);
+    _wet.gain.linearRampToValueAtTime(
+      _silent ? 0 : reverbWet * _reverbScale,
+      t + half * 2,
+    );
     Timer(Duration(microseconds: (half * 1e6).round()), () {
       if (_roomIr == irName) _verb.buffer = buf;
     });
@@ -422,16 +428,32 @@ class Audio {
       _send.gain.linearRampToValueAtTime(1, t + 0.2);
       _wet.gain.cancelScheduledValues(t);
       _wet.gain.setValueAtTime(0, t);
-      _wet.gain.linearRampToValueAtTime(reverbWet, t + 0.2);
+      _wet.gain.linearRampToValueAtTime(reverbWet * _reverbScale, t + 0.2);
     }
   }
 
-  double get _masterTarget => _muted ? 0.0 : _masterMix;
+  double get _masterTarget => _muted ? 0.0 : _masterMix * _dynamicRangeScale;
 
   void setMono(bool mono) {
     if (_mono == mono) return;
     _mono = mono;
     _applyOutputRouting();
+  }
+
+  /// Applies the options this graph can honor without inventing spatial
+  /// output behavior. Browser panners continue to own HRTF/stereo semantics.
+  void setPresentationOptions(AudioSettingsProfile profile) {
+    setMono(profile.output == AudioOutputMode.mono);
+    _dynamicRangeScale = switch (profile.dynamicRange) {
+      AudioDynamicRange.wide => 1.0,
+      AudioDynamicRange.standard => 0.9,
+      AudioDynamicRange.night => 0.72,
+    };
+    _reverbScale = profile.reverb == AudioReverbMode.full ? 1.0 : 0.55;
+    if (!_silent) {
+      _master.gain.value = _masterTarget;
+      _wet.gain.value = reverbWet * _reverbScale;
+    }
   }
 
   void setMix({

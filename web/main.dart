@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:js_interop';
 import 'dart:js_interop_unsafe';
 import 'dart:math' as math;
@@ -50,15 +51,27 @@ import 'package:quarantine/story/schema.dart' show vocabularyFields;
 import 'package:quarantine/story/text.dart';
 import 'package:quarantine/story/unverifiable_notice.dart';
 import 'package:quarantine/ui/ambient_notice.dart';
+import 'package:quarantine/ui/accessibility_settings.dart';
+import 'package:quarantine/ui/audio_settings.dart';
 import 'package:quarantine/ui/broadcast.dart';
 import 'package:quarantine/ui/door.dart';
 import 'package:quarantine/ui/ending_panel.dart';
+import 'package:quarantine/ui/graphics_settings.dart';
+import 'package:quarantine/ui/graphics_settings_panel.dart';
+import 'package:quarantine/ui/controls_settings.dart';
+import 'package:quarantine/ui/controls_settings_panel.dart';
 import 'package:quarantine/ui/help_panel.dart';
 import 'package:quarantine/ui/journal_panel.dart';
 import 'package:quarantine/ui/panel.dart';
+import 'package:quarantine/ui/pause_ledger.dart';
+import 'package:quarantine/ui/pause_root_panel.dart';
+import 'package:quarantine/ui/pause_settings_contract.dart';
 import 'package:quarantine/ui/prompt.dart';
 import 'package:quarantine/ui/sleep_panel.dart';
 import 'package:quarantine/ui/settings_panel.dart';
+import 'package:quarantine/ui/settings_index_panel.dart';
+import 'package:quarantine/ui/settings_registry.dart';
+import 'package:quarantine/ui/settings_store.dart';
 import 'package:quarantine/visitors/ambient.dart';
 import 'package:quarantine/visitors/director.dart';
 import 'package:quarantine/visitors/stand_ins.dart';
@@ -1265,6 +1278,19 @@ bool _audioArmed = false;
 bool _reducedMotion = false;
 const _audioPreferencePrefix = 'quarantine.audio.';
 const _displayPreferencePrefix = 'quarantine.display.';
+const _settingsProfileKey = 'quarantine.settings.profile';
+const _graphicsSettingsKey = 'quarantine.graphics.profile';
+const _controlsSettingsKey = 'quarantine.controls.profile';
+const _audioOptionsKey = 'quarantine.audio.options';
+const _accessibilityProfileKey = 'quarantine.accessibility.profile';
+SettingsStore _settingsStore = SettingsStore();
+GraphicsSettingsStore _graphicsSettingsStore = GraphicsSettingsStore();
+ControlsSettingsProfile _controlsSettings = ControlsSettingsProfile();
+AudioSettingsProfile _audioOptions = const AudioSettingsProfile();
+AccessibilitySettingsProfile _accessibilityProfile =
+    const AccessibilitySettingsProfile();
+bool _systemReducedMotion = false;
+bool _systemPhotosensitivitySafe = false;
 HouseSoundscape? _houseSoundscape;
 HouseInventory? _houseInventory;
 AudioPlanner? _audioPlanner;
@@ -1299,6 +1325,10 @@ int _rendererHistoryEpoch = 0;
 final FpsMotion _motion = FpsMotion();
 
 Panel? _activePanel;
+final PauseLedger _pauseLedger = PauseLedger();
+bool _pausePanelTransitioning = false;
+late PauseRootPanel _pauseRoot;
+late SettingsIndexPanel _settingsIndex;
 late JournalPanel _journal;
 late InteractionEngine _interactionEngine;
 late Prompt _prompt;
@@ -1307,6 +1337,11 @@ late Door _door;
 late SleepPanel _sleepPanel;
 late HelpPanel _helpPanel;
 late SettingsPanel _settingsPanel;
+late SettingsPanel _visualSettingsPanel;
+late SettingsPanel _accessibilitySettingsPanel;
+late GraphicsSettingsPanel _graphicsSettingsPanel;
+late SettingsPanel _audioSettingsPanel;
+late ControlsSettingsPanel _controlsSettingsPanel;
 late EndingPanel _endingPanel;
 late VisitorDirector _visitorDirector;
 late AmbientDirector _ambientDirector;
@@ -1321,9 +1356,59 @@ void _openPanel(Panel panel) {
   if (_activePanel == panel && panel.isOpen) return;
   _activePanel?.close();
   _activePanel = panel;
+  if (panel == _pauseRoot) {
+    _pauseLedger.openRoot(restoreFocusId: 'gameplay.viewport');
+  } else {
+    _pauseLedger.openModal(_pauseReasonForPanel(panel));
+  }
   _input.suspendGameplay();
   _accumulator = 0;
   panel.open();
+}
+
+void _openPauseChild(Panel panel, PausePage page, String triggerFocusId) {
+  _pausePanelTransitioning = true;
+  _activePanel?.close();
+  _activePanel = panel;
+  _pauseLedger.push(page, triggerFocusId: triggerFocusId);
+  _input.suspendGameplay();
+  _accumulator = 0;
+  panel.open();
+  _pausePanelTransitioning = false;
+}
+
+void _activatePausePanel(Panel panel, {String? focusId}) {
+  _activePanel = panel;
+  _input.suspendGameplay();
+  _accumulator = 0;
+  panel.open();
+  final target = focusId == null ? null : web.document.getElementById(focusId);
+  if (target is web.HTMLElement) target.focus();
+}
+
+void _returnFromPausePage(Panel pagePanel) {
+  if (_pausePanelTransitioning) return;
+  _pausePanelTransitioning = true;
+  pagePanel.close();
+  _activePanel = null;
+  final transition = _pauseLedger.back();
+  _pausePanelTransitioning = false;
+  if (transition.kind == PauseTransitionKind.resumed) {
+    _accumulator = 0;
+    _input.resumeGameplay();
+    final game = web.document.getElementById('game');
+    if (game is web.HTMLElement) game.focus();
+    return;
+  }
+  if (transition.kind != PauseTransitionKind.backed) return;
+  final parent = switch (transition.after.current?.page) {
+    PausePage.root => _pauseRoot,
+    PausePage.settings => _settingsIndex,
+    _ => null,
+  };
+  if (parent != null) {
+    _activatePausePanel(parent, focusId: transition.focusTargetId);
+  }
 }
 
 void _togglePanel(Panel panel) {
@@ -1335,9 +1420,343 @@ void _togglePanel(Panel panel) {
 }
 
 void _panelClosed(Panel panel) {
+  if (_pausePanelTransitioning) return;
   if (_activePanel == panel) _activePanel = null;
+  if (panel == _pauseRoot) {
+    _pauseLedger.resume();
+  } else {
+    _pauseLedger.dismissModal(_pauseReasonForPanel(panel));
+  }
   _accumulator = 0;
   _input.resumeGameplay();
+}
+
+PauseReason _pauseReasonForPanel(Panel panel) {
+  if (panel == _pauseRoot) return PauseReason.pauseMenu;
+  if (panel == _settingsIndex) return PauseReason.settings;
+  if (panel is SettingsPanel) return PauseReason.settings;
+  if (panel is GraphicsSettingsPanel) return PauseReason.settings;
+  if (panel is ControlsSettingsPanel) return PauseReason.settings;
+  if (panel == _journal) return PauseReason.journal;
+  if (panel == _sleepPanel) return PauseReason.sleep;
+  if (panel == _helpPanel) return PauseReason.help;
+  if (panel == _endingPanel) return PauseReason.ending;
+  return PauseReason.visitor;
+}
+
+void _configureSettingsPanel(SettingsPanel panel, {bool nested = false}) {
+  panel
+    ..onLevel = (key, value) {
+      _storeAudioPreference(key, '$value');
+      switch (key) {
+        case 'master':
+          _audio?.setMix(master: value);
+        case 'voice':
+          _audio?.setMix(voice: value);
+        case 'effects':
+          _audio?.setMix(effects: value);
+        case 'ambience':
+          _audio?.setMix(ambience: value);
+        case 'music':
+          _audio?.setMix(music: value);
+      }
+    }
+    ..onMute = (muted) {
+      _storeAudioPreference('muted', '$muted');
+      _audio?.setMix(muted: muted);
+    }
+    ..onMono = (mono) {
+      _storeAudioPreference('mono', '$mono');
+      _audio?.setMono(mono);
+    }
+    ..onDisplay = (key, value) {
+      _storeDisplayPreference(key, '$value');
+      _applyDisplayPreference(key, value);
+    }
+    ..onHighContrast = (value) {
+      _storeDisplayPreference('high-contrast', '$value');
+      _applyDisplayToggle('high-contrast', value);
+    }
+    ..onStrongHighlights = (value) {
+      _storeDisplayPreference('strong-highlights', '$value');
+      _applyDisplayToggle('strong-highlights', value);
+    }
+    ..onResetCategory = (category) {
+      _settingsStore.resetCategory(category);
+      _persistSettingsStore();
+      _applySettingsStore();
+    }
+    ..onResetAll = () {
+      _settingsStore.resetAll();
+      _persistSettingsStore();
+      _applySettingsStore();
+    };
+  panel.onBack = nested
+      ? () {
+          _returnFromPausePage(panel);
+        }
+      : () {
+          panel.close();
+        };
+  panel.onClose = nested
+      ? () {
+          _returnFromPausePage(panel);
+        }
+      : () {
+          _panelClosed(panel);
+        };
+  if (panel.page == PauseSettingsCategory.audio) {
+    panel.onAudioOptions = (profile) {
+      _audioOptions = profile;
+      _persistAudioOptions();
+      _applyAudioOptions();
+    };
+  }
+  if (panel.page == PauseSettingsCategory.accessibility) {
+    panel.onAccessibilityProfile = (profile) {
+      _accessibilityProfile = profile;
+      _persistAccessibilityProfile();
+      _applyAccessibilityProfile();
+    };
+    panel.onResetAccessibilityProfile = () {
+      _accessibilityProfile = AccessibilitySettingsProfile.firstRun;
+      _accessibilitySettingsPanel.setAccessibilityProfile(_accessibilityProfile);
+      _persistAccessibilityProfile();
+      _applyAccessibilityProfile();
+    };
+  }
+}
+
+void _configureGraphicsSettingsPanel() {
+  _graphicsSettingsPanel
+    ..onChanged = (requested) {
+      final negotiation = negotiateGraphics(requested, _graphicsCapabilities());
+      _graphicsSettingsStore = GraphicsSettingsStore(
+        requested: requested,
+        effective: negotiation.effective,
+      );
+      _persistGraphicsSettings();
+      _graphicsSettingsPanel.setState(
+        requested,
+        negotiation.effective,
+        downgradeReasons: negotiation.downgradeReasons,
+      );
+      _canvas.setAttribute(
+        'data-graphics-fallback',
+        negotiation.downgradeReasons.join('|'),
+      );
+    }
+    ..onBack = () {
+      _returnFromPausePage(_graphicsSettingsPanel);
+    }
+    ..onClose = () {
+      _returnFromPausePage(_graphicsSettingsPanel);
+    };
+}
+
+void _loadGraphicsSettings() {
+  String? encoded;
+  try {
+    encoded = web.window.localStorage.getItem(_graphicsSettingsKey);
+  } catch (_) {}
+  if (encoded != null) {
+    try {
+      _graphicsSettingsStore = GraphicsSettingsStore.fromJson(
+        jsonDecode(encoded),
+      );
+    } catch (_) {
+      _graphicsSettingsStore = GraphicsSettingsStore();
+    }
+  }
+  final requested = _graphicsSettingsStore.requested;
+  final negotiation = negotiateGraphics(requested, _graphicsCapabilities());
+  _graphicsSettingsStore = GraphicsSettingsStore(
+    requested: requested,
+    effective: negotiation.effective,
+  );
+  _graphicsSettingsPanel.setState(
+    requested,
+    negotiation.effective,
+    downgradeReasons: negotiation.downgradeReasons,
+  );
+  _persistGraphicsSettings();
+}
+
+GraphicsCapabilitySnapshot _graphicsCapabilities() {
+  final labels = _presentationBackend.diagnostics.capabilities;
+  var maxSamples = 1;
+  for (final label in labels) {
+    if (!label.startsWith('max-samples-')) continue;
+    maxSamples = int.tryParse(label.substring('max-samples-'.length)) ?? 1;
+  }
+  return GraphicsCapabilitySnapshot(
+    maxSamples: maxSamples,
+    disjointTimerQuery: labels.contains('disjoint-timer-query'),
+  );
+}
+
+void _persistGraphicsSettings() {
+  try {
+    web.window.localStorage.setItem(
+      _graphicsSettingsKey,
+      jsonEncode(_graphicsSettingsStore.toJson()),
+    );
+  } catch (_) {}
+}
+
+void _configureControlsSettingsPanel() {
+  _controlsSettingsPanel
+    ..onChanged = (profile) {
+      _controlsSettings = profile;
+      _input.setBindings(profile.bindings);
+      _persistControlsSettings();
+    }
+    ..onBack = () {
+      _returnFromPausePage(_controlsSettingsPanel);
+    }
+    ..onClose = () {
+      _returnFromPausePage(_controlsSettingsPanel);
+    };
+}
+
+void _loadControlsSettings() {
+  String? encoded;
+  try {
+    encoded = web.window.localStorage.getItem(_controlsSettingsKey);
+  } catch (_) {}
+  if (encoded != null) {
+    try {
+      _controlsSettings = ControlsSettingsProfile.fromJson(jsonDecode(encoded));
+    } catch (_) {
+      _controlsSettings = ControlsSettingsProfile();
+    }
+  }
+  _controlsSettingsPanel.setProfile(_controlsSettings);
+  _input.setBindings(_controlsSettings.bindings);
+  _persistControlsSettings();
+}
+
+void _persistControlsSettings() {
+  try {
+    web.window.localStorage.setItem(
+      _controlsSettingsKey,
+      jsonEncode(_controlsSettings.toJson()),
+    );
+  } catch (_) {}
+}
+
+void _loadAudioOptions() {
+  String? encoded;
+  try {
+    encoded = web.window.localStorage.getItem(_audioOptionsKey);
+  } catch (_) {}
+  if (encoded != null) {
+    try {
+      _audioOptions = AudioSettingsProfile.fromJson(jsonDecode(encoded));
+    } catch (_) {
+      _audioOptions = const AudioSettingsProfile();
+    }
+  }
+  _audioSettingsPanel.setAudioOptions(_audioOptions);
+  _persistAudioOptions();
+  _applyAudioOptions();
+}
+
+void _persistAudioOptions() {
+  try {
+    web.window.localStorage.setItem(
+      _audioOptionsKey,
+      jsonEncode(_audioOptions.toJson()),
+    );
+  } catch (_) {}
+}
+
+void _applyAudioOptions() {
+  final audio = _audio;
+  if (audio == null) return;
+  audio.setPresentationOptions(_audioOptions);
+}
+
+void _loadAccessibilityProfile() {
+  String? encoded;
+  try {
+    encoded = web.window.localStorage.getItem(_accessibilityProfileKey);
+  } catch (_) {}
+  if (encoded != null) {
+    try {
+      _accessibilityProfile = AccessibilitySettingsProfile.fromJson(
+        jsonDecode(encoded),
+      );
+    } catch (_) {
+      _accessibilityProfile = const AccessibilitySettingsProfile();
+    }
+  }
+  _accessibilitySettingsPanel.setAccessibilityProfile(_accessibilityProfile);
+  _persistAccessibilityProfile();
+  _applyAccessibilityProfile();
+}
+
+void _persistAccessibilityProfile() {
+  try {
+    web.window.localStorage.setItem(
+      _accessibilityProfileKey,
+      jsonEncode(_accessibilityProfile.toJson()),
+    );
+  } catch (_) {}
+}
+
+void _applyAccessibilityProfile() {
+  final resolved = _accessibilityProfile.resolve(
+    systemReducedMotion: _systemReducedMotion,
+    systemPhotosensitivitySafe: _systemPhotosensitivitySafe,
+  );
+  _reducedMotion = resolved.reducedMotion;
+  _camera.breathScale = _reducedMotion ? 0.5 : 1.0;
+  final root = web.document.documentElement;
+  root?.classList.toggle('reduced-motion', resolved.reducedMotion);
+  root?.classList.toggle(
+    'photosensitivity-safe',
+    resolved.photosensitivitySafe,
+  );
+  root?.classList.toggle('captions-enabled', resolved.captions);
+  if (root is web.HTMLElement) {
+    root.style.setProperty('font-size', '${resolved.uiScale * 100}%');
+  }
+  _canvas
+    ..setAttribute(
+      'data-accessibility-reduced-motion',
+      '${resolved.reducedMotion}',
+    )
+    ..setAttribute(
+      'data-accessibility-photosensitivity-safe',
+      '${resolved.photosensitivitySafe}',
+    )
+    ..setAttribute('data-accessibility-ui-scale', '${resolved.uiScale}')
+    ..setAttribute('data-accessibility-captions', '${resolved.captions}');
+  if (_ambientNoticeInitialized) {
+    _ambientNotice.setCaptionsEnabled(resolved.captions);
+  }
+}
+
+bool _ambientNoticeInitialized = false;
+
+void _installAccessibilityMediaListeners() {
+  final reducedMotion = web.window.matchMedia(
+    '(prefers-reduced-motion: reduce)',
+  );
+  final photosensitivity = web.window.matchMedia(
+    '(prefers-reduced-transparency: reduce)',
+  );
+  void refresh() {
+    _systemReducedMotion = reducedMotion.matches;
+    _systemPhotosensitivitySafe = photosensitivity.matches;
+    _applyAccessibilityProfile();
+  }
+  reducedMotion.addEventListener('change', ((web.Event _) => refresh()).toJS);
+  photosensitivity.addEventListener(
+    'change',
+    ((web.Event _) => refresh()).toJS,
+  );
 }
 
 Future<void> main() async {
@@ -1409,9 +1828,13 @@ Future<void> main() async {
   try {
     _setBootPhase('initializing');
     _camera = Camera();
-    _reducedMotion = web.window
+    _systemReducedMotion = web.window
         .matchMedia('(prefers-reduced-motion: reduce)')
         .matches;
+    _systemPhotosensitivitySafe = web.window
+        .matchMedia('(prefers-reduced-transparency: reduce)')
+        .matches;
+    _reducedMotion = _systemReducedMotion;
     _camera.breathScale = _reducedMotion ? 0.5 : 1.0;
     _input = Input(web.window);
     _hud = Hud<Object>();
@@ -1517,6 +1940,53 @@ Future<void> main() async {
       _showSaveStatus('restored position');
     }
 
+    _settingsIndex = SettingsIndexPanel(web.document)
+      ..onCategory = (category) {
+        final target = switch (category) {
+          PauseSettingsCategory.visual => _visualSettingsPanel,
+          PauseSettingsCategory.accessibility => _accessibilitySettingsPanel,
+          PauseSettingsCategory.graphics => _graphicsSettingsPanel,
+          PauseSettingsCategory.audio => _audioSettingsPanel,
+          PauseSettingsCategory.controls => _controlsSettingsPanel,
+          _ => _settingsPanel,
+        };
+        final page = switch (category) {
+          PauseSettingsCategory.visual => PausePage.visual,
+          PauseSettingsCategory.accessibility => PausePage.accessibility,
+          PauseSettingsCategory.graphics => PausePage.graphics,
+          PauseSettingsCategory.audio => PausePage.audio,
+          PauseSettingsCategory.controls => PausePage.controls,
+          _ => PausePage.settings,
+        };
+        _openPauseChild(target, page, PauseSettingsContract.ids[category]!);
+      }
+      ..onBack = () {
+        _returnFromPausePage(_settingsIndex);
+      }
+      ..onClose = () => _panelClosed(_settingsIndex);
+    _pauseRoot = PauseRootPanel(web.document)
+      ..onResume = () {
+        _pauseRoot.close();
+      }
+      ..onBack = () {
+        _pauseRoot.close();
+      }
+      ..onSettings = () {
+        _openPauseChild(_settingsIndex, PausePage.settings, 'pause.settings');
+      }
+      ..onControls = () {
+        _pauseRoot.close();
+        _openPanel(_helpPanel);
+      }
+      ..onSave = () {
+        _saveSession('saved');
+      }
+      ..onHelp = () {
+        _pauseRoot.close();
+        _openPanel(_helpPanel);
+      }
+      ..onClose = () => _panelClosed(_pauseRoot);
+    ;
     _interactionEngine = InteractionEngine(
       journal: _session.journal,
       time: _time,
@@ -1532,6 +2002,7 @@ Future<void> main() async {
     _prompt = Prompt(web.document);
     _broadcast = Broadcast(web.document);
     _ambientNotice = AmbientNotice(web.document);
+    _ambientNoticeInitialized = true;
     _door = Door(web.document)
       ..onChoice = _chooseDoorResponse
       ..onContinue = _continueDoorConversation
@@ -1568,43 +2039,32 @@ Future<void> main() async {
       ..onClose = () => _panelClosed(_sleepPanel);
     _helpPanel = HelpPanel(web.document)
       ..onClose = () => _panelClosed(_helpPanel);
-    _settingsPanel = SettingsPanel(web.document)
-      ..onLevel = (key, value) {
-        _storeAudioPreference(key, '$value');
-        switch (key) {
-          case 'master':
-            _audio?.setMix(master: value);
-          case 'voice':
-            _audio?.setMix(voice: value);
-          case 'effects':
-            _audio?.setMix(effects: value);
-          case 'ambience':
-            _audio?.setMix(ambience: value);
-          case 'music':
-            _audio?.setMix(music: value);
-        }
-      }
-      ..onMute = (muted) {
-        _storeAudioPreference('muted', '$muted');
-        _audio?.setMix(muted: muted);
-      }
-      ..onMono = (mono) {
-        _storeAudioPreference('mono', '$mono');
-        _audio?.setMono(mono);
-      }
-      ..onDisplay = (key, value) {
-        _storeDisplayPreference(key, '$value');
-        _applyDisplayPreference(key, value);
-      }
-      ..onHighContrast = (value) {
-        _storeDisplayPreference('high-contrast', '$value');
-        _applyDisplayToggle('high-contrast', value);
-      }
-      ..onStrongHighlights = (value) {
-        _storeDisplayPreference('strong-highlights', '$value');
-        _applyDisplayToggle('strong-highlights', value);
-      }
-      ..onClose = () => _panelClosed(_settingsPanel);
+    _settingsPanel = SettingsPanel(web.document);
+    _visualSettingsPanel = SettingsPanel(
+      web.document,
+      page: PauseSettingsCategory.visual,
+    );
+    _accessibilitySettingsPanel = SettingsPanel(
+      web.document,
+      page: PauseSettingsCategory.accessibility,
+    );
+    _configureSettingsPanel(_settingsPanel);
+    _configureSettingsPanel(_visualSettingsPanel, nested: true);
+    _configureSettingsPanel(_accessibilitySettingsPanel, nested: true);
+    _loadAccessibilityProfile();
+    _installAccessibilityMediaListeners();
+    _graphicsSettingsPanel = GraphicsSettingsPanel(web.document);
+    _configureGraphicsSettingsPanel();
+    _loadGraphicsSettings();
+    _audioSettingsPanel = SettingsPanel(
+      web.document,
+      page: PauseSettingsCategory.audio,
+    );
+    _configureSettingsPanel(_audioSettingsPanel, nested: true);
+    _loadAudioOptions();
+    _controlsSettingsPanel = ControlsSettingsPanel(web.document);
+    _configureControlsSettingsPanel();
+    _loadControlsSettings();
     _endingPanel = EndingPanel(web.document)
       ..onClose = () {
         _panelClosed(_endingPanel);
@@ -1634,7 +2094,7 @@ Future<void> main() async {
         if (e.defaultPrevented) return;
         if (e.code == 'Escape' && !e.repeat) {
           if (_activePanel == null) {
-            _openPanel(_settingsPanel);
+            _openPanel(_pauseRoot);
           } else {
             _activePanel!.close();
           }
@@ -1924,7 +2384,9 @@ Future<void> _initAudio(JSObject? data) async {
   final audio = await Audio.load(urls, house: _house);
   _audio = audio;
   audio.setAcousticPlanner(_audioPlanner);
+  _loadSettingsStore();
   _restoreAudioPreferences(audio);
+  _applyAudioOptions();
   _restoreDisplayPreferences();
   if (_audioArmed) {
     audio.resume();
@@ -1933,6 +2395,7 @@ Future<void> _initAudio(JSObject? data) async {
 }
 
 void _storeDisplayPreference(String key, String value) {
+  _updateSetting(key, value);
   try {
     web.window.localStorage.setItem('$_displayPreferencePrefix$key', value);
   } catch (_) {}
@@ -1962,24 +2425,36 @@ void _applyDisplayToggle(String key, bool value) {
 }
 
 void _restoreDisplayPreferences() {
-  final brightness = double.tryParse(
-    _readDisplayPreference('brightness') ?? '',
-  );
-  final highContrast = _readDisplayPreference('high-contrast') == 'true';
+  final brightness = _settingsStore.requested.valueFor('brightness') as num;
+  final highContrast =
+      _settingsStore.requested.valueFor('high-contrast') as bool;
   final strongHighlights =
-      _readDisplayPreference('strong-highlights') == 'true';
-  if (brightness != null) {
-    _settingsPanel.setLevel('brightness', brightness);
-    _applyDisplayPreference('brightness', brightness);
+      _settingsStore.requested.valueFor('strong-highlights') as bool;
+  for (final panel in [
+    _settingsPanel,
+    _visualSettingsPanel,
+    _accessibilitySettingsPanel,
+    _audioSettingsPanel,
+  ]) {
+    panel.setLevel('brightness', brightness.toDouble());
   }
-  _settingsPanel
-    ..setHighContrast(highContrast)
-    ..setStrongHighlights(strongHighlights);
+  _applyDisplayPreference('brightness', brightness.toDouble());
+  for (final panel in [
+    _settingsPanel,
+    _visualSettingsPanel,
+    _accessibilitySettingsPanel,
+    _audioSettingsPanel,
+  ]) {
+    panel
+      ..setHighContrast(highContrast)
+      ..setStrongHighlights(strongHighlights);
+  }
   _applyDisplayToggle('high-contrast', highContrast);
   _applyDisplayToggle('strong-highlights', strongHighlights);
 }
 
 void _storeAudioPreference(String key, String value) {
+  _updateSetting(key, value);
   try {
     web.window.localStorage.setItem('$_audioPreferencePrefix$key', value);
   } catch (_) {
@@ -1996,13 +2471,12 @@ String? _readAudioPreference(String key) {
 }
 
 void _restoreAudioPreferences(Audio audio) {
-  final values = <String, double>{};
-  for (final key in const ['master', 'voice', 'effects', 'ambience', 'music']) {
-    final value = double.tryParse(_readAudioPreference(key) ?? '');
-    if (value != null) values[key] = value.clamp(0.0, 1.0).toDouble();
-  }
-  final muted = _readAudioPreference('muted') == 'true';
-  final mono = _readAudioPreference('mono') == 'true';
+  final values = <String, double>{
+    for (final key in const ['master', 'voice', 'effects', 'ambience', 'music'])
+      key: (_settingsStore.requested.valueFor(key) as num).toDouble(),
+  };
+  final muted = _settingsStore.requested.valueFor('muted') as bool;
+  final mono = _settingsStore.requested.valueFor('mono') as bool;
   audio.setMix(
     master: values['master'],
     voice: values['voice'],
@@ -2012,12 +2486,84 @@ void _restoreAudioPreferences(Audio audio) {
     muted: muted,
   );
   audio.setMono(mono);
-  for (final entry in values.entries) {
-    _settingsPanel.setLevel(entry.key, entry.value);
+  for (final panel in [
+    _settingsPanel,
+    _visualSettingsPanel,
+    _accessibilitySettingsPanel,
+    _audioSettingsPanel,
+  ]) {
+    for (final entry in values.entries) {
+      panel.setLevel(entry.key, entry.value);
+    }
+    panel
+      ..setMute(muted)
+      ..setMono(mono);
   }
-  _settingsPanel
-    ..setMute(muted)
-    ..setMono(mono);
+}
+
+void _applySettingsStore() {
+  final audio = _audio;
+  if (audio != null) _restoreAudioPreferences(audio);
+  _restoreDisplayPreferences();
+}
+
+void _loadSettingsStore() {
+  String? encoded;
+  try {
+    encoded = web.window.localStorage.getItem(_settingsProfileKey);
+  } catch (_) {}
+  if (encoded != null) {
+    try {
+      _settingsStore = SettingsStore.fromJson(jsonDecode(encoded));
+      return;
+    } catch (_) {
+      // Fall through to legacy migration and typed defaults.
+    }
+  }
+  _settingsStore = SettingsStore.fromLegacy(
+    audio: {
+      for (final definition in SettingsRegistry.definitions)
+        if (definition.persistenceNamespace == 'audio')
+          definition.key: _readAudioPreference(definition.key),
+    },
+    display: {
+      for (final definition in SettingsRegistry.definitions)
+        if (definition.persistenceNamespace == 'display')
+          definition.key: _readDisplayPreference(definition.key),
+    },
+  );
+  _persistSettingsStore();
+}
+
+void _persistSettingsStore() {
+  try {
+    web.window.localStorage.setItem(
+      _settingsProfileKey,
+      jsonEncode(_settingsStore.toJson()),
+    );
+  } catch (_) {}
+}
+
+void _updateSetting(String key, String raw) {
+  final definition = SettingsRegistry.definitionFor(key);
+  final value = switch (definition.kind) {
+    SettingKind.level => double.tryParse(raw),
+    SettingKind.toggle =>
+      raw == 'true'
+          ? true
+          : raw == 'false'
+          ? false
+          : null,
+  };
+  if (value == null) return;
+  try {
+    _settingsStore
+      ..setRequested(key, value)
+      ..setEffective(key, value);
+    _persistSettingsStore();
+  } on FormatException {
+    // UI values are already bounded; invalid external values are ignored.
+  }
 }
 
 Future<void> _loadTextures(JSObject? data) async {
@@ -2185,12 +2731,19 @@ void _dispatchSound(Audio audio, String name) {
   switch (name) {
     case 'arm':
       audio.play('confirm');
+      _ambientNotice.showCaption('interface confirmation');
       break;
     case 'ambient-winnow':
       audio.play('winnow', gain: 0.28);
+      _ambientNotice.showCaption('wind moving through the house');
       break;
     case 'ambient-gate':
       audio.play('gate', gain: 0.22);
+      _ambientNotice.showCaption('distant gate');
+      break;
+    case 'collapse':
+      audio.play('collapse');
+      _ambientNotice.showCaption('front door shudders and collapses');
       break;
     case 'clock:tick':
       _playHouseCue(audio, 'hall-clock', 'tick');
@@ -2211,6 +2764,15 @@ void _playHouseCue(Audio audio, String emitterId, String event) {
   final inventory = _houseInventory;
   if (soundscape == null || inventory == null) return;
   final emitter = soundscape.emitterFor(emitterId);
+  final cueCaption = switch ('$emitterId:$event') {
+    'hall-clock:tick' => 'clock ticking',
+    'hall-clock:chime' => 'clock chime',
+    'kitchen-range:settle' => 'kitchen range settling',
+    'cellar-drain:drip' => 'water dripping in the cellar',
+    'bathroom-cistern:settle' => 'bathroom cistern settling',
+    _ => null,
+  };
+  if (cueCaption != null) _ambientNotice.showCaption(cueCaption);
   final position = soundscape.worldPosition(
     emitter,
     _house,
@@ -2350,12 +2912,17 @@ void _update(double dt) {
     } else if (mantle != null && !mantle.broken) {
       if (mantle.lit) {
         mantle.lit = false;
+        _ambientNotice.showCaption('mantle flame extinguished');
       } else if (_session.spendHoursAndGas(1, 1)) {
         mantle.lit = true;
         _examineState.startExamine(mantle);
+        _ambientNotice.showCaption('mantle flame catches');
       }
     } else if (portal != null && !portal.sticks && !portal.locked) {
       portal.open = !portal.open;
+      _ambientNotice.showCaption(
+        portal.open ? 'door opens' : 'door closes',
+      );
       _emitter?.rebuildRoom(portal.a);
       _pixeldartRuntime?.refreshPortalGeometry(_house, portal.id);
       _audio?.onDoorStateChanged();
@@ -2363,9 +2930,11 @@ void _update(double dt) {
       if (window.shutterOpen) {
         if (_session.spendHours(1)) {
           window.shutterOpen = false;
+          _ambientNotice.showCaption('shutter closes');
         }
       } else {
         window.shutterOpen = true;
+        _ambientNotice.showCaption('shutter opens');
       }
     } else if (inventoryPlacement != null) {
       final event = _inventoryInspections.inspect(inventoryPlacement);
