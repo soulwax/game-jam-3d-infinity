@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:quarantine/game/save.dart';
 import 'package:quarantine/game/session.dart';
 import 'package:quarantine/game/ending.dart';
+import 'package:quarantine/game/gaslight_state.dart';
 import 'package:quarantine/house/interaction.dart';
 import 'package:quarantine/journal/entry.dart';
 import 'package:quarantine/presentation/legacy_backend.dart';
@@ -28,6 +29,8 @@ final class _RouteEvidence {
   final List<String> saves;
   final List<String> rooms;
   final List<String> visitorFacts;
+  final List<int> verifiedJournal;
+  final String gaslight;
   final List<String> endingOutcomes;
   final String lastFrame;
   final String lastInput;
@@ -39,6 +42,8 @@ final class _RouteEvidence {
     required this.saves,
     required this.rooms,
     required this.visitorFacts,
+    required this.verifiedJournal,
+    required this.gaslight,
     required this.endingOutcomes,
     required this.lastFrame,
     required this.lastInput,
@@ -78,6 +83,11 @@ void main() {
     'visitor facts diverged between backend runs',
   );
   _expect(
+    jsonEncode(left.verifiedJournal) == jsonEncode(right.verifiedJournal),
+    'journal verification diverged between backend runs',
+  );
+  _expect(left.gaslight == right.gaslight, 'gaslight facts diverged');
+  _expect(
     jsonEncode(left.endingOutcomes) == jsonEncode(right.endingOutcomes),
     'ending outcomes diverged between backend runs',
   );
@@ -94,6 +104,7 @@ void main() {
     'Days ${left.days.toSet().toList()..sort()}, '
     '${left.events.length} events, ${left.rooms.length} rooms, '
     '${left.visitorFacts.length} visitor facts, '
+    '${left.verifiedJournal.length} verified journal entries, '
     '${left.endingOutcomes.length} ending outcomes, canonical '
     'snapshots/saves/input edges match',
   );
@@ -121,6 +132,8 @@ List<_RouteEvidence> _runRoute() {
   final saves = <String>[];
   final rooms = <String>[];
   final visitorFacts = <String>[];
+  final verifiedJournal = <int>[];
+  var gaslight = '';
   final endingOutcomes = [
     for (final inputs in const [
       EndingInputs(
@@ -238,14 +251,41 @@ List<_RouteEvidence> _runRoute() {
   checkpoint();
 
   input(const RendererInputAction(id: 'KeyE', pressed: true));
-  final entry = session.writeJournal(const {
-    'who': 'warden',
-    'verb': 'called',
-    'object': 'yesterday',
-    'place': 'hall',
-    'time': 'dawn',
-  }, 0.2);
+  final entry = session.writeJournal(
+    const {
+      'who': 'warden',
+      'verb': 'called',
+      'object': 'yesterday',
+      'place': 'hall',
+      'time': 'dawn',
+    },
+    0.2,
+    corroborator: 'broadcast',
+  );
   _expect(entry != null, 'authored journal action was rejected');
+  _expect(
+    entry!.corroborator == 'broadcast',
+    'journal entry lacked broadcast corroboration',
+  );
+  _expect(
+    session.journal.verifyToday(entry.ordinal),
+    'journal verification was rejected',
+  );
+  _expect(
+    session.journal.lock(entry.ordinal),
+    'journal protection was rejected',
+  );
+  verifiedJournal.add(entry.ordinal);
+  gaslight = jsonEncode(
+    GaslightState.compose(
+      mantleRooms: {
+        for (final room in session.house.rooms)
+          for (final mantle in room.mantles) mantle.id: room.id,
+      },
+      roomFlow: {for (final room in session.house.rooms) room.id: 0.6},
+      litMantles: {mantle.id},
+    ).toJson(),
+  );
   checkpoint();
   input(const RendererInputAction(id: 'KeyL', pressed: true));
   session.sleep(
@@ -300,6 +340,8 @@ List<_RouteEvidence> _runRoute() {
         saves: saves,
         rooms: rooms,
         visitorFacts: visitorFacts,
+        verifiedJournal: verifiedJournal,
+        gaslight: gaslight,
         endingOutcomes: endingOutcomes,
         lastFrame: backend.lastFrameEncoding ?? '',
         lastInput: backend.lastInputEncoding ?? '',
