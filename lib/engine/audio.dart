@@ -77,6 +77,10 @@ class Audio {
 
   late final web.BiquadFilterNode _vhsHpFilter;
   late final web.BiquadFilterNode _vhsLpFilter;
+  late final web.ChannelSplitterNode _outputSplitter;
+  late final web.ChannelMergerNode _outputMerger;
+  late final web.GainNode _monoGain;
+  bool _mono = false;
 
   Audio._(this._ctx, this._house)
     : _master = _ctx.createGain(),
@@ -123,6 +127,27 @@ class Audio {
     _vhsLpFilter.connect(_ctx.destination);
     _master.disconnect(_ctx.destination);
     _master.connect(_vhsHpFilter);
+    _vhsLpFilter.disconnect(_ctx.destination);
+    _outputSplitter = _ctx.createChannelSplitter(2);
+    _outputMerger = _ctx.createChannelMerger(2);
+    _monoGain = _ctx.createGain()..gain.value = 0.5;
+    _vhsLpFilter.connect(_outputSplitter);
+    _outputMerger.connect(_ctx.destination);
+    _applyOutputRouting();
+  }
+
+  void _applyOutputRouting() {
+    _outputSplitter.disconnect();
+    _monoGain.disconnect();
+    if (_mono) {
+      _outputSplitter.connect(_monoGain, 0);
+      _outputSplitter.connect(_monoGain, 1);
+      _monoGain.connect(_outputMerger, 0, 0);
+      _monoGain.connect(_outputMerger, 0, 1);
+    } else {
+      _outputSplitter.connect(_outputMerger, 0, 0);
+      _outputSplitter.connect(_outputMerger, 1, 1);
+    }
   }
 
   void resume() {
@@ -391,6 +416,12 @@ class Audio {
   }
 
   double get _masterTarget => _muted ? 0.0 : _masterMix;
+
+  void setMono(bool mono) {
+    if (_mono == mono) return;
+    _mono = mono;
+    _applyOutputRouting();
+  }
 
   void setMix({
     double? master,

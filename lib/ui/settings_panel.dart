@@ -7,6 +7,7 @@ import 'panel.dart';
 class SettingsPanel extends Panel {
   void Function(String key, double value)? onLevel;
   void Function(bool muted)? onMute;
+  void Function(bool mono)? onMono;
   final Map<String, web.HTMLInputElement> _levels = {};
   final Map<String, web.HTMLElement> _values = {};
 
@@ -52,6 +53,19 @@ class SettingsPanel extends Panel {
       buildElement(document, 'span', text: 'Mute house audio'),
     );
     root.appendChild(muteRow);
+
+    final monoRow = buildElement(document, 'label', cls: 'setting-toggle');
+    final mono = document.createElement('input') as web.HTMLInputElement;
+    mono.type = 'checkbox';
+    mono.addEventListener(
+      'change',
+      ((web.Event _) => onMono?.call(mono.checked)).toJS,
+    );
+    monoRow.appendChild(mono);
+    monoRow.appendChild(
+      buildElement(document, 'span', text: 'Mono-compatible mix'),
+    );
+    root.appendChild(monoRow);
 
     final close =
         buildElement(document, 'button', cls: 'door-continue', text: 'return')

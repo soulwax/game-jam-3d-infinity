@@ -1376,6 +1376,9 @@ Future<void> main() async {
       ..onMute = (muted) {
         _audio?.setMix(muted: muted);
       }
+      ..onMono = (mono) {
+        _audio?.setMono(mono);
+      }
       ..onClose = () {
         _activePanel = null;
         _input.requestPointerLock(_canvas);

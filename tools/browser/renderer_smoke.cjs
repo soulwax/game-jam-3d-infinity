@@ -109,6 +109,7 @@ function assertHealthy(failures, label) {
             label: settings?.getAttribute('aria-label'),
             hidden: settings?.getAttribute('hidden'),
             controls: settings?.querySelectorAll('input[type="range"]').length ?? 0,
+            toggles: settings?.querySelectorAll('input[type="checkbox"]').length ?? 0,
           };
         })(),
         wallTexture: canvas.getAttribute('data-renderer-texture-wall-plaster'),
@@ -197,7 +198,8 @@ function assertHealthy(failures, label) {
       if (result.settings.role !== 'dialog' ||
           result.settings.label !== 'House settings' ||
           result.settings.hidden !== '' ||
-          result.settings.controls !== 5) {
+          result.settings.controls !== 5 ||
+          result.settings.toggles !== 2) {
         throw new Error(`${name}: settings surface was incomplete ${JSON.stringify(result.settings)}`);
       }
       if (buttons.some((button) => !button.text && !button.label)) {
