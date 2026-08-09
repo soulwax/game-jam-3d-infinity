@@ -10,6 +10,8 @@ class SettingsPanel extends Panel {
   void Function(bool mono)? onMono;
   final Map<String, web.HTMLInputElement> _levels = {};
   final Map<String, web.HTMLElement> _values = {};
+  web.HTMLInputElement? _mute;
+  web.HTMLInputElement? _mono;
 
   SettingsPanel(web.Document document) : super(document) {
     root.setAttribute('aria-label', 'House settings');
@@ -44,6 +46,7 @@ class SettingsPanel extends Panel {
     final muteRow = buildElement(document, 'label', cls: 'setting-toggle');
     final mute = document.createElement('input') as web.HTMLInputElement;
     mute.type = 'checkbox';
+    _mute = mute;
     mute.addEventListener(
       'change',
       ((web.Event _) => onMute?.call(mute.checked)).toJS,
@@ -57,6 +60,7 @@ class SettingsPanel extends Panel {
     final monoRow = buildElement(document, 'label', cls: 'setting-toggle');
     final mono = document.createElement('input') as web.HTMLInputElement;
     mono.type = 'checkbox';
+    _mono = mono;
     mono.addEventListener(
       'change',
       ((web.Event _) => onMono?.call(mono.checked)).toJS,
@@ -112,5 +116,13 @@ class SettingsPanel extends Panel {
     final clamped = value.clamp(0.0, 1.0).toDouble();
     input.value = clamped.toString();
     output.textContent = '${(clamped * 100).round()}%';
+  }
+
+  void setMute(bool value) {
+    _mute?.checked = value;
+  }
+
+  void setMono(bool value) {
+    _mono?.checked = value;
   }
 }

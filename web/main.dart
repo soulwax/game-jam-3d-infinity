@@ -1073,6 +1073,7 @@ web.Element? _fpsDiv;
 Audio? _audio;
 bool _audioArmed = false;
 bool _reducedMotion = false;
+const _audioPreferencePrefix = 'quarantine.audio.';
 HouseSoundscape? _houseSoundscape;
 HouseInventory? _houseInventory;
 AudioPlanner? _audioPlanner;
@@ -1360,6 +1361,7 @@ Future<void> main() async {
       };
     _settingsPanel = SettingsPanel(web.document)
       ..onLevel = (key, value) {
+        _storeAudioPreference(key, '$value');
         switch (key) {
           case 'master':
             _audio?.setMix(master: value);
@@ -1374,9 +1376,11 @@ Future<void> main() async {
         }
       }
       ..onMute = (muted) {
+        _storeAudioPreference('muted', '$muted');
         _audio?.setMix(muted: muted);
       }
       ..onMono = (mono) {
+        _storeAudioPreference('mono', '$mono');
         _audio?.setMono(mono);
       }
       ..onClose = () {
@@ -1702,10 +1706,52 @@ Future<void> _initAudio(JSObject? data) async {
   final audio = await Audio.load(urls, house: _house);
   _audio = audio;
   audio.setAcousticPlanner(_audioPlanner);
+  _restoreAudioPreferences(audio);
   if (_audioArmed) {
     audio.resume();
     audio.startMusicLoop('music');
   }
+}
+
+void _storeAudioPreference(String key, String value) {
+  try {
+    web.window.localStorage.setItem('$_audioPreferencePrefix$key', value);
+  } catch (_) {
+    // Audio preferences are optional and must not block boot or save flow.
+  }
+}
+
+String? _readAudioPreference(String key) {
+  try {
+    return web.window.localStorage.getItem('$_audioPreferencePrefix$key');
+  } catch (_) {
+    return null;
+  }
+}
+
+void _restoreAudioPreferences(Audio audio) {
+  final values = <String, double>{};
+  for (final key in const ['master', 'voice', 'effects', 'ambience', 'music']) {
+    final value = double.tryParse(_readAudioPreference(key) ?? '');
+    if (value != null) values[key] = value.clamp(0.0, 1.0).toDouble();
+  }
+  final muted = _readAudioPreference('muted') == 'true';
+  final mono = _readAudioPreference('mono') == 'true';
+  audio.setMix(
+    master: values['master'],
+    voice: values['voice'],
+    effects: values['effects'],
+    ambience: values['ambience'],
+    music: values['music'],
+    muted: muted,
+  );
+  audio.setMono(mono);
+  for (final entry in values.entries) {
+    _settingsPanel.setLevel(entry.key, entry.value);
+  }
+  _settingsPanel
+    ..setMute(muted)
+    ..setMono(mono);
 }
 
 Future<void> _loadTextures(JSObject? data) async {
