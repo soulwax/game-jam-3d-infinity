@@ -814,10 +814,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final geometry = buildRoomGeometry(house, room);
     // Door leaves are stateful Pixeldart items; keep the static frame,
     // hardware, and room shell here while avoiding a baked duplicate leaf.
+    final staticDoors = buildDoorStaticGeometry(house, room);
     final vertices = Float32List.fromList([
       ...geometry.floor,
       ...geometry.ceiling,
       ...geometry.walls,
+      ...staticDoors,
     ]);
     final points = <px.Vec3>[];
     for (var i = 0; i < vertices.length; i += vertexStride) {

@@ -58,8 +58,18 @@ void main() {
   final frontDoor = house.portalById('front-door')!;
   final hall = house.byId('hall')!;
   final openLeaf = buildDoorLeafGeometry(house, hall, frontDoor);
+  final openStatic = buildDoorStaticGeometry(house, hall);
   frontDoor.open = false;
   final closedLeaf = buildDoorLeafGeometry(house, hall, frontDoor);
+  final closedStatic = buildDoorStaticGeometry(house, hall);
+  if (openStatic.length != closedStatic.length) {
+    _fail('static door shell changed length with portal state');
+  }
+  for (var i = 0; i < openStatic.length; i++) {
+    if (openStatic[i] != closedStatic[i]) {
+      _fail('static door shell changed with portal state at $i');
+    }
+  }
   var changed = openLeaf.length != closedLeaf.length;
   for (var i = 0; !changed && i < openLeaf.length; i++) {
     changed = openLeaf[i] != closedLeaf[i];

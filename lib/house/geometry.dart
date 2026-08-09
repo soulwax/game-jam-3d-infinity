@@ -89,6 +89,19 @@ Float32List buildDoorLeafGeometry(House house, Room room, Portal portal) {
   return builder.build();
 }
 
+/// Builds the static part of every hinged door in a room. Frames, thresholds,
+/// and hardware stay in the room shell; only the leaf is replaced on state
+/// changes by the Pixeldart runtime.
+Float32List buildDoorStaticGeometry(House house, Room room) {
+  final builder = StaticMeshBuilder();
+  final size = house.effectiveSize(room);
+  for (final portal in house.portalsFor(room.id)) {
+    if (portal.doorKit == null || portal.stair) continue;
+    _addDoorFrame(builder, room, size, portal, includeLeaf: false);
+  }
+  return builder.build();
+}
+
 void _addFloorFinish(StaticMeshBuilder builder, Room room, Vec3 size) {
   final x = room.origin.x;
   final y = room.origin.y;
@@ -1282,8 +1295,9 @@ void _addDoorFrame(
   StaticMeshBuilder builder,
   Room room,
   Vec3 size,
-  Portal portal,
-) {
+  Portal portal, {
+  bool includeLeaf = true,
+}) {
   final facing = portal.facingFor(room.id);
   final u0 = portal.offsetFor(room.id);
   final u1 = u0 + portal.width;
@@ -1452,7 +1466,7 @@ void _addDoorFrame(
   }
   // Legacy geometry still receives the complete door in `RoomGeometry.doors`;
   // Pixeldart extracts the leaf through [buildDoorLeafGeometry] instead.
-  _addDoorLeaf(builder, room, size, portal, frameColor);
+  if (includeLeaf) _addDoorLeaf(builder, room, size, portal, frameColor);
   _addDoorHardware(builder, room, size, portal);
 }
 
