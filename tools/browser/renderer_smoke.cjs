@@ -3,7 +3,7 @@ const { firefox } = require('playwright');
 const baseUrl = process.env.AUTOMATION_BASE_URL || 'http://127.0.0.1:8090';
 
 const routes = [
-  ['legacy-default', '/'],
+  ['pixeldart-default', '/'],
   ['legacy-explicit', '/?renderer=legacy'],
   ['pixeldart-next', '/?renderer=next'],
   ['pixeldart-auto-candidate', '/?renderer=auto'],
@@ -167,6 +167,11 @@ function assertHealthy(failures, label) {
       if (name === 'pixeldart-auto-candidate' &&
           (result.backend !== 'next' || result.fallback === 'true')) {
         throw new Error(`${name}: auto candidate did not select Pixeldart ${JSON.stringify(result)}`);
+      }
+      if (name === 'pixeldart-default' &&
+          (result.backend !== 'next' || result.fallback === 'true' ||
+           result.requested !== 'auto')) {
+        throw new Error(`${name}: query-free startup did not select canonical Pixeldart ${JSON.stringify(result)}`);
       }
       if (result.houseManifest !== 'validated' ||
           !['res/house/house.json', '/res/house/house.json'].includes(

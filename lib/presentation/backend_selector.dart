@@ -21,6 +21,13 @@ class BackendSelector {
 
   BackendSelection select(String? rendererQuery) {
     final value = rendererQuery?.trim().toLowerCase();
+    if (value == null || value.isEmpty) {
+      return const BackendSelection(
+        RendererBackendKind.next,
+        explicit: false,
+        automatic: true,
+      );
+    }
     if (value == 'next' || value == 'auto') {
       return BackendSelection(
         RendererBackendKind.next,
@@ -28,7 +35,7 @@ class BackendSelector {
         automatic: value == 'auto',
       );
     }
-    final unknown = value != null && value != 'legacy';
+    final unknown = value != 'legacy';
     return BackendSelection(
       RendererBackendKind.legacy,
       explicit: false,

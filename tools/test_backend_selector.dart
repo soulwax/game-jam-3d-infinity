@@ -9,15 +9,17 @@ void _expect(bool value, String message) {
 
 void main() {
   const selector = BackendSelector();
-  final legacy = selector.select(null);
+  final canonical = selector.select(null);
   _expect(
-    legacy.kind == RendererBackendKind.legacy && !legacy.explicit,
-    'legacy is default',
+    canonical.kind == RendererBackendKind.next &&
+        !canonical.explicit &&
+        canonical.automatic,
+    'Pixeldart is query-free default',
   );
   final next = selector.select('next');
   _expect(
     next.kind == RendererBackendKind.next && next.explicit,
-    'next requires explicit opt-in',
+    'next alias remains explicit',
   );
   _expect(
     selector.select(' NEXT ').kind == RendererBackendKind.next,
