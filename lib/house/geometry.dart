@@ -951,12 +951,45 @@ void _addOpeningTrim(
 }
 
 void _addCeilingOrnament(StaticMeshBuilder builder, Room room, Vec3 size) {
-  if (room.id != 'living-room' && room.id != 'hall' && room.id != 'bedroom') {
-    return;
-  }
   final centerX = room.origin.x + size.x * 0.5;
   final centerZ = room.origin.z + size.z * 0.5;
   final ceilingY = room.origin.y + size.y;
+  if (room.id != 'living-room' && room.id != 'hall' && room.id != 'bedroom') {
+    if (!const {
+      'kitchen',
+      'landing',
+      'bathroom',
+      'spare-room',
+    }.contains(room.id)) {
+      return;
+    }
+    final fixtureX = room.id == 'kitchen'
+        ? room.origin.x + size.x * 0.58
+        : centerX;
+    final fixtureZ = room.id == 'bathroom'
+        ? room.origin.z + size.z * 0.42
+        : centerZ;
+    final stemBottom = _max(room.origin.y + 1.55, ceilingY - 0.58);
+    _box(
+      builder,
+      Vec3(fixtureX - 0.025, stemBottom, fixtureZ - 0.025),
+      Vec3(fixtureX + 0.025, ceilingY - 0.08, fixtureZ + 0.025),
+      0x403B34,
+    );
+    _box(
+      builder,
+      Vec3(fixtureX - 0.14, stemBottom - 0.10, fixtureZ - 0.14),
+      Vec3(fixtureX + 0.14, stemBottom, fixtureZ + 0.14),
+      room.id == 'bathroom' ? 0xC4BFB3 : 0x746051,
+    );
+    _box(
+      builder,
+      Vec3(fixtureX - 0.09, stemBottom - 0.16, fixtureZ - 0.09),
+      Vec3(fixtureX + 0.09, stemBottom - 0.10, fixtureZ + 0.09),
+      0xB8AA93,
+    );
+    return;
+  }
   final color = room.id == 'living-room' ? 0xD1C7B4 : 0xC6BDAA;
   _box(
     builder,

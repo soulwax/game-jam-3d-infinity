@@ -469,12 +469,12 @@ opening-aware masonry, stone sill/lintel blocks, a plinth, eaves and downpipes;
 the roof has two slate planes, ridge/fascia, twin chimney stacks and gutters;
 the street cell adds a low boundary wall and gate. Cellar/service and context
 cells remain separate placements around this shell rather than becoming physics
-geometry. The current checked export is 7,448 indexed vertices, 3,724
-triangles, 141,552 bytes, with 33.3% exact-attribute index reuse; the latest
+geometry. The current checked export is 7,640 indexed vertices, 3,820
+triangles, 145,200 bytes, with 33.3% exact-attribute index reuse; the latest
 detail pass adds timber sash bars, recessed front-door leaf geometry, paired
-chimney pots, repeated downpipe brackets, a string course, dressed front
-corners, window boxes, roof flashing, a lantern, coal hatch, water butt and
-ventilation bricks without changing collision truth.
+chimney pots, repeated downpipe brackets and shoes, a string course, dressed
+front corners, window boxes, roof flashing, a lantern, boot scraper, coal hatch,
+water butt and ventilation bricks without changing collision truth.
 
 ## Technical realization pipeline
 

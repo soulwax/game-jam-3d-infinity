@@ -840,6 +840,17 @@ void _drainage(
           material: iron,
         );
       }
+      // The downpipe shoe turns the vertical run into the paving rather than
+      // ending as a raw pipe above the foundation line.
+      builder.box(
+        minX: x - 0.10,
+        minY: -0.10,
+        minZ: z - 0.13,
+        maxX: x + 0.10,
+        maxY: 0.10,
+        maxZ: z + 0.13,
+        material: iron,
+      );
     }
   }
 }
@@ -903,6 +914,30 @@ void _frontThreshold(
     maxZ: -wallOffset + 0.08,
     material: 3,
   );
+  // A cast-iron boot scraper sits just outside the step line. It is a
+  // silhouette/detail cue only and deliberately stays clear of the portal.
+  final scraperX = u0 - 0.18;
+  builder.box(
+    minX: scraperX,
+    minY: 0.04,
+    minZ: -1.34,
+    maxX: scraperX + 0.46,
+    maxY: 0.10,
+    maxZ: -1.24,
+    material: 6,
+  );
+  for (var i = 0; i < 3; i++) {
+    final x = scraperX + 0.06 + i * 0.16;
+    builder.box(
+      minX: x,
+      minY: 0.10,
+      minZ: -1.34,
+      maxX: x + 0.035,
+      maxY: 0.24,
+      maxZ: -1.25,
+      material: 6,
+    );
+  }
 }
 
 void _serviceDetails(
