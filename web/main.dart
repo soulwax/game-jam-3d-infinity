@@ -104,6 +104,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   final List<px.MeshHandle> _inventoryMeshes = [];
   final Map<int, px.InstanceId> _exteriorShellItems = {};
   final Map<int, px.RetainedItemDescriptor> _exteriorShellDescriptors = {};
+  final Map<String, _PixeldartPortalLeaf> _portalLeaves = {};
   final List<_PixeldartDecoration> _decorations = [];
   List<InventoryPlacement> _inventoryPlacements = const [];
   final Map<String, px.TextureHandle> _textures = {};
@@ -325,7 +326,31 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       }
     }
     for (final portal in house.portals) {
-      if (portal.stair) continue;
+      if (portal.doorKit == null || portal.stair) continue;
+      final room = house.byId(portal.a);
+      if (room == null) continue;
+      final mesh = _doorLeafMesh(house, room, portal);
+      final handle = _renderer.resources.registerMesh(
+        mesh,
+        debugLabel: 'door-leaf:${portal.id}',
+      );
+      _sceneMeshes.add(handle);
+      final descriptor = px.RetainedItemDescriptor(
+        mesh: handle,
+        material: _materialForRoom(room.id),
+        visibilityMask: 0,
+      );
+      final item = _world.addItem(descriptor);
+      _portalLeaves[portal.id] = _PixeldartPortalLeaf(
+        portalId: portal.id,
+        roomId: room.id,
+        item: item,
+        mesh: handle,
+        descriptor: descriptor,
+      );
+    }
+    for (final portal in house.portals) {
+      if (portal.stair || portal.doorKit != null) continue;
       final room = house.byId(portal.a);
       if (room == null) continue;
       _addDecoration(
@@ -454,6 +479,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         _withVisibility(decoration.base, mask),
       );
     }
+    for (final portalId in _portalLeaves.keys.toList()) {
+      final leaf = _portalLeaves[portalId]!;
+      final descriptor = _withVisibility(
+        leaf.descriptor,
+        visible.contains(leaf.roomId) ? -1 : 0,
+      );
+      _world.updateItem(leaf.item, descriptor);
+      _portalLeaves[leaf.portalId] = leaf.copyWith(descriptor: descriptor);
+    }
     for (final placement in _inventoryPlacements) {
       final item = _inventoryItemsById[placement.id];
       final base = _inventoryDescriptors[placement.id];
@@ -520,6 +554,41 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       '${_geometryRefreshes + 1}',
     );
     _geometryRefreshes++;
+  }
+
+  /// Rebuilds only a portal's stateful leaf. The room shell keeps its frame
+  /// and hardware, so opening/closing cannot duplicate or leave a stale leaf.
+  void refreshPortalGeometry(House house, String portalId) {
+    if (!_initialized) return;
+    final leaf = _portalLeaves[portalId];
+    final portal = house.portalById(portalId);
+    final room = portal == null ? null : house.byId(leaf?.roomId ?? '');
+    if (leaf == null || portal == null || room == null) return;
+    final nextMesh = _renderer.resources.registerMesh(
+      _doorLeafMesh(house, room, portal),
+      debugLabel: 'door-leaf:$portalId:state',
+    );
+    final nextDescriptor = px.RetainedItemDescriptor(
+      mesh: nextMesh,
+      material: leaf.descriptor.material,
+      transform: leaf.descriptor.transform,
+      visibilityMask: leaf.descriptor.visibilityMask,
+      drawMode: leaf.descriptor.drawMode,
+      blendMode: leaf.descriptor.blendMode,
+      castsShadow: leaf.descriptor.castsShadow,
+      receivesShadow: leaf.descriptor.receivesShadow,
+      sortTiebreaker: leaf.descriptor.sortTiebreaker,
+      instanceFamilyKey: leaf.descriptor.instanceFamilyKey,
+    );
+    _world.updateItem(leaf.item, nextDescriptor);
+    _portalLeaves[portalId] = leaf.copyWith(
+      mesh: nextMesh,
+      descriptor: nextDescriptor,
+    );
+    _sceneMeshes
+      ..remove(leaf.mesh)
+      ..add(nextMesh);
+    _renderer.resources.releaseMesh(leaf.mesh);
   }
 
   int _geometryRefreshes = 0;
@@ -742,7 +811,14 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   }
 
   px.MeshData _roomMesh(House house, Room room) {
-    final vertices = buildRoomGeometry(house, room).combined;
+    final geometry = buildRoomGeometry(house, room);
+    // Door leaves are stateful Pixeldart items; keep the static frame,
+    // hardware, and room shell here while avoiding a baked duplicate leaf.
+    final vertices = Float32List.fromList([
+      ...geometry.floor,
+      ...geometry.ceiling,
+      ...geometry.walls,
+    ]);
     final points = <px.Vec3>[];
     for (var i = 0; i < vertices.length; i += vertexStride) {
       points.add(px.Vec3(vertices[i], vertices[i + 1], vertices[i + 2]));
@@ -945,6 +1021,21 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     );
   }
 
+  px.MeshData _doorLeafMesh(House house, Room room, Portal portal) {
+    final vertices = buildDoorLeafGeometry(house, room, portal);
+    if (vertices.isEmpty) {
+      throw StateError('door ${portal.id} produced no leaf geometry');
+    }
+    return px.MeshData(
+      layout: px.VertexLayoutDescriptor.compatibility14,
+      vertices: vertices,
+      localBounds: px.Aabb.fromPoints([
+        for (var i = 0; i < vertices.length; i += vertexStride)
+          px.Vec3(vertices[i], vertices[i + 1], vertices[i + 2]),
+      ]),
+    );
+  }
+
   px.MeshData _portalMesh(Room room, Portal portal) => _panelMesh(
     room,
     portal.facingFor(room.id),
@@ -1118,6 +1209,33 @@ final class _PixeldartDecoration {
     required this.base,
     required this.isVisible,
   });
+}
+
+final class _PixeldartPortalLeaf {
+  final String portalId;
+  final String roomId;
+  final px.InstanceId item;
+  final px.MeshHandle mesh;
+  final px.RetainedItemDescriptor descriptor;
+
+  const _PixeldartPortalLeaf({
+    required this.portalId,
+    required this.roomId,
+    required this.item,
+    required this.mesh,
+    required this.descriptor,
+  });
+
+  _PixeldartPortalLeaf copyWith({
+    px.MeshHandle? mesh,
+    px.RetainedItemDescriptor? descriptor,
+  }) => _PixeldartPortalLeaf(
+    portalId: portalId,
+    roomId: roomId,
+    item: item,
+    mesh: mesh ?? this.mesh,
+    descriptor: descriptor ?? this.descriptor,
+  );
 }
 
 BackendSelection _selectRuntimeBackend() {
@@ -2210,6 +2328,8 @@ void _update(double dt) {
       }
     } else if (portal != null && !portal.sticks && !portal.locked) {
       portal.open = !portal.open;
+      _emitter?.rebuildRoom(portal.a);
+      _pixeldartRuntime?.refreshPortalGeometry(_house, portal.id);
       _audio?.onDoorStateChanged();
     } else if (window != null) {
       if (window.shutterOpen) {
@@ -2344,6 +2464,8 @@ void _chooseDoorResponse(String rawChoice) {
     final portal = _house.portalById('front-door');
     if (portal != null) {
       portal.open = true;
+      _emitter?.rebuildRoom(portal.a);
+      _pixeldartRuntime?.refreshPortalGeometry(_house, portal.id);
       _audio?.onDoorStateChanged();
     }
   }
@@ -2404,6 +2526,8 @@ void _closeFrontDoorIfOpen() {
   final portal = _house.portalById('front-door');
   if (portal != null && portal.open) {
     portal.open = false;
+    _emitter?.rebuildRoom(portal.a);
+    _pixeldartRuntime?.refreshPortalGeometry(_house, portal.id);
     _audio?.onDoorStateChanged();
   }
 }
