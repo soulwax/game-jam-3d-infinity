@@ -32,5 +32,23 @@ void main() {
     rejected = true;
   }
   _expect(rejected, 'incomplete schedules reject');
+  var rejectedDaylight = false;
+  try {
+    WeatherSchedule(
+      seed: 1,
+      days: [
+        for (var day = 1; day <= WeatherSchedule.authoredDays; day++)
+          WeatherDay(
+            day: day,
+            rain: false,
+            rainIntensity: 0,
+            daylightHours: day == 1 ? 25 : 12,
+          ),
+      ],
+    );
+  } on FormatException {
+    rejectedDaylight = true;
+  }
+  _expect(rejectedDaylight, 'daylight hours above one full day reject');
   print('weather: deterministic 21-day schedule and resume fixture pass');
 }

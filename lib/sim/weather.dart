@@ -103,7 +103,8 @@ List<WeatherDay> _validate(List<WeatherDay> days) {
         day.rainIntensity < 0 ||
         day.rainIntensity > 1 ||
         !day.daylightHours.isFinite ||
-        day.daylightHours <= 0) {
+        day.daylightHours <= 0 ||
+        day.daylightHours > 24) {
       throw const FormatException('weather day is out of bounds');
     }
   }

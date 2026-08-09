@@ -13,9 +13,25 @@ void main(List<String> arguments) {
     case 'check':
       final version = _readVersion();
       final changelog = File('CHANGELOG.md');
-      if (!changelog.existsSync() ||
-          !changelog.readAsStringSync().contains('## [$version]')) {
-        stderr.writeln('CHANGELOG.md has no heading for $version');
+      if (!changelog.existsSync()) {
+        stderr.writeln('Missing CHANGELOG.md');
+        exit(2);
+      }
+      final contents = changelog.readAsStringSync();
+      final headings = RegExp(
+        r'^## (.+)$',
+        multiLine: true,
+      ).allMatches(contents).map((match) => match.group(1)!.trim()).toList();
+      if (headings.isEmpty || headings.first != 'Unreleased') {
+        stderr.writeln('CHANGELOG.md must start with ## Unreleased');
+        exit(2);
+      }
+      final heading = RegExp(
+        '^## \\[$version\\](?: \\u2014 \\d{4}-\\d{2}-\\d{2})?\$',
+        multiLine: true,
+      );
+      if (!heading.hasMatch(contents)) {
+        stderr.writeln('CHANGELOG.md has no dated heading for $version');
         exit(2);
       }
       print('VERSION and CHANGELOG.md agree: $version');

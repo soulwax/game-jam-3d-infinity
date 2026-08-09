@@ -36,6 +36,34 @@ void main() {
     noon.toJson()['roomsCelsius'] is Map<String, double>,
     'snapshot is structural',
   );
+  final shortDay = TemperatureModel(
+    weather: const WeatherDay(
+      day: 1,
+      rain: false,
+      rainIntensity: 0,
+      daylightHours: 8,
+    ),
+    hour: 7,
+    roomOffsets: const {},
+  ).evaluate();
+  final longDay = TemperatureModel(
+    weather: const WeatherDay(
+      day: 1,
+      rain: false,
+      rainIntensity: 0,
+      daylightHours: 16,
+    ),
+    hour: 7,
+    roomOffsets: const {},
+  ).evaluate();
+  _expect(
+    shortDay.outsideCelsius == 8.0,
+    'short daylight keeps pre-sunrise temperature at baseline',
+  );
+  _expect(
+    longDay.outsideCelsius > shortDay.outsideCelsius,
+    'authored daylight hours affect seasonal warming',
+  );
   var rejected = false;
   try {
     TemperatureModel(

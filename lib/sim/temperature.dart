@@ -44,8 +44,13 @@ class TemperatureModel {
   }
 
   TemperatureSnapshot evaluate() {
+    // Daylight is authored per weather day (shortening across the run), so
+    // derive sunrise/sunset around noon rather than assuming fixed 06:00/18:00
+    // bounds. This keeps seasonal coldness and breath facts deterministic.
+    final daylightHours = weather.daylightHours.clamp(0.0, 24.0).toDouble();
+    final sunrise = 12.0 - daylightHours / 2.0;
     final daylightPhase = math.sin(
-      math.pi * ((hour - 6.0) / 12.0).clamp(0.0, 1.0),
+      math.pi * ((hour - sunrise) / daylightHours).clamp(0.0, 1.0),
     );
     final outside = 8.0 + daylightPhase * 4.0 - weather.rainIntensity * 3.0;
     final rooms = <String, double>{};
