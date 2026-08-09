@@ -1273,6 +1273,7 @@ final HouseServiceSoundScheduler _houseServiceSounds =
     HouseServiceSoundScheduler();
 
 bool _paused = false;
+final bool _debugPauseEnabled = Uri.base.queryParameters['debugPause'] == '1';
 bool _haveLastTime = false;
 double _lastTime = 0;
 double _legacyFrameTime = 0;
@@ -1312,6 +1313,29 @@ final Set<int> _unverifiableDaysShown = {};
 final List<String> _pendingSounds = [];
 EndingState? _ending;
 bool _runEnded = false;
+
+void _openPanel(Panel panel) {
+  if (_activePanel == panel && panel.isOpen) return;
+  _activePanel?.close();
+  _activePanel = panel;
+  _input.suspendGameplay();
+  _accumulator = 0;
+  panel.open();
+}
+
+void _togglePanel(Panel panel) {
+  if (_activePanel == panel && panel.isOpen) {
+    panel.close();
+  } else {
+    _openPanel(panel);
+  }
+}
+
+void _panelClosed(Panel panel) {
+  if (_activePanel == panel) _activePanel = null;
+  _accumulator = 0;
+  _input.resumeGameplay();
+}
 
 Future<void> main() async {
   final canvas = web.document.getElementById('game') as web.HTMLCanvasElement?;
@@ -1500,10 +1524,7 @@ Future<void> main() async {
       _time,
       _interactionEngine,
     );
-    _journal.onClose = () {
-      _activePanel = null;
-      _input.requestPointerLock(_canvas);
-    };
+    _journal.onClose = () => _panelClosed(_journal);
     _prompt = Prompt(web.document);
     _broadcast = Broadcast(web.document);
     _ambientNotice = AmbientNotice(web.document);
@@ -1540,15 +1561,9 @@ Future<void> main() async {
         }
         _saveSession('saved after sleep');
       }
-      ..onClose = () {
-        _activePanel = null;
-        _input.requestPointerLock(_canvas);
-      };
+      ..onClose = () => _panelClosed(_sleepPanel);
     _helpPanel = HelpPanel(web.document)
-      ..onClose = () {
-        _activePanel = null;
-        _input.requestPointerLock(_canvas);
-      };
+      ..onClose = () => _panelClosed(_helpPanel);
     _settingsPanel = SettingsPanel(web.document)
       ..onLevel = (key, value) {
         _storeAudioPreference(key, '$value');
@@ -1585,16 +1600,13 @@ Future<void> main() async {
         _storeDisplayPreference('strong-highlights', '$value');
         _applyDisplayToggle('strong-highlights', value);
       }
-      ..onClose = () {
-        _activePanel = null;
-        _input.requestPointerLock(_canvas);
-      };
+      ..onClose = () => _panelClosed(_settingsPanel);
     _endingPanel = EndingPanel(web.document)
       ..onClose = () {
-        _activePanel = null;
+        _panelClosed(_endingPanel);
       }
       ..onDismiss = () {
-        _activePanel = null;
+        _panelClosed(_endingPanel);
       };
     final savedEnding = EndingState.tryFromJson(saved.snapshot?.meta['ending']);
     if (savedEnding != null) _presentEnding(savedEnding);
@@ -1615,56 +1627,55 @@ Future<void> main() async {
     web.window.addEventListener(
       'keydown',
       ((web.KeyboardEvent e) {
-        if (!e.repeat) {
+        if (e.defaultPrevented) return;
+        if (e.code == 'Escape' && !e.repeat) {
+          if (_activePanel == null) {
+            _openPanel(_settingsPanel);
+          } else {
+            _activePanel!.close();
+          }
+          return;
+        }
+        final gameplayShortcutsEnabled = _activePanel == null;
+        if (!e.repeat && gameplayShortcutsEnabled) {
           _presentationBackend.handleInput(
             RendererInputAction(id: e.code, pressed: true, value: 1),
           );
         }
-        if (e.code == 'KeyP' && !e.repeat) _paused = !_paused;
-        if (e.code == 'KeyR' && !e.repeat && _shadersLive) {
+        if (e.code == 'KeyP' && !e.repeat && _debugPauseEnabled) {
+          _paused = !_paused;
+        }
+        if (e.code == 'KeyR' &&
+            !e.repeat &&
+            gameplayShortcutsEnabled &&
+            _shadersLive) {
           _renderer?.reloadShadersLive();
         }
         if (e.code == 'KeyJ' && !e.repeat && !_door.visitorPresent) {
-          if (_activePanel == null) {
-            _activePanel = _journal;
-            _journal.open();
-          } else if (_activePanel == _journal) {
-            _journal.close();
-          }
+          _togglePanel(_journal);
         }
         if (e.code == 'KeyL' && !e.repeat && !_door.visitorPresent) {
-          if (_activePanel == null) {
-            _activePanel = _sleepPanel;
-            _sleepPanel.open();
-          } else if (_activePanel == _sleepPanel) {
-            _sleepPanel.close();
-          }
+          _togglePanel(_sleepPanel);
         }
         if (e.code == 'KeyH' && !e.repeat && !_door.visitorPresent) {
-          if (_activePanel == null) {
-            _activePanel = _helpPanel;
-            _helpPanel.open();
-          } else if (_activePanel == _helpPanel) {
-            _helpPanel.close();
-          }
+          _togglePanel(_helpPanel);
         }
         if (e.code == 'KeyO' && !e.repeat && !_door.visitorPresent) {
-          if (_activePanel == null) {
-            _activePanel = _settingsPanel;
-            _settingsPanel.open();
-          } else if (_activePanel == _settingsPanel) {
-            _settingsPanel.close();
-          }
+          _togglePanel(_settingsPanel);
         }
-        if (e.code == 'KeyK' && !e.repeat) _saveSession('saved');
+        if (e.code == 'KeyK' && !e.repeat && gameplayShortcutsEnabled) {
+          _saveSession('saved');
+        }
       }).toJS,
     );
     web.window.addEventListener(
       'keyup',
       ((web.KeyboardEvent e) {
-        _presentationBackend.handleInput(
-          RendererInputAction(id: e.code, value: 0),
-        );
+        if (_activePanel == null) {
+          _presentationBackend.handleInput(
+            RendererInputAction(id: e.code, value: 0),
+          );
+        }
       }).toJS,
     );
     web.window.addEventListener('keydown', ((web.Event _) => _armAudio()).toJS);
@@ -1710,7 +1721,7 @@ void _publishRendererDiagnostics() {
   _canvas
     ..setAttribute(
       'data-renderer-request',
-      Uri.base.queryParameters['renderer'] ?? 'legacy',
+      Uri.base.queryParameters['renderer'] ?? 'auto',
     )
     ..setAttribute('data-renderer-backend', diagnostics.backend)
     ..setAttribute('data-renderer-profile', diagnostics.profile)
@@ -2046,7 +2057,7 @@ void _raf(num ts) {
 
     _updateFps(frameTime);
 
-    if (!_paused) {
+    if (!_paused && _activePanel == null) {
       _accumulator += frameTime;
       var steps = 0;
       while (_accumulator >= _fixedDt && steps < _maxSteps) {
@@ -2287,6 +2298,7 @@ void _update(double dt) {
     camera: _camera,
     house: _house,
     currentRoom: _currentRoom,
+    inventory: _houseInventory,
   );
   _prompt.show(focus.prompt);
 
@@ -2296,6 +2308,7 @@ void _update(double dt) {
   Mantle? mantle;
   Portal? portal;
   Window? window;
+  InventoryPlacement? inventoryPlacement;
 
   switch (focus.kind) {
     case FocusKind.mantle:
@@ -2306,6 +2319,14 @@ void _update(double dt) {
       break;
     case FocusKind.window:
       window = raycastWindow(_camera, _house, _currentRoom);
+      break;
+    case FocusKind.inventory:
+      inventoryPlacement = raycastInventory(
+        camera: _camera,
+        house: _house,
+        inventory: _houseInventory,
+        currentRoom: _currentRoom,
+      );
       break;
     case FocusKind.none:
       break;
@@ -2341,6 +2362,9 @@ void _update(double dt) {
       } else {
         window.shutterOpen = true;
       }
+    } else if (inventoryPlacement != null) {
+      final label = inventoryPlacement.focusId ?? inventoryPlacement.id;
+      _ambientNotice.show('noticed', 'you inspect $label');
     }
   }
 
@@ -2449,7 +2473,7 @@ void _presentEnding(EndingState ending) {
   _ending = ending;
   _runEnded = true;
   _motion.stop();
-  _activePanel = _endingPanel;
+  _openPanel(_endingPanel);
   _endingPanel.showEnding(ending, textLibrary.getEnding(ending.kind.name));
 }
 

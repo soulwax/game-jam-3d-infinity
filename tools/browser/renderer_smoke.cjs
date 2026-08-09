@@ -1,4 +1,7 @@
 const { firefox } = require('playwright');
+const fs = require('fs');
+
+const projectVersion = fs.readFileSync('VERSION', 'utf8').trim();
 
 const baseUrl = process.env.AUTOMATION_BASE_URL || 'http://127.0.0.1:8090';
 
@@ -145,6 +148,7 @@ function assertHealthy(failures, label) {
           diagnostics.provenancePinned !== true ||
           !diagnostics.gameSha || !diagnostics.rendererSha ||
           !diagnostics.sdkVersion || !diagnostics.lockfileDigest ||
+          diagnostics.projectVersion !== projectVersion ||
           typeof diagnostics.buildId !== 'string' ||
           !/^[0-9a-f]{12}-[0-9a-f]{12}(?:-dirty)?$/.test(
             diagnostics.buildId,

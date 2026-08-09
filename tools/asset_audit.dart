@@ -528,6 +528,12 @@ Future<void> main(List<String> args) async {
       final absolute = entity.absolute.path.replaceAll('\\', '/');
       final root = Directory(_assetsRoot).absolute.path.replaceAll('\\', '/');
       final path = absolute.substring(root.length + 1);
+      // Authored house manifests are copied into web/res by tools/build.dart
+      // for runtime loading, but they are not fetched/licensed media entries
+      // and therefore do not belong to the external asset inventory.
+      if (path == 'house' || path.startsWith('house/')) {
+        continue;
+      }
       if (known.contains(path)) {
         continue;
       }

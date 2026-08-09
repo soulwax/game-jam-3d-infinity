@@ -11,6 +11,7 @@ const appDir = path.join(out, 'app');
 const cacheDir = path.join(root, '.vercel', 'cache');
 const sdkVersion = process.env.DART_SDK_VERSION || '3.12.2';
 const sdkChannel = process.env.DART_SDK_CHANNEL || 'stable';
+const projectVersion = fs.readFileSync(path.join(root, 'VERSION'), 'utf8').trim();
 const target = (process.argv.includes('--wasm') ? 'wasm' : process.env.DART_TARGET || 'js').toLowerCase();
 const prebuilt = process.argv.includes('--prebuilt');
 const sourceMaps = !process.argv.includes('--no-source-maps') && process.env.VERCEL_ENV !== 'production';
@@ -154,6 +155,7 @@ function compileArgs(kind, dest) {
     `-DGAME_SHA=${gameSha}`,
     `-DDART_SDK_VERSION=${sdkVersion}`,
     `-DLOCKFILE_SHA256=${lockfileDigest}`,
+    `-DPROJECT_VERSION=${projectVersion}`,
     `-DRENDERER_BUILD_ID=${buildId}`,
   );
   return a.concat(['-o', dest, entry]);

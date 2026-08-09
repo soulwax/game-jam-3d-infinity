@@ -48,6 +48,7 @@ void main() {
     gameSha: 'game-sha',
     sdkVersion: '3.12.2',
     lockfileDigest: 'lock-sha',
+    projectVersion: '0.1.2.0',
   );
   _expect(pinned.provenancePinned, 'complete provenance is accepted');
   _expect(

@@ -157,6 +157,7 @@ final class InventoryPlacement {
   final String visibilityLayer;
   final String? stateKey;
   final bool pickable;
+  final String? focusId;
   final double clearanceRadius;
 
   const InventoryPlacement({
@@ -169,6 +170,7 @@ final class InventoryPlacement {
     required this.visibilityLayer,
     required this.stateKey,
     required this.pickable,
+    required this.focusId,
     required this.clearanceRadius,
   });
 
@@ -189,6 +191,9 @@ final class InventoryPlacement {
           ? visibility['stateKey'] as String
           : null,
       pickable: interaction['pickable'] == true,
+      focusId: interaction['focusId'] is String
+          ? interaction['focusId'] as String
+          : null,
       clearanceRadius: clearance is Map<String, dynamic>
           ? _number(clearance, 'radius')
           : 0,

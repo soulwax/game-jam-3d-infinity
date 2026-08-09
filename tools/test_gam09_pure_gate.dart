@@ -6,6 +6,7 @@ const _fixtures = <String>[
   'tools/test_gaslight_state.dart',
   'tools/test_weather.dart',
   'tools/test_temperature.dart',
+  'tools/test_environment_facts.dart',
   'tools/test_mantle_history.dart',
   'tools/test_rupture_state.dart',
   'tools/test_rupture_gate.dart',

@@ -14,6 +14,7 @@ class Input {
   double _mouseDy = 0;
   bool _locked = false;
   bool _moveThisFrame = false;
+  bool _gameplayEnabled = true;
 
   Input(web.Window window) : _document = window.document {
     window.addEventListener('keydown', _onKeyDown.toJS);
@@ -28,6 +29,26 @@ class Input {
   }
 
   bool get locked => _locked;
+
+  bool get gameplayEnabled => _gameplayEnabled;
+
+  /// Suspends gameplay input while a modal panel owns focus.
+  ///
+  /// Clearing all transient state at the boundary prevents a key pressed or
+  /// held in a menu from becoming an action when play resumes.
+  void suspendGameplay() {
+    _gameplayEnabled = false;
+    _clearGameplayState();
+  }
+
+  /// Resumes gameplay input after a modal panel closes.
+  ///
+  /// A fresh physical key edge is required after this call; stale held keys
+  /// and mouse deltas are deliberately not restored.
+  void resumeGameplay() {
+    _clearGameplayState();
+    _gameplayEnabled = true;
+  }
 
   double get mouseDx => _mouseDx;
   double get mouseDy => _mouseDy;
@@ -56,10 +77,12 @@ class Input {
     _mouseDx = 0;
     _mouseDy = 0;
     _pressed.clear();
+    _moveThisFrame = false;
   }
 
   void _onKeyDown(web.KeyboardEvent e) {
     if (e.repeat) return;
+    if (!_gameplayEnabled) return;
     if (_held.add(e.code)) _pressed.add(e.code);
   }
 
@@ -68,7 +91,7 @@ class Input {
   }
 
   void _onMouseMove(web.MouseEvent e) {
-    if (!_locked) return;
+    if (!_locked || !_gameplayEnabled) return;
     _mouseDx += _movement(e, 'movementX');
     _mouseDy += _movement(e, 'movementY');
   }
@@ -81,4 +104,12 @@ class Input {
 
   double _movement(web.MouseEvent e, String name) =>
       e.getProperty<JSNumber?>(name.toJS)?.toDartDouble ?? 0;
+
+  void _clearGameplayState() {
+    _held.clear();
+    _pressed.clear();
+    _mouseDx = 0;
+    _mouseDy = 0;
+    _moveThisFrame = false;
+  }
 }

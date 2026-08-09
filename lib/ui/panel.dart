@@ -94,6 +94,7 @@ abstract class Panel {
     onKeyDown(e);
     if (e.defaultPrevented) return;
     if (e.code == 'Escape') {
+      e.preventDefault();
       close();
       return;
     }

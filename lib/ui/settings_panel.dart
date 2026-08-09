@@ -154,7 +154,14 @@ class SettingsPanel extends Panel {
       ((web.Event _) {
         final level = double.tryParse(input.value) ?? 1.0;
         value.textContent = '${(level * 100).round()}%';
-        onLevel?.call(key, level);
+        // Display controls share the same range-row renderer as audio levels,
+        // but must stay on the display preference path. Keeping the routing
+        // decision here makes programmatic rows and browser events agree.
+        if (key == 'brightness') {
+          onDisplay?.call(key, level);
+        } else {
+          onLevel?.call(key, level);
+        }
       }).toJS,
     );
     row.appendChild(title);

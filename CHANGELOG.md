@@ -6,21 +6,19 @@ on changes players or contributors can feel. Detailed renderer notes belong in
 
 ## Unreleased
 
-- 2026-08-09 — Made query-free startup choose Pixeldart automatically, while
-  keeping `?renderer=legacy` as a deliberate rollback and `?renderer=next` as
-  a temporary compatibility alias. The selector and browser smoke now say that
-  plainly.
-- Made Pixeldart the default renderer, with legacy kept as an explicit fallback.
-- Added deterministic movement, interaction, scenario, clock, and reporting
-  tools for automated playthroughs.
-- Improved house rendering with per-slot exterior materials and hero practical
-  lighting.
-- Added weather and temperature facts to ambient lighting, fog, shutters, and
-  cold-room presentation.
-- Fixed modal input leaks, Escape settings access, brightness persistence, and
-  simulation time advancing behind menus.
-- Expanded the renderer and house verification fixtures; rebuilt the packaged
-  web release.
+- Added authored inventory focus and inspection feedback, so pickable house
+  objects can participate in the normal focus path.
+- Made repeated release builds safe when generated house manifests are present,
+  and added deterministic environment/versioning fixtures.
+
+## [0.1.2.0] — 2026-08-09
+
+- Added authored inventory focus and bounded inspection feedback to the house.
+- Wired weather, temperature, shutter, and fog facts into the renderer paths.
+- Made repeated packaged builds ignore generated house data in external-asset
+  orphan checks.
+- Added project-version provenance to packaged renderer diagnostics and corrected
+  the query-free renderer report to say `auto`.
 
 ## [0.1.1.0] — 2026-08-09
 
@@ -37,3 +35,21 @@ on changes players or contributors can feel. Detailed renderer notes belong in
   player-facing release.
 - Added a small version checker/bump tool and documented the human changelog
   workflow in the masterplan, including the `1.0.0.0` finished-game gate.
+
+## [0.1.0.0] — 2026-08-09
+
+- 2026-08-09 — Made query-free startup choose Pixeldart automatically, while
+  keeping `?renderer=legacy` as a deliberate rollback and `?renderer=next` as
+  a temporary compatibility alias. The selector and browser smoke now say that
+  plainly.
+- Made Pixeldart the default renderer, with legacy kept as an explicit fallback.
+- Added deterministic movement, interaction, scenario, clock, and reporting
+  tools for automated playthroughs.
+- Improved house rendering with per-slot exterior materials and hero practical
+  lighting.
+- Added weather and temperature facts to ambient lighting, fog, shutters, and
+  cold-room presentation.
+- Fixed modal input leaks, Escape settings access, brightness persistence, and
+  simulation time advancing behind menus.
+- Expanded the renderer and house verification fixtures; rebuilt the packaged
+  web release.
