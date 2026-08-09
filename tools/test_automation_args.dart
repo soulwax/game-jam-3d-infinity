@@ -52,6 +52,8 @@ void _parsesExplicitValues() {
   final args = result.args!;
   _expect(args.port == 8181, 'port');
   _expect(args.viewportWidth == 1280 && args.viewportHeight == 720, 'viewport');
+  final auto = parseAutomationArgs(['validate', '--port', 'auto']);
+  _expect(auto.isSuccess && auto.args!.port == 0, 'auto port');
   _expect(args.seed == -9 && args.fixedDelta == 0.02, 'numeric values');
   _expect(
     !args.headless && args.browser == AutomationBrowser.chromium,
@@ -65,7 +67,7 @@ void _rejectsInvalidValues() {
     ['wat'],
     ['validate', '--scenario', 'Days-1'],
     ['validate', '--scenario', 'missing'],
-    ['validate', '--port', '0'],
+    ['validate', '--port', '-1'],
     ['validate', '--port', '65536'],
     ['validate', '--base-url', 'file:///tmp/release'],
     ['validate', '--base-url', 'http://localhost/?bad=1'],

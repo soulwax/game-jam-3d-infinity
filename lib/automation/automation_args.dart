@@ -154,7 +154,7 @@ Modes:
 Options:
   --scenario <id>       Scenario ID (default: days-1-3).
   --server-root <path>  Packaged server root (default: dist/web).
-  --port <1..65535>     Server port (default: 8090).
+  --port <n|auto>       Server port (default: 8090; auto selects a free port).
   --base-url <url>      HTTP base URL (default: http://127.0.0.1:8090).
   --browser <name>      firefox or chromium (default: firefox).
   --renderer <name>     auto, legacy, or next (default: auto).
@@ -213,6 +213,7 @@ AutomationParseResult parseAutomationArgs(List<String> argv) {
     const valueFlags = {
       '--scenario',
       '--server-root',
+      '--serve-root',
       '--port',
       '--base-url',
       '--browser',
@@ -268,7 +269,8 @@ AutomationParseResult _failure(String message) =>
     return switch (name) {
       '--scenario' => (args: args.copyWith(scenario: value), error: null),
       '--server-root' => (args: args.copyWith(serverRoot: value), error: null),
-      '--port' => (args: args.copyWith(port: int.parse(value)), error: null),
+      '--port' => (args: args.copyWith(port: _parsePort(value)), error: null),
+      '--serve-root' => (args: args.copyWith(serverRoot: value), error: null),
       '--base-url' => (
         args: args.copyWith(baseUrl: Uri.parse(value)),
         error: null,
@@ -309,6 +311,8 @@ AutomationBrowser _parseBrowser(String value) => switch (value) {
   _ => throw FormatException('unsupported browser'),
 };
 
+int _parsePort(String value) => value == 'auto' ? 0 : int.parse(value);
+
 AutomationRenderer _parseRenderer(String value) => switch (value) {
   'auto' => AutomationRenderer.auto,
   'legacy' => AutomationRenderer.legacy,
@@ -348,7 +352,9 @@ String? validateAutomationArgs(AutomationArgs args) {
     return 'unknown scenario "${args.scenario}"';
   }
   if (args.serverRoot.trim().isEmpty) return 'server-root must not be empty';
-  if (args.port < 1 || args.port > 65535) return 'port must be 1..65535';
+  if (args.port < 0 || args.port > 65535) {
+    return 'port must be auto or 1..65535';
+  }
   if (args.baseUrl.scheme != 'http' && args.baseUrl.scheme != 'https') {
     return 'base-url must use http or https';
   }
