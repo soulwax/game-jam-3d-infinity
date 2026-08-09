@@ -3922,7 +3922,8 @@ b.iA(p,a0)
 p=A.o(a).i("U<1,2>")
 s=3
 return A.a8(A.li(A.id(new A.U(a,p),p.i("bn<ak>(n.E)").a(new A.ks(b)),p.i("n.E"),t.mj),t.c),$async$kr)
-case 3:n=n.h(0,"ir-stone")
+case 3:b.dx="ir-stone"
+n=n.h(0,"ir-stone")
 p=n==null?b.jl():n
 c.buffer=p
 q=b
@@ -3949,7 +3950,7 @@ _.ax=o
 _.ch=_.ay=null
 _.CW=p
 _.cx=!1
-_.cy=null
+_.dx=_.cy=null
 _.id=_.go=_.fy=_.fx=_.fr=1
 _.k1=!1
 _.p1=_.ok=_.k4=_.k3=_.k2=$
@@ -5883,7 +5884,7 @@ mX:function mX(a){this.a=a},
 iC:function iC(a,b,c){this.a=a
 this.b=b
 this.c=c},
-mW(a,b,c,d,e){var s="9900c9b38935-d004e52a5506",r=A.oy("RENDERER_SHA"),q=A.oy("GAME_SHA"),p=A.oy("DART_SDK_VERSION"),o=A.oy("LOCKFILE_SHA256"),n=A.me(b,A.K(b).c)
+mW(a,b,c,d,e){var s="e9a1f5d42016-d004e52a5506",r=A.oy("RENDERER_SHA"),q=A.oy("GAME_SHA"),p=A.oy("DART_SDK_VERSION"),o=A.oy("LOCKFILE_SHA256"),n=A.me(b,A.K(b).c)
 n=A.L(n,A.o(n).c)
 B.a.a0(n)
 n=new A.mV(a,e,s,A.am(n,t.N),r,q,p,o,c,d)
@@ -7076,7 +7077,11 @@ A.xr(l,k)}B.a.H($.cb)
 $.C.j().setAttribute("data-audio-spatial-active",""+l.CW.a)
 e=$.C.j()
 d=l.cx?"true":"false"
-e.setAttribute("data-audio-music-started",d)}}j=$.eH
+e.setAttribute("data-audio-music-started",d)
+d=$.C.j()
+e=l.dx
+if(e==null)e="ir-fallback"
+d.setAttribute("data-audio-room-ir",e)}}j=$.eH
 if(j!=null){$.bK.j().dI($.hh(),$.bN,$.dP)
 e=$.aJ===$.eB.j()?1:0
 j.c9=e
@@ -17079,7 +17084,7 @@ B.eM=new A.a4(B.fg,[0,1],t.I)
 B.fd={uScene:0,uHistory:1}
 B.eN=new A.a4(B.fd,[0,1],t.I)
 B.f0={RENDERER_SHA:0,GAME_SHA:1,DART_SDK_VERSION:2,LOCKFILE_SHA256:3}
-B.eO=new A.a4(B.f0,["d004e52a550696538afaab098008c0e195ce13dc","9900c9b38935a3b194c43bff8d0f04d0ee6c767c","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29"],t.D)
+B.eO=new A.a4(B.f0,["d004e52a550696538afaab098008c0e195ce13dc","e9a1f5d420166a95395b26a3e07f2e701b681ef6","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29"],t.D)
 B.f6={aPosition:0,aUvMat:1}
 B.bu=new A.a4(B.f6,[0,4],t.I)
 B.fe={uScene:0,uLut:1}
