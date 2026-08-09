@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:math' as math;
 
+import '../house/inventory.dart';
+
 const automationScenarioSchemaVersion = 1;
 
 enum AutomationStepPhase { fixture, embodied }
@@ -168,6 +170,25 @@ final class AutomationScenarioCatalog {
     required this.cameras,
     required this.routes,
   });
+
+  factory AutomationScenarioCatalog.fromInventory({
+    required Set<String> rooms,
+    required Set<String> portals,
+    required Set<String> cameras,
+    required Map<String, AutomationRoute> routes,
+    required HouseInventory inventory,
+    Set<String> additionalTargets = const {},
+  }) => AutomationScenarioCatalog(
+    rooms: rooms,
+    portals: portals,
+    cameras: cameras,
+    routes: routes,
+    targets: {
+      ...additionalTargets,
+      for (final placement in inventory.pickablePlacements)
+        placement.focusId ?? placement.id,
+    },
+  );
 }
 
 final class AutomationScenarioCompiler {

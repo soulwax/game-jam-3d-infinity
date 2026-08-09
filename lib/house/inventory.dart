@@ -48,6 +48,16 @@ final class HouseInventory {
   Iterable<InventoryPlacement> placementsFor(String roomId) =>
       placements.where((placement) => placement.roomId == roomId);
 
+  Iterable<InventoryPlacement> get pickablePlacements =>
+      placements.where((placement) => placement.pickable);
+
+  InventoryPlacement? pickableForFocusId(String focusId) {
+    for (final placement in pickablePlacements) {
+      if (placement.focusId == focusId) return placement;
+    }
+    return null;
+  }
+
   InventoryAsset assetFor(String assetId) => assets.firstWhere(
     (asset) => asset.id == assetId,
     orElse: () => throw StateError('inventory asset missing: $assetId'),
@@ -78,6 +88,7 @@ final class HouseInventory {
     }
     final placementIds = <String>{};
     final sockets = <String>{};
+    final focusIds = <String>{};
     for (final placement in placements) {
       if (!placementIds.add(placement.id)) {
         throw StateError('duplicate inventory placement ${placement.id}');
@@ -89,6 +100,17 @@ final class HouseInventory {
         );
       }
       final asset = assetFor(placement.assetId);
+      if (placement.pickable && placement.focusId != null) {
+        final focusId = placement.focusId!;
+        if (!_stableFocusId.hasMatch(focusId)) {
+          throw StateError(
+            'invalid inventory focusId ${placement.id}: $focusId',
+          );
+        }
+        if (!focusIds.add(focusId)) {
+          throw StateError('duplicate inventory focusId $focusId');
+        }
+      }
       if (placement.clearanceRadius < 0 ||
           !placement.clearanceRadius.isFinite) {
         throw StateError('invalid clearance for ${placement.id}');
@@ -116,6 +138,8 @@ final class HouseInventory {
     }
   }
 }
+
+final _stableFocusId = RegExp(r'^[a-z0-9][a-z0-9._-]*$');
 
 final class InventoryAsset {
   final String id;

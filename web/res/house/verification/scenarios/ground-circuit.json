@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "id": "ground-circuit",
+  "tags": ["smoke", "embodied-route"],
+  "fixture": {
+    "seed": 42017,
+    "day": 1,
+    "hour": 8,
+    "weather": "overcast",
+    "startPose": "hall-entry",
+    "doors": {
+      "hall-living": "open",
+      "hall-kitchen": "closed"
+    }
+  },
+  "runtime": {
+    "fixedDt": 0.0166666667,
+    "maxTicks": 7200
+  },
+  "poses": [
+    {
+      "id": "hall-entry",
+      "position": [0.0, 1.6, 0.0],
+      "yaw": 0.0,
+      "pitch": 0.0,
+      "room": "hall"
+    }
+  ],
+  "routes": [
+    {
+      "id": "hall-to-living",
+      "rooms": ["hall", "living-room"],
+      "portals": ["hall-living"],
+      "tickBudget": 900
+    },
+    {
+      "id": "living-to-kitchen",
+      "rooms": ["living-room", "kitchen"],
+      "portals": ["kitchen-living"],
+      "tickBudget": 900
+    }
+  ],
+  "steps": [
+    {"id": "ready", "do": "awaitReady", "phase": "fixture"},
+    {"id": "fixture", "do": "loadFixture", "phase": "fixture"},
+    {"id": "to-living", "do": "moveRoute", "route": "hall-to-living", "tickBudget": 900},
+    {"id": "aim-mantle", "do": "lookAt", "target": "mantle-living"},
+    {"id": "focus-mantle", "do": "awaitFocus", "target": "mantle-living"},
+    {"id": "light-mantle", "do": "interact", "target": "mantle-living", "mode": "press"},
+    {"id": "mantle-on", "assert": "state", "target": "mantle-living"},
+    {"id": "hero-night", "do": "capture", "camera": "hero-night"},
+    {"id": "to-kitchen", "do": "moveRoute", "route": "living-to-kitchen", "tickBudget": 900}
+  ]
+}

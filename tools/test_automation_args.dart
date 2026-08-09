@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:quarantine/automation/automation_args.dart';
 
@@ -8,6 +9,7 @@ void main() {
   _rejectsInvalidValues();
   _rejectsConflictingHeadlessFlags();
   _roundTripsResolvedJson();
+  _runnerPropagatesResolvedConfig();
   print('automation args: contract, validation, modes, and JSON pass');
 }
 
@@ -104,4 +106,16 @@ void _roundTripsResolvedJson() {
 
 void _expect(bool condition, String message) {
   if (!condition) throw StateError(message);
+}
+
+void _runnerPropagatesResolvedConfig() {
+  final source = File('tools/automation.dart').readAsStringSync();
+  _expect(
+    source.contains("'AUTOMATION_ARGS': args.encode()"),
+    'runner passes resolved arguments to browser smoke',
+  );
+  _expect(
+    source.contains("'runner.config'"),
+    'runner reports resolved arguments before browser launch',
+  );
 }

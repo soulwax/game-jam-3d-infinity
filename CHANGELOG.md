@@ -10,6 +10,20 @@ on changes players or contributors can feel. Detailed renderer notes belong in
   objects can participate in the normal focus path.
 - Made repeated release builds safe when generated house manifests are present,
   and added deterministic environment/versioning fixtures.
+- Made the local package build embed the canonical project version in renderer
+  diagnostics, matching the hosted build path.
+- Made automation runs forward their validated scenario, renderer, profile, and
+  viewport instead of silently using the smoke test defaults.
+- Added a deterministic embodied-controller fixture covering route arrival,
+  focus settling, one interaction edge, and exactly one resulting cost.
+- Automation runs now retain bounded browser logs and structured child-exit
+  evidence in each report bundle.
+- Automation runs now capture and register a bounded screenshot of the selected
+  renderer route and viewport.
+- Captures now include a sidecar manifest distinguishing requested and negotiated
+  renderer profiles.
+- Capture bundles now include SHA-256 digests for the screenshot and manifest,
+  making repeated runs easy to compare without assuming cross-GPU pixel identity.
 
 ## [0.1.2.0] — 2026-08-09
 

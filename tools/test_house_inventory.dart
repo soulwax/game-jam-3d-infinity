@@ -19,8 +19,14 @@ void main() {
     for (final placement in inventory.placements) placement.roomId,
   };
   if (rooms.length != 8) fail('inventory does not cover all eight rooms');
-  final pickable = inventory.placements.where((item) => item.pickable).length;
+  final pickable = inventory.pickablePlacements.length;
   if (pickable < 8) fail('inventory has too few inspectable placements');
+  for (final placement in inventory.pickablePlacements) {
+    if (placement.focusId != null &&
+        inventory.pickableForFocusId(placement.focusId!) != placement) {
+      fail('focus index does not return ${placement.id}');
+    }
+  }
   print(
     'house inventory: ${inventory.assets.length} assets, '
     '${inventory.placements.length} placements, $pickable pickable pass',

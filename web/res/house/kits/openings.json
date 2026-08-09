@@ -1,0 +1,12 @@
+{
+  "kitFamily": "openings",
+  "status": "authored-shell-v0",
+  "sourceRef": "assets/house/house.json",
+  "modules": [
+    {"id":"kit-sash-two-over-two","kind":"window","pivot":"openingOrigin","parts":["masonry-return","stone-sill","timber-box","upper-sash","lower-sash","meeting-rail","glazing-bars","glass","architrave"],"materialSlots":["brick","stone","painted-timber","glass"],"lod":"hero","collision":"window-opening"},
+    {"id":"kit-sash-frosted-bathroom","kind":"window","pivot":"openingOrigin","parts":["masonry-return","sill","timber-box","sash","frosted-glass","architrave"],"materialSlots":["plaster","painted-timber","frosted-glass"],"lod":"architecture","collision":"window-opening"},
+    {"id":"kit-front-door-recessed","kind":"door","pivot":"openingOrigin","parts":["threshold","brick-return","four-panel-leaf","fanlight","iron-hardware","architrave"],"materialSlots":["brick","stained-timber","glass","iron"],"lod":"hero","collision":"front-door-portal"},
+    {"id":"kit-internal-four-panel-door","kind":"door","pivot":"openingOrigin","parts":["leaf","hinges","handle","architrave","threshold"],"materialSlots":["painted-timber","iron"],"lod":"architecture","collision":"portal-door"},
+    {"id":"kit-cellar-door-grille","kind":"service-opening","pivot":"openingOrigin","parts":["masonry-return","iron-grille","lintel","drain-edge"],"materialSlots":["rough-masonry","iron","damp"],"lod":"architecture","collision":"service-threshold"}
+  ]
+}

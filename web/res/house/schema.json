@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "kind": "quarantine-house-authored-data",
+  "units": "metres",
+  "upAxis": "y",
+  "handedness": "right",
+  "canonicalSource": "lib/house/house.dart",
+  "renderMeaning": "Renderer-neutral authored geometry and placement data; simulation remains the canonical owner until the house-data migration gate is accepted.",
+  "requiredTopLevel": ["houseId", "sourceRef", "modelScale", "exteriorMesh", "inventoryPath", "soundscapePath", "levels", "rooms", "portals", "stairs"],
+  "roomRequired": ["id", "floor", "origin", "size", "surface", "windows", "portalIds", "focalComposition"],
+  "portalRequired": ["id", "a", "b", "facingA", "facingB", "offsetA", "offsetB", "width", "height", "doorKit (non-stair)"],
+  "runtimeEnvelope": {"modelScale": 1.5, "exteriorWallThickness": 0.42, "partitionWallThickness": 0.18},
+  "transform": {"position": "vec3", "rotation": "euler-degrees", "scale": "vec3"},
+  "inventory": {"path": "inventory.json", "coordinateSpace": "room-local-y-up", "placementScale": "modelScale applied once"},
+  "soundscape": {"path": "soundscape.json", "coordinateSpace": "room-local-y-up", "placementScale": "modelScale applied once", "occlusion": "house portal graph"},
+  "inventoryPlacementRequired": ["id", "roomId", "assetId", "role", "transform", "visibility", "interaction", "clearance"],
+  "pivotPolicies": ["floorCenter", "wallBack", "openingOrigin", "explicit"],
+  "lodPolicies": ["hero", "architecture", "furniture", "context", "culled"],
+  "visibilityLayers": ["architecture", "furniture", "surface", "floor", "wall", "micro", "story", "envelope", "roofDrainage", "hardscape", "planting", "serviceClutter", "street", "context"],
+  "validation": {"roomCount": 8, "portalCount": 9, "windowsFromInside": 9, "windowsFromOutside": 11, "oppositeHouseBaseWindows": 10, "playerCapsuleRadius": 0.3}
+}

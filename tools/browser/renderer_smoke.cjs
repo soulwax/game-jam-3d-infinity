@@ -1,9 +1,95 @@
 const { firefox } = require('playwright');
+const { createHash } = require('crypto');
 const fs = require('fs');
+const pathModule = require('path');
 
 const projectVersion = fs.readFileSync('VERSION', 'utf8').trim();
 
 const baseUrl = process.env.AUTOMATION_BASE_URL || 'http://127.0.0.1:8090';
+
+function readAutomationArgs() {
+  const raw = process.env.AUTOMATION_ARGS;
+  if (!raw) return null;
+  let parsed;
+  try {
+    parsed = JSON.parse(raw);
+  } catch (error) {
+    throw new Error(`AUTOMATION_ARGS is not valid JSON: ${error}`);
+  }
+  const renderer = parsed?.renderer;
+  const profile = parsed?.profile;
+  const scenario = parsed?.scenario;
+  const width = parsed?.viewport?.width;
+  const height = parsed?.viewport?.height;
+  if (!['auto', 'legacy', 'next'].includes(renderer) ||
+      !['safe', 'standard', 'clean'].includes(profile) ||
+      typeof scenario !== 'string' || !/^[a-z0-9][a-z0-9._-]*$/.test(scenario) ||
+      !Number.isInteger(width) || width < 1 ||
+      !Number.isInteger(height) || height < 1) {
+    throw new Error('AUTOMATION_ARGS has an invalid renderer/profile/scenario/viewport');
+  }
+  return { renderer, profile, scenario, width, height };
+}
+
+const automationArgs = readAutomationArgs();
+
+async function captureAutomationScreenshot(page, routeName, routePath, result) {
+  const runDir = process.env.AUTOMATION_RUN_DIR;
+  if (!automationArgs || !runDir) return null;
+  const safeRoute = routeName.replace(/[^a-z0-9._-]/gi, '-');
+  const file = pathModule.join(
+    runDir,
+    `browser-${automationArgs.scenario}-${safeRoute}.png`,
+  );
+  await page.screenshot({
+    path: file,
+    animations: 'disabled',
+    caret: 'hide',
+    fullPage: false,
+    scale: 'css',
+  });
+  const bytes = fs.statSync(file).size;
+  if (bytes > 8 * 1024 * 1024) {
+    fs.rmSync(file, { force: true });
+    throw new Error(`automation screenshot exceeds 8 MiB: ${bytes}`);
+  }
+  const metadataFile = file.replace(/\.png$/, '.json');
+  let negotiatedProfile = null;
+  try {
+    negotiatedProfile = JSON.parse(result.diagnostics ?? '{}').profile ?? null;
+  } catch (_) {
+    // The normal diagnostics assertion below reports malformed JSON.
+  }
+  fs.writeFileSync(
+    metadataFile,
+    `${JSON.stringify({
+      schemaVersion: 1,
+      scenario: automationArgs.scenario,
+      requestedRenderer: automationArgs.renderer,
+      requestedProfile: automationArgs.profile,
+      negotiatedProfile,
+      viewport: { width: automationArgs.width, height: automationArgs.height },
+      routeName,
+      routePath,
+      screenshot: pathModule.basename(file),
+      capture: { scale: 'css', animations: 'disabled', fullPage: false },
+    }, null, 2)}\n`,
+  );
+  const digestFile = metadataFile.replace(/\.json$/, '.digest.json');
+  const sha256 = (value) => createHash('sha256').update(value).digest('hex');
+  fs.writeFileSync(
+    digestFile,
+    `${JSON.stringify({
+      schemaVersion: 1,
+      screenshot: pathModule.basename(file),
+      screenshotSha256: sha256(fs.readFileSync(file)),
+      metadata: pathModule.basename(metadataFile),
+      metadataSha256: sha256(fs.readFileSync(metadataFile)),
+    }, null, 2)}\n`,
+  );
+  console.log(`automation-capture: ${file} (${bytes} bytes)`);
+  return { file, metadataFile, digestFile };
+}
 
 const routes = [
   ['pixeldart-default', '/'],
@@ -33,8 +119,29 @@ function assertHealthy(failures, label) {
   if (process.env.FIREFOX_BIN) launchOptions.executablePath = process.env.FIREFOX_BIN;
   const browser = await firefox.launch(launchOptions);
   try {
-    for (const [name, path] of routes) {
-      const page = await browser.newPage();
+    const selectedRoutes = automationArgs
+      ? [[
+          automationArgs.renderer === 'legacy'
+            ? 'legacy-explicit'
+            : automationArgs.renderer === 'next'
+              ? 'pixeldart-next'
+              : 'pixeldart-default',
+          automationArgs.renderer === 'legacy'
+            ? '/?renderer=legacy'
+            : automationArgs.renderer === 'next'
+              ? '/?renderer=next'
+              : '/',
+        ]]
+      : routes;
+    if (automationArgs) {
+      console.log(`automation-config: ${JSON.stringify(automationArgs)}`);
+    }
+    for (const [name, path] of selectedRoutes) {
+      const page = await browser.newPage(
+        automationArgs
+          ? { viewport: { width: automationArgs.width, height: automationArgs.height } }
+          : undefined,
+      );
       const failures = trackPageHealth(page);
       const response = await page.goto(`${baseUrl}${path}`);
       if (!response || response.status() !== 200) {
@@ -128,6 +235,7 @@ function assertHealthy(failures, label) {
         wallTexture: canvas.getAttribute('data-renderer-texture-wall-plaster'),
         grimeTexture: canvas.getAttribute('data-renderer-texture-grime'),
       }));
+      await captureAutomationScreenshot(page, name, path, result);
       const buttons = await page.locator('button').evaluateAll((nodes) =>
         nodes.map((node) => ({
           text: node.textContent?.trim() ?? '',

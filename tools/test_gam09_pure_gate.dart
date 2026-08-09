@@ -12,6 +12,10 @@ const _fixtures = <String>[
   'tools/test_rupture_gate.dart',
   'tools/test_tape_state.dart',
   'tools/test_feature_snapshot.dart',
+  'tools/test_inventory_focus_sweep.dart',
+  'tools/test_inventory_target_alignment.dart',
+  'tools/test_inventory_interaction.dart',
+  'tools/test_automation_inventory_catalog.dart',
 ];
 
 Never _fail(String message) =>

@@ -33,6 +33,7 @@ import 'package:quarantine/house/focus.dart';
 import 'package:quarantine/house/geometry.dart';
 import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/inventory.dart';
+import 'package:quarantine/house/inventory_interaction.dart';
 import 'package:quarantine/house/soundscape.dart';
 import 'package:quarantine/house/exterior_mesh_adapter.dart';
 import 'package:quarantine/house/exterior_pvs.dart';
@@ -1271,6 +1272,8 @@ int _audioEventSequence = 0;
 final HouseClock _houseClock = HouseClock();
 final HouseServiceSoundScheduler _houseServiceSounds =
     HouseServiceSoundScheduler();
+final InventoryInspectionLedger _inventoryInspections =
+    InventoryInspectionLedger();
 
 bool _paused = false;
 final bool _debugPauseEnabled = Uri.base.queryParameters['debugPause'] == '1';
@@ -1459,6 +1462,7 @@ Future<void> main() async {
             vocabulary: vocabulary,
             snapshot: saved.snapshot!,
           );
+    _inventoryInspections.restore(saved.snapshot?.meta['inventoryInspections']);
     _presentationBackend.submit(
       RendererFrame(snapshot: _session.presentationSnapshot),
     );
@@ -1757,6 +1761,7 @@ void _saveSession(String status) {
           'visitors': _visitorDirector.snapshot.toJson(),
           'ambient': _ambientDirector.deliveredIds,
           'unverifiables': _unverifiableDaysShown.toList()..sort(),
+          'inventoryInspections': _inventoryInspections.toJson(),
           if (_ending != null) 'ending': _ending!.toJson(),
         },
       ),
@@ -2363,8 +2368,15 @@ void _update(double dt) {
         window.shutterOpen = true;
       }
     } else if (inventoryPlacement != null) {
-      final label = inventoryPlacement.focusId ?? inventoryPlacement.id;
-      _ambientNotice.show('noticed', 'you inspect $label');
+      final event = _inventoryInspections.inspect(inventoryPlacement);
+      _canvas
+        ..setAttribute('data-inventory-last-focus', event.focusId)
+        ..setAttribute('data-inventory-last-event', event.semanticId)
+        ..setAttribute(
+          'data-inventory-inspections',
+          '${_inventoryInspections.counts.length}',
+        );
+      _ambientNotice.show('noticed', 'you inspect ${event.focusId}');
     }
   }
 

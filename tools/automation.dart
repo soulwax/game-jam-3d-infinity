@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:quarantine/automation/automation_args.dart';
@@ -55,12 +56,15 @@ Future<void> _run(AutomationArgs args) async {
       tick: 0,
       data: {'phase': 'server-ready', 'baseUrl': baseUrl.toString()},
     );
+    await reporter.record('runner.config', tick: 0, data: args.toJson());
     final process = await Process.start(
       'node',
       ['tools/browser/renderer_smoke.cjs'],
       environment: {
         ...Platform.environment,
+        'AUTOMATION_ARGS': args.encode(),
         'AUTOMATION_BASE_URL': baseUrl.toString(),
+        'AUTOMATION_RUN_DIR': reporter.runDirectory.path,
         'RENDERER_HEADLESS': args.headless ? '1' : '0',
       },
       runInShell: false,
@@ -68,21 +72,43 @@ Future<void> _run(AutomationArgs args) async {
     lifecycle.cleanup.add(() async {
       process.kill(ProcessSignal.sigterm);
     });
-    process.stdout.listen(
-      stdout.add,
-      onError: (Object error, StackTrace _) {
-        stderr.writeln('automation: browser stdout failed: $error');
-      },
-    );
-    process.stderr.listen(
-      stderr.add,
-      onError: (Object error, StackTrace _) {
-        stderr.writeln('automation: browser stderr failed: $error');
-      },
-    );
+    final browserStdout = StringBuffer();
+    final browserStderr = StringBuffer();
+    final stdoutDone = utf8.decoder.bind(process.stdout).forEach((text) {
+      stdout.write(text);
+      _appendBounded(browserStdout, text);
+    });
+    final stderrDone = utf8.decoder.bind(process.stderr).forEach((text) {
+      stderr.write(text);
+      _appendBounded(browserStderr, text);
+    });
     stdout.writeln(args.copyWith(baseUrl: baseUrl).encode());
     await stdout.flush();
     final code = await process.exitCode;
+    await Future.wait([stdoutDone, stderrDone]);
+    await reporter.writeArtifact(
+      'browser-stdout.log',
+      utf8.encode(browserStdout.toString()),
+      contentType: 'text/plain',
+    );
+    await reporter.writeArtifact(
+      'browser-stderr.log',
+      utf8.encode(browserStderr.toString()),
+      contentType: 'text/plain',
+    );
+    await _registerScreenshotArtifacts(reporter);
+    await reporter.record(
+      'runner.browser-exit',
+      tick: 0,
+      data: {'exitCode': code, 'stdoutBytes': browserStdout.length},
+    );
+    if (code != 0) {
+      await reporter.fail(
+        AutomationFailureKind.assertion,
+        tick: 0,
+        message: 'browser smoke exited with code $code',
+      );
+    }
     await lifecycle.close();
     await reporter.finish(
       status: code == 0
@@ -124,5 +150,37 @@ Future<void> _run(AutomationArgs args) async {
         exitCode = 6;
       }
     }
+  }
+}
+
+const _browserLogLimit = 64 * 1024;
+
+void _appendBounded(StringBuffer target, String text) {
+  final remaining = _browserLogLimit - target.length;
+  if (remaining <= 0) return;
+  target.write(text.length <= remaining ? text : text.substring(0, remaining));
+}
+
+Future<void> _registerScreenshotArtifacts(
+  AutomationRunReporter reporter,
+) async {
+  final entries = reporter.runDirectory.listSync().whereType<File>().where((
+    file,
+  ) {
+    final name = file.uri.pathSegments.last;
+    return name.startsWith('browser-') &&
+        (name.endsWith('.png') || name.endsWith('.json'));
+  });
+  for (final file in entries) {
+    final name = file.uri.pathSegments.last;
+    await reporter.record(
+      'artifact.external',
+      tick: 0,
+      data: {
+        'name': name,
+        'bytes': await file.length(),
+        'contentType': name.endsWith('.png') ? 'image/png' : 'application/json',
+      },
+    );
   }
 }
