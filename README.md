@@ -2,9 +2,7 @@
 
 - Theme: 3D Infinite Possibilities
 - Project for Ludum Dare
-- Start time and date: 2026-07-28 06:00 CEST
-- Duration: 72 hours
-- End time and date: 2026-08-04 06:00 CEST self prolonged to make something worthwhile
+- Project history: [CHANGELOG.md](CHANGELOG.md)
 
 - How to build: install dart then run the following commands or open in vscode and press play button.
 
