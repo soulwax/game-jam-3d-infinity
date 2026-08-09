@@ -24,7 +24,7 @@ class HelpPanel extends Panel {
         'p',
         cls: 'help-copy',
         text:
-            'J opens the journal. L rests. K saves. The final door waits until Day 21.',
+            'J opens the journal. L rests. O opens settings. K saves. The final door waits until Day 21.',
       ),
     );
     final close =

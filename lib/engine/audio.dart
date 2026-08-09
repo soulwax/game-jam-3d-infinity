@@ -44,6 +44,7 @@ class Audio {
   late final web.GainNode _master;
   late final web.GainNode _sub;
   late final web.GainNode _bed;
+  late final web.GainNode _ambience;
   late final web.GainNode _mid;
   late final web.GainNode _transient;
   late final web.GainNode _air;
@@ -65,6 +66,12 @@ class Audio {
   String? _roomIr;
 
   bool _silent = false;
+  double _masterMix = 1.0;
+  double _voiceMix = 1.0;
+  double _effectsMix = 1.0;
+  double _ambienceMix = 1.0;
+  double _musicMix = 1.0;
+  bool _muted = false;
 
   int get activeSpatialSources => _filterChains.length;
 
@@ -75,6 +82,7 @@ class Audio {
     : _master = _ctx.createGain(),
       _sub = _ctx.createGain(),
       _bed = _ctx.createGain(),
+      _ambience = _ctx.createGain(),
       _mid = _ctx.createGain(),
       _transient = _ctx.createGain(),
       _air = _ctx.createGain(),
@@ -85,17 +93,19 @@ class Audio {
     _master.connect(_ctx.destination);
     _sub.gain.value = gainSub;
     _bed.gain.value = gainBed;
+    _ambience.gain.value = gainTransient;
     _mid.gain.value = gainMid;
     _transient.gain.value = gainTransient;
     _air.gain.value = gainAir;
     _vo.gain.value = 1.0;
-    for (final s in [_sub, _bed, _mid, _transient, _air, _vo]) {
+    for (final s in [_sub, _bed, _ambience, _mid, _transient, _air, _vo]) {
       s.connect(_master);
     }
     _send.gain.value = 1;
     _wet.gain.value = reverbWet;
     _mid.connect(_send);
     _transient.connect(_send);
+    _ambience.connect(_send);
     _send.connect(_verb);
     _verb.connect(_wet);
     _wet.connect(_master);
@@ -126,6 +136,13 @@ class Audio {
     // the door. Double reverb (baked + convolved) places voice in the room
     // instead of at the source point the set defines.
     if (name.startsWith('vo-')) return _vo;
+    if (name == 'clock-tick' ||
+        name == 'clock-chime' ||
+        name == 'range-settle' ||
+        name == 'cellar-drip' ||
+        name == 'cistern-settle') {
+      return _ambience;
+    }
     return switch (sfxSlot[name]) {
       'sub' => _sub,
       'bed' => _bed,
@@ -328,7 +345,7 @@ class Audio {
     final src = _ctx.createBufferSource()
       ..buffer = buf
       ..loop = true;
-    final g = _ctx.createGain()..gain.value = 0.6;
+    final g = _ctx.createGain()..gain.value = 0.6 * _musicMix;
     src.connect(g);
     g.connect(_bed);
     src.start();
@@ -356,14 +373,14 @@ class Audio {
   }
 
   void duck(double gain01) {
-    _bed.gain.value = gainBed * gain01;
-    _mid.gain.value = gainMid * (0.5 + 0.5 * gain01);
+    _bed.gain.value = gainBed * _musicMix * gain01;
+    _mid.gain.value = gainMid * _effectsMix * (0.5 + 0.5 * gain01);
     if (_silent) {
       _silent = false;
       final t = _ctx.currentTime.toDouble();
       _master.gain.cancelScheduledValues(t);
       _master.gain.setValueAtTime(_master.gain.value, t);
-      _master.gain.linearRampToValueAtTime(1, t + 0.2);
+      _master.gain.linearRampToValueAtTime(_masterTarget, t + 0.2);
       _send.gain.cancelScheduledValues(t);
       _send.gain.setValueAtTime(0, t);
       _send.gain.linearRampToValueAtTime(1, t + 0.2);
@@ -371,6 +388,32 @@ class Audio {
       _wet.gain.setValueAtTime(0, t);
       _wet.gain.linearRampToValueAtTime(reverbWet, t + 0.2);
     }
+  }
+
+  double get _masterTarget => _muted ? 0.0 : _masterMix;
+
+  void setMix({
+    double? master,
+    double? voice,
+    double? effects,
+    double? ambience,
+    double? music,
+    bool? muted,
+  }) {
+    _masterMix = (master ?? _masterMix).clamp(0.0, 1.0).toDouble();
+    _voiceMix = (voice ?? _voiceMix).clamp(0.0, 1.0).toDouble();
+    _effectsMix = (effects ?? _effectsMix).clamp(0.0, 1.0).toDouble();
+    _ambienceMix = (ambience ?? _ambienceMix).clamp(0.0, 1.0).toDouble();
+    _musicMix = (music ?? _musicMix).clamp(0.0, 1.0).toDouble();
+    if (muted != null) _muted = muted;
+    _sub.gain.value = gainSub * _effectsMix;
+    _mid.gain.value = gainMid * _effectsMix;
+    _transient.gain.value = gainTransient * _effectsMix;
+    _air.gain.value = gainAir * _effectsMix;
+    _ambience.gain.value = gainTransient * _ambienceMix;
+    _bed.gain.value = gainBed * _musicMix;
+    _vo.gain.value = _voiceMix;
+    if (!_silent) _master.gain.value = _masterTarget;
   }
 
   void setListenerRoom(String roomId) {

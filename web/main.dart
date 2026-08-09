@@ -57,6 +57,7 @@ import 'package:quarantine/ui/journal_panel.dart';
 import 'package:quarantine/ui/panel.dart';
 import 'package:quarantine/ui/prompt.dart';
 import 'package:quarantine/ui/sleep_panel.dart';
+import 'package:quarantine/ui/settings_panel.dart';
 import 'package:quarantine/visitors/ambient.dart';
 import 'package:quarantine/visitors/director.dart';
 import 'package:quarantine/visitors/stand_ins.dart';
@@ -1110,6 +1111,7 @@ late Broadcast _broadcast;
 late Door _door;
 late SleepPanel _sleepPanel;
 late HelpPanel _helpPanel;
+late SettingsPanel _settingsPanel;
 late EndingPanel _endingPanel;
 late VisitorDirector _visitorDirector;
 late AmbientDirector _ambientDirector;
@@ -1356,6 +1358,28 @@ Future<void> main() async {
         _activePanel = null;
         _input.requestPointerLock(_canvas);
       };
+    _settingsPanel = SettingsPanel(web.document)
+      ..onLevel = (key, value) {
+        switch (key) {
+          case 'master':
+            _audio?.setMix(master: value);
+          case 'voice':
+            _audio?.setMix(voice: value);
+          case 'effects':
+            _audio?.setMix(effects: value);
+          case 'ambience':
+            _audio?.setMix(ambience: value);
+          case 'music':
+            _audio?.setMix(music: value);
+        }
+      }
+      ..onMute = (muted) {
+        _audio?.setMix(muted: muted);
+      }
+      ..onClose = () {
+        _activePanel = null;
+        _input.requestPointerLock(_canvas);
+      };
     _endingPanel = EndingPanel(web.document)
       ..onClose = () {
         _activePanel = null;
@@ -1413,6 +1437,14 @@ Future<void> main() async {
             _helpPanel.open();
           } else if (_activePanel == _helpPanel) {
             _helpPanel.close();
+          }
+        }
+        if (e.code == 'KeyO' && !e.repeat && !_door.visitorPresent) {
+          if (_activePanel == null) {
+            _activePanel = _settingsPanel;
+            _settingsPanel.open();
+          } else if (_activePanel == _settingsPanel) {
+            _settingsPanel.close();
           }
         }
         if (e.code == 'KeyK' && !e.repeat) _saveSession('saved');

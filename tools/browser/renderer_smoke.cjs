@@ -101,6 +101,16 @@ function assertHealthy(failures, label) {
             live: broadcast?.getAttribute('aria-live'),
           };
         })(),
+        settings: (() => {
+          const settings = [...document.querySelectorAll('.panel')]
+            .find((panel) => panel.getAttribute('aria-label') === 'House settings');
+          return {
+            role: settings?.getAttribute('role'),
+            label: settings?.getAttribute('aria-label'),
+            hidden: settings?.getAttribute('hidden'),
+            controls: settings?.querySelectorAll('input[type="range"]').length ?? 0,
+          };
+        })(),
         wallTexture: canvas.getAttribute('data-renderer-texture-wall-plaster'),
         grimeTexture: canvas.getAttribute('data-renderer-texture-grime'),
       }));
@@ -183,6 +193,12 @@ function assertHealthy(failures, label) {
       if (result.prompt.role !== 'status' || result.prompt.live !== 'polite' ||
           result.broadcast.role !== 'status' || result.broadcast.live !== 'polite') {
         throw new Error(`${name}: live-region semantics were incomplete ${JSON.stringify(result)}`);
+      }
+      if (result.settings.role !== 'dialog' ||
+          result.settings.label !== 'House settings' ||
+          result.settings.hidden !== '' ||
+          result.settings.controls !== 5) {
+        throw new Error(`${name}: settings surface was incomplete ${JSON.stringify(result.settings)}`);
       }
       if (buttons.some((button) => !button.text && !button.label)) {
         throw new Error(`${name}: unlabeled button in accessibility smoke`);
