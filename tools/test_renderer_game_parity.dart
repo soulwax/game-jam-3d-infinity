@@ -23,6 +23,7 @@ void _expect(bool condition, String message) {
 
 final class _RouteEvidence {
   final List<String> snapshots;
+  final List<int> days;
   final List<String> events;
   final List<String> saves;
   final List<String> rooms;
@@ -33,6 +34,7 @@ final class _RouteEvidence {
 
   const _RouteEvidence({
     required this.snapshots,
+    required this.days,
     required this.events,
     required this.saves,
     required this.rooms,
@@ -50,6 +52,14 @@ void main() {
   _expect(
     jsonEncode(left.snapshots) == jsonEncode(right.snapshots),
     'backends observed different presentation snapshots',
+  );
+  _expect(
+    jsonEncode(left.days) == jsonEncode(right.days),
+    'day progression diverged between backend runs',
+  );
+  _expect(
+    left.days.toSet().containsAll(const [1, 2, 3]),
+    'frozen route did not cover Days 1–3: ${left.days}',
   );
   _expect(
     jsonEncode(left.events) == jsonEncode(right.events),
@@ -81,6 +91,7 @@ void main() {
   );
   print(
     'renderer game parity: ${left.snapshots.length} checkpoints, '
+    'Days ${left.days.toSet().toList()..sort()}, '
     '${left.events.length} events, ${left.rooms.length} rooms, '
     '${left.visitorFacts.length} visitor facts, '
     '${left.endingOutcomes.length} ending outcomes, canonical '
@@ -105,6 +116,7 @@ List<_RouteEvidence> _runRoute() {
   );
   final codec = const SaveCodec();
   final snapshots = <String>[];
+  final days = <int>[];
   final events = <String>[];
   final saves = <String>[];
   final rooms = <String>[];
@@ -152,6 +164,7 @@ List<_RouteEvidence> _runRoute() {
       );
     }
     snapshots.add(snapshot.encode());
+    days.add(session.snapshot.day);
     rooms.add(currentRoom);
     events.addAll([
       for (final event in session.drainDomainEvents()) event.encode(),
@@ -246,11 +259,7 @@ List<_RouteEvidence> _runRoute() {
   session.advance(2);
   checkpoint();
   input(const RendererInputAction(id: 'KeyL', pressed: true));
-  session.sleep(
-    SleepQuality.long,
-    SleepLocation.bed,
-    currentRoom: currentRoom,
-  );
+  session.sleep(SleepQuality.long, SleepLocation.bed, currentRoom: currentRoom);
   checkpoint();
   final saved = codec.encode(
     session.toSaveSnapshot(
@@ -286,6 +295,7 @@ List<_RouteEvidence> _runRoute() {
     for (final backend in backends)
       _RouteEvidence(
         snapshots: snapshots,
+        days: days,
         events: events,
         saves: saves,
         rooms: rooms,
