@@ -61,7 +61,7 @@ RoomGeometry buildRoomGeometry(House house, Room room) {
   }
   for (final portal in house.portalsFor(room.id)) {
     if (portal.doorKit == null || portal.stair) continue;
-    _addDoorFrame(doors, room, s, portal);
+    _addDoorModel(doors, room, s, portal);
   }
   _addCeilingOrnament(walls, room, s);
   _addRoomFixtures(walls, house, room, s);
@@ -71,22 +71,6 @@ RoomGeometry buildRoomGeometry(House house, Room room) {
     walls: walls.build(),
     doors: doors.build(),
   );
-}
-
-/// Builds only the stateful leaf for a portal. The frame and its hardware stay
-/// in the room shell; this mesh is replaced when [Portal.open] changes so a
-/// door never remains baked in the wrong pose.
-Float32List buildDoorLeafGeometry(House house, Room room, Portal portal) {
-  if (portal.doorKit == null || portal.stair) return Float32List(0);
-  final builder = StaticMeshBuilder();
-  _addDoorLeaf(
-    builder,
-    room,
-    house.effectiveSize(room),
-    portal,
-    _doorFrameColor(portal),
-  );
-  return builder.build();
 }
 
 void _addFloorFinish(StaticMeshBuilder builder, Room room, Vec3 size) {
@@ -1278,7 +1262,7 @@ double _wallThickness(Room room, Facing facing) {
   return atOuterEdge ? houseExteriorWallThickness : housePartitionWallThickness;
 }
 
-void _addDoorFrame(
+void _addDoorModel(
   StaticMeshBuilder builder,
   Room room,
   Vec3 size,
@@ -1290,7 +1274,11 @@ void _addDoorFrame(
   final y = room.origin.y;
   final frame = 0.075;
   final depth = 0.12;
-  final frameColor = _doorFrameColor(portal);
+  final frameColor = portal.doorKit == 'kit-front-door-recessed'
+      ? 0x4D3024
+      : portal.doorKit == 'kit-cellar-door-grille'
+      ? 0x57534A
+      : 0x6A5141;
   final top = _min(size.y, portal.height);
   switch (facing) {
     case Facing.north:
@@ -1330,6 +1318,7 @@ void _addDoorFrame(
         Vec3(room.origin.x + u1, y + 0.05, room.origin.z + depth),
         frameColor,
       );
+      _addDoorLeaf(builder, room, size, portal, frameColor);
     case Facing.south:
       _box(
         builder,
@@ -1371,6 +1360,7 @@ void _addDoorFrame(
         Vec3(room.origin.x + u1, y + 0.05, room.origin.z + size.z),
         frameColor,
       );
+      _addDoorLeaf(builder, room, size, portal, frameColor);
     case Facing.east:
       _box(
         builder,
@@ -1412,6 +1402,7 @@ void _addDoorFrame(
         Vec3(room.origin.x + size.x, y + 0.05, room.origin.z + u1),
         frameColor,
       );
+      _addDoorLeaf(builder, room, size, portal, frameColor);
     case Facing.west:
       _box(
         builder,
@@ -1449,19 +1440,10 @@ void _addDoorFrame(
         Vec3(room.origin.x + depth, y + 0.05, room.origin.z + u1),
         frameColor,
       );
+      _addDoorLeaf(builder, room, size, portal, frameColor);
   }
-  // Legacy geometry still receives the complete door in `RoomGeometry.doors`;
-  // Pixeldart extracts the leaf through [buildDoorLeafGeometry] instead.
-  _addDoorLeaf(builder, room, size, portal, frameColor);
   _addDoorHardware(builder, room, size, portal);
 }
-
-int _doorFrameColor(Portal portal) =>
-    portal.doorKit == 'kit-front-door-recessed'
-    ? 0x4D3024
-    : portal.doorKit == 'kit-cellar-door-grille'
-    ? 0x57534A
-    : 0x6A5141;
 
 void _addDoorHardware(
   StaticMeshBuilder builder,

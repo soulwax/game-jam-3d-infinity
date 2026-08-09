@@ -55,17 +55,5 @@ void main() {
       _fail('room ${room.id} wall mesh has no structural thickness');
     }
   }
-  final frontDoor = house.portalById('front-door')!;
-  final hall = house.byId('hall')!;
-  final openLeaf = buildDoorLeafGeometry(house, hall, frontDoor);
-  frontDoor.open = false;
-  final closedLeaf = buildDoorLeafGeometry(house, hall, frontDoor);
-  var changed = openLeaf.length != closedLeaf.length;
-  for (var i = 0; !changed && i < openLeaf.length; i++) {
-    changed = openLeaf[i] != closedLeaf[i];
-  }
-  if (!changed) {
-    _fail('door leaf geometry does not change with portal state');
-  }
   print('room geometry: shared legacy/Pixeldart openings and fixture pass');
 }
