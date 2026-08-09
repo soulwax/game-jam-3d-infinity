@@ -1,5 +1,7 @@
 const { firefox } = require('playwright');
 
+const baseUrl = process.env.AUTOMATION_BASE_URL || 'http://127.0.0.1:8090';
+
 const routes = [
   ['legacy-default', '/'],
   ['legacy-explicit', '/?renderer=legacy'],
@@ -31,7 +33,7 @@ function assertHealthy(failures, label) {
     for (const [name, path] of routes) {
       const page = await browser.newPage();
       const failures = trackPageHealth(page);
-      const response = await page.goto(`http://127.0.0.1:8090${path}`);
+      const response = await page.goto(`${baseUrl}${path}`);
       if (!response || response.status() !== 200) {
         throw new Error(`${name}: expected HTTP 200`);
       }
@@ -236,6 +238,46 @@ function assertHealthy(failures, label) {
       if (focusedId !== 'game') {
         throw new Error(`${name}: game viewport did not accept keyboard focus`);
       }
+      if (name === 'pixeldart-next') {
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(
+          () => document.querySelector('.panel[aria-label="House settings"]')?.classList.contains('open') === true,
+          null,
+        );
+        const openedSettings = await page.evaluate(() => {
+          const panel = document.querySelector('.panel[aria-label="House settings"]');
+          const brightness = document.querySelector('#setting-brightness');
+          return {
+            open: panel?.classList.contains('open') === true,
+            focusedInside: panel?.contains(document.activeElement) === true,
+            brightnessExists: brightness instanceof HTMLInputElement,
+          };
+        });
+        if (!openedSettings.open || !openedSettings.focusedInside ||
+            !openedSettings.brightnessExists) {
+          throw new Error(`Escape settings open/focus failed ${JSON.stringify(openedSettings)}`);
+        }
+        await page.locator('#setting-brightness').evaluate((input) => {
+          input.value = '1.25';
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        const displayPreference = await page.evaluate(() => ({
+          display: window.localStorage.getItem('quarantine.display.brightness'),
+          audio: window.localStorage.getItem('quarantine.audio.brightness'),
+        }));
+        if (displayPreference.display !== '1.25' || displayPreference.audio !== null) {
+          throw new Error(`brightness preference routed incorrectly ${JSON.stringify(displayPreference)}`);
+        }
+        await page.keyboard.press('Escape');
+        await page.waitForFunction(
+          () => document.querySelector('.panel[aria-label="House settings"]')?.hasAttribute('hidden') === true,
+          null,
+        );
+        const resumedFocus = await page.evaluate(() => document.activeElement?.id ?? '');
+        if (resumedFocus !== 'game') {
+          throw new Error(`Escape settings close/focus failed: ${resumedFocus}`);
+        }
+      }
       await page.keyboard.press('k');
       await page.waitForTimeout(100);
       const save = await page.evaluate(() => ({
@@ -256,7 +298,7 @@ function assertHealthy(failures, label) {
     try {
       const noWebglPage = await noWebglBrowser.newPage();
       const noWebglFailures = trackPageHealth(noWebglPage);
-      await noWebglPage.goto('http://127.0.0.1:8090/?renderer=next');
+      await noWebglPage.goto(`${baseUrl}/?renderer=next`);
       await noWebglPage.waitForFunction(
         () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'no-webgl2',
         null,
@@ -286,7 +328,7 @@ function assertHealthy(failures, label) {
     try {
       const constrainedPage = await constrainedBrowser.newPage();
       const constrainedFailures = trackPageHealth(constrainedPage);
-      await constrainedPage.goto('http://127.0.0.1:8090/?renderer=next');
+      await constrainedPage.goto(`${baseUrl}/?renderer=next`);
       await constrainedPage.waitForFunction(
         () => ['running', 'no-webgl2'].includes(
           document.querySelector('#game')?.getAttribute('data-boot-phase'),
@@ -314,7 +356,7 @@ function assertHealthy(failures, label) {
     }
     const recoveryPage = await browser.newPage();
     const recoveryFailures = trackPageHealth(recoveryPage);
-    await recoveryPage.goto('http://127.0.0.1:8090/?renderer=next');
+    await recoveryPage.goto(`${baseUrl}/?renderer=next`);
     await recoveryPage.waitForFunction(
       () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'running',
       null,
@@ -356,7 +398,7 @@ function assertHealthy(failures, label) {
 
     const scalingPage = await browser.newPage();
     const scalingFailures = trackPageHealth(scalingPage);
-    await scalingPage.goto('http://127.0.0.1:8090/?renderer=next');
+    await scalingPage.goto(`${baseUrl}/?renderer=next`);
     await scalingPage.waitForFunction(
       () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'running',
       null,
@@ -389,7 +431,7 @@ function assertHealthy(failures, label) {
     });
     const comfortPage = await comfortContext.newPage();
     const comfortFailures = trackPageHealth(comfortPage);
-    await comfortPage.goto('http://127.0.0.1:8090/?renderer=next');
+    await comfortPage.goto(`${baseUrl}/?renderer=next`);
     await comfortPage.waitForFunction(
       () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'running',
       null,
