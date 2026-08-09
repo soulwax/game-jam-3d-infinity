@@ -102,15 +102,14 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   final Map<String, px.InstanceId> _inventoryItemsById = {};
   final Map<String, px.RetainedItemDescriptor> _inventoryDescriptors = {};
   final List<px.MeshHandle> _inventoryMeshes = [];
-  px.InstanceId? _exteriorShellItem;
-  px.RetainedItemDescriptor? _exteriorShellDescriptor;
+  final Map<int, px.InstanceId> _exteriorShellItems = {};
+  final Map<int, px.RetainedItemDescriptor> _exteriorShellDescriptors = {};
   final List<_PixeldartDecoration> _decorations = [];
   List<InventoryPlacement> _inventoryPlacements = const [];
   final Map<String, px.TextureHandle> _textures = {};
   final Map<String, px.MaterialHandle> _roomMaterials = {};
   final Map<String, px.MaterialHandle> _inventoryMaterials = {};
   px.MaterialHandle? _sceneMaterial;
-  px.MaterialHandle? _exteriorMaterial;
   px.CameraView? _cameraView;
   px.FrameEnvironment _environment = const px.FrameEnvironment();
   px.PostProcessState _post = px.PostProcessState.off;
@@ -335,29 +334,34 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         () => !portal.passable,
       );
     }
-    final exteriorMesh = toPixeldartMeshData(buildHouseExteriorMesh(house));
-    _exteriorMaterial = _renderer.resources.registerMaterial(
-      px.MaterialDefinition(
-        key: 'quarantine-house-exterior-shell',
-        albedoTexture: _textures['grime'],
-        tintR: 0.5,
-        tintG: 0.5,
-        tintB: 0.5,
-        doubleSided: true,
-      ),
-    );
-    final exteriorHandle = _renderer.resources.registerMesh(
-      exteriorMesh,
-      debugLabel: 'exterior:main-shell',
-    );
-    _sceneMeshes.add(exteriorHandle);
-    final exteriorDescriptor = px.RetainedItemDescriptor(
-      mesh: exteriorHandle,
-      material: _exteriorMaterial!,
-      visibilityMask: -1,
-    );
-    _exteriorShellDescriptor = exteriorDescriptor;
-    _exteriorShellItem = _world.addItem(exteriorDescriptor);
+    final exteriorMesh = buildHouseExteriorMesh(house);
+    for (final part in toPixeldartMeshParts(exteriorMesh)) {
+      final tint = _exteriorTint(part.material);
+      final material = _renderer.resources.registerMaterial(
+        px.MaterialDefinition(
+          key: 'quarantine-house-exterior-slot-${part.material}',
+          albedoTexture: part.material == 4
+              ? _textures['grime']
+              : _textures['wall-plaster'],
+          tintR: tint.$1,
+          tintG: tint.$2,
+          tintB: tint.$3,
+          doubleSided: true,
+        ),
+      );
+      final exteriorHandle = _renderer.resources.registerMesh(
+        part.mesh,
+        debugLabel: 'exterior:slot-${part.material}',
+      );
+      _sceneMeshes.add(exteriorHandle);
+      final exteriorDescriptor = px.RetainedItemDescriptor(
+        mesh: exteriorHandle,
+        material: material,
+        visibilityMask: -1,
+      );
+      _exteriorShellDescriptors[part.material] = exteriorDescriptor;
+      _exteriorShellItems[part.material] = _world.addItem(exteriorDescriptor);
+    }
   }
 
   /// Records the authored placement index for this runtime. Geometry remains
@@ -462,15 +466,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final exteriorVisible = ExteriorPvs()
         .cellsForRoom(currentRoomId)
         .isNotEmpty;
-    final exteriorItem = _exteriorShellItem;
-    final exteriorBase = _exteriorShellDescriptor;
-    if (exteriorItem != null && exteriorBase != null) {
+    for (final materialSlot in _exteriorShellDescriptors.keys.toList()) {
+      final exteriorItem = _exteriorShellItems[materialSlot];
+      if (exteriorItem == null) continue;
       final descriptor = _withVisibility(
-        exteriorBase,
+        _exteriorShellDescriptors[materialSlot]!,
         exteriorVisible ? -1 : 0,
       );
       _world.updateItem(exteriorItem, descriptor);
-      _exteriorShellDescriptor = descriptor;
+      _exteriorShellDescriptors[materialSlot] = descriptor;
     }
   }
 
@@ -819,6 +823,18 @@ final class _PixeldartWebRuntime implements RendererRuntime {
 
   px.MaterialHandle _inventoryMaterial(String kind) =>
       _inventoryMaterials[kind] ?? _inventoryMaterials['furniture']!;
+
+  (double, double, double) _exteriorTint(int slot) => switch (slot) {
+    0 => (0.46, 0.25, 0.20), // weathered red brick
+    1 => (0.31, 0.25, 0.23), // splash-darkened plinth brick
+    2 => (0.58, 0.56, 0.50), // pale stone
+    3 => (0.20, 0.12, 0.10), // stained front door
+    4 => (0.12, 0.15, 0.20), // blue-black slate
+    5 => (0.34, 0.32, 0.29), // ceramic and lead
+    6 => (0.18, 0.20, 0.21), // painted cast iron
+    7 => (0.24, 0.25, 0.27), // wet street cobbles
+    _ => (0.42, 0.40, 0.38),
+  };
 
   (double, double, double) _inventoryTint(String kind) => switch (kind) {
     'architecture' => (0.48, 0.40, 0.34),

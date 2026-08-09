@@ -47,6 +47,22 @@ void main() {
     rendererMesh.vertexCount == decoded.vertices.length,
     'renderer handoff changed vertex count',
   );
+  final parts = toPixeldartMeshParts(decoded);
+  require(parts.length == 8, 'exterior material slots were not all preserved');
+  final slots = parts.map((part) => part.material).toList()..sort();
+  require(
+    slots.toString() == List<int>.generate(8, (index) => index).toString(),
+    'exterior material part ordering drifted',
+  );
+  require(
+    parts.every((part) => part.mesh.indices != null),
+    'exterior material split lost indexed geometry',
+  );
+  require(
+    parts.fold<int>(0, (sum, part) => sum + part.mesh.indices!.length) ==
+        decoded.indices.length,
+    'exterior material split changed triangle index count',
+  );
   require(decoded.bounds.minX < -0.41, 'front/side wall thickness missing');
   require(decoded.bounds.maxX > 10.9, 'opposite wall thickness missing');
   require(decoded.bounds.minY < -0.3, 'foundation/plinth missing');
