@@ -74,6 +74,7 @@ class Audio {
   bool _muted = false;
 
   int get activeSpatialSources => _filterChains.length;
+  bool get musicStarted => _musicStarted;
 
   late final web.BiquadFilterNode _vhsHpFilter;
   late final web.BiquadFilterNode _vhsLpFilter;
@@ -370,15 +371,24 @@ class Audio {
     final src = _ctx.createBufferSource()
       ..buffer = buf
       ..loop = true;
-    final g = _ctx.createGain()..gain.value = 0.6 * _musicMix;
+    final g = _ctx.createGain()..gain.value = 0.6;
     src.connect(g);
     g.connect(_bed);
+    src.onended = ((web.Event _) {
+      src.disconnect();
+      g.disconnect();
+      if (_musicSrc == src) {
+        _musicSrc = null;
+        _musicStarted = false;
+      }
+    }).toJS;
     src.start();
     _musicSrc = src;
   }
 
   void stopMusicLoop() {
-    _musicSrc?.stop();
+    final src = _musicSrc;
+    if (src != null) src.stop();
     _musicSrc = null;
     _musicStarted = false;
   }

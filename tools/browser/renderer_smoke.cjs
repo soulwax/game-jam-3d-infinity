@@ -75,6 +75,7 @@ function assertHealthy(failures, label) {
         houseSoundEmitterCount: canvas.getAttribute('data-house-sound-emitter-count'),
         audioPlanner: canvas.getAttribute('data-audio-planner'),
         audioSpatialActive: canvas.getAttribute('data-audio-spatial-active'),
+        audioMusicStarted: canvas.getAttribute('data-audio-music-started'),
         door: (() => {
           const door = document.querySelector('.door');
           return {
@@ -179,6 +180,9 @@ function assertHealthy(failures, label) {
       if (result.audioSpatialActive === null ||
           !/^\d+$/.test(result.audioSpatialActive)) {
         throw new Error(`${name}: audio lifecycle telemetry was not published ${JSON.stringify(result)}`);
+      }
+      if (result.audioMusicStarted !== 'true') {
+        throw new Error(`${name}: persistent music loop was not started ${JSON.stringify(result)}`);
       }
       if (result.audioPlanner !== 'validated') {
         throw new Error(`${name}: acoustic planner was not wired ${JSON.stringify(result)}`);

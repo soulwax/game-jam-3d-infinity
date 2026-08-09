@@ -1573,7 +1573,9 @@ void _reportBootError(Object error, [StackTrace? stack]) {
 void _armAudio() {
   if (_audioArmed) return;
   _audioArmed = true;
-  _audio?.resume();
+  final audio = _audio;
+  audio?.resume();
+  audio?.startMusicLoop('music');
   _pendingSounds.add('arm');
 }
 
@@ -1700,7 +1702,10 @@ Future<void> _initAudio(JSObject? data) async {
   final audio = await Audio.load(urls, house: _house);
   _audio = audio;
   audio.setAcousticPlanner(_audioPlanner);
-  if (_audioArmed) audio.resume();
+  if (_audioArmed) {
+    audio.resume();
+    audio.startMusicLoop('music');
+  }
 }
 
 Future<void> _loadTextures(JSObject? data) async {
@@ -1797,6 +1802,10 @@ void _raf(num ts) {
         _canvas.setAttribute(
           'data-audio-spatial-active',
           '${audio.activeSpatialSources}',
+        );
+        _canvas.setAttribute(
+          'data-audio-music-started',
+          audio.musicStarted ? 'true' : 'false',
         );
       }
     }
