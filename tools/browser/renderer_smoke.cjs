@@ -41,6 +41,12 @@ function assertHealthy(failures, label) {
         { timeout: 15000 },
       );
       await page.waitForTimeout(1000);
+      await page.mouse.click(10, 10);
+      await page.waitForTimeout(100);
+      await page.evaluate(() => {
+        const choice = document.querySelector('.door.visible button');
+        if (choice instanceof HTMLElement) choice.focus();
+      });
       const result = await page.locator('#game').evaluate((canvas) => ({
         bootPhase: canvas.getAttribute('data-boot-phase'),
         requested: canvas.getAttribute('data-renderer-request'),
