@@ -119,6 +119,95 @@ List<String> compileArgs(
   ];
 }
 
+final class BuildPlan {
+  static const schemaVersion = 1;
+
+  final String projectVersion;
+  final bool sourceMaps;
+  final String target;
+  final String output;
+  final List<String> compileArgs;
+
+  BuildPlan({
+    required this.projectVersion,
+    required this.sourceMaps,
+    required this.target,
+    required this.output,
+    required List<String> compileArgs,
+  }) : compileArgs = List.unmodifiable(compileArgs);
+
+  factory BuildPlan.fromJson(Object? raw) {
+    if (raw is! Map) {
+      throw const FormatException('build plan must be an object');
+    }
+    final map = Map<Object?, Object?>.from(raw);
+    if (map['schemaVersion'] != schemaVersion) {
+      throw const FormatException('unsupported build plan schema');
+    }
+    final projectVersion = map['projectVersion'];
+    final sourceMaps = map['sourceMaps'];
+    final target = map['target'];
+    final output = map['output'];
+    final rawArgs = map['compileArgs'];
+    if (projectVersion is! String ||
+        sourceMaps is! bool ||
+        target is! String ||
+        output is! String ||
+        rawArgs is! List ||
+        rawArgs.any((value) => value is! String)) {
+      throw const FormatException('build plan fields are invalid');
+    }
+    final plan = BuildPlan(
+      projectVersion: validateProjectVersion(projectVersion),
+      sourceMaps: sourceMaps,
+      target: target,
+      output: output,
+      compileArgs: rawArgs.cast<String>(),
+    );
+    if (map['fingerprint'] != plan.fingerprint) {
+      throw const FormatException('build plan fingerprint mismatch');
+    }
+    return plan;
+  }
+
+  String get fingerprint {
+    final canonical = [
+      schemaVersion,
+      projectVersion,
+      sourceMaps,
+      target,
+      output,
+      ...compileArgs,
+    ].join('\u001f');
+    var hash = 0x811C9DC5;
+    for (final unit in canonical.codeUnits) {
+      hash = ((hash ^ unit) * 0x01000193) & 0xFFFFFFFF;
+    }
+    return hash.toRadixString(16).padLeft(8, '0');
+  }
+
+  Map<String, Object> toJson() => {
+    'schemaVersion': schemaVersion,
+    'projectVersion': projectVersion,
+    'sourceMaps': sourceMaps,
+    'target': target,
+    'output': output,
+    'compileArgs': compileArgs,
+    'fingerprint': fingerprint,
+  };
+}
+
+BuildPlan buildPlan(String projectVersion, {bool sourceMaps = true}) {
+  const output = 'dist/web/main.dart.js';
+  return BuildPlan(
+    projectVersion: validateProjectVersion(projectVersion),
+    sourceMaps: sourceMaps,
+    target: 'js',
+    output: output,
+    compileArgs: compileArgs(projectVersion, output, sourceMaps: sourceMaps),
+  );
+}
+
 Future<void> main(List<String> arguments) async {
   late final BuildOptions options;
   try {
@@ -136,24 +225,17 @@ Future<void> main(List<String> arguments) async {
   final projectVersion = canonicalProjectVersion();
 
   if (options.dryRun) {
-    final args = compileArgs(
-      projectVersion,
-      'dist/web/main.dart.js',
-      sourceMaps: options.sourceMaps,
-    );
+    final plan = buildPlan(projectVersion, sourceMaps: options.sourceMaps);
     if (options.json) {
-      stdout.writeln(
-        jsonEncode({
-          'projectVersion': projectVersion,
-          'sourceMaps': options.sourceMaps,
-          'compileArgs': args,
-        }),
-      );
+      stdout.writeln(jsonEncode(plan.toJson()));
       return;
     }
-    stdout.writeln('project version: $projectVersion');
-    stdout.writeln('source maps: ${options.sourceMaps}');
-    stdout.writeln('compile: dart ${args.join(' ')}');
+    stdout.writeln('project version: ${plan.projectVersion}');
+    stdout.writeln('source maps: ${plan.sourceMaps}');
+    stdout.writeln('target: ${plan.target}');
+    stdout.writeln('output: ${plan.output}');
+    stdout.writeln('fingerprint: ${plan.fingerprint}');
+    stdout.writeln('compile: dart ${plan.compileArgs.join(' ')}');
     return;
   }
 
@@ -186,11 +268,7 @@ Future<void> main(List<String> arguments) async {
 
   await run(
     'dart',
-    compileArgs(
-      projectVersion,
-      'dist/web/main.dart.js',
-      sourceMaps: options.sourceMaps,
-    ),
+    buildPlan(projectVersion, sourceMaps: options.sourceMaps).compileArgs,
   );
   final mainJs = File('dist/web/main.dart.js');
   final bootJs = File('dist/web/boot.js');

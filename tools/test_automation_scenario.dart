@@ -40,6 +40,21 @@ void main() {
   _expect(compiler.validate(authored).isEmpty, 'authored scenario validates');
   _expect(compiler.validate(scenario).isEmpty, 'valid scenario compiles');
 
+  final unknownInteract = AutomationScenario.decode('''
+{"schemaVersion":1,"id":"bad-interact","fixture":{"seed":1,"startPose":"hall-entry"},
+"runtime":{"fixedDt":0.016,"maxTicks":10},
+"poses":[{"id":"hall-entry","position":[0,1.6,0],"yaw":0,"pitch":0,"room":"hall"}],
+"routes":[],"steps":[{"id":"use","do":"interact","target":"missing","mode":"press"}]}
+''');
+  _expect(
+    compiler
+        .validate(unknownInteract)
+        .any(
+          (error) => error.contains('use') && error.contains('unknown target'),
+        ),
+    'interact rejects unknown target',
+  );
+
   final invalid = AutomationScenario.decode('''
 {"schemaVersion":1,"id":"bad","fixture":{"seed":1,"startPose":"missing"},
 "runtime":{"fixedDt":0,"maxTicks":1},"poses":[],"routes":[],

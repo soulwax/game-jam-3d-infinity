@@ -24,6 +24,16 @@ on changes players or contributors can feel. Detailed renderer notes belong in
   renderer profiles.
 - Capture bundles now include SHA-256 digests for the screenshot and manifest,
   making repeated runs easy to compare without assuming cross-GPU pixel identity.
+- Digest values are now surfaced directly in the structured automation trace for
+  machine-readable comparison.
+- Digest trace entries now validate both hashes before a run can finish, so
+  malformed capture evidence fails visibly.
+- Added direct fixtures for valid, missing, short, uppercase, and non-object
+  capture digest payloads.
+- Capture digests now validate schema version and safe artifact names before
+  entering the run trace.
+- Capture digests now reject bundles missing their referenced screenshot or
+  metadata sidecar.
 
 ## [0.1.2.0] — 2026-08-09
 

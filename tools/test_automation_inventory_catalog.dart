@@ -21,6 +21,15 @@ void main() {
   _expect(catalog.targets.contains('front-door'));
   _expect(catalog.targets.contains('mantle-living'));
   _expect(catalog.targets.length == 16);
+  _expect(catalog.inventoryContracts.length == 14);
+  _expect(catalog.inventoryContractFor('front-door-clock') != null);
+  _expect(
+    catalog.inventoryContracts['front-door-clock']?.eventId ==
+        'inventory-inspected:front-door-clock',
+  );
+  _expect(
+    catalog.inventoryContracts['front-door-clock']?.stateValue == 'inspected',
+  );
   stdout.writeln(
     'automation inventory catalog: 14 authored + 2 domain targets pass',
   );

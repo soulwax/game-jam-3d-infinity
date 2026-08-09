@@ -3,6 +3,7 @@ import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 import 'panel.dart';
+import 'settings_registry.dart';
 
 class SettingsPanel extends Panel {
   void Function(String key, double value)? onLevel;
@@ -38,88 +39,27 @@ class SettingsPanel extends Panel {
       ),
     );
     final levels = buildElement(document, 'div', cls: 'settings-grid');
-    for (final setting in const [
-      ('master', 'Master', 1.0),
-      ('voice', 'Visitor voice', 1.0),
-      ('effects', 'Effects', 1.0),
-      ('ambience', 'House ambience', 1.0),
-      ('music', 'Music', 1.0),
-    ]) {
-      levels.appendChild(_levelRow(document, setting.$1, setting.$2));
+    for (final definition in SettingsRegistry.definitions.where(
+      (definition) => definition.kind == SettingKind.level,
+    )) {
+      levels.appendChild(
+        _levelRow(
+          document,
+          definition.key,
+          definition.label,
+          min: definition.min ?? 0,
+          max: definition.max ?? 1,
+        ),
+      );
     }
     root.appendChild(levels);
-
-    final display = buildElement(document, 'div', cls: 'settings-grid');
-    display.appendChild(
-      _levelRow(
-        document,
-        'brightness',
-        'Display brightness',
-        min: 0.6,
-        max: 1.4,
-      ),
-    );
-    root.appendChild(display);
-
-    final muteRow = buildElement(document, 'label', cls: 'setting-toggle');
-    final mute = document.createElement('input') as web.HTMLInputElement;
-    mute.type = 'checkbox';
-    _mute = mute;
-    mute.addEventListener(
-      'change',
-      ((web.Event _) => onMute?.call(mute.checked)).toJS,
-    );
-    muteRow.appendChild(mute);
-    muteRow.appendChild(
-      buildElement(document, 'span', text: 'Mute house audio'),
-    );
-    root.appendChild(muteRow);
-
-    final monoRow = buildElement(document, 'label', cls: 'setting-toggle');
-    final mono = document.createElement('input') as web.HTMLInputElement;
-    mono.type = 'checkbox';
-    _mono = mono;
-    mono.addEventListener(
-      'change',
-      ((web.Event _) => onMono?.call(mono.checked)).toJS,
-    );
-    monoRow.appendChild(mono);
-    monoRow.appendChild(
-      buildElement(document, 'span', text: 'Mono-compatible mix'),
-    );
-    root.appendChild(monoRow);
-
-    final contrastRow = buildElement(document, 'label', cls: 'setting-toggle');
-    final contrast = document.createElement('input') as web.HTMLInputElement;
-    contrast.type = 'checkbox';
-    _highContrast = contrast;
-    contrast.addEventListener(
-      'change',
-      ((web.Event _) => onHighContrast?.call(contrast.checked)).toJS,
-    );
-    contrastRow.appendChild(contrast);
-    contrastRow.appendChild(
-      buildElement(document, 'span', text: 'High-contrast interface'),
-    );
-    root.appendChild(contrastRow);
-
-    final highlightsRow = buildElement(
-      document,
-      'label',
-      cls: 'setting-toggle',
-    );
-    final highlights = document.createElement('input') as web.HTMLInputElement;
-    highlights.type = 'checkbox';
-    _strongHighlights = highlights;
-    highlights.addEventListener(
-      'change',
-      ((web.Event _) => onStrongHighlights?.call(highlights.checked)).toJS,
-    );
-    highlightsRow.appendChild(highlights);
-    highlightsRow.appendChild(
-      buildElement(document, 'span', text: 'Strong focus highlights'),
-    );
-    root.appendChild(highlightsRow);
+    final toggles = buildElement(document, 'div', cls: 'settings-grid');
+    for (final definition in SettingsRegistry.definitions.where(
+      (definition) => definition.kind == SettingKind.toggle,
+    )) {
+      toggles.appendChild(_toggleRow(document, definition));
+    }
+    root.appendChild(toggles);
 
     final close =
         buildElement(document, 'button', cls: 'door-continue', text: 'return')
@@ -127,6 +67,44 @@ class SettingsPanel extends Panel {
     close.setAttribute('type', 'button');
     close.addEventListener('click', ((web.Event _) => this.close()).toJS);
     root.appendChild(close);
+  }
+
+  web.HTMLElement _toggleRow(
+    web.Document document,
+    SettingDefinition definition,
+  ) {
+    final row = buildElement(document, 'label', cls: 'setting-toggle');
+    final input = document.createElement('input') as web.HTMLInputElement;
+    input.type = 'checkbox';
+    switch (definition.key) {
+      case 'muted':
+        _mute = input;
+      case 'mono':
+        _mono = input;
+      case 'high-contrast':
+        _highContrast = input;
+      case 'strong-highlights':
+        _strongHighlights = input;
+    }
+    input.addEventListener(
+      'change',
+      ((web.Event _) {
+        switch (definition.key) {
+          case 'muted':
+            onMute?.call(input.checked);
+          case 'mono':
+            onMono?.call(input.checked);
+          case 'high-contrast':
+            onHighContrast?.call(input.checked);
+          case 'strong-highlights':
+            onStrongHighlights?.call(input.checked);
+        }
+      }).toJS,
+    );
+    row
+      ..appendChild(input)
+      ..appendChild(buildElement(document, 'span', text: definition.label));
+    return row;
   }
 
   web.HTMLElement _levelRow(

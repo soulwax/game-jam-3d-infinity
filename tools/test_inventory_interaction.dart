@@ -16,6 +16,7 @@ void main() {
   final ledger = InventoryInspectionLedger();
   final first = ledger.inspect(clock);
   _expect(first.semanticId == 'inventory-inspected:front-door-clock');
+  _expect(first.stateValue == 'inspected');
   _expect(first.count == 1);
   _expect(ledger.inspect(clock).count == 2);
 

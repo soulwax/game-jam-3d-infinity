@@ -173,6 +173,10 @@ Future<void> _registerScreenshotArtifacts(
   });
   for (final file in entries) {
     final name = file.uri.pathSegments.last;
+    final digestData = <String, Object?>{};
+    if (name.endsWith('.digest.json')) {
+      digestData.addAll(await parseCaptureDigest(file));
+    }
     await reporter.record(
       'artifact.external',
       tick: 0,
@@ -180,7 +184,52 @@ Future<void> _registerScreenshotArtifacts(
         'name': name,
         'bytes': await file.length(),
         'contentType': name.endsWith('.png') ? 'image/png' : 'application/json',
+        ...digestData,
       },
     );
   }
+}
+
+/// Validates and extracts the two hashes emitted by browser capture smoke.
+///
+/// Kept public so malformed-sidecar fixtures can exercise the same parser the
+/// release runner uses, without launching a browser.
+Future<Map<String, String>> parseCaptureDigest(File file) async {
+  final name = file.uri.pathSegments.last;
+  final decoded = jsonDecode(await file.readAsString());
+  if (decoded is! Map) {
+    throw FormatException('capture digest is not a JSON object: $name');
+  }
+  if (decoded['schemaVersion'] != 1) {
+    throw FormatException('capture digest has unsupported schema: $name');
+  }
+  final result = <String, String>{'schemaVersion': '1'};
+  for (final entry in const {
+    'screenshot': '.png',
+    'metadata': '.json',
+  }.entries) {
+    final value = decoded[entry.key];
+    if (value is! String ||
+        !RegExp(r'^browser-[a-z0-9._-]+\.(?:png|json)$').hasMatch(value) ||
+        !value.endsWith(entry.value)) {
+      throw FormatException(
+        'capture digest has invalid ${entry.key} artifact: $name',
+      );
+    }
+    result[entry.key] = value;
+    final referenced = File('${file.parent.path}/$value');
+    if (!referenced.existsSync()) {
+      throw FormatException(
+        'capture digest references missing ${entry.key} file: $name',
+      );
+    }
+  }
+  for (final key in const ['screenshotSha256', 'metadataSha256']) {
+    final value = decoded[key];
+    if (value is! String || !RegExp(r'^[0-9a-f]{64}$').hasMatch(value)) {
+      throw FormatException('capture digest has invalid $key: $name');
+    }
+    result[key] = value;
+  }
+  return Map.unmodifiable(result);
 }

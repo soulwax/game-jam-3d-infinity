@@ -13,14 +13,14 @@ final class InventoryInspectionLedger {
   int countFor(String id) => _counts[id] ?? 0;
 
   InventoryInspectionEvent inspect(InventoryPlacement placement) {
-    if (!placement.pickable) {
-      throw StateError('inventory placement is not pickable: ${placement.id}');
-    }
+    final contract = inventoryInspectionContract(placement);
     final count = (_counts[placement.id] ?? 0) + 1;
     _counts[placement.id] = count;
     return InventoryInspectionEvent(
       placementId: placement.id,
-      focusId: placement.focusId ?? placement.id,
+      focusId: contract.targetId,
+      semanticId: contract.eventId,
+      stateValue: contract.stateValue,
       count: count,
     );
   }
@@ -49,13 +49,41 @@ final class InventoryInspectionLedger {
 final class InventoryInspectionEvent {
   final String placementId;
   final String focusId;
+  final String semanticId;
+  final String stateValue;
   final int count;
 
   const InventoryInspectionEvent({
     required this.placementId,
     required this.focusId,
+    required this.semanticId,
+    required this.stateValue,
     required this.count,
   });
+}
 
-  String get semanticId => 'inventory-inspected:$focusId';
+final class InventoryInspectionContract {
+  final String targetId;
+  final String eventId;
+  final String stateValue;
+
+  const InventoryInspectionContract({
+    required this.targetId,
+    required this.eventId,
+    required this.stateValue,
+  });
+}
+
+InventoryInspectionContract inventoryInspectionContract(
+  InventoryPlacement placement,
+) {
+  if (!placement.pickable) {
+    throw StateError('inventory placement is not pickable: ${placement.id}');
+  }
+  final targetId = placement.focusId ?? placement.id;
+  return InventoryInspectionContract(
+    targetId: targetId,
+    eventId: 'inventory-inspected:$targetId',
+    stateValue: 'inspected',
+  );
 }

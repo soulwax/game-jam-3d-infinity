@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math' as math;
 
 import '../house/inventory.dart';
+import '../house/inventory_interaction.dart';
 
 const automationScenarioSchemaVersion = 1;
 
@@ -162,6 +163,7 @@ final class AutomationScenarioCatalog {
   final Set<String> targets;
   final Set<String> cameras;
   final Map<String, AutomationRoute> routes;
+  final Map<String, InventoryInspectionContract> inventoryContracts;
 
   const AutomationScenarioCatalog({
     required this.rooms,
@@ -169,7 +171,11 @@ final class AutomationScenarioCatalog {
     required this.targets,
     required this.cameras,
     required this.routes,
+    this.inventoryContracts = const {},
   });
+
+  InventoryInspectionContract? inventoryContractFor(String targetId) =>
+      inventoryContracts[targetId];
 
   factory AutomationScenarioCatalog.fromInventory({
     required Set<String> rooms,
@@ -178,17 +184,21 @@ final class AutomationScenarioCatalog {
     required Map<String, AutomationRoute> routes,
     required HouseInventory inventory,
     Set<String> additionalTargets = const {},
-  }) => AutomationScenarioCatalog(
-    rooms: rooms,
-    portals: portals,
-    cameras: cameras,
-    routes: routes,
-    targets: {
-      ...additionalTargets,
-      for (final placement in inventory.pickablePlacements)
-        placement.focusId ?? placement.id,
-    },
-  );
+  }) {
+    final contracts = <String, InventoryInspectionContract>{};
+    for (final placement in inventory.pickablePlacements) {
+      final contract = inventoryInspectionContract(placement);
+      contracts[contract.targetId] = contract;
+    }
+    return AutomationScenarioCatalog(
+      rooms: rooms,
+      portals: portals,
+      cameras: cameras,
+      routes: routes,
+      targets: {...additionalTargets, ...contracts.keys},
+      inventoryContracts: contracts,
+    );
+  }
 }
 
 final class AutomationScenarioCompiler {
@@ -272,6 +282,11 @@ final class AutomationScenarioCompiler {
           (step.reference == null ||
               !catalog.cameras.contains(step.reference))) {
         errors.add('step ${step.id} references an unknown camera');
+      }
+      if (step.kind == AutomationStepKind.interact &&
+          (step.reference == null ||
+              !catalog.targets.contains(step.reference))) {
+        errors.add('step ${step.id} references an unknown target');
       }
       if (step.kind == AutomationStepKind.interact &&
           !const ['press', 'hold'].contains(step.mode)) {

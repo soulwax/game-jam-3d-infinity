@@ -38,6 +38,38 @@ void main(List<String> arguments) {
         'compile js -O2 --no-source-maps -DPROJECT_VERSION=$version -o out.js web/main.dart',
     'release build command disables source maps explicitly',
   );
+  final plan = build.buildPlan(version);
+  final releasePlan = build.buildPlan(version, sourceMaps: false);
+  _expect(
+    plan.toJson()['schemaVersion'] == 1 &&
+        plan.target == 'js' &&
+        plan.output == 'dist/web/main.dart.js' &&
+        plan.compileArgs.join(' ') ==
+            build.compileArgs(version, plan.output).join(' '),
+    'structured build plan preserves the canonical JS command',
+  );
+  _expect(
+    plan.fingerprint.length == 8 && plan.fingerprint != releasePlan.fingerprint,
+    'source-map policy changes the deterministic plan fingerprint',
+  );
+  final roundTrip = build.BuildPlan.fromJson(plan.toJson());
+  _expect(
+    roundTrip.fingerprint == plan.fingerprint &&
+        roundTrip.compileArgs.join(' ') == plan.compileArgs.join(' '),
+    'build plan JSON round-trips without changing the command',
+  );
+  final tampered = Map<String, Object>.from(plan.toJson())
+    ..['output'] = 'dist/web/tampered.js';
+  _expectThrows(
+    () => build.BuildPlan.fromJson(tampered),
+    'tampered build plan fingerprint rejected',
+  );
+  final badSchema = Map<String, Object>.from(plan.toJson())
+    ..['schemaVersion'] = 99;
+  _expectThrows(
+    () => build.BuildPlan.fromJson(badSchema),
+    'future build plan schema rejected',
+  );
   final defaults = build.parseBuildOptions(const []);
   _expect(
     !defaults.dryRun && defaults.sourceMaps && !defaults.json && !defaults.help,
@@ -118,11 +150,17 @@ void main(List<String> arguments) {
   final jsonOutput = jsonDecode(jsonDryRun.stdout.toString());
   final jsonMap = jsonOutput as Map<String, dynamic>;
   final jsonArgs = (jsonMap['compileArgs'] as List).cast<String>();
+  final parsedJsonPlan = build.BuildPlan.fromJson(jsonMap);
   _expect(
     jsonDryRun.exitCode == 0 &&
         jsonMap['projectVersion'] == version &&
         jsonMap['sourceMaps'] == true &&
-        jsonArgs.contains('-DPROJECT_VERSION=$version'),
+        jsonMap['schemaVersion'] == 1 &&
+        jsonMap['target'] == 'js' &&
+        jsonMap['output'] == 'dist/web/main.dart.js' &&
+        (jsonMap['fingerprint'] as String).length == 8 &&
+        jsonArgs.contains('-DPROJECT_VERSION=$version') &&
+        parsedJsonPlan.fingerprint == jsonMap['fingerprint'],
     'json dry-run exposes structured provenance',
   );
   for (final invalid in const ['', '0.1.2', '0.1.2.x', '0.1.2.3.4']) {
