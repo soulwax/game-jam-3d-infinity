@@ -5878,7 +5878,7 @@ mW:function mW(a){this.a=a},
 iB:function iB(a,b,c){this.a=a
 this.b=b
 this.c=c},
-mV(a,b,c,d,e){var s="f5c558db269c-d004e52a5506",r=A.ox("RENDERER_SHA"),q=A.ox("GAME_SHA"),p=A.ox("DART_SDK_VERSION"),o=A.ox("LOCKFILE_SHA256"),n=A.md(b,A.K(b).c)
+mV(a,b,c,d,e){var s="264de60fb6d8-d004e52a5506",r=A.ox("RENDERER_SHA"),q=A.ox("GAME_SHA"),p=A.ox("DART_SDK_VERSION"),o=A.ox("LOCKFILE_SHA256"),n=A.md(b,A.K(b).c)
 n=A.L(n,A.o(n).c)
 B.a.a0(n)
 n=new A.mU(a,e,s,A.am(n,t.N),r,q,p,o,c,d)
@@ -17001,7 +17001,7 @@ B.eL=new A.a4(B.ff,[0,1],t.I)
 B.fc={uScene:0,uHistory:1}
 B.eM=new A.a4(B.fc,[0,1],t.I)
 B.f_={RENDERER_SHA:0,GAME_SHA:1,DART_SDK_VERSION:2,LOCKFILE_SHA256:3}
-B.eN=new A.a4(B.f_,["d004e52a550696538afaab098008c0e195ce13dc","f5c558db269cc0923db02d486d8133a753728b18","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29"],t.D)
+B.eN=new A.a4(B.f_,["d004e52a550696538afaab098008c0e195ce13dc","264de60fb6d830899c79b0ec32fe45157db8f1f3","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29"],t.D)
 B.f5={aPosition:0,aUvMat:1}
 B.bu=new A.a4(B.f5,[0,4],t.I)
 B.fd={uScene:0,uLut:1}
