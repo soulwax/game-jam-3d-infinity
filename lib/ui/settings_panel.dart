@@ -8,10 +8,15 @@ class SettingsPanel extends Panel {
   void Function(String key, double value)? onLevel;
   void Function(bool muted)? onMute;
   void Function(bool mono)? onMono;
+  void Function(String key, double value)? onDisplay;
+  void Function(bool highContrast)? onHighContrast;
+  void Function(bool strongHighlights)? onStrongHighlights;
   final Map<String, web.HTMLInputElement> _levels = {};
   final Map<String, web.HTMLElement> _values = {};
   web.HTMLInputElement? _mute;
   web.HTMLInputElement? _mono;
+  web.HTMLInputElement? _highContrast;
+  web.HTMLInputElement? _strongHighlights;
 
   SettingsPanel(web.Document document) : super(document) {
     root.setAttribute('aria-label', 'House settings');
@@ -43,6 +48,18 @@ class SettingsPanel extends Panel {
     }
     root.appendChild(levels);
 
+    final display = buildElement(document, 'div', cls: 'settings-grid');
+    display.appendChild(
+      _levelRow(
+        document,
+        'brightness',
+        'Display brightness',
+        min: 0.6,
+        max: 1.4,
+      ),
+    );
+    root.appendChild(display);
+
     final muteRow = buildElement(document, 'label', cls: 'setting-toggle');
     final mute = document.createElement('input') as web.HTMLInputElement;
     mute.type = 'checkbox';
@@ -71,6 +88,38 @@ class SettingsPanel extends Panel {
     );
     root.appendChild(monoRow);
 
+    final contrastRow = buildElement(document, 'label', cls: 'setting-toggle');
+    final contrast = document.createElement('input') as web.HTMLInputElement;
+    contrast.type = 'checkbox';
+    _highContrast = contrast;
+    contrast.addEventListener(
+      'change',
+      ((web.Event _) => onHighContrast?.call(contrast.checked)).toJS,
+    );
+    contrastRow.appendChild(contrast);
+    contrastRow.appendChild(
+      buildElement(document, 'span', text: 'High-contrast interface'),
+    );
+    root.appendChild(contrastRow);
+
+    final highlightsRow = buildElement(
+      document,
+      'label',
+      cls: 'setting-toggle',
+    );
+    final highlights = document.createElement('input') as web.HTMLInputElement;
+    highlights.type = 'checkbox';
+    _strongHighlights = highlights;
+    highlights.addEventListener(
+      'change',
+      ((web.Event _) => onStrongHighlights?.call(highlights.checked)).toJS,
+    );
+    highlightsRow.appendChild(highlights);
+    highlightsRow.appendChild(
+      buildElement(document, 'span', text: 'Strong focus highlights'),
+    );
+    root.appendChild(highlightsRow);
+
     final close =
         buildElement(document, 'button', cls: 'door-continue', text: 'return')
             as web.HTMLButtonElement;
@@ -79,14 +128,20 @@ class SettingsPanel extends Panel {
     root.appendChild(close);
   }
 
-  web.HTMLElement _levelRow(web.Document document, String key, String label) {
+  web.HTMLElement _levelRow(
+    web.Document document,
+    String key,
+    String label, {
+    double min = 0,
+    double max = 1,
+  }) {
     final row = buildElement(document, 'label', cls: 'setting-row');
     final title = buildElement(document, 'span', text: label);
     final input = document.createElement('input') as web.HTMLInputElement;
     input
       ..type = 'range'
-      ..min = '0'
-      ..max = '1'
+      ..min = '$min'
+      ..max = '$max'
       ..step = '0.05'
       ..value = '1';
     final id = 'setting-$key';
@@ -124,5 +179,13 @@ class SettingsPanel extends Panel {
 
   void setMono(bool value) {
     _mono?.checked = value;
+  }
+
+  void setHighContrast(bool value) {
+    _highContrast?.checked = value;
+  }
+
+  void setStrongHighlights(bool value) {
+    _strongHighlights?.checked = value;
   }
 }

@@ -58,6 +58,19 @@
   color-scheme: dark;
 }
 
+:root.high-contrast {
+  --bone: #f4eddb;
+  --bone-dim: #d7cdb9;
+  --focus: #fff4b8;
+  --paper: #f0e6c9;
+  --paper-ink: #11100e;
+}
+
+:root.strong-highlights {
+  --focus: #fff6c9;
+  --brass: #e1b86b;
+}
+
 html, body, #container {
   width: 100%;
   height: 100%;

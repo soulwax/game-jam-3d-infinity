@@ -1074,6 +1074,7 @@ Audio? _audio;
 bool _audioArmed = false;
 bool _reducedMotion = false;
 const _audioPreferencePrefix = 'quarantine.audio.';
+const _displayPreferencePrefix = 'quarantine.display.';
 HouseSoundscape? _houseSoundscape;
 HouseInventory? _houseInventory;
 AudioPlanner? _audioPlanner;
@@ -1382,6 +1383,18 @@ Future<void> main() async {
       ..onMono = (mono) {
         _storeAudioPreference('mono', '$mono');
         _audio?.setMono(mono);
+      }
+      ..onDisplay = (key, value) {
+        _storeDisplayPreference(key, '$value');
+        _applyDisplayPreference(key, value);
+      }
+      ..onHighContrast = (value) {
+        _storeDisplayPreference('high-contrast', '$value');
+        _applyDisplayToggle('high-contrast', value);
+      }
+      ..onStrongHighlights = (value) {
+        _storeDisplayPreference('strong-highlights', '$value');
+        _applyDisplayToggle('strong-highlights', value);
       }
       ..onClose = () {
         _activePanel = null;
@@ -1707,10 +1720,58 @@ Future<void> _initAudio(JSObject? data) async {
   _audio = audio;
   audio.setAcousticPlanner(_audioPlanner);
   _restoreAudioPreferences(audio);
+  _restoreDisplayPreferences();
   if (_audioArmed) {
     audio.resume();
     audio.startMusicLoop('music');
   }
+}
+
+void _storeDisplayPreference(String key, String value) {
+  try {
+    web.window.localStorage.setItem('$_displayPreferencePrefix$key', value);
+  } catch (_) {}
+}
+
+String? _readDisplayPreference(String key) {
+  try {
+    return web.window.localStorage.getItem('$_displayPreferencePrefix$key');
+  } catch (_) {
+    return null;
+  }
+}
+
+void _applyDisplayPreference(String key, double value) {
+  if (key != 'brightness') return;
+  final root = web.document.documentElement;
+  if (root is web.HTMLElement) {
+    root.style.setProperty('filter', 'brightness(${value.clamp(0.6, 1.4)})');
+  }
+}
+
+void _applyDisplayToggle(String key, bool value) {
+  final className = key == 'high-contrast'
+      ? 'high-contrast'
+      : 'strong-highlights';
+  web.document.documentElement?.classList.toggle(className, value);
+}
+
+void _restoreDisplayPreferences() {
+  final brightness = double.tryParse(
+    _readDisplayPreference('brightness') ?? '',
+  );
+  final highContrast = _readDisplayPreference('high-contrast') == 'true';
+  final strongHighlights =
+      _readDisplayPreference('strong-highlights') == 'true';
+  if (brightness != null) {
+    _settingsPanel.setLevel('brightness', brightness);
+    _applyDisplayPreference('brightness', brightness);
+  }
+  _settingsPanel
+    ..setHighContrast(highContrast)
+    ..setStrongHighlights(strongHighlights);
+  _applyDisplayToggle('high-contrast', highContrast);
+  _applyDisplayToggle('strong-highlights', strongHighlights);
 }
 
 void _storeAudioPreference(String key, String value) {

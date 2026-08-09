@@ -212,8 +212,8 @@ function assertHealthy(failures, label) {
       if (result.settings.role !== 'dialog' ||
           result.settings.label !== 'House settings' ||
           result.settings.hidden !== '' ||
-          result.settings.controls !== 5 ||
-          result.settings.toggles !== 2) {
+          result.settings.controls !== 6 ||
+          result.settings.toggles !== 4) {
         throw new Error(`${name}: settings surface was incomplete ${JSON.stringify(result.settings)}`);
       }
       if (buttons.some((button) => !button.text && !button.label)) {
