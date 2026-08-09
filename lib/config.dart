@@ -3,8 +3,11 @@ const double projectionScale = 0.95;
 const double glDepthNear = 0.1;
 const double glDepthFar = 60.0;
 
-const double shadeAmbient = 0.55;
-const double shadeDiffuse = 0.45;
+// Low-key moonlight and warm practicals keep the house readable without
+// flattening the shadows. The palette is intentionally cool and desaturated;
+// authored candle colours provide the few warm accents.
+const double shadeAmbient = 0.40;
+const double shadeDiffuse = 0.60;
 const double lightDirX = 0.3;
 const double lightDirY = 0.7;
 const double lightDirZ = -0.5;
@@ -15,7 +18,7 @@ const double bgValue = 0.11;
 
 const double fogStart = 1.5;
 const double fogEnd = 14.0;
-const double fogDarkness = 0.25;
+const double fogDarkness = 0.34;
 
 const int maxOpaqueQuads = 4000;
 const int maxBlendedQuads = 800;
@@ -24,13 +27,13 @@ const double shaftMaxDist = 110.0;
 const double shaftFocus = 2.5;
 
 const int msaaSamples = 4;
-const double postVignette = 0.0;
-const double postGrain = 0.0;
-const double postDesat = 0.0;
+const double postVignette = 0.18;
+const double postGrain = 0.015;
+const double postDesat = 0.06;
 const double blurStrength = 0.35;
 
 const double bloomThreshold = 0.15;
-const double bloomStrength = 0.9;
+const double bloomStrength = 0.38;
 const int bloomDivisor = 4;
 const double flickerRate = 2.5;
 const double flickerDepth = 0.0;
@@ -101,7 +104,7 @@ const double raycastCone = 0.5236;
 const int cameraAccumClamp = 180;
 
 const double ssaoRadius = 0.5;
-const double ssaoStrength = 0.0;
+const double ssaoStrength = 0.28;
 const int ssaoSamples = 8;
 
 const double dofFocusDistance = 2.0;
@@ -124,16 +127,16 @@ const int dailyGasAllowance = 6;
 const int startingRationCoupons = 6;
 const List<int> rationRunDays = [2, 5, 9, 12, 16, 19];
 
-const int sunColorNight = 0x4488CC;
-const int sunColorNoon = 0xFFFFFF;
-const int sunColorDusk = 0xFFBB55;
+const int sunColorNight = 0x243553;
+const int sunColorNoon = 0xD9D7D0;
+const int sunColorDusk = 0xD38B5B;
 
-const double ambientFloor = 0.1;
-const double ambientPeak = 0.8;
+const double ambientFloor = 0.045;
+const double ambientPeak = 0.52;
 const int maxMantlePointLights = 4;
-const int mantleLightColor = 0xFFBD72;
-const double mantleLightRadius = 4.8;
-const double mantleLightIntensity = 1.6;
+const int mantleLightColor = 0xFFC078;
+const double mantleLightRadius = 3.8;
+const double mantleLightIntensity = 2.1;
 const double mantleLightFlicker = 0.06;
 
 const bool vhsEnabled = false;

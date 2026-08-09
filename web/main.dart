@@ -244,9 +244,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       px.MaterialDefinition(
         key: 'quarantine-house-safe',
         albedoTexture: _textures['wall-plaster'],
-        tintR: 0.58,
-        tintG: 0.58,
-        tintB: 0.58,
+        tintR: 0.46,
+        tintG: 0.44,
+        tintB: 0.48,
         uvScaleU: 1.0,
         uvScaleV: 1.0,
       ),
@@ -255,13 +255,27 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       px.MaterialDefinition(
         key: 'quarantine-house-cellar',
         albedoTexture: _textures['grime'],
-        tintR: 0.48,
-        tintG: 0.46,
-        tintB: 0.44,
+        tintR: 0.29,
+        tintG: 0.28,
+        tintB: 0.30,
         uvScaleU: 1.0,
         uvScaleV: 1.0,
       ),
     );
+    for (final room in house.rooms.where((room) => room.id != 'cellar')) {
+      final tint = _roomTint(room.id);
+      _roomMaterials[room.id] = _renderer.resources.registerMaterial(
+        px.MaterialDefinition(
+          key: 'quarantine-house-${room.id}-gothic',
+          albedoTexture: _textures['wall-plaster'],
+          tintR: tint.$1,
+          tintG: tint.$2,
+          tintB: tint.$3,
+          uvScaleU: 1.0,
+          uvScaleV: 1.0,
+        ),
+      );
+    }
     for (final kind in const [
       'architecture',
       'furniture',
@@ -546,17 +560,20 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     }
     final sun = sunDirection(sunAngle);
     _environment = px.FrameEnvironment(
-      ambientColor: px.LinearColor.white,
+      // Cool desaturated fill keeps moonlit plaster and old paint distinct
+      // while warm mantle lights remain the only saturated practicals.
+      ambientColor: const px.LinearColor(0.34, 0.39, 0.50),
       ambientIntensity: math.max(ambientFloor, ambientPeak * daylight),
       directionalLight: sunAngle == 0
           ? null
           : px.DirectionalLight(
               direction: px.Vec3(sun.x, sun.y, sun.z),
               color: _color(sunColor(sunAngle)),
-              intensity: 1,
+              intensity: 0.72 + daylight * 0.18,
             ),
       pointLights: points,
-      fogColor: const px.LinearColor(0.03, 0.03, 0.04),
+      clearColor: const px.LinearColor(0.008, 0.012, 0.024),
+      fogColor: const px.LinearColor(0.012, 0.016, 0.028),
       fogStart: fogStart,
       fogEnd: fogEnd,
     );
@@ -601,6 +618,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final lightsOut = step == RuptureStep.lightsOut;
     _post = px.PostProcessState(
       exposure: lightsOut ? 0.45 : 1.0,
+      bloomStrength: bloomStrength,
+      ssaoStrength: ssaoStrength,
+      vignette: postVignette,
+      grain: postGrain,
       colorGradeStrength: afterGrade
           ? (step == RuptureStep.gradeLUT ? progress : 1.0)
           : 0.0,
@@ -779,14 +800,25 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _inventoryMaterials[kind] ?? _inventoryMaterials['furniture']!;
 
   (double, double, double) _inventoryTint(String kind) => switch (kind) {
-    'architecture' => (0.86, 0.78, 0.66),
-    'furniture' => (0.72, 0.52, 0.37),
-    'fixture' => (0.82, 0.80, 0.73),
-    'service' => (0.54, 0.50, 0.44),
-    'story' => (0.78, 0.70, 0.54),
-    'decor' => (0.68, 0.62, 0.57),
-    'micro' => (0.60, 0.55, 0.48),
-    _ => (0.72, 0.52, 0.37),
+    'architecture' => (0.48, 0.40, 0.34),
+    'furniture' => (0.38, 0.25, 0.19),
+    'fixture' => (0.52, 0.50, 0.44),
+    'service' => (0.28, 0.27, 0.25),
+    'story' => (0.44, 0.37, 0.28),
+    'decor' => (0.37, 0.33, 0.31),
+    'micro' => (0.31, 0.28, 0.24),
+    _ => (0.38, 0.25, 0.19),
+  };
+
+  (double, double, double) _roomTint(String roomId) => switch (roomId) {
+    'living-room' => (0.43, 0.38, 0.43),
+    'hall' => (0.36, 0.39, 0.46),
+    'kitchen' => (0.45, 0.42, 0.35),
+    'bedroom' => (0.34, 0.36, 0.45),
+    'landing' => (0.31, 0.34, 0.40),
+    'bathroom' => (0.42, 0.44, 0.43),
+    'spare-room' => (0.34, 0.30, 0.36),
+    _ => (0.46, 0.44, 0.48),
   };
 
   void _inventoryBox(StaticMeshBuilder builder, Vec3 min, Vec3 max, int color) {
