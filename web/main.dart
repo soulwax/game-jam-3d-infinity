@@ -403,7 +403,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
           rotation: rotation,
         ),
         visibilityMask: -1,
-        castsShadow: false,
+        // Keep the hero route's furniture in the single practical shadow
+        // budget; micro props remain non-casters so the map stays stable.
+        castsShadow: asset.kind != 'micro',
       );
       _inventoryMeshes.add(mesh);
       _inventoryDescriptors[placement.id] = descriptor;
@@ -541,22 +543,40 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       house,
     ).visibleMantles(visible, eye);
     final points = <px.PointLight>[];
+    final spots = <px.SpotLight>[];
     for (var i = 0; i < mantleLights.length; i++) {
       final light = mantleLights[i];
       final color = _color(light.color);
-      points.add(
-        px.PointLight(
-          id: i,
-          position: px.Vec3(
-            light.position.x,
-            light.position.y,
-            light.position.z,
-          ),
-          color: color,
-          intensity: light.intensity,
-          radius: light.radius,
-        ),
+      final position = px.Vec3(
+        light.position.x,
+        light.position.y,
+        light.position.z,
       );
+      if (i == 0) {
+        spots.add(
+          px.SpotLight(
+            id: i,
+            position: position,
+            direction: const px.Vec3(0, -1, 0),
+            color: color,
+            intensity: light.intensity,
+            range: light.radius,
+            innerConeRadians: 1.05,
+            outerConeRadians: 1.40,
+            castsShadow: true,
+          ),
+        );
+      } else {
+        points.add(
+          px.PointLight(
+            id: i,
+            position: position,
+            color: color,
+            intensity: light.intensity,
+            radius: light.radius,
+          ),
+        );
+      }
     }
     final sun = sunDirection(sunAngle);
     _environment = px.FrameEnvironment(
@@ -572,6 +592,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
               intensity: 0.72 + daylight * 0.18,
             ),
       pointLights: points,
+      spotLights: spots,
       clearColor: const px.LinearColor(0.008, 0.012, 0.024),
       fogColor: const px.LinearColor(0.012, 0.016, 0.028),
       fogStart: fogStart,
