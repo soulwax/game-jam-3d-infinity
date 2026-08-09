@@ -19,8 +19,8 @@ Decorative geometry wraps those facts; it never replaces them.
 
 Current checkpoint: the scaled interior shell, thick walls, modeled portal doors,
 room fixture pass, and first exterior envelope are implemented. Remaining production work is
-material/texture replacement, higher-fidelity kit variants, fixed-camera review,
-and fixed-camera review; the Pixeldart next runtime now consumes the QHMX-compatible
+material/texture replacement, higher-fidelity kit variants, and fixed-camera review;
+the Pixeldart next runtime now consumes the QHMX-compatible
 shell through its indexed adapter and PVS mask without changing collision or room
 graph ownership. The exterior material is explicitly double-sided so the
 thick facade remains visible from interior window views; it is still a separate
@@ -174,7 +174,10 @@ collision and focus queries, and the stair run is clipped to the hall's canonica
 render bounds at the landing transition. A second micro-detail pass adds fireplace
 tiles/brackets and mantel objects, hall hooks and umbrella stand, kitchen sink,
 faucet and crockery, cellar valve/pipe fittings, bed pillows/legs, landing
-balusters, bath taps, and spare-room crate bindings.
+balusters, bath taps, and spare-room crate bindings. The latest dressing pass adds
+separate curtain rods, tied-back fabric drops, sash hardware, three hinge plates
+per modeled door, and a brass front-door mail slot; these pieces remain
+render-only and do not make glazing opaque or alter portal state.
 
 The floor pass now carries shallow, non-collision finish geometry: alternating
 wood-board courses in domestic rooms, a worn inset runner and border in the hall

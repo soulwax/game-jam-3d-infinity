@@ -818,6 +818,100 @@ void _addWindowSashDetail(
       0xD0CCC0,
     );
   }
+  _addWindowDressing(builder, room, size, facing, window, trimColor);
+}
+
+/// Adds restrained period curtains without turning the glazing into an opaque
+/// wall. The rod, side drops, and tie-backs are authored as view-only pieces;
+/// the canonical opening remains unchanged for light, focus, and traversal.
+void _addWindowDressing(
+  StaticMeshBuilder builder,
+  Room room,
+  Vec3 size,
+  Facing facing,
+  Window window,
+  int trimColor,
+) {
+  if (room.id == 'hall' || window.frosted || window.h < 1.0) return;
+  final wallWidth = facing == Facing.north || facing == Facing.south
+      ? size.x
+      : size.z;
+  final u0 = window.offset;
+  final u1 = window.offset + window.w;
+  final rodBottom = _min(size.y - 0.16, window.sill + window.h + 0.08);
+  final rodTop = _min(size.y - 0.11, rodBottom + 0.045);
+  final rodColor = room.id == 'spare-room' ? 0x4D4036 : 0x6D5745;
+  final fabric = room.id == 'kitchen' ? 0xA79B89 : 0x756879;
+  _wallBox(
+    builder,
+    room,
+    size,
+    facing,
+    _max(0, u0 - 0.13),
+    _min(wallWidth, u1 + 0.13),
+    rodBottom,
+    rodTop,
+    0.055,
+    rodColor,
+  );
+  final panelBottom = _max(0.24, window.sill - 0.18);
+  final panelTop = _min(size.y - 0.20, window.sill + window.h + 0.03);
+  final left0 = _max(0, u0 - 0.11);
+  final left1 = _min(wallWidth, u0 + 0.10);
+  final right0 = _max(0, u1 - 0.10);
+  final right1 = _min(wallWidth, u1 + 0.11);
+  if (panelTop > panelBottom) {
+    _wallBox(
+      builder,
+      room,
+      size,
+      facing,
+      left0,
+      left1,
+      panelBottom,
+      panelTop,
+      0.045,
+      fabric,
+    );
+    _wallBox(
+      builder,
+      room,
+      size,
+      facing,
+      right0,
+      right1,
+      panelBottom,
+      panelTop,
+      0.045,
+      fabric,
+    );
+    final tieY = panelBottom + (panelTop - panelBottom) * 0.55;
+    const tie = 0.035;
+    _wallBox(
+      builder,
+      room,
+      size,
+      facing,
+      _max(left0, left1 - tie),
+      left1,
+      tieY - tie,
+      tieY + tie,
+      0.065,
+      trimColor,
+    );
+    _wallBox(
+      builder,
+      room,
+      size,
+      facing,
+      right0,
+      _min(right1, right0 + tie),
+      tieY - tie,
+      tieY + tie,
+      0.065,
+      trimColor,
+    );
+  }
 }
 
 void _addClippedBand(
@@ -1378,6 +1472,26 @@ void _addDoorHardware(
     0.16,
     iron,
   );
+  final hingeU = portal.hingeAtStart ? u0 + 0.11 : u1 - 0.11;
+  final hingeHeight = _min(size.y - 0.20, _min(portal.height, size.y));
+  for (final hingeY in [0.46, hingeHeight * 0.50, hingeHeight - 0.46]) {
+    if (hingeY <= 0.12 || hingeY >= size.y - 0.08) continue;
+    _wallBox(
+      builder,
+      room,
+      size,
+      facing,
+      _max(0, hingeU - 0.026),
+      _min(
+        facing == Facing.north || facing == Facing.south ? size.x : size.z,
+        hingeU + 0.026,
+      ),
+      hingeY - 0.075,
+      hingeY + 0.075,
+      0.11,
+      iron,
+    );
+  }
   if (portal.doorKit == 'kit-front-door-recessed') {
     _wallBox(
       builder,
@@ -1390,6 +1504,18 @@ void _addDoorHardware(
       0.25,
       0.13,
       iron,
+    );
+    _wallBox(
+      builder,
+      room,
+      size,
+      facing,
+      u0 + portal.width * 0.34,
+      u0 + portal.width * 0.66,
+      _min(size.y - 0.36, 1.46),
+      _min(size.y - 0.30, 1.52),
+      0.15,
+      0x8B7655,
     );
   }
 }
