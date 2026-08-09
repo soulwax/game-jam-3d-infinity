@@ -736,6 +736,88 @@ void _addWallDetails(
   for (final opening in openings) {
     _addOpeningTrim(builder, room, size, facing, width, opening, trimColor);
   }
+  for (final window in room.windows.where(
+    (window) => window.facing == facing,
+  )) {
+    _addWindowSashDetail(builder, room, size, facing, window, trimColor);
+  }
+}
+
+/// Adds the visible working parts of a period sash without filling the
+/// opening with opaque geometry. The bars and projecting sill remain render
+/// detail only; the authored wall opening is still the collision authority.
+void _addWindowSashDetail(
+  StaticMeshBuilder builder,
+  Room room,
+  Vec3 size,
+  Facing facing,
+  Window window,
+  int trimColor,
+) {
+  final u0 = window.offset;
+  final u1 = window.offset + window.w;
+  final v0 = window.sill;
+  final v1 = window.sill + window.h;
+  final barColor = window.frosted ? 0xA49D90 : trimColor;
+  const bar = 0.035;
+  _wallBox(
+    builder,
+    room,
+    size,
+    facing,
+    (u0 + u1) * 0.5 - bar * 0.5,
+    (u0 + u1) * 0.5 + bar * 0.5,
+    v0,
+    v1,
+    0.032,
+    barColor,
+  );
+  _wallBox(
+    builder,
+    room,
+    size,
+    facing,
+    u0,
+    u1,
+    (v0 + v1) * 0.5 - bar * 0.5,
+    (v0 + v1) * 0.5 + bar * 0.5,
+    0.032,
+    barColor,
+  );
+  final sillDepth = facing == Facing.north || facing == Facing.south
+      ? 0.11
+      : 0.14;
+  _wallBox(
+    builder,
+    room,
+    size,
+    facing,
+    _max(0, u0 - 0.07),
+    _min(
+      facing == Facing.north || facing == Facing.south ? size.x : size.z,
+      u1 + 0.07,
+    ),
+    _max(0.018, v0 - 0.055),
+    v0,
+    sillDepth,
+    trimColor,
+  );
+  if (window.frosted) {
+    // A narrow lower glazing rail makes the bathroom window read as frosted
+    // rather than a missing pane while keeping the opening traversable.
+    _wallBox(
+      builder,
+      room,
+      size,
+      facing,
+      u0 + 0.05,
+      u1 - 0.05,
+      v0 + 0.06,
+      v0 + 0.09,
+      0.025,
+      0xD0CCC0,
+    );
+  }
 }
 
 void _addClippedBand(
@@ -1232,6 +1314,50 @@ void _addDoorModel(
         frameColor,
       );
       _addDoorLeaf(builder, room, size, portal, frameColor);
+  }
+  _addDoorHardware(builder, room, size, portal);
+}
+
+void _addDoorHardware(
+  StaticMeshBuilder builder,
+  Room room,
+  Vec3 size,
+  Portal portal,
+) {
+  final u0 = portal.offsetFor(room.id);
+  final u1 = u0 + portal.width;
+  final handleU = u0 + portal.width * 0.72;
+  final handleY = _min(size.y - 0.34, _min(portal.height, 1.02));
+  final facing = portal.facingFor(room.id);
+  const iron = 0x403C37;
+  _wallBox(
+    builder,
+    room,
+    size,
+    facing,
+    _max(0, handleU - 0.035),
+    _min(
+      facing == Facing.north || facing == Facing.south ? size.x : size.z,
+      handleU + 0.035,
+    ),
+    _max(0.12, handleY - 0.035),
+    _min(size.y - 0.05, handleY + 0.035),
+    0.16,
+    iron,
+  );
+  if (portal.doorKit == 'kit-front-door-recessed') {
+    _wallBox(
+      builder,
+      room,
+      size,
+      facing,
+      u0 + 0.08,
+      _max(u0 + 0.10, u1 - 0.08),
+      0.16,
+      0.25,
+      0.13,
+      iron,
+    );
   }
 }
 

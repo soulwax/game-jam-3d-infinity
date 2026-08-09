@@ -183,6 +183,12 @@ kitchen, a checker tile grid in the bathroom, and a damp concrete slab/drain
 patch in the cellar. These overlays sit on a controlled millimetre offset to
 avoid z-fighting with the canonical floor planes.
 
+The opening-detail pass now gives every authored window a visible sash meeting
+rail, centre bar, projecting sill, and frosted lower rail where applicable.
+Modeled door assemblies also carry jamb-side hardware and a recessed front-door
+kick plate. These details stay view-only and do not change the canonical
+opening, traversal, or collision contracts.
+
 ### Data-driven inventory
 
 `assets/house/inventory.json` is the placement authority for future normalized
