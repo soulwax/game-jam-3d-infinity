@@ -11,6 +11,7 @@ void main() {
   _helpListsCanonicalRendererNames();
   _roundTripsResolvedJson();
   _runnerPropagatesResolvedConfig();
+  _circuitScenariosRegistered();
   print('automation args: contract, validation, modes, and JSON pass');
 }
 
@@ -184,4 +185,37 @@ void _runnerPropagatesResolvedConfig() {
     source.contains("'runner.config'"),
     'runner reports resolved arguments before browser launch',
   );
+}
+
+// T-03: ground-circuit and upper-circuit are registered and resolve via
+// parseAutomationArgs; unregistered names are still rejected.
+void _circuitScenariosRegistered() {
+  _expect(
+    registeredAutomationScenarios.contains('ground-circuit'),
+    'ground-circuit is in the registered scenario list',
+  );
+  _expect(
+    registeredAutomationScenarios.contains('upper-circuit'),
+    'upper-circuit is in the registered scenario list',
+  );
+  final ground = parseAutomationArgs(
+    const ['validate', '--scenario=ground-circuit'],
+  );
+  _expect(ground.isSuccess, 'ground-circuit resolves: ${ground.error}');
+  _expect(
+    ground.args!.scenario == 'ground-circuit',
+    'resolved scenario ID is ground-circuit',
+  );
+  final upper = parseAutomationArgs(
+    const ['validate', '--scenario=upper-circuit'],
+  );
+  _expect(upper.isSuccess, 'upper-circuit resolves: ${upper.error}');
+  _expect(
+    upper.args!.scenario == 'upper-circuit',
+    'resolved scenario ID is upper-circuit',
+  );
+  final unknown = parseAutomationArgs(
+    const ['validate', '--scenario=cellar-circuit'],
+  );
+  _expect(!unknown.isSuccess, 'unregistered circuit ID is rejected');
 }

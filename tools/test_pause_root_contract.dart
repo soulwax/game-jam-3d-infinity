@@ -18,6 +18,10 @@ void main() {
   );
   check(ids[PauseRootAction.save] == 'pause.save', 'save ID is stable');
   check(ids[PauseRootAction.help] == 'pause.help', 'help ID is stable');
+  check(
+    ids[PauseRootAction.credits] == 'pause.credits',
+    'credits ID is stable',
+  );
   check(ids[PauseRootAction.back] == 'pause.back', 'back ID is stable');
-  print('pause root contract: six semantic actions have stable IDs');
+  print('pause root contract: seven semantic actions have stable IDs');
 }

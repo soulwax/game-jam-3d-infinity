@@ -45,12 +45,27 @@ void main() {
   physical.suspend();
   physical.resume();
   _expect(physical.consume(9).neutral, 'suspend clears held input');
+
+  // T-08: Mouse button and wheel normalization
+  physical.mouseDown(0); // Mouse0 down
+  final mouseFrame = physical.consume(10);
+  _expect(mouseFrame.pressed.contains('Mouse0'), 'mouseDown(0) maps to Mouse0 pressed');
+  _expect(mouseFrame.held.contains('Mouse0'), 'mouseDown(0) maps to Mouse0 held');
+
+  physical.mouseUp(0);
+  final mouseUpFrame = physical.consume(11);
+  _expect(mouseUpFrame.released.contains('Mouse0'), 'mouseUp(0) maps to Mouse0 released');
+
+  physical.wheel(-1.0);
+  final wheelFrame = physical.consume(12);
+  _expect(wheelFrame.pressed.contains('WheelUp'), 'wheel(-1.0) maps to WheelUp pressed');
+
   _expectThrows(
-    () => deterministic.enqueue(const PlayerActionFrame(tick: 10, forward: 2)),
+    () => deterministic.enqueue(const PlayerActionFrame(tick: 13, forward: 2)),
     'out-of-range deterministic input rejected',
   );
   stdout.writeln(
-    'automation input: adapter parity, one-shot edges, suspension, bounds pass',
+    'automation input: adapter parity, mouse/wheel normalization, one-shot edges, suspension, bounds pass',
   );
 }
 

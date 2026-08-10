@@ -35,7 +35,39 @@ void main() {
     restored.effective.preset == GraphicsPreset.standard,
     'effective persists separately',
   );
+
+  // S-04: Preset resolution and custom auto-detection
+  final highPreset = GraphicsSettingsProfile.forPreset(GraphicsPreset.high);
+  check(highPreset.antialiasing == 'msaa4', 'High preset has msaa4');
+  check(highPreset.preset == GraphicsPreset.high, 'High preset identity');
+
+  final customOption = highPreset.copyWithOption(antialiasing: 'off');
+  check(customOption.preset == GraphicsPreset.custom, 'customizing antialiasing sets preset to Custom');
+
+  final restoredStandard = customOption.copyWithOption(
+    antialiasing: 'fxaa',
+    renderScale: '1.00',
+    dynamicResolution: false,
+    frameTarget: 'display',
+    textureQuality: 'high',
+  );
+  check(restoredStandard.preset == GraphicsPreset.standard, 'matching standard options resolves to Standard preset');
+
+  // S-04: Store commitWithNegotiation, revert, reset
+  final transStore = GraphicsSettingsStore();
+  transStore.updateRequested(requested);
+  final result = transStore.commitWithNegotiation(GraphicsCapabilitySnapshot.safe);
+  check(result.downgraded, 'negotiation reports downgrade');
+  check(transStore.effective.antialiasing == 'off', 'effective MSAA downgraded to off');
+  check(transStore.requested.antialiasing == 'msaa4', 'requested profile preserved across downgrade');
+
+  transStore.revert();
+  check(transStore.requested.antialiasing == 'off', 'revert syncs requested to effective');
+
+  transStore.reset();
+  check(transStore.requested.preset == GraphicsPreset.standard, 'reset restores default profile');
+
   print(
-    'graphics settings: typed profile, safe negotiation, and round-trip pass',
+    'graphics settings: typed profile, safe negotiation, preset resolution, and transactional rollback pass',
   );
 }

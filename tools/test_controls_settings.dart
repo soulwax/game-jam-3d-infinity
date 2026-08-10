@@ -110,5 +110,31 @@ void main() {
   editor.begin('moveRight');
   final cancelled = editor.capture('Escape');
   check(cancelled.status == BindingCaptureStatus.cancelled, 'Escape cancels');
+
+  // S-06: binding label contract used by _refreshBindings.
+  final labelProfile = ControlsSettingsProfile(
+    bindingsByAction: {
+      'interact': ['Mouse0', 'KeyE'],
+      'reach': [],
+    },
+  );
+  String bindingLabel(ControlsSettingsProfile p, String action) {
+    final values = p.bindingsByAction[action];
+    return (values == null || values.isEmpty) ? 'unbound' : values.join(' / ');
+  }
+
+  check(
+    bindingLabel(labelProfile, 'interact') == 'Mouse0 / KeyE',
+    'multi-binding label renders all alternatives joined by " / "',
+  );
+  check(
+    bindingLabel(labelProfile, 'reach') == 'unbound',
+    'empty binding list renders as "unbound"',
+  );
+  check(
+    bindingLabel(ControlsSettingsProfile(), 'interact').startsWith('KeyE'),
+    'default interact label starts with the primary keyboard binding',
+  );
+
   print('controls settings: typed profile, reference bindings, and guard pass');
 }

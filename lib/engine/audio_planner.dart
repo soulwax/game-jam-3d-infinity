@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'math3.dart';
 import '../house/house.dart';
 import '../house/room.dart';
@@ -108,18 +110,46 @@ final class AcousticPortalProfile {
     }
   }
 
-  (double, double) transmission(Portal portal) {
+  (double, double, double) transmission(Portal portal, [double? openingFraction]) {
     validate();
-    if (portal.passable) return (openGainDb, openCutoffHz);
-    if (portal.locked) return (sealedGainDb, sealedCutoffHz);
-    return (closedGainDb, closedCutoffHz);
+    if (openingFraction != null) {
+      final fraction = openingFraction.clamp(0.0, 1.0);
+      final gain = openGainDb * fraction + closedGainDb * (1.0 - fraction);
+      final logOpen = math.log(openCutoffHz);
+      final logClosed = math.log(closedCutoffHz);
+      final cutoff = math.exp(logOpen * fraction + logClosed * (1.0 - fraction));
+      final muffle = openMuffle01 * fraction + closedMuffle01 * (1.0 - fraction);
+      return (gain, cutoff, muffle);
+    }
+    if (portal.passable) return (openGainDb, openCutoffHz, openMuffle01);
+    if (portal.locked) return (sealedGainDb, sealedCutoffHz, sealedMuffle01);
+    return (closedGainDb, closedCutoffHz, closedMuffle01);
   }
 
-  double muffle01(Portal portal) {
+  double muffle01(Portal portal, [double? openingFraction]) {
     validate();
+    if (openingFraction != null) {
+      final fraction = openingFraction.clamp(0.0, 1.0);
+      return openMuffle01 * fraction + closedMuffle01 * (1.0 - fraction);
+    }
     if (portal.passable) return openMuffle01;
     if (portal.locked) return sealedMuffle01;
     return closedMuffle01;
+  }
+
+  /// Perceptually tuned curve mapping muffle01 (0.0 to 1.0) to gain dB.
+  static double muffleToGainDb(double muffle01) {
+    final m = muffle01.clamp(0.0, 1.0);
+    return -28.0 * m;
+  }
+
+  /// Perceptually tuned curve mapping muffle01 (0.0 to 1.0) to low-pass cutoff Hz.
+  static double muffleToCutoffHz(double muffle01) {
+    final m = muffle01.clamp(0.0, 1.0);
+    // Interpolates from 20000 Hz at m=0 to 320 Hz at m=1 in log frequency space.
+    final logOpen = math.log(20000.0);
+    final logClosed = math.log(320.0);
+    return math.exp(logOpen * (1.0 - m) + logClosed * m);
   }
 }
 
@@ -178,18 +208,23 @@ final class AudioPlan {
 
 final class AudioTransmission {
   final List<String> portalPath;
+  final List<String> barrierIds;
   final double gainDb;
   final double lowPassHz;
   final double muffle01;
   final bool reachable;
+  final String reasonTrace;
 
   AudioTransmission({
     required List<String> portalPath,
+    List<String> barrierIds = const [],
     required this.gainDb,
     required this.lowPassHz,
     required this.muffle01,
     required this.reachable,
-  }) : portalPath = List.unmodifiable(portalPath) {
+    this.reasonTrace = 'unobstructed',
+  })  : portalPath = List.unmodifiable(portalPath),
+        barrierIds = List.unmodifiable(barrierIds) {
     if (!muffle01.isFinite || muffle01 < 0 || muffle01 > 1) {
       throw const FormatException('audio transmission muffle is invalid');
     }
@@ -211,14 +246,22 @@ final class AudioPlanner {
     }
   }
 
-  AudioPlan plan(AudioEvent event, AcousticListener listener) {
+  AudioPlan plan(
+    AudioEvent event,
+    AcousticListener listener, {
+    Map<String, double> doorOpeningFractions = const {},
+  }) {
     if (house.byId(event.sourceRoom) == null) {
       throw StateError('audio source room missing: ${event.sourceRoom}');
     }
     if (house.byId(listener.roomId) == null) {
       throw StateError('audio listener room missing: ${listener.roomId}');
     }
-    final transmission = this.transmission(event.sourceRoom, listener.roomId);
+    final transmission = this.transmission(
+      event.sourceRoom,
+      listener.roomId,
+      doorOpeningFractions: doorOpeningFractions,
+    );
     return AudioPlan(
       eventId: event.id,
       cue: cues.select(event.cueFamily, event.seed),
@@ -235,7 +278,11 @@ final class AudioPlanner {
     );
   }
 
-  AudioTransmission transmission(String sourceRoom, String listenerRoom) {
+  AudioTransmission transmission(
+    String sourceRoom,
+    String listenerRoom, {
+    Map<String, double> doorOpeningFractions = const {},
+  }) {
     if (house.byId(sourceRoom) == null) {
       throw StateError('audio source room missing: $sourceRoom');
     }
@@ -246,28 +293,44 @@ final class AudioPlanner {
     var gainDb = 0.0;
     var lowPassHz = 20000.0;
     var muffle01 = 0.0;
+    final barrierIds = <String>[];
+    final traces = <String>[];
+
     for (final portal in route.portals) {
       final profile =
           portalProfiles[portal.id] ?? const AcousticPortalProfile();
-      final (edgeGain, edgeCutoff) = profile.transmission(portal);
+      final openingFraction = doorOpeningFractions[portal.id];
+      final (edgeGain, edgeCutoff, edgeMuffle) = profile.transmission(
+        portal,
+        openingFraction,
+      );
       gainDb += edgeGain;
       if (edgeCutoff < lowPassHz) lowPassHz = edgeCutoff;
-      // Independent barriers combine monotonically but saturate at one; a
-      // second closed door still matters without allowing arbitrary path
-      // length to produce an invalid meter.
-      muffle01 = 1 - ((1 - muffle01) * (1 - profile.muffle01(portal)));
+      muffle01 = 1 - ((1 - muffle01) * (1 - edgeMuffle));
+      if (!barrierIds.contains(portal.id)) {
+        barrierIds.add(portal.id);
+      }
+      final fracText = openingFraction != null
+          ? ' (opening:${openingFraction.toStringAsFixed(2)})'
+          : '';
+      traces.add('portal:${portal.id}$fracText');
     }
+
     if (!route.reachable && sourceRoom != listenerRoom) {
       gainDb = -48.0;
       lowPassHz = 240.0;
       muffle01 = 1.0;
+      traces.add('unreachable');
     }
+
     return AudioTransmission(
       portalPath: [for (final portal in route.portals) portal.id],
+      barrierIds: barrierIds,
       gainDb: gainDb.clamp(-60.0, 0.0),
       lowPassHz: lowPassHz.clamp(120.0, 20000.0),
       muffle01: muffle01.clamp(0.0, 1.0),
       reachable: route.reachable || sourceRoom == listenerRoom,
+      reasonTrace: traces.isEmpty ? 'unobstructed' : traces.join('; '),
     );
   }
 
@@ -294,7 +357,7 @@ final class AudioPlanner {
         if (next == null || house.byId(next) == null) continue;
         final profile =
             portalProfiles[portal.id] ?? const AcousticPortalProfile();
-        final (gain, _) = profile.transmission(portal);
+        final (gain, _, _) = profile.transmission(portal);
         final edgeCost = -gain;
         final candidate = distances[roomId]! + edgeCost;
         if (candidate < (distances[next] ?? double.infinity)) {

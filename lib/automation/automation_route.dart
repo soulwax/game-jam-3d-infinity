@@ -74,6 +74,38 @@ final class AutomationRoutePlan {
       waypoints: List.unmodifiable(waypoints),
     );
   }
+
+  /// Canonical front threshold route plan (hall <-> porch threshold).
+  factory AutomationRoutePlan.frontThreshold(House house) {
+    return AutomationRoutePlan.fromTopology(
+      id: 'front-threshold',
+      house: house,
+      rooms: const ['hall', 'living-room', 'hall'],
+      portals: const ['hall-living', 'hall-living'],
+      requiredOpenPortals: const {'hall-living'},
+    );
+  }
+
+  /// Canonical hero reveal route plan (hall -> living-room -> kitchen hero prop sweep).
+  factory AutomationRoutePlan.heroReveal(House house) {
+    return AutomationRoutePlan.fromTopology(
+      id: 'hero-reveal',
+      house: house,
+      rooms: const ['hall', 'living-room', 'kitchen'],
+      portals: const ['hall-living', 'kitchen-living'],
+      requiredOpenPortals: const {'hall-living', 'kitchen-living'},
+    );
+  }
+
+  /// Canonical target sweep route plan (full-house key target inspection sweep).
+  factory AutomationRoutePlan.targetSweep(House house) {
+    return AutomationRoutePlan.fromTopology(
+      id: 'target-sweep',
+      house: house,
+      rooms: const ['hall', 'living-room', 'kitchen', 'hall', 'landing', 'bedroom', 'landing'],
+      portals: const ['hall-living', 'kitchen-living', 'hall-kitchen', 'hall-landing', 'landing-bedroom', 'landing-bedroom'],
+    );
+  }
 }
 
 enum AutomationRouteIssueCode {

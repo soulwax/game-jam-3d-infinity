@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/camera.dart';
@@ -41,8 +42,8 @@ void main() {
     }
     checked++;
   }
-  if (checked != 14) {
-    throw StateError('expected 14 pickables, checked $checked');
+  if (checked != pickables.length) {
+    throw StateError('expected ${pickables.length} pickables, checked $checked');
   }
   stdout.writeln('inventory focus sweep: $checked authored pickables resolve');
 }
@@ -53,18 +54,34 @@ InventoryPlacement? _findFromSafePose({
   required InventoryPlacement placement,
   required Vec3 center,
 }) {
-  final directions = [
-    Vec3(1, 0, 0),
-    Vec3(-1, 0, 0),
-    Vec3(0, 0, 1),
-    Vec3(0, 0, -1),
-  ];
-  for (final direction in directions) {
-    for (final distance in [1.0, 1.5, 2.0, 2.4]) {
+  final roomOrigin = house.byId(placement.roomId)!.origin;
+
+  for (var i = 0; i < 32; i++) {
+    final angle = i * (math.pi / 16.0);
+    final dx = math.cos(angle);
+    final dz = math.sin(angle);
+    for (final distance in [
+      0.4,
+      0.6,
+      0.8,
+      1.0,
+      1.2,
+      1.4,
+      1.6,
+      1.8,
+      2.0,
+      2.2,
+      2.3,
+      2.5,
+      2.8,
+      3.0,
+      3.2,
+      3.5,
+    ]) {
       final eye = Vec3(
-        center.x + direction.x * distance,
-        house.byId(placement.roomId)!.origin.y + playerEyeHeight,
-        center.z + direction.z * distance,
+        center.x + dx * distance,
+        roomOrigin.y + playerEyeHeight,
+        center.z + dz * distance,
       );
       final capsule = Capsule(
         base: eye - Vec3(0, playerEyeHeight - playerCapsuleRadius, 0),
@@ -79,7 +96,6 @@ InventoryPlacement? _findFromSafePose({
         house: house,
         inventory: inventory,
         currentRoom: placement.roomId,
-        distance: distance + 1.0,
       );
       if (focused?.id == placement.id) return focused;
     }

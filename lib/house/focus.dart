@@ -83,7 +83,7 @@ InventoryPlacement? raycastInventory({
   if (room == null) return null;
 
   InventoryPlacement? nearest;
-  var nearestDistance = distance;
+  var bestScore = double.infinity;
   for (final placement in inventory.placementsFor(currentRoom)) {
     if (!placement.pickable) continue;
     final asset = inventory.assetFor(placement.assetId);
@@ -101,9 +101,12 @@ InventoryPlacement? raycastInventory({
     final angle = math.acos(
       toTarget.normalized.dot(camera.fwd).clamp(-1.0, 1.0),
     );
-    if (angle > coneAngle || targetDistance >= nearestDistance) continue;
-    nearest = placement;
-    nearestDistance = targetDistance;
+    if (angle > coneAngle) continue;
+    final score = angle + (targetDistance / distance) * 0.2;
+    if (score < bestScore) {
+      nearest = placement;
+      bestScore = score;
+    }
   }
   return nearest;
 }

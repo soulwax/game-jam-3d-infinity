@@ -1,5 +1,5 @@
 /// Browser-independent semantic contract for the pause-root actions.
-enum PauseRootAction { resume, settings, controls, save, help, back }
+enum PauseRootAction { resume, settings, controls, save, help, credits, back }
 
 class PauseRootContract {
   static const actionIds = <PauseRootAction, String>{
@@ -8,6 +8,7 @@ class PauseRootContract {
     PauseRootAction.controls: 'pause.controls',
     PauseRootAction.save: 'pause.save',
     PauseRootAction.help: 'pause.help',
+    PauseRootAction.credits: 'pause.credits',
     PauseRootAction.back: 'pause.back',
   };
 

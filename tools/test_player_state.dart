@@ -1,4 +1,4 @@
-import 'package:quarantine/engine/math3.dart';
+import 'package:quarantine/config.dart';
 import 'package:quarantine/game/player_state.dart';
 import 'package:quarantine/house/house.dart';
 
@@ -11,7 +11,7 @@ void main() {
   final house = House(42);
   final state = PlayerState(
     roomId: 'hall',
-    eye: Vec3(5.5, 1.65, 3.5),
+    eye: house.defaultPlayerEye(playerEyeHeight),
     yaw: 0.4,
     pitch: -0.2,
   );

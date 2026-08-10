@@ -56,6 +56,9 @@ class Input {
     window.addEventListener('keydown', _onKeyDown.toJS);
     window.addEventListener('keyup', _onKeyUp.toJS);
     window.addEventListener('mousemove', _onMouseMove.toJS);
+    window.addEventListener('mousedown', _onMouseDown.toJS);
+    window.addEventListener('mouseup', _onMouseUp.toJS);
+    window.addEventListener('wheel', _onWheel.toJS);
     _document.addEventListener('pointerlockchange', _onLockChange.toJS);
   }
 
@@ -215,6 +218,11 @@ class Input {
   void endFrame() {
     _mouseDx = 0;
     _mouseDy = 0;
+    // Wheel tokens are one-frame synthetic edges; remove them from _held so the
+    // next frame starts clean even if no 'wheel' event fires.
+    _held
+        ..remove('WheelUp')
+        ..remove('WheelDown');
     _pressed.clear();
     _gamepadPressed.clear();
     _moveThisFrame = false;
@@ -238,6 +246,35 @@ class Input {
         !_bindings.anyDown('interact', _held)) {
       _interactPolicy.keyUp();
     }
+  }
+
+  void _onMouseDown(web.MouseEvent e) {
+    if (!_gameplayEnabled) return;
+    final code = 'Mouse${e.button}';
+    if (_held.add(code)) {
+      if (_bindings.codesFor('interact').contains(code)) {
+        if (_interactPolicy.keyDown()) _pressed.add(code);
+      } else {
+        _pressed.add(code);
+      }
+    }
+  }
+
+  void _onMouseUp(web.MouseEvent e) {
+    final code = 'Mouse${e.button}';
+    _held.remove(code);
+    if (_bindings.codesFor('interact').contains(code) &&
+        !_bindings.anyDown('interact', _held)) {
+      _interactPolicy.keyUp();
+    }
+  }
+
+  void _onWheel(web.WheelEvent e) {
+    if (!_gameplayEnabled) return;
+    // Inject a one-frame synthetic edge for wheel direction.
+    final code = (e.deltaY < 0) ? 'WheelUp' : 'WheelDown';
+    _held.add(code);
+    _pressed.add(code);
   }
 
   void _onMouseMove(web.MouseEvent e) {

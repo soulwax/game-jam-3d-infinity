@@ -100,7 +100,7 @@ const double playerCapsuleRadius = 0.3;
 const double playerEyeHeight = 1.65;
 const double playerCapsuleHeight = 1.8;
 const double playerSweepStep = 0.08;
-const double raycastDistance = 3.0;
+const double raycastDistance = 4.5;
 const double raycastCone = 0.5236;
 const int cameraAccumClamp = 180;
 

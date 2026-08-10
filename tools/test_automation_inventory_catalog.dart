@@ -20,8 +20,8 @@ void main() {
   _expect(catalog.targets.contains('bathroom-mirror'));
   _expect(catalog.targets.contains('front-door'));
   _expect(catalog.targets.contains('mantle-living'));
-  _expect(catalog.targets.length == 16);
-  _expect(catalog.inventoryContracts.length == 14);
+  _expect(catalog.targets.length == 38);
+  _expect(catalog.inventoryContracts.length == 36);
   _expect(catalog.inventoryContractFor('front-door-clock') != null);
   _expect(
     catalog.inventoryContracts['front-door-clock']?.eventId ==
@@ -31,7 +31,7 @@ void main() {
     catalog.inventoryContracts['front-door-clock']?.stateValue == 'inspected',
   );
   stdout.writeln(
-    'automation inventory catalog: 14 authored + 2 domain targets pass',
+    'automation inventory catalog: 36 authored + 2 domain targets pass',
   );
 }
 

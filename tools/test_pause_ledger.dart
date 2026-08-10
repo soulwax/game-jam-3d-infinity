@@ -67,5 +67,94 @@ void main() {
 
   final json = ledger.state.toJson();
   check(json['pages'] is List, 'state has serializable pages');
-  print('pause ledger: root/nested back, focus restoration, modal gating pass');
+
+  // Multi-tier category stack test: root -> settings -> visual -> back -> back -> back -> resumed
+  final multiLedger = PauseLedger();
+  multiLedger.openRoot(restoreFocusId: 'gameplay.viewport');
+  multiLedger.push(PausePage.settings, triggerFocusId: 'pause.settings');
+  multiLedger.push(PausePage.visual, triggerFocusId: 'settings.visual');
+
+  final backVisual = multiLedger.back();
+  check(
+    backVisual.kind == PauseTransitionKind.backed,
+    'visual back pops to settings',
+  );
+  check(
+    backVisual.focusTargetId == 'settings.visual',
+    'visual back restores trigger focus',
+  );
+  check(
+    multiLedger.state.current?.page == PausePage.settings,
+    'settings page is current',
+  );
+
+  final backSettings = multiLedger.back();
+  check(
+    backSettings.kind == PauseTransitionKind.backed,
+    'settings back pops to root',
+  );
+  check(
+    backSettings.focusTargetId == 'pause.settings',
+    'settings back restores trigger focus',
+  );
+  check(multiLedger.state.atRoot, 'root page is current');
+
+  final backRoot = multiLedger.back();
+  check(
+    backRoot.kind == PauseTransitionKind.resumed,
+    'root back resumes gameplay',
+  );
+  check(
+    backRoot.focusTargetId == 'gameplay.viewport',
+    'resume restores gameplay viewport focus',
+  );
+  check(!multiLedger.state.isPaused, 'pause stack is empty');
+
+  print(
+    'pause ledger: root/nested back, visual multi-tier stack, focus restoration, modal gating pass',
+  );
+
+  // Credits page: root -> credits -> back -> root -> resume
+  final creditsLedger = PauseLedger();
+  creditsLedger.openRoot(restoreFocusId: 'gameplay.viewport');
+  final creditsOpen = creditsLedger.push(
+    PausePage.credits,
+    triggerFocusId: 'pause.credits',
+  );
+  check(
+    creditsOpen.kind == PauseTransitionKind.pushed,
+    'credits page pushes onto root',
+  );
+  check(
+    creditsOpen.focusTargetId == 'credits.close',
+    'credits default focus is credits.close',
+  );
+  check(
+    creditsLedger.state.current?.page == PausePage.credits,
+    'current page is credits',
+  );
+
+  final creditsBack = creditsLedger.back();
+  check(
+    creditsBack.kind == PauseTransitionKind.backed,
+    'credits back returns to root',
+  );
+  check(
+    creditsBack.focusTargetId == 'pause.credits',
+    'credits back restores trigger focus on root',
+  );
+  check(creditsLedger.state.atRoot, 'root is current after credits back');
+
+  final creditsResume = creditsLedger.back();
+  check(
+    creditsResume.kind == PauseTransitionKind.resumed,
+    'root back after credits resumes gameplay',
+  );
+  check(
+    creditsResume.focusTargetId == 'gameplay.viewport',
+    'resume restores gameplay viewport focus',
+  );
+  check(!creditsLedger.state.isPaused, 'pause stack is empty after credits flow');
+
+  print('pause ledger: credits push/back/resume flow pass');
 }

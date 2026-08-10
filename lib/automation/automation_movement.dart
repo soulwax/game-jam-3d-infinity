@@ -90,6 +90,8 @@ final class AutomationMovementOutput {
   });
 }
 
+enum AutomationMovementRecoveryMode { none, backingUp, realigning }
+
 /// Steering-only route controller. It emits action frames; the production
 /// motion/collision system remains the only authority that changes the pose.
 final class AutomationMovementController {
@@ -99,6 +101,7 @@ final class AutomationMovementController {
   final double maxLookDelta;
   final int stuckWindow;
   final double progressEpsilon;
+  final int maxRecoveryAttempts;
 
   int _waypointIndex = 0;
   AutomationMovementStatus _status = AutomationMovementStatus.running;
@@ -106,6 +109,9 @@ final class AutomationMovementController {
   final List<Vec3> _recentPositions = <Vec3>[];
   double? _previousHeadingError;
   int _headingReversals = 0;
+  AutomationMovementRecoveryMode _recoveryMode = AutomationMovementRecoveryMode.none;
+  int _recoveryTicksRemaining = 0;
+  int _recoveryAttempts = 0;
 
   AutomationMovementController({
     required this.plan,
@@ -114,11 +120,12 @@ final class AutomationMovementController {
     this.maxLookDelta = 0.18,
     this.stuckWindow = 30,
     this.progressEpsilon = 0.03,
+    this.maxRecoveryAttempts = 3,
   }) {
     if (waypointTolerance <= 0 || headingTolerance <= 0 || maxLookDelta <= 0) {
       throw ArgumentError('movement tolerances must be positive');
     }
-    if (stuckWindow < 2 || progressEpsilon <= 0) {
+    if (stuckWindow < 2 || progressEpsilon <= 0 || maxRecoveryAttempts < 0) {
       throw ArgumentError('movement watchdog bounds are invalid');
     }
   }
@@ -126,6 +133,8 @@ final class AutomationMovementController {
   int get waypointIndex => _waypointIndex;
   AutomationMovementStatus get status => _status;
   String? get failure => _failure;
+  AutomationMovementRecoveryMode get recoveryMode => _recoveryMode;
+  int get recoveryAttempts => _recoveryAttempts;
 
   AutomationMovementOutput next(PlayerObservation observation) {
     if (_status != AutomationMovementStatus.running) {
@@ -152,6 +161,25 @@ final class AutomationMovementController {
         PlayerActionFrame.neutral(observation.tick),
       );
     }
+    if (_recoveryMode != AutomationMovementRecoveryMode.none) {
+      if (_recoveryTicksRemaining > 0) {
+        _recoveryTicksRemaining--;
+        if (_recoveryMode == AutomationMovementRecoveryMode.backingUp) {
+          return _output(
+            observation.tick,
+            PlayerActionFrame(tick: observation.tick, forward: -0.5),
+          );
+        } else if (_recoveryMode == AutomationMovementRecoveryMode.realigning) {
+          return _output(
+            observation.tick,
+            PlayerActionFrame(tick: observation.tick, lookDeltaX: 0.1),
+          );
+        }
+      } else {
+        _recoveryMode = AutomationMovementRecoveryMode.none;
+      }
+    }
+
     final waypoint = plan.waypoints[_waypointIndex];
     if (!_allowedRoom(observation.room, waypoint.room)) {
       return _fail(
@@ -166,6 +194,8 @@ final class AutomationMovementController {
       _recentPositions.clear();
       _previousHeadingError = null;
       _headingReversals = 0;
+      _recoveryAttempts = 0;
+      _recoveryMode = AutomationMovementRecoveryMode.none;
       if (_waypointIndex >= plan.waypoints.length) {
         _status = AutomationMovementStatus.reached;
         return _output(
@@ -177,6 +207,16 @@ final class AutomationMovementController {
     }
     _remember(observation.position);
     if (_stuck()) {
+      if (_recoveryAttempts < maxRecoveryAttempts) {
+        _recoveryAttempts++;
+        _recentPositions.clear();
+        _recoveryMode = AutomationMovementRecoveryMode.backingUp;
+        _recoveryTicksRemaining = 6;
+        return _output(
+          observation.tick,
+          PlayerActionFrame(tick: observation.tick, forward: -0.5),
+        );
+      }
       return _fail(
         observation.tick,
         'no progress toward waypoint ${waypoint.id}',

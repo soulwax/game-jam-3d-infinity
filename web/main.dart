@@ -55,7 +55,10 @@ import 'package:quarantine/story/text.dart';
 import 'package:quarantine/story/unverifiable_notice.dart';
 import 'package:quarantine/ui/ambient_notice.dart';
 import 'package:quarantine/ui/accessibility_settings.dart';
+import 'package:quarantine/ui/accessibility_presentation.dart';
 import 'package:quarantine/ui/audio_settings.dart';
+import 'package:quarantine/ui/gameplay_settings.dart';
+import 'package:quarantine/ui/gameplay_presentation_policy.dart';
 import 'package:quarantine/ui/broadcast.dart';
 import 'package:quarantine/ui/door.dart';
 import 'package:quarantine/ui/ending_panel.dart';
@@ -63,6 +66,7 @@ import 'package:quarantine/ui/graphics_settings.dart';
 import 'package:quarantine/ui/graphics_settings_panel.dart';
 import 'package:quarantine/ui/controls_settings.dart';
 import 'package:quarantine/ui/controls_settings_panel.dart';
+import 'package:quarantine/ui/credits_panel.dart';
 import 'package:quarantine/ui/help_panel.dart';
 import 'package:quarantine/ui/journal_panel.dart';
 import 'package:quarantine/ui/panel.dart';
@@ -519,8 +523,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       }
       _roomSurfaceDescriptorsByRoom[entry.key] = descriptors;
       // Keep the wall alias used by decorations and compatibility diagnostics.
-      if (descriptors.isNotEmpty)
+      if (descriptors.isNotEmpty) {
         _sceneDescriptors[entry.key] = descriptors.first;
+      }
     }
     for (final decoration in _decorations) {
       final mask = visible.contains(decoration.roomId) && decoration.isVisible()
@@ -618,8 +623,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       return;
     }
     final specs = _roomSurfaceSpecs(house, room);
-    if (specs.length != items.length || specs.length != oldMeshes.length)
+    if (specs.length != items.length || specs.length != oldMeshes.length) {
       return;
+    }
     final nextMeshes = <px.MeshHandle>[];
     final nextDescriptors = <px.RetainedItemDescriptor>[];
     for (var i = 0; i < specs.length; i++) {
@@ -653,8 +659,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     }
     _roomMeshesById[roomId] = nextMeshes;
     _roomSurfaceDescriptorsByRoom[roomId] = nextDescriptors;
-    if (nextDescriptors.isNotEmpty)
+    if (nextDescriptors.isNotEmpty) {
       _sceneDescriptors[roomId] = nextDescriptors.first;
+    }
     _canvas.setAttribute(
       'data-renderer-geometry-refreshes',
       '${_geometryRefreshes + 1}',
@@ -1516,11 +1523,13 @@ const _settingsProfileKey = 'quarantine.settings.profile';
 const _graphicsSettingsKey = 'quarantine.graphics.profile';
 const _controlsSettingsKey = 'quarantine.controls.profile';
 const _audioOptionsKey = 'quarantine.audio.options';
+const _gameplayOptionsKey = 'quarantine.gameplay.options';
 const _accessibilityProfileKey = 'quarantine.accessibility.profile';
 SettingsStore _settingsStore = SettingsStore();
 GraphicsSettingsStore _graphicsSettingsStore = GraphicsSettingsStore();
 ControlsSettingsProfile _controlsSettings = ControlsSettingsProfile();
 AudioSettingsProfile _audioOptions = const AudioSettingsProfile();
+GameplaySettingsProfile _gameplayOptions = GameplaySettingsProfile.firstRun;
 AccessibilitySettingsProfile _accessibilityProfile =
     const AccessibilitySettingsProfile();
 bool _systemReducedMotion = false;
@@ -1675,11 +1684,13 @@ late Broadcast _broadcast;
 late Door _door;
 late SleepPanel _sleepPanel;
 late HelpPanel _helpPanel;
+late CreditsPanel _creditsPanel;
 late SettingsPanel _settingsPanel;
 late SettingsPanel _visualSettingsPanel;
 late SettingsPanel _accessibilitySettingsPanel;
 late GraphicsSettingsPanel _graphicsSettingsPanel;
 late SettingsPanel _audioSettingsPanel;
+late SettingsPanel _gameplaySettingsPanel;
 late ControlsSettingsPanel _controlsSettingsPanel;
 late EndingPanel _endingPanel;
 late VisitorDirector _visitorDirector;
@@ -1779,6 +1790,7 @@ PauseReason _pauseReasonForPanel(Panel panel) {
   if (panel == _journal) return PauseReason.journal;
   if (panel == _sleepPanel) return PauseReason.sleep;
   if (panel == _helpPanel) return PauseReason.help;
+  if (panel == _creditsPanel) return PauseReason.settings;
   if (panel == _endingPanel) return PauseReason.ending;
   return PauseReason.visitor;
 }
@@ -1849,6 +1861,13 @@ void _configureSettingsPanel(SettingsPanel panel, {bool nested = false}) {
       _audioOptions = profile;
       _persistAudioOptions();
       _applyAudioOptions();
+    };
+  }
+  if (panel.page == PauseSettingsCategory.gameplay) {
+    panel.onGameplayOptions = (profile) {
+      _gameplayOptions = profile;
+      _persistGameplayOptions();
+      _applyGameplayOptions();
     };
   }
   if (panel.page == PauseSettingsCategory.accessibility) {
@@ -1949,7 +1968,7 @@ void _configureControlsSettingsPanel() {
   _controlsSettingsPanel
     ..onChanged = (profile) {
       _controlsSettings = profile;
-      _input.setBindings(profile.bindings);
+      _input.setActionBindings(profile.bindingsByAction);
       _input.setHoldToInteract(profile.holdToInteract);
       _persistControlsSettings();
     }
@@ -1974,7 +1993,7 @@ void _loadControlsSettings() {
     }
   }
   _controlsSettingsPanel.setProfile(_controlsSettings);
-  _input.setBindings(_controlsSettings.bindings);
+  _input.setActionBindings(_controlsSettings.bindingsByAction);
   _input.setHoldToInteract(_controlsSettings.holdToInteract);
   _persistControlsSettings();
 }
@@ -2020,6 +2039,79 @@ void _applyAudioOptions() {
   audio.setPresentationOptions(_audioOptions);
 }
 
+void _loadGameplayOptions() {
+  String? encoded;
+  try {
+    encoded = web.window.localStorage.getItem(_gameplayOptionsKey);
+  } catch (_) {}
+  if (encoded != null) {
+    try {
+      _gameplayOptions = GameplaySettingsProfile.fromJson(jsonDecode(encoded));
+    } catch (_) {
+      _gameplayOptions = GameplaySettingsProfile.firstRun;
+    }
+  }
+  _gameplaySettingsPanel.setGameplayProfile(_gameplayOptions);
+  _persistGameplayOptions();
+  _applyGameplayOptions();
+}
+
+void _persistGameplayOptions() {
+  try {
+    web.window.localStorage.setItem(
+      _gameplayOptionsKey,
+      jsonEncode(_gameplayOptions.toJson()),
+    );
+  } catch (_) {}
+}
+
+void _applyGameplayOptions() {
+  // GameplayPresentationPolicy is the runtime-facing projection; for now we
+  // expose the resolved policy on the automation attribute so browser drivers
+  // and future consumers (prompt, journal, save feedback, focus-loss handler)
+  // can read it without importing the policy class directly.
+  final policy = GameplayPresentationPolicy.fromProfile(_gameplayOptions);
+  final root = web.document.documentElement;
+  if (root == null) return;
+  root
+    ..setAttribute(
+      'data-gameplay-interaction',
+      policy.interactionUsesHold ? 'hold' : 'press',
+    )
+    ..setAttribute(
+      'data-gameplay-prompts',
+      policy.showDetailedPrompts ? 'detailed' : 'standard',
+    )
+    ..setAttribute(
+      'data-gameplay-text-pacing',
+      policy.textPacingMultiplier == 0
+          ? 'instant'
+          : policy.textPacingMultiplier > 1
+          ? 'slow'
+          : 'readable',
+    )
+    ..setAttribute(
+      'data-gameplay-journal',
+      policy.compactJournal ? 'compact' : 'spacious',
+    )
+    ..setAttribute(
+      'data-gameplay-confirmations',
+      policy.confirmRoutineActions ? 'always' : 'important',
+    )
+    ..setAttribute(
+      'data-gameplay-save-feedback',
+      policy.detailedSaveFeedback ? 'detailed' : 'toast',
+    )
+    ..setAttribute(
+      'data-gameplay-focus-loss',
+      policy.focusLossBehavior.name,
+    )
+    ..setAttribute(
+      'data-gameplay-reminders',
+      policy.contextualReminders ? '1' : '0',
+    );
+}
+
 void _loadAccessibilityProfile() {
   String? encoded;
   try {
@@ -2056,12 +2148,23 @@ void _applyAccessibilityProfile() {
   _reducedMotion = resolved.reducedMotion;
   _camera.breathScale = _reducedMotion ? 0.5 : 1.0;
   final root = web.document.documentElement;
+  final highContrast = root?.classList.contains('high-contrast') ?? false;
+  final strongHighlights =
+      root?.classList.contains('strong-highlights') ?? false;
+  final uiPolicy = AccessibilityUiPolicy.fromResolved(
+    resolved,
+    highContrast: highContrast,
+    strongHighlights: strongHighlights,
+  );
+
   root?.classList.toggle('reduced-motion', resolved.reducedMotion);
   root?.classList.toggle(
     'photosensitivity-safe',
     resolved.photosensitivitySafe,
   );
   root?.classList.toggle('captions-enabled', resolved.captions);
+  root?.classList.toggle('reduced-effects', uiPolicy.reducedEffects);
+  root?.classList.toggle('focus-visible-enhanced', uiPolicy.focusVisible);
   if (root is web.HTMLElement) {
     root.style.setProperty('font-size', '${resolved.uiScale * 100}%');
   }
@@ -2075,8 +2178,25 @@ void _applyAccessibilityProfile() {
       '${resolved.photosensitivitySafe}',
     )
     ..setAttribute('data-accessibility-ui-scale', '${resolved.uiScale}')
-    ..setAttribute('data-accessibility-captions', '${resolved.captions}');
+    ..setAttribute('data-accessibility-captions', '${resolved.captions}')
+    ..setAttribute(
+      'data-accessibility-screen-reader-verbosity',
+      resolved.screenReaderVerbosity.name,
+    )
+    ..setAttribute(
+      'data-accessibility-reduced-effects',
+      '${uiPolicy.reducedEffects}',
+    )
+    ..setAttribute(
+      'data-accessibility-focus-visible',
+      '${uiPolicy.focusVisible}',
+    )
+    ..setAttribute(
+      'data-accessibility-essential-cues',
+      '${uiPolicy.essentialCues}',
+    );
   if (_ambientNoticeInitialized) {
+    _ambientNotice.setAccessibilityProfile(_accessibilityProfile);
     _ambientNotice.setCaptionsEnabled(resolved.captions);
   }
 }
@@ -2319,23 +2439,23 @@ Future<void> main() async {
           PauseSettingsCategory.accessibility => _accessibilitySettingsPanel,
           PauseSettingsCategory.graphics => _graphicsSettingsPanel,
           PauseSettingsCategory.audio => _audioSettingsPanel,
+          PauseSettingsCategory.gameplay => _gameplaySettingsPanel,
           PauseSettingsCategory.controls => _controlsSettingsPanel,
-          _ => _settingsPanel,
         };
         final page = switch (category) {
           PauseSettingsCategory.visual => PausePage.visual,
           PauseSettingsCategory.accessibility => PausePage.accessibility,
           PauseSettingsCategory.graphics => PausePage.graphics,
           PauseSettingsCategory.audio => PausePage.audio,
+          PauseSettingsCategory.gameplay => PausePage.gameplay,
           PauseSettingsCategory.controls => PausePage.controls,
-          _ => PausePage.settings,
         };
         _openPauseChild(target, page, PauseSettingsContract.ids[category]!);
       }
       ..onBack = () {
         _returnFromPausePage(_settingsIndex);
       }
-      ..onClose = () => _panelClosed(_settingsIndex);
+      ..onClose = () => _returnFromPausePage(_settingsIndex);
     _pauseRoot = PauseRootPanel(web.document)
       ..onResume = () {
         _pauseRoot.close();
@@ -2356,6 +2476,9 @@ Future<void> main() async {
       ..onHelp = () {
         _pauseRoot.close();
         _openPanel(_helpPanel);
+      }
+      ..onCredits = () {
+        _openPauseChild(_creditsPanel, PausePage.credits, 'pause.credits');
       }
       ..onClose = () => _panelClosed(_pauseRoot);
     _interactionEngine = InteractionEngine(
@@ -2411,6 +2534,8 @@ Future<void> main() async {
       ..onClose = () => _panelClosed(_sleepPanel);
     _helpPanel = HelpPanel(web.document)
       ..onClose = () => _panelClosed(_helpPanel);
+    _creditsPanel = CreditsPanel(web.document)
+      ..onClose = () => _returnFromPausePage(_creditsPanel);
     _settingsPanel = SettingsPanel(web.document);
     _visualSettingsPanel = SettingsPanel(
       web.document,
@@ -2434,6 +2559,12 @@ Future<void> main() async {
     );
     _configureSettingsPanel(_audioSettingsPanel, nested: true);
     _loadAudioOptions();
+    _gameplaySettingsPanel = SettingsPanel(
+      web.document,
+      page: PauseSettingsCategory.gameplay,
+    );
+    _configureSettingsPanel(_gameplaySettingsPanel, nested: true);
+    _loadGameplayOptions();
     _controlsSettingsPanel = ControlsSettingsPanel(web.document);
     _configureControlsSettingsPanel();
     _loadControlsSettings();
@@ -2460,6 +2591,14 @@ Future<void> main() async {
 
     _resize();
     web.window.addEventListener('resize', ((web.Event _) => _resize()).toJS);
+    web.document.addEventListener(
+      'visibilitychange',
+      ((web.Event _) {
+        if (web.document.visibilityState == 'hidden') {
+          _onFocusLoss();
+        }
+      }).toJS,
+    );
     web.window.addEventListener(
       'keydown',
       ((web.KeyboardEvent e) {
@@ -2675,11 +2814,31 @@ void _saveSession(String status) {
   }
 }
 
+void _onFocusLoss() {
+  final attr = web.document.documentElement
+      ?.getAttribute('data-gameplay-focus-loss');
+  final behavior = GameplayFocusLossBehavior.values
+      .where((e) => e.name == attr)
+      .firstOrNull;
+  switch (behavior ?? GameplayFocusLossBehavior.pauseAndMute) {
+    case GameplayFocusLossBehavior.pauseAndMute:
+      _paused = true;
+      _audio?.setMix(muted: true);
+    case GameplayFocusLossBehavior.pauseOnly:
+      _paused = true;
+    case GameplayFocusLossBehavior.continuePlayback:
+      break;
+  }
+}
+
 void _showSaveStatus(String message) {
   final status = web.document.getElementById('save-status');
   if (status == null) return;
+  final detailed = web.document.documentElement
+          ?.getAttribute('data-gameplay-save-feedback') ==
+      'detailed';
   status.textContent = message;
-  status.className = 'visible';
+  status.className = detailed ? 'visible detailed' : 'visible';
   Future<void>.delayed(const Duration(milliseconds: 2400), () {
     status.className = '';
   });
@@ -2878,6 +3037,7 @@ void _applyDisplayToggle(String key, bool value) {
       ? 'high-contrast'
       : 'strong-highlights';
   web.document.documentElement?.classList.toggle(className, value);
+  _applyAccessibilityProfile();
 }
 
 void _restoreDisplayPreferences() {
@@ -2891,6 +3051,7 @@ void _restoreDisplayPreferences() {
     _visualSettingsPanel,
     _accessibilitySettingsPanel,
     _audioSettingsPanel,
+    _gameplaySettingsPanel,
   ]) {
     panel.setLevel('brightness', brightness.toDouble());
   }
@@ -2900,6 +3061,7 @@ void _restoreDisplayPreferences() {
     _visualSettingsPanel,
     _accessibilitySettingsPanel,
     _audioSettingsPanel,
+    _gameplaySettingsPanel,
   ]) {
     panel
       ..setHighContrast(highContrast)
@@ -3034,8 +3196,9 @@ Future<void> _loadTextures(JSObject? data) async {
 void _applyCredits(JSObject? data) {
   final credits = data?['credits'];
   if (credits.isA<JSString>()) {
-    web.document.getElementById('credits')?.textContent =
-        (credits as JSString).toDart;
+    final text = (credits as JSString).toDart;
+    web.document.getElementById('credits')?.textContent = text;
+    _creditsPanel.setCreditsText(text);
   }
 }
 

@@ -38,22 +38,23 @@ void main() {
   final stuckController = AutomationMovementController(
     plan: plan,
     stuckWindow: 3,
+    maxRecoveryAttempts: 1,
   );
   for (var tick = 1; tick <= 3; tick++) {
-    final output = stuckController.next(_observation(tick: tick, z: 0));
-    if (tick == 3) {
-      _expect(
-        output.status == AutomationMovementStatus.failed,
-        'stuck watchdog',
-      );
-    }
+    stuckController.next(_observation(tick: tick, z: 0));
   }
+  _expect(
+    stuckController.recoveryMode == AutomationMovementRecoveryMode.backingUp,
+    'stuck watchdog triggers backingUp recovery mode',
+  );
+
   final modal = AutomationMovementController(
     plan: plan,
   ).next(_observation(tick: 1, z: 0, modal: true));
   _expect(modal.status == AutomationMovementStatus.failed, 'modal route guard');
+
   stdout.writeln(
-    'automation movement: action frames, arrival, release, stuck and modal guards pass',
+    'automation movement: action frames, arrival, release, stuck, recovery mode, and modal guards pass',
   );
 }
 

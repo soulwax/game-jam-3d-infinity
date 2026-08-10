@@ -70,5 +70,19 @@ void main() {
     wet.toJson()['roomTemperatureCelsius'] == -3.0,
     'room temperature remains deterministic',
   );
-  print('environment facts: weather, temperature, and shutters pass');
+
+  // PF-05: VisualPresentationFacts
+  final visualFacts = VisualPresentationFacts.fromSettings(
+    exposure: 0.5,
+    fov: 75.0,
+    cameraMotion: 0.8,
+    rainIntensity: 1.0,
+    colorGrade: 'filmic',
+  );
+  _expect(visualFacts.exposureMultiplier == 1.5, 'exposure 0.5 yields 1.5 multiplier');
+  _expect(visualFacts.fovDegrees == 75.0, 'fov is 75 degrees');
+  _expect(visualFacts.surfaceWetness == 0.85, 'rain 1.0 yields 0.85 surface wetness');
+  _expect(visualFacts.colorGradeClass == 'filmic', 'color grade is filmic');
+
+  print('environment facts: weather, temperature, shutters, and PF-05 visual presentation facts pass');
 }

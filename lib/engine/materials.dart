@@ -3,8 +3,21 @@ class Material {
   final double emissiveStrength;
   final double uvScale;
   final int flags;
+  final double roughness;
+  final double metallic;
+  final double aoStrength;
+  final double normalScale;
 
-  Material(this.atlasLayer, this.emissiveStrength, this.uvScale, this.flags);
+  Material(
+    this.atlasLayer,
+    this.emissiveStrength,
+    this.uvScale,
+    this.flags, {
+    this.roughness = 0.5,
+    this.metallic = 0.0,
+    this.aoStrength = 1.0,
+    this.normalScale = 1.0,
+  });
 
   int get _hash {
     int h = 5381;
@@ -12,6 +25,10 @@ class Material {
     h = ((h << 5) + h) ^ emissiveStrength.toStringAsFixed(4).hashCode;
     h = ((h << 5) + h) ^ uvScale.toStringAsFixed(4).hashCode;
     h = ((h << 5) + h) ^ flags;
+    h = ((h << 5) + h) ^ roughness.toStringAsFixed(4).hashCode;
+    h = ((h << 5) + h) ^ metallic.toStringAsFixed(4).hashCode;
+    h = ((h << 5) + h) ^ aoStrength.toStringAsFixed(4).hashCode;
+    h = ((h << 5) + h) ^ normalScale.toStringAsFixed(4).hashCode;
     return h & 0x7FFFFFFF;
   }
 
@@ -25,10 +42,25 @@ class Material {
           atlasLayer == other.atlasLayer &&
           emissiveStrength == other.emissiveStrength &&
           uvScale == other.uvScale &&
-          flags == other.flags;
+          flags == other.flags &&
+          roughness == other.roughness &&
+          metallic == other.metallic &&
+          aoStrength == other.aoStrength &&
+          normalScale == other.normalScale;
 
   @override
   int get hashCode => _hash;
+
+  Map<String, Object> toJson() => {
+        'atlasLayer': atlasLayer,
+        'emissiveStrength': emissiveStrength,
+        'uvScale': uvScale,
+        'flags': flags,
+        'roughness': roughness,
+        'metallic': metallic,
+        'aoStrength': aoStrength,
+        'normalScale': normalScale,
+      };
 }
 
 class Materials {

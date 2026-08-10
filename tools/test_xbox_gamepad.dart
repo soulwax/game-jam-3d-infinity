@@ -25,7 +25,7 @@ void main() {
   final active = XboxGamepadLayout.map(
     frame(
       axes: [0.59, -0.59, 0.5, -0.5],
-      buttons: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 0],
+      buttons: [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1],
     ),
   );
   check(active.move.x > 0 && active.move.z > 0, 'left stick moves forward-right');
@@ -45,15 +45,14 @@ void main() {
       'GamepadLStick',
       'GamepadRStick',
       'GamepadDpadUp',
-      'GamepadDpadLeft',
+      'GamepadDpadRight',
     }),
     'Xbox face, shoulder, trigger, menu, stick, and D-pad tokens map',
   );
   check(
-    XboxGamepadLayout.buttonBindings['interact']!.containsAll([
-      'GamepadA',
-      'GamepadRT',
-    ]),
+    ['GamepadA', 'GamepadRT'].every(
+      (b) => XboxGamepadLayout.buttonBindings['interact']!.contains(b),
+    ),
     'A and right trigger are intuitive interact alternatives',
   );
   check(

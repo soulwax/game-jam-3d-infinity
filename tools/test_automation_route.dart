@@ -150,8 +150,19 @@ void main() {
         diagnosticJson['position'] is List,
     'blocked waypoint diagnostic carries overlay identity and position',
   );
+
+  // T-06: Additional canonical routes
+  final frontThreshold = AutomationRoutePlan.frontThreshold(house);
+  _expect(validator.validate(frontThreshold).isEmpty, 'front-threshold route clears geometry');
+
+  final heroReveal = AutomationRoutePlan.heroReveal(house);
+  _expect(validator.validate(heroReveal).isEmpty, 'hero-reveal route clears geometry');
+
+  final targetSweep = AutomationRoutePlan.targetSweep(house);
+  _expect(validator.validate(targetSweep).isEmpty, 'target-sweep route clears geometry');
+
   stdout.writeln(
-    'automation route: canonical approaches, capsule clearance, topology and diagnostics pass',
+    'automation route: canonical approaches, capsule clearance, topology, front-threshold, hero-reveal, target-sweep, and diagnostics pass',
   );
 }
 

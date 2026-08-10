@@ -174,8 +174,9 @@ class ControlsSettingsPanel extends Panel {
 
   void _refreshBindings() {
     for (final entry in _bindingButtons.entries) {
+      final values = _editor.profile.bindingsByAction[entry.key];
       entry.value.textContent =
-          _editor.profile.bindings[entry.key] ?? 'unbound';
+          (values == null || values.isEmpty) ? 'unbound' : values.join(' / ');
       BrushComponents.setState(entry.value, BrushComponentState.normal);
     }
   }

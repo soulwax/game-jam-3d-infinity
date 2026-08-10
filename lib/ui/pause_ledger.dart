@@ -17,6 +17,7 @@ enum PausePage {
   controls,
   audio,
   accessibility,
+  credits,
   help,
 }
 
@@ -248,6 +249,7 @@ class PauseLedger {
     PausePage.controls => 'settings.controls.first',
     PausePage.audio => 'settings.audio.first',
     PausePage.accessibility => 'settings.accessibility.first',
+    PausePage.credits => 'credits.close',
     PausePage.help => 'help.close',
   };
 }

@@ -67,5 +67,29 @@ void main() {
         selection['aliasUsed'] == true,
     'selection diagnostics preserve canonical alias facts',
   );
-  print('renderer diagnostics: backend/profile/build identity fixture passes');
+
+  // R-08: RendererFrameTelemetry
+  const telemetry = RendererFrameTelemetry(
+    drawCallCount: 12,
+    triangleCount: 4500,
+    culledInstanceCount: 8,
+    gpuFrameTimeMs: 1.45,
+    timerOutcome: GpuTimerOutcome.supported,
+  );
+  final telemetryJson = telemetry.toJson();
+  _expect(telemetryJson['drawCallCount'] == 12, 'drawCallCount is 12');
+  _expect(telemetryJson['triangleCount'] == 4500, 'triangleCount is 4500');
+  _expect(telemetryJson['culledInstanceCount'] == 8, 'culledInstanceCount is 8');
+  _expect(telemetryJson['timerOutcome'] == 'supported', 'timerOutcome is supported');
+
+  // R-04: ShadowAtlasProfile
+  const atlas = ShadowAtlasProfile(
+    activePracticalCasters: 2,
+    daylightCasterActive: true,
+  );
+  _expect(atlas.totalActiveCasters == 3, '2 practicals + 1 daylight = 3 total casters');
+  _expect(atlas.constantBias == 0.002, 'constantBias default is 0.002');
+  _expect(atlas.pcfRadius == 1.5, 'pcfRadius default is 1.5');
+
+  print('renderer diagnostics: backend/profile/build identity, R-08 telemetry, and R-04 shadow atlas pass');
 }

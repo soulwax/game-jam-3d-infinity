@@ -224,7 +224,11 @@ Options:
   --headless            Launch a headless browser (default).
 ''';
 
-const registeredAutomationScenarios = <String>['days-1-3'];
+const registeredAutomationScenarios = <String>[
+  'days-1-3',
+  'ground-circuit',
+  'upper-circuit',
+];
 
 AutomationParseResult parseAutomationArgs(List<String> argv) {
   if (argv.isEmpty) {

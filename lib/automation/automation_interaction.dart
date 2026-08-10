@@ -45,6 +45,7 @@ final class AutomationInteractionController {
   final String targetId;
   final String expectedEvent;
   final String expectedState;
+  final String actionToken;
   final bool hold;
   final int settleTicks;
   final int timeoutTicks;
@@ -60,6 +61,7 @@ final class AutomationInteractionController {
     required this.expectedEvent,
     required this.expectedState,
     required this.initialCostCount,
+    this.actionToken = 'KeyE',
     this.hold = false,
     this.settleTicks = 2,
     this.timeoutTicks = 120,
@@ -130,14 +132,14 @@ final class AutomationInteractionController {
       _phase = AutomationInteractionPhase.releasing;
       return _output(
         observation.tick,
-        PlayerActionFrame(tick: observation.tick, held: const {'KeyE'}),
+        PlayerActionFrame(tick: observation.tick, held: {actionToken}),
       );
     }
     if (_phase == AutomationInteractionPhase.releasing) {
       _phase = AutomationInteractionPhase.awaitingResult;
       return _output(
         observation.tick,
-        PlayerActionFrame(tick: observation.tick, released: const {'KeyE'}),
+        PlayerActionFrame(tick: observation.tick, released: {actionToken}),
       );
     }
     if (observation.semanticEvents.contains(expectedEvent) &&
@@ -158,8 +160,8 @@ final class AutomationInteractionController {
 
   PlayerActionFrame _press(int tick) => PlayerActionFrame(
     tick: tick,
-    pressed: const {'KeyE'},
-    held: hold ? const {'KeyE'} : const {},
+    pressed: {actionToken},
+    held: hold ? {actionToken} : const {},
   );
 
   AutomationInteractionOutput _fail(int tick, String message) {

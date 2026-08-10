@@ -64,6 +64,38 @@ final class PhysicalInputNormalizer {
     _mouseDy += dy;
   }
 
+  void mouseDown(int button) {
+    if (!_enabled) return;
+    final token = _mouseButtonToken(button);
+    if (token != null && _held.add(token)) {
+      _pressed.add(token);
+    }
+  }
+
+  void mouseUp(int button) {
+    if (!_enabled) return;
+    final token = _mouseButtonToken(button);
+    if (token != null && _held.remove(token)) {
+      _released.add(token);
+    }
+  }
+
+  void wheel(double deltaY) {
+    if (!_enabled || deltaY == 0) return;
+    final token = deltaY < 0 ? 'WheelUp' : 'WheelDown';
+    _pressed.add(token);
+    _released.add(token);
+  }
+
+  static String? _mouseButtonToken(int button) => switch (button) {
+        0 => 'Mouse0',
+        1 => 'Mouse1',
+        2 => 'Mouse2',
+        3 => 'Mouse3',
+        4 => 'Mouse4',
+        _ => null,
+      };
+
   void suspend() {
     _enabled = false;
     clear();
@@ -113,7 +145,11 @@ final class PhysicalInputNormalizer {
 }
 
 bool _isSemanticAction(String code) =>
-    code == 'KeyE' || code == 'Space' || code == 'Escape';
+    code == 'KeyE' ||
+    code == 'Space' ||
+    code == 'Escape' ||
+    code.startsWith('Mouse') ||
+    code.startsWith('Wheel');
 
 void _validate(PlayerActionFrame frame) {
   if (frame.tick < 0 ||

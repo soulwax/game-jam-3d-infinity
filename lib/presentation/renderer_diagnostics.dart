@@ -117,6 +117,75 @@ class RendererDiagnostics {
   String encode() => jsonEncode(toJson());
 }
 
+enum GpuTimerOutcome { supported, unsupported, disjoint }
+
+/// Per-frame GPU and draw submission telemetry for R-08.
+class RendererFrameTelemetry {
+  final int drawCallCount;
+  final int triangleCount;
+  final int culledInstanceCount;
+  final double? gpuFrameTimeMs;
+  final GpuTimerOutcome timerOutcome;
+
+  const RendererFrameTelemetry({
+    required this.drawCallCount,
+    required this.triangleCount,
+    required this.culledInstanceCount,
+    this.gpuFrameTimeMs,
+    this.timerOutcome = GpuTimerOutcome.unsupported,
+  }) : assert(drawCallCount >= 0, 'drawCallCount must be non-negative'),
+       assert(triangleCount >= 0, 'triangleCount must be non-negative'),
+       assert(culledInstanceCount >= 0, 'culledInstanceCount must be non-negative');
+
+  static const zero = RendererFrameTelemetry(
+    drawCallCount: 0,
+    triangleCount: 0,
+    culledInstanceCount: 0,
+  );
+
+  Map<String, Object?> toJson() => {
+        'drawCallCount': drawCallCount,
+        'triangleCount': triangleCount,
+        'culledInstanceCount': culledInstanceCount,
+        if (gpuFrameTimeMs != null) 'gpuFrameTimeMs': gpuFrameTimeMs,
+        'timerOutcome': timerOutcome.name,
+      };
+}
+
+/// Practical & daylight shadow map atlas profile for R-04.
+final class ShadowAtlasProfile {
+  final int maxCasters;
+  final int atlasSize;
+  final double constantBias;
+  final double slopeBias;
+  final double pcfRadius;
+  final int activePracticalCasters;
+  final bool daylightCasterActive;
+
+  const ShadowAtlasProfile({
+    this.maxCasters = 3,
+    this.atlasSize = 1024,
+    this.constantBias = 0.002,
+    this.slopeBias = 0.005,
+    this.pcfRadius = 1.5,
+    this.activePracticalCasters = 0,
+    this.daylightCasterActive = false,
+  });
+
+  int get totalActiveCasters => activePracticalCasters + (daylightCasterActive ? 1 : 0);
+
+  Map<String, Object> toJson() => {
+        'maxCasters': maxCasters,
+        'atlasSize': atlasSize,
+        'constantBias': constantBias,
+        'slopeBias': slopeBias,
+        'pcfRadius': pcfRadius,
+        'activePracticalCasters': activePracticalCasters,
+        'daylightCasterActive': daylightCasterActive,
+        'totalActiveCasters': totalActiveCasters,
+      };
+}
+
 String? _environmentValue(String name) {
   const values = <String, String>{
     'RENDERER_SHA': String.fromEnvironment('RENDERER_SHA'),

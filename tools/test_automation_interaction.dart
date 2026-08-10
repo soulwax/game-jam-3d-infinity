@@ -67,8 +67,22 @@ void main() {
     failed.phase == AutomationInteractionPhase.failed,
     'duplicate/missing cost fails',
   );
+
+  // T-09: Configurable actionToken assertion
+  final mouseInteraction = AutomationInteractionController(
+    targetId: 'drawer-desk',
+    expectedEvent: 'drawer-open',
+    expectedState: 'open',
+    initialCostCount: 0,
+    actionToken: 'Mouse0',
+    settleTicks: 1,
+  );
+  mouseInteraction.next(_observation(1, target: 'drawer-desk'));
+  final mousePress = mouseInteraction.next(_observation(2, target: 'drawer-desk'));
+  _expect(mousePress.action.pressed.contains('Mouse0'), 'custom actionToken Mouse0 is emitted');
+
   stdout.writeln(
-    'automation interaction: focus settle, press/hold, effect and cost guards pass',
+    'automation interaction: focus settle, press/hold, custom actionToken, effect and cost guards pass',
   );
 }
 

@@ -12,6 +12,72 @@ enum RendererBackendKind {
 
 enum RendererBackendState { constructed, ready, lost, disposed }
 
+/// Authored debug visualization passes for V-02.
+enum DebugViewMode {
+  none,
+  baseColor,
+  directLight,
+  shadowFactor,
+  routeOverlay,
+}
+
+/// Render resolution and scaling extent calculation for R-01.
+final class RenderResolutionProfile {
+  final int displayWidth;
+  final int displayHeight;
+  final String scaleOption;
+  final int renderWidth;
+  final int renderHeight;
+
+  RenderResolutionProfile._({
+    required this.displayWidth,
+    required this.displayHeight,
+    required this.scaleOption,
+    required this.renderWidth,
+    required this.renderHeight,
+  });
+
+  factory RenderResolutionProfile.calculate({
+    required int displayWidth,
+    required int displayHeight,
+    required String scaleOption,
+  }) {
+    if (displayWidth <= 0 || displayHeight <= 0) {
+      throw ArgumentError('display dimensions must be positive');
+    }
+    final scaleMultiplier = switch (scaleOption) {
+      '0.50' => 0.50,
+      '0.67' => 0.67,
+      '0.75' => 0.75,
+      '0.85' => 0.85,
+      '1.00' => 1.00,
+      'auto' || _ => 1.00,
+    };
+    final rw = (displayWidth * scaleMultiplier).round().clamp(320, displayWidth);
+    final rh = (displayHeight * scaleMultiplier).round().clamp(180, displayHeight);
+    return RenderResolutionProfile._(
+      displayWidth: displayWidth,
+      displayHeight: displayHeight,
+      scaleOption: scaleOption,
+      renderWidth: rw,
+      renderHeight: rh,
+    );
+  }
+
+  double get scaleFactor => renderWidth / displayWidth;
+  double get aspectRatio => renderWidth / renderHeight;
+
+  Map<String, Object> toJson() => {
+        'displayWidth': displayWidth,
+        'displayHeight': displayHeight,
+        'scaleOption': scaleOption,
+        'renderWidth': renderWidth,
+        'renderHeight': renderHeight,
+        'scaleFactor': scaleFactor,
+        'aspectRatio': aspectRatio,
+      };
+}
+
 class RendererFrame {
   final PresentationSnapshot snapshot;
   final double interpolation;

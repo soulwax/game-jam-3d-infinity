@@ -81,3 +81,46 @@ final class EnvironmentFrameFacts {
     'daylightThroughWindow': daylightThroughWindow,
   };
 }
+
+/// Visual presentation facts mapped to renderer uniforms for PF-05.
+final class VisualPresentationFacts {
+  final double exposureMultiplier;
+  final double fovDegrees;
+  final double cameraBreathScale;
+  final double surfaceWetness;
+  final String colorGradeClass;
+
+  const VisualPresentationFacts({
+    required this.exposureMultiplier,
+    required this.fovDegrees,
+    required this.cameraBreathScale,
+    required this.surfaceWetness,
+    required this.colorGradeClass,
+  });
+
+  factory VisualPresentationFacts.fromSettings({
+    required double exposure,
+    required double fov,
+    required double cameraMotion,
+    required double rainIntensity,
+    required String colorGrade,
+  }) {
+    final expMult = (1.0 + exposure).clamp(0.25, 4.0).toDouble();
+    final wetness = (rainIntensity * 0.85).clamp(0.0, 1.0);
+    return VisualPresentationFacts(
+      exposureMultiplier: expMult,
+      fovDegrees: fov.clamp(50.0, 120.0),
+      cameraBreathScale: cameraMotion.clamp(0.0, 2.0),
+      surfaceWetness: wetness,
+      colorGradeClass: colorGrade,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+        'exposureMultiplier': exposureMultiplier,
+        'fovDegrees': fovDegrees,
+        'cameraBreathScale': cameraBreathScale,
+        'surfaceWetness': surfaceWetness,
+        'colorGradeClass': colorGradeClass,
+      };
+}

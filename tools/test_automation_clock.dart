@@ -43,9 +43,47 @@ Future<void> main() async {
     () => wallClock.pump(1, (_) {}),
     'wall watchdog rejects expired host time',
   );
+  await _verifyDeterminismReplay();
+
   stdout.writeln(
-    'automation clock: fixed ticks, pause, seed, settle, watchdog pass',
+    'automation clock: fixed ticks, pause, seed, settle, watchdog, determinism pass',
   );
+}
+
+Future<List<String>> _simulateRun(int seed) async {
+  final trace = <String>[];
+  var fakeTime = DateTime.utc(2026, 1, 1);
+  final clock = AutomationClock(
+    fixedDelta: 1 / 60,
+    maxTicks: 30,
+    wallTimeout: const Duration(seconds: 10),
+    now: () => fakeTime,
+  );
+  final random = AutomationRandom(seed);
+  final stability = AutomationStabilityWindow(requiredTicks: 3);
+
+  await clock.pump(15, (tick) async {
+    final sample = random.nextInt(3);
+    final settled = stability.observe(sample);
+    trace.add(
+      'tick:${tick.index} elapsed:${tick.elapsed.toStringAsFixed(4)} sample:$sample settled:$settled',
+    );
+  });
+
+  return trace;
+}
+
+Future<void> _verifyDeterminismReplay() async {
+  final run1 = await _simulateRun(42017);
+  final run2 = await _simulateRun(42017);
+  _expect(run1.length == 15, 'run 1 produced 15 ticks');
+  _expect(run2.length == 15, 'run 2 produced 15 ticks');
+  for (var i = 0; i < run1.length; i++) {
+    _expect(
+      run1[i] == run2[i],
+      'determinism mismatch at tick $i: ${run1[i]} != ${run2[i]}',
+    );
+  }
 }
 
 void _expect(bool condition, String message) {

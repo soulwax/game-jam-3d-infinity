@@ -172,6 +172,7 @@ final class AutomationRunReporter {
     _status = status;
     _exitCode = exitCode;
     _finished = true;
+    await _atomicString('junit.xml', toJUnitXml());
     await _atomicJson('summary.json', {
       'status': _status.name,
       'exitCode': exitCode,
@@ -196,7 +197,32 @@ final class AutomationRunReporter {
       'resolvedRun': resolvedRun,
       'summary': 'summary.json',
       'trace': 'trace.jsonl',
+      'junit': 'junit.xml',
     });
+  }
+
+  String toJUnitXml() {
+    final failed = _status == AutomationRunStatus.failed;
+    final failures = failed ? 1 : 0;
+    final failureElem = failed
+        ? '      <failure message="${_xmlEscape(_failureMessage ?? 'unknown failure')}" type="${_failureKind?.name ?? 'failure'}"/>\n'
+        : '';
+    return '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<testsuites tests="1" failures="$failures" name="automation">\n'
+        '  <testsuite name="$scenarioId" tests="1" failures="$failures" errors="0" time="0.0">\n'
+        '    <testcase name="$scenarioId" classname="automation.$scenarioId" time="0.0">\n'
+        '$failureElem'
+        '    </testcase>\n'
+        '  </testsuite>\n'
+        '</testsuites>\n';
+  }
+
+  Future<void> _atomicString(String name, String content) async {
+    final target = File('${runDirectory.path}/$name');
+    final temporary = File('${target.path}.tmp');
+    await temporary.writeAsString(content, flush: true);
+    if (await target.exists()) await target.delete();
+    await temporary.rename(target.path);
   }
 
   Future<void> _atomicJson(String name, Map<String, Object?> value) async {
@@ -236,3 +262,23 @@ Object? _safeValue(Object? value) {
 Map<String, Object?> _safeMap(Map<String, Object?> value) => value.map(
   (key, item) => MapEntry(_safeValue(key) as String, _safeValue(item)),
 );
+
+int exitCodeForFailureKind(AutomationFailureKind kind) => switch (kind) {
+  AutomationFailureKind.schema => 2,
+  AutomationFailureKind.boot => 3,
+  AutomationFailureKind.infrastructure => 4,
+  AutomationFailureKind.move => 5,
+  AutomationFailureKind.focus => 6,
+  AutomationFailureKind.action => 7,
+  AutomationFailureKind.assertion => 8,
+  AutomationFailureKind.capture => 9,
+  AutomationFailureKind.timeout => 10,
+  AutomationFailureKind.crash => 11,
+};
+
+String _xmlEscape(String text) => text
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');

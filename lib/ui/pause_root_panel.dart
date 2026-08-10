@@ -17,6 +17,7 @@ class PauseRootPanel extends Panel {
   void Function()? onControls;
   void Function()? onSave;
   void Function()? onHelp;
+  void Function()? onCredits;
   void Function()? onBack;
 
   PauseRootPanel(web.Document document) : super(document) {
@@ -51,6 +52,7 @@ class PauseRootPanel extends Panel {
     _addAction(document, actions, PauseRootAction.controls, 'controls');
     _addAction(document, actions, PauseRootAction.save, 'save now');
     _addAction(document, actions, PauseRootAction.help, 'help');
+    _addAction(document, actions, PauseRootAction.credits, 'credits');
     _addAction(document, actions, PauseRootAction.back, 'back');
     root.appendChild(actions);
   }
@@ -80,6 +82,8 @@ class PauseRootPanel extends Panel {
             onSave?.call();
           case PauseRootAction.help:
             onHelp?.call();
+          case PauseRootAction.credits:
+            onCredits?.call();
           case PauseRootAction.back:
             onBack?.call();
         }

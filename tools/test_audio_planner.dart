@@ -125,8 +125,32 @@ void main() {
   } catch (_) {
     invalidMuffle = true;
   }
-  _expect(invalidMuffle, 'out-of-range muffle profile was accepted');
+  // PF-06: Continuous opening fraction transmission & muffle curve tests.
+  final partialTransmission = planner.transmission(
+    'hall',
+    'living-room',
+    doorOpeningFractions: {'hall-living': 0.4},
+  );
+  _expect(
+    partialTransmission.muffle01 > 0.0 && partialTransmission.muffle01 < 0.55,
+    'partial door opening interpolates muffle fraction',
+  );
+  _expect(
+    partialTransmission.barrierIds.contains('hall-living'),
+    'barrierIds tracks crossed portals',
+  );
+  _expect(
+    partialTransmission.reasonTrace.contains('opening:0.40'),
+    'reasonTrace includes opening fraction',
+  );
+
+  // Muffle curve helpers
+  _expect(AcousticPortalProfile.muffleToGainDb(0.0) == 0.0, 'muffleToGainDb(0) is 0 dB');
+  _expect(AcousticPortalProfile.muffleToGainDb(1.0) == -28.0, 'muffleToGainDb(1) is -28 dB');
+  final midCutoff = AcousticPortalProfile.muffleToCutoffHz(0.5);
+  _expect(midCutoff > 320 && midCutoff < 20000, 'muffleToCutoffHz(0.5) interpolates in log space');
+
   print(
-    'audio planner: deterministic cues, portal transmission, and muffle meter pass',
+    'audio planner: deterministic cues, portal transmission, continuous PF-06 muffle meter pass',
   );
 }
