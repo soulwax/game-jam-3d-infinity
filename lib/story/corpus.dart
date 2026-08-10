@@ -12,6 +12,9 @@ const List<String> textCorpusSections = [
   'records',
   'cues',
   'claims',
+  'reactions',
+  'variants',
+  'residues',
 ];
 
 /// Converts dynamic JSON maps into the runtime's stable string-keyed boundary.

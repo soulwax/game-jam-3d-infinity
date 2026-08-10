@@ -5,6 +5,7 @@ import 'package:web/web.dart' as web;
 import 'panel.dart';
 import 'accessibility_presentation.dart';
 import 'accessibility_settings.dart';
+import 'caption_cue.dart';
 
 class AmbientNotice {
   AmbientNotice(web.Document document)
@@ -56,7 +57,7 @@ class AmbientNotice {
     root.className = 'ambient-notice visible';
     showCaption(announcement);
     web.window.setTimeout(
-      ((JSAny? _) => root.className = 'ambient-notice').toJS,
+      (() => root.className = 'ambient-notice').toJS,
       7000.toJS,
     );
   }
@@ -69,7 +70,7 @@ class AmbientNotice {
       ..textContent = '[ $text ]'
       ..className = 'caption-cue visible';
     web.window.setTimeout(
-      ((JSAny? _) {
+      (() {
         if (sequence != _captionSequence) return;
         _captionRoot
           ..textContent = ''
@@ -77,5 +78,18 @@ class AmbientNotice {
       }).toJS,
       4200.toJS,
     );
+  }
+
+  void showCaptionCue(CaptionCue cue) {
+    showCaption(cue.formatted);
+  }
+
+  void showCaptionSource(CaptionCueSource source) {
+    if (!_captionsEnabled || source.cue.formatted.isEmpty) return;
+    _captionRoot
+      ..setAttribute('data-caption-source-id', source.sourceId)
+      ..setAttribute('data-caption-line-id', source.lineId ?? '')
+      ..setAttribute('data-caption-kind', source.cue.kind.name);
+    showCaption(source.cue.formatted);
   }
 }

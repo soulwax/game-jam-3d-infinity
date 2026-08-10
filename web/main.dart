@@ -98,6 +98,7 @@ late BackendSelection _backendSelection;
 late RendererBackend _presentationBackend;
 _PixeldartWebRuntime? _pixeldartRuntime;
 _LegacyWebRuntime? _legacyRuntime;
+late WeatherSchedule _weatherSchedule;
 
 final class _PixeldartWebRuntime implements RendererRuntime {
   static const _capabilityBridge = PixeldartCapabilityBridge();
@@ -118,12 +119,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   final Map<String, px.InstanceId> _inventoryItemsById = {};
   final Map<String, px.RetainedItemDescriptor> _inventoryDescriptors = {};
   final List<px.MeshHandle> _inventoryMeshes = [];
-  final Map<int, px.InstanceId> _exteriorShellItems = {};
-  final Map<int, px.RetainedItemDescriptor> _exteriorShellDescriptors = {};
+  final Map<String, px.InstanceId> _exteriorShellItems = {};
+  final Map<String, px.RetainedItemDescriptor> _exteriorShellDescriptors = {};
+  final Map<String, String> _exteriorShellCells = {};
+  final Map<int, px.MaterialHandle> _exteriorMaterials = {};
   final Map<String, _PixeldartPortalLeaf> _portalLeaves = {};
   final List<_PixeldartDecoration> _decorations = [];
   List<InventoryPlacement> _inventoryPlacements = const [];
   final Map<String, px.TextureHandle> _textures = {};
+  final Map<String, String> _exteriorTextureKeys = {};
   final Map<String, px.MaterialHandle> _roomMaterials = {};
   final Map<String, px.MaterialHandle> _inventoryMaterials = {};
   px.MaterialHandle? _sceneMaterial;
@@ -136,6 +140,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   int _historyEpoch = 0;
   int _noiseSeed = 0;
   int _frameIndex = 0;
+  int _textureResidencyRevision = 0;
   bool _initialized = false;
 
   _PixeldartWebRuntime(this.context, this.width, this.height);
@@ -170,6 +175,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     return 'draws=${stats.drawCalls};triangles=${stats.trianglesSubmitted};'
         'instances=${stats.instancesSubmitted};gpuBytes=${stats.liveGpuBytes};'
         'creates=${stats.resourceCreateCount};deletes=${stats.resourceDeleteCount};'
+        'shadowDraws=${stats.pass('shadowCaster').drawCalls};'
+        'shadowTriangles=${stats.pass('shadowCaster').trianglesSubmitted};'
         'frameMs=${_lastFrameMs.toStringAsFixed(3)}';
   }
 
@@ -256,6 +263,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       height: 512,
       debugLabel: 'texture:grime',
     );
+    _publishTextureResidency();
     _sceneMaterial = _renderer.resources.registerMaterial(
       px.MaterialDefinition(
         key: 'quarantine-house-safe',
@@ -376,32 +384,35 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       );
     }
     final exteriorMesh = buildHouseExteriorMesh(house);
-    for (final part in toPixeldartMeshParts(exteriorMesh)) {
-      final tint = _exteriorTint(part.material);
-      final material = _renderer.resources.registerMaterial(
-        px.MaterialDefinition(
-          key: 'quarantine-house-exterior-slot-${part.material}',
-          albedoTexture: part.material == 4
-              ? _textures['grime']
-              : _textures['wall-plaster'],
-          tintR: tint.$1,
-          tintG: tint.$2,
-          tintB: tint.$3,
-          doubleSided: true,
-        ),
-      );
+    for (final part in toPixeldartCellMeshParts(exteriorMesh)) {
+      final textureKey = part.material == 4 ? 'grime' : 'wall-plaster';
+      final material = _exteriorMaterials[part.material] ??= _renderer.resources
+          .registerMaterial(
+            px.MaterialDefinition(
+              key: 'quarantine-house-exterior-slot-${part.material}',
+              albedoTexture: _textures[textureKey],
+              tintR: _exteriorTint(part.material).$1,
+              tintG: _exteriorTint(part.material).$2,
+              tintB: _exteriorTint(part.material).$3,
+              doubleSided: true,
+            ),
+          );
       final exteriorHandle = _renderer.resources.registerMesh(
         part.mesh,
-        debugLabel: 'exterior:slot-${part.material}',
+        debugLabel: 'exterior:${part.cellId}:slot-${part.material}',
       );
       _sceneMeshes.add(exteriorHandle);
+      final itemKey = '${part.cellId}:${part.material}';
+      _exteriorTextureKeys[itemKey] = textureKey;
       final exteriorDescriptor = px.RetainedItemDescriptor(
         mesh: exteriorHandle,
         material: material,
         visibilityMask: -1,
+        castsShadow: ExteriorPvs.castsShadowForCell(part.cellId),
       );
-      _exteriorShellDescriptors[part.material] = exteriorDescriptor;
-      _exteriorShellItems[part.material] = _world.addItem(exteriorDescriptor);
+      _exteriorShellCells[itemKey] = part.cellId;
+      _exteriorShellDescriptors[itemKey] = exteriorDescriptor;
+      _exteriorShellItems[itemKey] = _world.addItem(exteriorDescriptor);
     }
   }
 
@@ -513,19 +524,55 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         _withVisibility(base, visible.contains(placement.roomId) ? -1 : 0),
       );
     }
-    final exteriorVisible = ExteriorPvs()
-        .cellsForRoom(currentRoomId)
-        .isNotEmpty;
-    for (final materialSlot in _exteriorShellDescriptors.keys.toList()) {
-      final exteriorItem = _exteriorShellItems[materialSlot];
+    final exteriorVisible = ExteriorPvs().cellsForRoom(currentRoomId);
+    _canvas.setAttribute(
+      'data-renderer-exterior-cells',
+      (exteriorVisible.toList()..sort()).join(','),
+    );
+    final submittedExteriorKeys = ExteriorPvs()
+        .filterItems(
+          items: _exteriorShellCells.keys,
+          requestedCells: exteriorVisible,
+          cellOf: (partKey) => _exteriorShellCells[partKey]!,
+        )
+        .toSet();
+    var submittedExteriorItems = 0;
+    var submittedExteriorShadowCasters = 0;
+    var totalExteriorShadowCasters = 0;
+    for (final partKey in _exteriorShellDescriptors.keys.toList()) {
+      final exteriorItem = _exteriorShellItems[partKey];
       if (exteriorItem == null) continue;
-      final descriptor = _withVisibility(
-        _exteriorShellDescriptors[materialSlot]!,
-        exteriorVisible ? -1 : 0,
-      );
+      final base = _exteriorShellDescriptors[partKey]!;
+      if (base.castsShadow) totalExteriorShadowCasters++;
+      final cellVisible = submittedExteriorKeys.contains(partKey);
+      if (cellVisible) submittedExteriorItems++;
+      if (cellVisible && base.castsShadow) submittedExteriorShadowCasters++;
+      final descriptor = _withVisibility(base, cellVisible ? -1 : 0);
       _world.updateItem(exteriorItem, descriptor);
-      _exteriorShellDescriptors[materialSlot] = descriptor;
+      _exteriorShellDescriptors[partKey] = descriptor;
     }
+    _canvas.setAttribute(
+      'data-renderer-exterior-items',
+      '$submittedExteriorItems/${_exteriorShellDescriptors.length}',
+    );
+    _canvas.setAttribute(
+      'data-renderer-shadow-casters',
+      '$submittedExteriorShadowCasters/$totalExteriorShadowCasters',
+    );
+    final exteriorTextureBindings = submittedExteriorKeys.map((partKey) {
+      final textureKey = _exteriorTextureKeys[partKey];
+      final handle = textureKey == null ? null : _textures[textureKey];
+      if (textureKey == null || handle == null) {
+        throw StateError(
+          'exterior item $partKey has no retained texture binding',
+        );
+      }
+      return '$partKey=$textureKey:${handle.slot}.${handle.generation}';
+    }).toList()..sort();
+    _canvas.setAttribute(
+      'data-renderer-exterior-texture-bindings',
+      exteriorTextureBindings.join(','),
+    );
   }
 
   /// Rebuilds one retained room after an authoritative overnight drift. The
@@ -615,6 +662,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     Vec3 eye,
     double sunAngle,
     double daylight,
+    WeatherDay weather,
+    bool daylightThroughWindow,
   ) {
     final visible = <String>{currentRoomId};
     final current = house.byId(currentRoomId);
@@ -668,24 +717,33 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       }
     }
     final sun = sunDirection(sunAngle);
+    final rain = weather.rainIntensity.clamp(0.0, 1.0).toDouble();
+    final daylightFill = (1.0 - rain * 0.24).clamp(0.55, 1.0).toDouble();
+    final windowDaylight = daylightThroughWindow ? 1.0 : 0.38;
     _environment = px.FrameEnvironment(
       // Cool desaturated fill keeps moonlit plaster and old paint distinct
       // while warm mantle lights remain the only saturated practicals.
       ambientColor: const px.LinearColor(0.34, 0.39, 0.50),
-      ambientIntensity: math.max(ambientFloor, ambientPeak * daylight),
+      ambientIntensity: math.max(
+        ambientFloor,
+        ambientPeak * daylight * daylightFill * windowDaylight,
+      ),
       directionalLight: sunAngle == 0
           ? null
           : px.DirectionalLight(
               direction: px.Vec3(sun.x, sun.y, sun.z),
               color: _color(sunColor(sunAngle)),
-              intensity: 0.72 + daylight * 0.18,
+              intensity:
+                  (0.72 + daylight * 0.18) *
+                  (1.0 - rain * 0.28) *
+                  windowDaylight,
             ),
       pointLights: points,
       spotLights: spots,
       clearColor: const px.LinearColor(0.008, 0.012, 0.024),
       fogColor: const px.LinearColor(0.012, 0.016, 0.028),
-      fogStart: fogStart,
-      fogEnd: fogEnd,
+      fogStart: fogStart / (1.0 + rain * 0.45),
+      fogEnd: fogEnd / (1.0 + rain * 0.16),
     );
   }
 
@@ -715,7 +773,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
 
   /// Maps simulation-owned rupture stages into renderer effect weights without
   /// teaching Pixeldart game rules.
-  void setPostProcess(RuptureState rupture, {required bool reducedMotion}) {
+  void setPostProcess(
+    RuptureState rupture, {
+    required bool reducedMotion,
+    double rainIntensity = 0,
+    double rainWindowVisibility = 1,
+  }) {
     final step = rupture.step;
     final duration = rupture.stageDuration;
     final progress = duration > 0
@@ -732,6 +795,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       ssaoStrength: ssaoStrength,
       vignette: postVignette,
       grain: postGrain,
+      rainIntensity: rainIntensity,
+      rainWindowVisibility: rainWindowVisibility,
       colorGradeStrength: afterGrade
           ? (step == RuptureStep.gradeLUT ? progress : 1.0)
           : 0.0,
@@ -1005,9 +1070,58 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         Uint8List.fromList(pixels),
       );
       _canvas.setAttribute('data-renderer-texture-$key', 'loaded');
+      _publishTextureResidency();
     } catch (error) {
       _canvas.setAttribute('data-renderer-texture-$key', 'fallback');
+      _publishTextureResidency();
       web.console.warn('Pixeldart texture $key unavailable: $error'.toJS);
+    }
+  }
+
+  /// Publishes the renderer's ownership-neutral residency probe as DOM
+  /// diagnostics. The first report is intentionally retained: it records the
+  /// declared-but-unloaded (pending) state even when image decoding finishes
+  /// before a browser probe starts. Handle identities are slot+generation
+  /// pairs, so a transition can prove that pixels arrived without replacing
+  /// material references or re-registering GPU resources.
+  void _publishTextureResidency() {
+    if (!_initialized || _textures.isEmpty) return;
+    final requests = _textures.entries
+        .map(
+          (entry) => px.TextureResidencyRequest(
+            key: entry.key,
+            handle: entry.value,
+            priority: entry.key == 'wall-plaster' ? 2 : 1,
+          ),
+        )
+        .toList();
+    final report = _renderer.resources.textureResidency.prewarm(requests);
+    final ordered = report.results.toList()
+      ..sort((a, b) => a.request.key.compareTo(b.request.key));
+    final states = ordered
+        .map((result) => '${result.request.key}=${result.status.name}')
+        .join(',');
+    final handles = ordered
+        .map(
+          (result) =>
+              '${result.request.key}=${result.request.handle.slot}.${result.request.handle.generation}',
+        )
+        .join(',');
+    final counts =
+        'resident=${report.residentCount};pending=${report.pendingCount};'
+        'missing=${report.missingCount};evicted=${report.evictedCount};'
+        'unique=${report.uniqueHandleCount}';
+    _textureResidencyRevision++;
+    _canvas
+      ..setAttribute('data-renderer-texture-residency', states)
+      ..setAttribute('data-renderer-texture-residency-counts', counts)
+      ..setAttribute('data-renderer-texture-residency-handles', handles)
+      ..setAttribute(
+        'data-renderer-texture-residency-revision',
+        '$_textureResidencyRevision',
+      );
+    if (!_canvas.hasAttribute('data-renderer-texture-residency-initial')) {
+      _canvas.setAttribute('data-renderer-texture-residency-initial', states);
     }
   }
 
@@ -1314,11 +1428,101 @@ String _bootPhase = 'booting';
 final bool _automationDiagnosticsEnabled =
     Uri.base.queryParameters['automation'] == '1';
 
+final class _AutomationCaptureFixture {
+  final int seed;
+  final int day;
+  final double hour;
+  final String weather;
+  final String? shutters;
+  final Map<String, String>? shutterMap;
+
+  const _AutomationCaptureFixture({
+    required this.seed,
+    required this.day,
+    required this.hour,
+    required this.weather,
+    this.shutters,
+    this.shutterMap,
+  });
+}
+
+_AutomationCaptureFixture? _readAutomationCaptureFixture() {
+  if (!_automationDiagnosticsEnabled) return null;
+  final params = Uri.base.queryParameters;
+  final seed = int.tryParse(params['captureSeed'] ?? '');
+  final day = int.tryParse(params['captureDay'] ?? '');
+  final hour = double.tryParse(params['captureHour'] ?? '');
+  final weather = params['captureWeather'];
+  final shutters = params['captureShutters'];
+  final rawShutterMap = params['captureShutterMap'];
+  Map<String, String>? shutterMap;
+  if (rawShutterMap != null) {
+    try {
+      final decoded = jsonDecode(rawShutterMap);
+      if (decoded is Map) {
+        final entries = <String, String>{};
+        for (final entry in decoded.entries) {
+          if (entry.key is! String ||
+              entry.value is! String ||
+              !const {'open', 'closed'}.contains(entry.value)) {
+            return null;
+          }
+          entries[entry.key as String] = entry.value as String;
+        }
+        shutterMap = entries;
+      } else {
+        return null;
+      }
+    } on FormatException {
+      return null;
+    }
+  }
+  if (seed == null ||
+      seed < 0 ||
+      day == null ||
+      day < 1 ||
+      day > 21 ||
+      hour == null ||
+      !hour.isFinite ||
+      hour < 0 ||
+      hour >= 24 ||
+      weather == null ||
+      !const {'overcast', 'rain'}.contains(weather)) {
+    return null;
+  }
+  if (shutters != null &&
+      !const {'open', 'closed', 'mixed'}.contains(shutters)) {
+    return null;
+  }
+  return _AutomationCaptureFixture(
+    seed: seed,
+    day: day,
+    hour: hour,
+    weather: weather,
+    shutters: shutters,
+    shutterMap: shutterMap,
+  );
+}
+
+final _AutomationCaptureFixture? _automationCaptureFixture =
+    _readAutomationCaptureFixture();
+final bool _automationCaptureClockFrozen = _automationCaptureFixture != null;
+final String? _automationCaptureMantleId = _automationDiagnosticsEnabled
+    ? Uri.base.queryParameters['captureMantleId']
+    : null;
+final bool _automationCaptureMantleLit =
+    Uri.base.queryParameters['captureMantleLit'] == '1';
+
 Vec3 _simEye = Vec3(0, 0, 0);
 Vec3 _prevEye = Vec3(0, 0, 0);
 Vec3 _viewEye = Vec3(0, 0, 0);
 double _simYaw = 0;
 double _simPitch = 0;
+
+// The house applies its 1.5x horizontal scale at construction time. Keep the
+// playable start on the authored ground-circuit hall-entry waypoint instead of
+// the pre-scale living-room coordinate.
+final Vec3 _defaultPlayerEye = Vec3(12.9375, 1.65, 0.825);
 
 String _currentRoom = 'hall';
 late Capsule _playerCapsule;
@@ -1524,7 +1728,9 @@ void _configureSettingsPanel(SettingsPanel panel, {bool nested = false}) {
     };
     panel.onResetAccessibilityProfile = () {
       _accessibilityProfile = AccessibilitySettingsProfile.firstRun;
-      _accessibilitySettingsPanel.setAccessibilityProfile(_accessibilityProfile);
+      _accessibilitySettingsPanel.setAccessibilityProfile(
+        _accessibilityProfile,
+      );
       _persistAccessibilityProfile();
       _applyAccessibilityProfile();
     };
@@ -1758,6 +1964,7 @@ void _installAccessibilityMediaListeners() {
     _systemPhotosensitivitySafe = photosensitivity.matches;
     _applyAccessibilityProfile();
   }
+
   reducedMotion.addEventListener('change', ((web.Event _) => refresh()).toJS);
   photosensitivity.addEventListener(
     'change',
@@ -1877,17 +2084,21 @@ Future<void> main() async {
         }
       },
     );
+    final captureFixture = _automationCaptureFixture;
     _session = saved.snapshot == null
         ? GameSession.create(
             vocabulary: vocabulary,
             houseSeed: 42,
-            runSeed: _mintRunSeed(),
-            startHour: initialDayHour,
+            runSeed: captureFixture?.seed ?? _mintRunSeed(),
+            startDay: captureFixture?.day ?? 1,
+            startHour: captureFixture?.hour.floor() ?? initialDayHour,
           )
         : GameSession.restore(
             vocabulary: vocabulary,
             snapshot: saved.snapshot!,
           );
+    _visitorDirector.narrative = _session.narrative;
+    _weatherSchedule = WeatherSchedule(seed: _session.runSeed);
     _inventoryInspections.restore(saved.snapshot?.meta['inventoryInspections']);
     _presentationBackend.submit(
       RendererFrame(snapshot: _session.presentationSnapshot),
@@ -1899,10 +2110,37 @@ Future<void> main() async {
     ).toSet();
     _setBootPhase('house');
     _house = _session.house;
+    final captureShutters = _automationCaptureFixture?.shutters;
+    final captureShutterMap = _automationCaptureFixture?.shutterMap;
+    if (captureShutterMap != null) {
+      for (final room in _house.rooms) {
+        for (final window in room.windows) {
+          final state = captureShutterMap[window.id];
+          if (state != null) window.shutterOpen = state == 'open';
+        }
+      }
+    } else if (captureShutters == 'open' || captureShutters == 'closed') {
+      final open = captureShutters == 'open';
+      for (final room in _house.rooms) {
+        for (final window in room.windows) {
+          window.shutterOpen = open;
+        }
+      }
+    }
+    final captureMantleId = _automationCaptureMantleId;
+    if (captureMantleId != null && captureMantleId.isNotEmpty) {
+      for (final room in _house.rooms) {
+        for (final mantle in room.mantles) {
+          if (mantle.id == captureMantleId) {
+            mantle.lit = _automationCaptureMantleLit;
+          }
+        }
+      }
+    }
     _pixeldartRuntime?.attachHouse(_house);
     _time = _session.time;
 
-    _simEye = Vec3(5.5, 1.65, 3.5);
+    _simEye = _defaultPlayerEye;
     _prevEye = _simEye;
     _viewEye = _simEye;
     final initialCapsuleBase =
@@ -2008,7 +2246,8 @@ Future<void> main() async {
     _door = Door(web.document)
       ..onChoice = _chooseDoorResponse
       ..onContinue = _continueDoorConversation
-      ..onCite = _citeDuringVisit;
+      ..onCite = _citeDuringVisit
+      ..onReaction = _chooseNarrativeReaction;
     final savedVisitors = VisitorDirectorState.tryFromJson(
       saved.snapshot?.meta['visitors'],
     );
@@ -2205,17 +2444,33 @@ void _publishRendererDiagnostics() {
 
 void _publishAutomationPlayerState() {
   if (!_automationDiagnosticsEnabled) return;
+  final captureMantleId = _automationCaptureMantleId;
+  if (captureMantleId != null && captureMantleId.isNotEmpty) {
+    _canvas.setAttribute(
+      'data-automation-capture-mantle',
+      '$captureMantleId:${_automationCaptureMantleLit ? 'on' : 'off'}',
+    );
+  }
+  final weather = _weatherSchedule.forDay(_session.snapshot.day);
+  _canvas.setAttribute(
+    'data-automation-capture-weather',
+    weather.rain ? 'rain' : 'overcast',
+  );
+  final shutters = _automationCaptureFixture?.shutters;
+  if (shutters != null) {
+    _canvas.setAttribute('data-automation-capture-shutters', shutters);
+  }
+  _canvas.setAttribute(
+    'data-automation-rain-window-visibility',
+    _rainWindowVisibility(_currentRoom).toStringAsFixed(3),
+  );
   _canvas.setAttribute(
     'data-automation-player',
     jsonEncode({
       'schemaVersion': 1,
       'phase': _bootPhase,
       'roomId': _currentRoom,
-      'eye': {
-        'x': _simEye.x,
-        'y': _simEye.y,
-        'z': _simEye.z,
-      },
+      'eye': {'x': _simEye.x, 'y': _simEye.y, 'z': _simEye.z},
       'yaw': _simYaw,
       'pitch': _simPitch,
       'modal': _activePanel != null || _door.visitorPresent,
@@ -2224,6 +2479,37 @@ void _publishAutomationPlayerState() {
       'hour': _session.snapshot.hour,
     }),
   );
+  final portals = <String, Object?>{};
+  for (final portal in _house.portals) {
+    portals[portal.id] = {
+      'a': portal.a,
+      'b': portal.b,
+      'open': portal.open,
+      'locked': portal.locked,
+      'sticks': portal.sticks,
+      'passable': portal.passable,
+    };
+  }
+  _canvas.setAttribute('data-automation-portals', jsonEncode(portals));
+  final planner = _audioPlanner;
+  if (planner != null &&
+      _house.byId('cellar') != null &&
+      _house.byId(_currentRoom) != null) {
+    final transmission = planner.transmission('cellar', _currentRoom);
+    _canvas.setAttribute(
+      'data-audio-transmission-cellar',
+      jsonEncode({
+        'sourceRoom': 'cellar',
+        'listenerRoom': _currentRoom,
+        'portalPath': transmission.portalPath,
+        'gainDb': transmission.gainDb,
+        'lowPassHz': transmission.lowPassHz,
+        'reachable': transmission.reachable,
+      }),
+    );
+  } else {
+    _canvas.setAttribute('data-audio-transmission-cellar', 'unavailable');
+  }
 }
 
 void _saveSession(String status) {
@@ -2304,6 +2590,7 @@ void _loadManifest() async {
 Future<void> _loadAuthoredHouseManifest() async {
   const urls = ['res/house/house.json', 'assets/house/house.json'];
   Object? lastError;
+  var validated = false;
   for (final url in urls) {
     try {
       final response = await web.window.fetch(url.toJS).toDart;
@@ -2312,15 +2599,22 @@ Future<void> _loadAuthoredHouseManifest() async {
       manifest.validateAgainst(_house);
       _canvas.setAttribute('data-house-manifest', 'validated');
       _canvas.setAttribute('data-house-manifest-source', url);
-      await _loadAuthoredHouseInventory();
-      await _loadAuthoredHouseSoundscape();
-      return;
+      validated = true;
+      break;
     } catch (error) {
       lastError = error;
     }
   }
-  _canvas.setAttribute('data-house-manifest', 'unavailable');
-  web.console.warn('authored house manifest unavailable: $lastError'.toJS);
+  if (!validated) {
+    _canvas.setAttribute('data-house-manifest', 'unavailable');
+    web.console.warn('authored house manifest unavailable: $lastError'.toJS);
+  }
+  // Inventory and soundscape validation use the runtime House as their
+  // authority and must remain observable even when an older geometry manifest
+  // is rejected. Keeping these loads independent prevents a stale manifest
+  // from silently disabling the game's acoustic planner.
+  await _loadAuthoredHouseInventory();
+  await _loadAuthoredHouseSoundscape();
 }
 
 Future<void> _loadAuthoredHouseInventory() async {
@@ -2346,6 +2640,7 @@ Future<void> _loadAuthoredHouseInventory() async {
     }
   }
   _canvas.setAttribute('data-house-inventory', 'unavailable');
+  _canvas.setAttribute('data-house-inventory-error', '$lastError');
   web.console.warn('authored house inventory unavailable: $lastError'.toJS);
 }
 
@@ -2384,6 +2679,7 @@ Future<void> _loadAuthoredHouseSoundscape() async {
   _audioPlanner = null;
   _canvas.setAttribute('data-audio-planner', 'unavailable');
   _canvas.setAttribute('data-house-soundscape', 'unavailable');
+  _canvas.setAttribute('data-house-soundscape-error', '$lastError');
   web.console.warn('authored house soundscape unavailable: $lastError'.toJS);
 }
 
@@ -2641,18 +2937,20 @@ void _raf(num ts) {
       var steps = 0;
       while (_accumulator >= _fixedDt && steps < _maxSteps) {
         _prevEye = _simEye;
-        _session.advance(_fixedDt);
-        for (final event in _houseClock.advance(
-          day: _session.snapshot.day,
-          hour: _session.snapshot.hour,
-        )) {
-          _pendingSounds.add('clock:${event.event}');
-        }
-        for (final event in _houseServiceSounds.advance(
-          day: _session.snapshot.day,
-          hour: _session.snapshot.hour,
-        )) {
-          _pendingSounds.add('service:${event.emitterId}:${event.event}');
+        if (!_automationCaptureClockFrozen) {
+          _session.advance(_fixedDt);
+          for (final event in _houseClock.advance(
+            day: _session.snapshot.day,
+            hour: _session.snapshot.hour,
+          )) {
+            _pendingSounds.add('clock:${event.event}');
+          }
+          for (final event in _houseServiceSounds.advance(
+            day: _session.snapshot.day,
+            hour: _session.snapshot.hour,
+          )) {
+            _pendingSounds.add('service:${event.emitterId}:${event.event}');
+          }
         }
         _updateVisitorSchedule();
         _syncDifficultySeam();
@@ -2717,19 +3015,25 @@ void _raf(num ts) {
         _viewEye,
         _time.sunAngle,
         _time.daylight,
+        _weatherSchedule.forDay(_session.snapshot.day),
+        roomIsLit(_currentRoom),
       );
       if (_lastRendererRuptureStep != _rupture.step) {
         _lastRendererRuptureStep = _rupture.step;
         _rendererHistoryEpoch++;
       }
       _pixeldartRuntime?.setFrameClock(
-        timeSeconds: now / 1000.0,
+        timeSeconds: _automationCaptureClockFrozen ? 0 : now / 1000.0,
         historyEpoch: _rendererHistoryEpoch,
         noiseSeed: math.max(0, _session.runSeed),
       );
       _pixeldartRuntime?.setPostProcess(
         _rupture,
         reducedMotion: _reducedMotion,
+        rainIntensity: _weatherSchedule
+            .forDay(_session.snapshot.day)
+            .rainIntensity,
+        rainWindowVisibility: _rainWindowVisibility(_currentRoom),
       );
       _presentationBackend.submit(
         RendererFrame(snapshot: _session.presentationSnapshot),
@@ -2780,6 +3084,12 @@ void _dispatchSound(Audio audio, String name) {
     case 'clock:chime':
       _playHouseCue(audio, 'hall-clock', 'chime');
       break;
+    case 'clock:cuckoo':
+      _playHouseCue(audio, 'hall-clock', 'cuckoo');
+      break;
+    case 'clock:bell':
+      _playHouseCue(audio, 'hall-clock', 'bell');
+      break;
     default:
       if (name.startsWith('service:')) {
         final parts = name.split(':');
@@ -2795,7 +3105,13 @@ void _playHouseCue(Audio audio, String emitterId, String event) {
   final emitter = soundscape.emitterFor(emitterId);
   final cueCaption = switch ('$emitterId:$event') {
     'hall-clock:tick' => 'clock ticking',
+    'hall-clock:cuckoo' => 'clock cuckoo call',
+    'hall-clock:bell' => 'clock bell',
     'hall-clock:chime' => 'clock chime',
+    'front-door-knocker:knock' => 'knock at the front door',
+    'landing-window:wind' => 'wind at the landing window',
+    'bedroom-timber:creak' => 'timber settling upstairs',
+    'kitchen-pipe:tick' => 'kitchen pipe ticking',
     'kitchen-range:settle' => 'kitchen range settling',
     'cellar-drain:drip' => 'water dripping in the cellar',
     'bathroom-cistern:settle' => 'bathroom cistern settling',
@@ -2950,9 +3266,7 @@ void _update(double dt) {
       }
     } else if (portal != null && !portal.sticks && !portal.locked) {
       portal.open = !portal.open;
-      _ambientNotice.showCaption(
-        portal.open ? 'door opens' : 'door closes',
-      );
+      _ambientNotice.showCaption(portal.open ? 'door opens' : 'door closes');
       _emitter?.rebuildRoom(portal.a);
       _pixeldartRuntime?.refreshPortalGeometry(_house, portal.id);
       _audio?.onDoorStateChanged();
@@ -2975,7 +3289,8 @@ void _update(double dt) {
           'data-inventory-inspections',
           '${_inventoryInspections.counts.length}',
         );
-      _ambientNotice.show('noticed', 'you inspect ${event.focusId}');
+      final residue = _narrativeResidueFor(event.focusId);
+      _ambientNotice.show('noticed', residue ?? 'you inspect ${event.focusId}');
     }
   }
 
@@ -2985,6 +3300,16 @@ void _update(double dt) {
       _examineState.breakExamine();
     }
   }
+}
+
+String? _narrativeResidueFor(String focusId) {
+  final flags = _session.narrative.flags.entries.toList()
+    ..sort((a, b) => a.key.compareTo(b.key));
+  for (final entry in flags) {
+    final residue = textLibrary.getResidue(entry.key, entry.value, focusId);
+    if (residue != null) return residue;
+  }
+  return null;
 }
 
 void _syncDifficultySeam() {
@@ -3011,6 +3336,7 @@ void _updateVisitorSchedule() {
     web.document.callMethod<JSAny?>('exitPointerLock'.toJS);
     _motion.stop();
     _door.showArrival(arrival.visitor, line);
+    _showStrangerCaseNote(arrival);
     return;
   }
 }
@@ -3020,11 +3346,19 @@ void _restoreVisitorDoor() {
   final line = state?.currentLine;
   if (state == null || line == null) return;
   _door.showArrival(state.arrival.visitor, line);
+  _showStrangerCaseNote(state.arrival);
   if (state.phase != VisitPhase.waiting) {
-    _door.showConversation(line);
-    _showDoorCitationOptions();
+    _presentDoorLine();
   }
   _showSaveStatus('restored visitor');
+}
+
+void _showStrangerCaseNote(VisitArrival arrival) {
+  if (arrival.visitor != 'stranger' || arrival.day != 17) return;
+  final quote = _session.freezeJournalQuote('stranger-17-eileen-case');
+  final lead = textLibrary.getRecord('eileen-case-note').firstOrNull;
+  if (quote == null || lead == null) return;
+  _ambientNotice.show('inside the case', '$lead “${quote.text}”');
 }
 
 void _updateAmbientEvents() {
@@ -3116,8 +3450,7 @@ void _chooseDoorResponse(String rawChoice) {
     _endVisitorDoor();
     return;
   }
-  _door.showConversation(line);
-  _showDoorCitationOptions();
+  _presentDoorLine();
 }
 
 void _continueDoorConversation() {
@@ -3133,8 +3466,39 @@ void _continueDoorConversation() {
     _endVisitorDoor();
     return;
   }
-  _door.showConversation(line);
+  _presentDoorLine();
+}
+
+void _presentDoorLine() {
+  final state = _visitorDirector.active;
+  final line = state?.currentLine;
+  if (state == null || line == null) return;
+  final reaction = _visitorDirector.currentReaction;
+  if (reaction == null) {
+    _door.showConversation(line);
+  } else {
+    final selected = state.reactionChoiceId;
+    _door.showConversation(line, requiresReaction: selected == null);
+    _door.showReactionChoices([
+      for (final option in reaction.options) (option.id, option.label),
+    ], selectedId: selected);
+    if (selected != null) {
+      final option = reaction.options
+          .where((candidate) => candidate.id == selected)
+          .firstOrNull;
+      if (option != null) _door.showReactionReply(line, option.reply);
+    }
+  }
   _showDoorCitationOptions();
+}
+
+void _chooseNarrativeReaction(String optionId) {
+  final result = _visitorDirector.chooseReaction(optionId);
+  if (result is! VisitReactionResult) return;
+  if (!_session.applyNarrativeReaction(result.reaction, result.option)) return;
+  _door.showReactionReply(result.state.currentLine ?? '', result.option.reply);
+  _showDoorCitationOptions();
+  _saveSession('saved after visitor answer');
 }
 
 void _endVisitorDoor() {
@@ -3206,6 +3570,19 @@ bool roomIsLit(String roomId) {
     if (isLit) return true;
   }
   return false;
+}
+
+/// Maps authored aperture state to a restrained presentation weight. This is
+/// deliberately not a visibility or portal rule: gameplay collision, audio,
+/// and room membership retain their own canonical state. A closed room keeps
+/// a faint exterior glint so rain does not disappear as if the window were an
+/// opaque post-process mask.
+double _rainWindowVisibility(String roomId) {
+  final room = _house.byId(roomId);
+  final windows = room?.windows ?? const [];
+  if (windows.isEmpty) return 0.12;
+  final open = windows.where((window) => window.shutterOpen).length;
+  return (open / windows.length).clamp(0.12, 1.0).toDouble();
 }
 
 void _updateLighting(Renderer renderer) {

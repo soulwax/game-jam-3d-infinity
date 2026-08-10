@@ -42,12 +42,12 @@ void main() {
           z > room.origin.z + size.z + epsilon) {
         hasStructuralThickness = true;
       }
-      if (x < room.origin.x - 0.43 - epsilon ||
-          x > room.origin.x + size.x + 0.43 + epsilon ||
+      if (x < room.origin.x - 0.64 - epsilon ||
+          x > room.origin.x + size.x + 0.64 + epsilon ||
           y < room.origin.y - epsilon ||
           y > room.origin.y + size.y + epsilon ||
-          z < room.origin.z - 0.43 - epsilon ||
-          z > room.origin.z + size.z + 0.43 + epsilon) {
+          z < room.origin.z - 0.64 - epsilon ||
+          z > room.origin.z + size.z + 0.64 + epsilon) {
         _fail('room ${room.id} detail escaped canonical room bounds');
       }
     }

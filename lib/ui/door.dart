@@ -16,16 +16,19 @@ class Door {
   ];
 
   final web.HTMLElement root;
+  final web.Document _document;
   late final web.HTMLElement _speaker;
   late final web.HTMLElement _line;
   late final web.HTMLButtonElement _continueButton;
   late final web.HTMLElement _citeList;
   late final web.HTMLElement _citeResult;
   final List<web.HTMLButtonElement> _choiceButtons = [];
+  final List<web.HTMLButtonElement> _reactionButtons = [];
   JSFunction? _keyHandler;
   void Function(String choice)? onChoice;
   void Function()? onContinue;
   void Function(int ordinal)? onCite;
+  void Function(String choiceId)? onReaction;
   bool visitorPresent = false;
   AccessibilityAnnouncementPolicy _announcementPolicy =
       const AccessibilityAnnouncementPolicy(
@@ -33,7 +36,8 @@ class Door {
       );
 
   Door(web.Document document)
-    : root = buildElement(document, 'div', cls: 'door') {
+    : _document = document,
+      root = buildElement(document, 'div', cls: 'door') {
     root
       ..setAttribute('role', 'dialog')
       ..setAttribute('aria-modal', 'true')
@@ -77,6 +81,8 @@ class Door {
       if (!visitorPresent || event.code != 'Tab') return;
       final focusable = <web.HTMLElement>[
         for (final button in _choiceButtons)
+          if (button.style.display != 'none') button,
+        for (final button in _reactionButtons)
           if (button.style.display != 'none') button,
         if (_continueButton.style.display != 'none') _continueButton,
       ];
@@ -128,7 +134,7 @@ class Door {
     _choiceButtons.first.focus();
   }
 
-  void showConversation(String line) {
+  void showConversation(String line, {bool requiresReaction = false}) {
     _line.textContent = _announcementPolicy.format(
       channel: '',
       text: line,
@@ -137,8 +143,54 @@ class Door {
     for (final button in _choiceButtons) {
       button.style.display = 'none';
     }
-    _continueButton.style.display = '';
+    for (final button in _reactionButtons) {
+      button.style.display = 'none';
+    }
+    _continueButton.style.display = requiresReaction ? 'none' : '';
     _citeResult.textContent = '';
+    if (!requiresReaction) _continueButton.focus();
+  }
+
+  void showReactionChoices(
+    List<(String id, String label)> choices, {
+    String? selectedId,
+  }) {
+    for (final button in _reactionButtons) {
+      button.remove();
+    }
+    _reactionButtons.clear();
+    _continueButton.style.display = selectedId == null ? 'none' : '';
+    for (final (id, label) in choices) {
+      final button =
+          buildElement(_document, 'button', cls: 'door-reaction', text: label)
+              as web.HTMLButtonElement;
+      button.setAttribute('type', 'button');
+      button.addEventListener(
+        'click',
+        ((web.Event _) => onReaction?.call(id)).toJS,
+      );
+      if (selectedId != null) {
+        button.disabled = true;
+        if (id == selectedId) button.setAttribute('aria-pressed', 'true');
+      }
+      root.appendChild(button);
+      _reactionButtons.add(button);
+    }
+    if (_reactionButtons.isNotEmpty && selectedId == null) {
+      _reactionButtons.first.focus();
+    }
+  }
+
+  void showReactionReply(String line, String reply) {
+    _line.textContent = _announcementPolicy.format(
+      channel: '',
+      text: '$line\n\n$reply',
+      essential: true,
+    );
+    for (final button in _reactionButtons) {
+      button.disabled = true;
+    }
+    _continueButton.style.display = '';
     _continueButton.focus();
   }
 
@@ -169,6 +221,10 @@ class Door {
     visitorPresent = false;
     _citeList.textContent = '';
     _citeResult.textContent = '';
+    for (final button in _reactionButtons) {
+      button.remove();
+    }
+    _reactionButtons.clear();
     root.className = 'door';
     root.setAttribute('hidden', '');
     final handler = _keyHandler;

@@ -47,7 +47,7 @@ void main() {
     'wrong canonical source',
   );
   final modelScale = (house['modelScale'] as num?)?.toDouble() ?? 1.0;
-  require(modelScale == 1.5, 'MVP model scale must be 1.5');
+  require(modelScale == 2.25, 'spacious model scale must be 2.25');
   require(
     stringOf(house, 'inventoryPath') == 'assets/house/inventory.json',
     'house inventory path drifted',

@@ -151,9 +151,10 @@ final class HouseClock {
     _hour = hour;
   }
 
-  /// Emits one restrained tick per crossed in-game hour and a deeper chime at
-  /// six-hour marks. Sleeping or restoring a later day resets the baseline so
-  /// a time jump never floods the room with missed historical chimes.
+  /// Emits one restrained tick per crossed in-game hour. Every third hour the
+  /// clock calls with a cuckoo and bell; six-hour marks retain the deeper
+  /// house chime. Sleeping or restoring a later day resets the baseline so a
+  /// time jump never floods the room with missed historical sounds.
   List<HouseClockEvent> advance({required int day, required double hour}) {
     if (!hour.isFinite || hour < 0 || hour >= 24) {
       throw ArgumentError.value(hour, 'hour', 'must be in [0, 24)');
@@ -173,6 +174,11 @@ final class HouseClock {
     for (var crossed = firstHour; crossed <= lastHour; crossed++) {
       final mark = crossed % 24;
       events.add(HouseClockEvent('tick', mark));
+      if (mark % 3 == 0) {
+        events
+          ..add(HouseClockEvent('cuckoo', mark))
+          ..add(HouseClockEvent('bell', mark));
+      }
       if (mark % 6 == 0) events.add(HouseClockEvent('chime', mark));
     }
     _hour = hour;
@@ -225,6 +231,18 @@ final class HouseServiceSoundScheduler {
       }
       if (mark % 8 == 5) {
         events.add(const HouseServiceSoundEvent('bathroom-cistern', 'settle'));
+      }
+      if (mark % 5 == 0) {
+        events.add(const HouseServiceSoundEvent('front-door-knocker', 'knock'));
+      }
+      if (mark % 7 == 3) {
+        events.add(const HouseServiceSoundEvent('landing-window', 'wind'));
+      }
+      if (mark % 4 == 1) {
+        events.add(const HouseServiceSoundEvent('bedroom-timber', 'creak'));
+      }
+      if (mark % 6 == 4) {
+        events.add(const HouseServiceSoundEvent('kitchen-pipe', 'tick'));
       }
     }
     _hour = hour;

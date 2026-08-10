@@ -688,6 +688,21 @@ button:focus-visible,
   text-align: center;
 }
 
+.door-reaction {
+  font: inherit;
+  background: rgba(183, 137, 76, 0.08);
+  border: 1px solid var(--brass);
+  color: var(--bone);
+  padding: 0.45rem 0.8rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.door-reaction:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
+
 .settings-copy {
   width: 100%;
   max-width: 34rem;

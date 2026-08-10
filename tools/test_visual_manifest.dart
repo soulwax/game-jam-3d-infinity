@@ -19,7 +19,7 @@ void main() {
     expectedHouseId: 'quarantine-house-main',
   );
   _expect(errors.isEmpty, 'authored visual manifest validates: $errors');
-  _expect(manifest.captures.length == 4, 'two hero capture pairs exist');
+  _expect(manifest.captures.length == 12, 'six hero capture pairs exist');
   _expect(
     manifest.captures
             .where((capture) => capture.pairId == 'hero-hall-entry')
@@ -30,6 +30,16 @@ void main() {
   _expect(
     manifest.captures.every((capture) => capture.viewportWidth == 960),
     'hero captures use the declared high viewport',
+  );
+  _expect(
+    manifest.captures
+            .where((capture) => capture.pairId == 'hero-living-rain')
+            .every((capture) => capture.fixture.weather == 'rain') &&
+        manifest.captures
+                .where((capture) => capture.pairId == 'hero-living-rain')
+                .length ==
+            2,
+    'rain clean/final pair exists with explicit weather state',
   );
 
   final unknownWaypoint = VisualCaptureManifest.decode(
@@ -97,7 +107,7 @@ void main() {
     'malformed camera/state/profile data is rejected with focused errors',
   );
   stdout.writeln(
-    'visual manifest: two fixed hero pairs and malformed coverage pass',
+    'visual manifest: six fixed hero pairs and malformed coverage pass',
   );
 }
 

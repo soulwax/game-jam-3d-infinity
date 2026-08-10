@@ -49,3 +49,6 @@ Day 18 · torn 2 · balance 7
 Day 19 · torn 1 · balance 6
 Day 20 · torn 1 · balance 5
 Day 21 · torn 1 · balance 4
+
+@record eileen-case-note
+A folded note in Eileen's sewing case reads:

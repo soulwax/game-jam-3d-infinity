@@ -3,6 +3,130 @@
   "houseId": "quarantine-house-main",
   "captures": [
     {
+      "id": "hero-living-night-clean",
+      "pairId": "hero-living-night",
+      "owner": "embodied",
+      "mode": "clean",
+      "source": {"scenario": "ground-circuit", "waypoint": "living-hall-living-in"},
+      "camera": {
+        "position": [6.2, 1.65, 3.375],
+        "yaw": -1.5707963268,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 1,
+        "hour": 20,
+        "weather": "overcast",
+        "room": "living-room",
+        "portals": {"hall-living": "open", "kitchen-living": "open"},
+        "shutters": {"living-north-west": "open", "living-north-east": "open"},
+        "mantles": {"mantle-living": "on", "mantle-living-second": "off"}
+      },
+      "requiredMetadata": [
+        "buildId", "scenario", "cameraId", "requestedRenderer",
+        "effectiveRenderer", "requestedProfile", "effectiveProfile",
+        "viewport", "fixture", "screenshotSha256", "domainDigest",
+        "rendererDigest"
+      ]
+    },
+    {
+      "id": "hero-living-night-final",
+      "pairId": "hero-living-night",
+      "owner": "embodied",
+      "mode": "final",
+      "source": {"scenario": "ground-circuit", "waypoint": "living-hall-living-in"},
+      "camera": {
+        "position": [6.2, 1.65, 3.375],
+        "yaw": -1.5707963268,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 1,
+        "hour": 20,
+        "weather": "overcast",
+        "room": "living-room",
+        "portals": {"hall-living": "open", "kitchen-living": "open"},
+        "shutters": {"living-north-west": "open", "living-north-east": "open"},
+        "mantles": {"mantle-living": "on", "mantle-living-second": "off"}
+      },
+      "requiredMetadata": [
+        "buildId", "scenario", "cameraId", "requestedRenderer",
+        "effectiveRenderer", "requestedProfile", "effectiveProfile",
+        "viewport", "fixture", "screenshotSha256", "domainDigest",
+        "rendererDigest"
+      ]
+    },
+    {
+      "id": "hero-living-mantle-clean",
+      "pairId": "hero-living-mantle",
+      "owner": "embodied",
+      "mode": "clean",
+      "source": {"scenario": "ground-circuit", "waypoint": "living-hall-living-in"},
+      "camera": {
+        "position": [6.2, 1.65, 3.375],
+        "yaw": -1.5707963268,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 1,
+        "hour": 8,
+        "weather": "overcast",
+        "room": "living-room",
+        "portals": {"hall-living": "open", "kitchen-living": "open"},
+        "shutters": {"living-north-west": "open", "living-north-east": "open"},
+        "mantles": {"mantle-living": "on", "mantle-living-second": "off"}
+      },
+      "requiredMetadata": [
+        "buildId", "scenario", "cameraId", "requestedRenderer",
+        "effectiveRenderer", "requestedProfile", "effectiveProfile",
+        "viewport", "fixture", "screenshotSha256", "domainDigest",
+        "rendererDigest"
+      ]
+    },
+    {
+      "id": "hero-living-mantle-final",
+      "pairId": "hero-living-mantle",
+      "owner": "embodied",
+      "mode": "final",
+      "source": {"scenario": "ground-circuit", "waypoint": "living-hall-living-in"},
+      "camera": {
+        "position": [6.2, 1.65, 3.375],
+        "yaw": -1.5707963268,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 1,
+        "hour": 8,
+        "weather": "overcast",
+        "room": "living-room",
+        "portals": {"hall-living": "open", "kitchen-living": "open"},
+        "shutters": {"living-north-west": "open", "living-north-east": "open"},
+        "mantles": {"mantle-living": "on", "mantle-living-second": "off"}
+      },
+      "requiredMetadata": [
+        "buildId", "scenario", "cameraId", "requestedRenderer",
+        "effectiveRenderer", "requestedProfile", "effectiveProfile",
+        "viewport", "fixture", "screenshotSha256", "domainDigest",
+        "rendererDigest"
+      ]
+    },
+    {
       "id": "hero-hall-entry-clean",
       "pairId": "hero-hall-entry",
       "owner": "embodied",
@@ -163,6 +287,126 @@
         "domainDigest",
         "rendererDigest"
       ]
+    },
+    {
+      "id": "hero-living-rain-clean",
+      "pairId": "hero-living-rain",
+      "owner": "embodied",
+      "mode": "clean",
+      "source": {
+        "scenario": "ground-circuit",
+        "waypoint": "living-hall-living-in"
+      },
+      "camera": {
+        "position": [6.2, 1.65, 3.375],
+        "yaw": -1.5707963268,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 3,
+        "hour": 8,
+        "weather": "rain",
+        "room": "living-room",
+        "portals": {"hall-living": "open", "kitchen-living": "open"},
+        "shutters": {"living-north-west": "open", "living-north-east": "open"},
+        "mantles": {"mantle-living": "on", "mantle-living-second": "off"}
+      },
+      "requiredMetadata": [
+        "buildId", "scenario", "cameraId", "requestedRenderer",
+        "effectiveRenderer", "requestedProfile", "effectiveProfile",
+        "viewport", "fixture", "screenshotSha256", "domainDigest",
+        "rendererDigest"
+      ]
+    },
+    {
+      "id": "hero-living-rain-final",
+      "pairId": "hero-living-rain",
+      "owner": "embodied",
+      "mode": "final",
+      "source": {
+        "scenario": "ground-circuit",
+        "waypoint": "living-hall-living-in"
+      },
+      "camera": {
+        "position": [6.2, 1.65, 3.375],
+        "yaw": -1.5707963268,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 3,
+        "hour": 8,
+        "weather": "rain",
+        "room": "living-room",
+        "portals": {"hall-living": "open", "kitchen-living": "open"},
+        "shutters": {"living-north-west": "open", "living-north-east": "open"},
+        "mantles": {"mantle-living": "on", "mantle-living-second": "off"}
+      },
+      "requiredMetadata": [
+        "buildId", "scenario", "cameraId", "requestedRenderer",
+        "effectiveRenderer", "requestedProfile", "effectiveProfile",
+        "viewport", "fixture", "screenshotSha256", "domainDigest",
+        "rendererDigest"
+      ]
+    },
+    {
+      "id": "hero-living-shutter-clean",
+      "pairId": "hero-living-shutter",
+      "owner": "embodied",
+      "mode": "clean",
+      "source": {"scenario": "ground-circuit", "waypoint": "living-hall-living-in"},
+      "camera": {
+        "position": [6.2, 1.65, 3.375],
+        "yaw": -1.5707963268,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 1,
+        "hour": 8,
+        "weather": "overcast",
+        "room": "living-room",
+        "portals": {"hall-living": "open", "kitchen-living": "open"},
+        "shutters": {"living-north-west": "closed", "living-north-east": "closed"},
+        "mantles": {"mantle-living": "on", "mantle-living-second": "off"}
+      },
+      "requiredMetadata": ["buildId", "scenario", "cameraId", "requestedRenderer", "effectiveRenderer", "requestedProfile", "effectiveProfile", "viewport", "fixture", "screenshotSha256", "domainDigest", "rendererDigest"]
+    },
+    {
+      "id": "hero-living-shutter-final",
+      "pairId": "hero-living-shutter",
+      "owner": "embodied",
+      "mode": "final",
+      "source": {"scenario": "ground-circuit", "waypoint": "living-hall-living-in"},
+      "camera": {
+        "position": [6.2, 1.65, 3.375],
+        "yaw": -1.5707963268,
+        "pitch": 0.0,
+        "fov": 1.0471975512
+      },
+      "viewport": {"width": 960, "height": 540},
+      "profile": "high",
+      "fixture": {
+        "seed": 42017,
+        "day": 1,
+        "hour": 8,
+        "weather": "overcast",
+        "room": "living-room",
+        "portals": {"hall-living": "open", "kitchen-living": "open"},
+        "shutters": {"living-north-west": "closed", "living-north-east": "closed"},
+        "mantles": {"mantle-living": "on", "mantle-living-second": "off"}
+      },
+      "requiredMetadata": ["buildId", "scenario", "cameraId", "requestedRenderer", "effectiveRenderer", "requestedProfile", "effectiveProfile", "viewport", "fixture", "screenshotSha256", "domainDigest", "rendererDigest"]
     }
   ]
 }

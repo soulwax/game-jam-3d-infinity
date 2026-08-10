@@ -9,7 +9,7 @@ volume, not a third storey. The result should feel accumulated, repaired and liv
 in rather than like a pristine museum interior.
 
 The MVP keeps the canonical blueprint values in `assets/house/house.json`, then
-applies its explicit `modelScale: 1.5` uniformly to the runtime shell. This is a
+applies its explicit `modelScale: 2.25` uniformly to the runtime shell. This is a
 hard envelope requirement: rooms are 50% wider, deeper and taller while their
 topology, portal graph and authored IDs remain unchanged. The plan does not
 change canonical simulation facts in `lib/house/house.dart`: eight rooms, nine
@@ -77,7 +77,7 @@ suggestions. Origins are the lower north-west corner in world space; sizes are
 | Bathroom | First | (4.5, 2.8, 3.0) | 2.5 × 2.4 × 2.5 | East frosted sash; landing door. |
 | Spare room | First | (0, 2.8, 4.0) | 4.5 × 2.1 × 3.0 | South sash; landing door. |
 
-The table above is the readable authored blueprint. At runtime the uniform 1.5×
+The table above is the readable authored blueprint. At runtime the uniform 2.25×
 contract yields (in the same order) living 6.75×3.9×6.0 m, hall
 3.75×3.9×10.5 m, kitchen 6.75×3.75×4.5 m, cellar 6×3.0×6 m, bedroom
 6.75×3.6×6 m, landing 3.75×3.6×4.5 m, bathroom 3.75×3.6×3.75 m and
@@ -85,7 +85,7 @@ spare 6.75×3.15×4.5 m. First-floor origins are y=4.2 m and the cellar origin
 is y=-3.0 m.
 
 The readable blueprint ground-floor interior footprint is 7.0 × 7.0 m. Under the
-runtime 1.5× envelope it is 10.5 × 10.5 m; with 0.42 m exterior walls, the
+runtime 2.25× envelope it is 15.75 × 15.75 m; with 0.63 m exterior walls, the
 first-pass outside wall envelope is approximately 11.34 × 11.34 m. This is a
 modelling envelope only: setbacks, bays, chimney breasts and roof overhangs may
 project outside it, while no interior face may move without a canonical geometry
@@ -153,8 +153,8 @@ proxy, material slots and explicit end/corner variants.
 ### MVP shell realization
 
 The first implementation emits actual wall solids, not only interior wall planes.
-Exterior wall sections use 0.42 m runtime thickness (the authored 0.28 m section
-at 1.5×); internal partitions use 0.18 m (authored 0.12 m at 1.5×). Each section
+Exterior wall sections use 0.63 m runtime thickness (the authored 0.28 m section
+at 2.25×); internal partitions use 0.27 m (authored 0.12 m at 2.25×). Each section
 is capped and watertight enough to show jamb reveals, shadow lines and the outside
 silhouette while collision remains on the canonical room planes.
 
@@ -195,7 +195,7 @@ opening, traversal, or collision contracts.
 ### Data-driven inventory
 
 `assets/house/inventory.json` is the placement authority for future normalized
-models. It contains a stable asset catalog and 27 exact room-local placements
+models. It contains a stable asset catalog and 60 exact room-local placements
 covering all eight rooms. Every placement records its role, socket, position,
 Y-up Euler rotation, scale, visibility layer/state key, interaction affordance,
 and clearance radius. Positions are canonical metres; the validator applies the
@@ -204,10 +204,21 @@ socket uniqueness and route-safe margins. The catalog intentionally points at
 future normalized model paths and declares `room-fixture` proxies, so the current
 authored fixture mesh remains the visual fallback until those models are imported.
 
+The furniture packet adds six larger silhouettes: a living armchair and
+sideboard, bedroom washstand, landing bench, bathroom stool, and spare-room
+sewing table. Each has a normalized source brief plus a deterministic proxy in
+the room mesh, with wall-biased placement and route-safe clearance.
+
+The occupancy packet adds six asymmetric life cues: a living fern, hall family
+photographs, a kitchen tea towel, bedroom slippers, a bathroom towel, and a
+cellar bottle crate. They are intentionally room-specific and quiet in the
+composition, making routine visible without turning the house into a prop pile.
+
 `assets/house/soundscape.json` is the matching acoustic placement authority. It
-binds four emitters to inventory placement IDs: the hall clock (hourly tick and
-six-hour chime), kitchen range (metal settling), cellar drain (drip), and
-bathroom cistern (tank settling). Cue files are authored deterministic WAVs in
+binds eight emitters to inventory placement IDs: the hall clock (hourly tick,
+three-hour cuckoo/bell call and six-hour chime), kitchen range (metal settling),
+cellar drain (drip), bathroom cistern (tank settling), front-door knocker,
+landing window wind, bedroom timber, and kitchen pipe. Cue files are authored deterministic WAVs in
 `web/res/sfx/`; the runtime resolves their room-local positions through the
 house model scale, listener room, and portal graph so closed doors attenuate the
 source naturally. Clock scheduling is simulation-owned and emits no historical
@@ -324,7 +335,7 @@ enabled. A band that contributes no readable silhouette, layer or light cue is c
 
 | Room | Focal anchor | Architecture and density |
 | --- | --- | --- |
-| Hall | front door/fanlight and clock | Dado, runner, stair/newel, narrow table, umbrella stand, coat hooks and Board papers; preserve clear front-to-stair route. |
+| Hall | front door/fanlight and clock | Dado, runner, stair/newel, narrow table, under-stair cupboard-room with paneled door and shelf, umbrella stand, coat hooks and Board papers; preserve clear front-to-stair route. |
 | Living | fireplace and wireless cabinet | Chimney breast, cornice/picture rail, paired front sashes, sofa, mismatched chairs, rug, bookcase and clustered framed art. |
 | Kitchen | range/flue and worktable | Plain painted plaster, dresser, sink/plumbing, pantry/cupboards, pans, crockery, ration goods and visibly used storage. |
 | Cellar | coal/service wall | Rough masonry, joists, pipes, shelves, coal bin, crates, bottles, drain, damp tide line and debris bands. |
@@ -466,18 +477,20 @@ aperture tests.
 
 The exterior MVP now has a concrete generated shell at
 `assets/house/exterior/main_shell.qhmx`. It is view-only and wraps the runtime
-10.5 × 10.5 m interior envelope with the 0.42 m exterior wall thickness. The
+15.75 × 15.75 m interior envelope with the 0.63 m exterior wall thickness. The
 front elevation has a recessed threshold and railings; all four elevations have
 opening-aware masonry, stone sill/lintel blocks, a plinth, eaves and downpipes;
 the roof has two slate planes, ridge/fascia, twin chimney stacks and gutters;
 the street cell adds a low boundary wall and gate. Cellar/service and context
 cells remain separate placements around this shell rather than becoming physics
-geometry. The current checked export is 7,640 indexed vertices, 3,820
-triangles, 145,200 bytes, with 33.3% exact-attribute index reuse; the latest
+geometry. The current checked export is 9,390 indexed vertices, 4,694
+triangles, 178,444 bytes, with 33.3% exact-attribute index reuse; the latest
 detail pass adds timber sash bars, recessed front-door leaf geometry, paired
 chimney pots, repeated downpipe brackets and shoes, a string course, dressed
-front corners, window boxes, roof flashing, a lantern, boot scraper, coal hatch,
-water butt and ventilation bricks without changing collision truth.
+front corners, opening-aware masonry course shadow lines, closed brick gable
+ends, repeated raised slate courses, window boxes, roof
+flashing, a lantern, boot scraper, coal hatch, water butt and ventilation bricks
+without changing collision truth.
 
 ## Technical realization pipeline
 
@@ -640,8 +653,8 @@ the renderer's compatibility attribute stride at registration time.
 camera bands map to at most three exterior cells each. The PVS is conservative,
 deterministic and view-only; it does not alter room collision or story state.
 
-The checked-in shell currently contains 5,336 unique vertices and 2,668
-triangles in 101,424 bytes, with 33.3% index reuse. Generate it with
+The checked-in shell currently contains 9,390 unique vertices and 4,694
+triangles in 178,444 bytes, with 33.3% index reuse. Generate it with
 `dart run tools/build_house_exterior.dart` and verify it with
 `dart run tools/test_house_exterior.dart`; do not hand-edit the binary. Numeric
 material slots are resolved by `assets/house/exterior/materials.json`, keeping

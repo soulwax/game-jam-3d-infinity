@@ -46,7 +46,7 @@ void main() {
     'exterior mesh must remain view-only',
   );
   require(
-    exteriorMesh['wallThickness'] == 0.42,
+    exteriorMesh['wallThickness'] == 0.63,
     'exterior wall thickness drifted',
   );
   final materialsPath = '$root/${exteriorMesh['materialsPath']}';

@@ -5,12 +5,28 @@ import 'package:pixeldart/rendering/math/bounds.dart' as pixeldart_bounds;
 import 'package:pixeldart/rendering/math/vec.dart' as pixeldart_vec;
 
 import 'exterior_mesh.dart';
+import 'exterior_pvs.dart';
 
 final class ExteriorMeshPart {
   final int material;
   final pixeldart.MeshData mesh;
 
   const ExteriorMeshPart({required this.material, required this.mesh});
+}
+
+/// One indexed material range owned by an authored exterior PVS cell.
+/// Cell partitioning is renderer-neutral; the runtime decides which returned
+/// parts to submit for the current room/camera band.
+final class ExteriorCellMeshPart {
+  final String cellId;
+  final int material;
+  final pixeldart.MeshData mesh;
+
+  const ExteriorCellMeshPart({
+    required this.cellId,
+    required this.material,
+    required this.mesh,
+  });
 }
 
 /// Converts the compact house-owned QHMX representation into the renderer's
@@ -54,8 +70,44 @@ pixeldart.MeshData toPixeldartMeshData(HouseExteriorMesh mesh) {
 /// equal, so each triangle has one unambiguous slot; remapping only the
 /// vertices referenced by a slot keeps the handoff indexed and compact.
 List<ExteriorMeshPart> toPixeldartMeshParts(HouseExteriorMesh mesh) {
+  return [
+    for (final part in _splitParts(mesh, (material, _, __, ___) => '$material'))
+      ExteriorMeshPart(material: part.material, mesh: part.mesh),
+  ];
+}
+
+/// Splits the shell into deterministic PVS-cell/material ranges. Each source
+/// triangle is assigned once from its centroid, so filtering cells never
+/// duplicates geometry or changes mesh ownership. The spatial classifier is a
+/// conservative presentation partition for the current authored shell; room,
+/// portal, and collision truth remain in [ExteriorPvs]/[House].
+List<ExteriorCellMeshPart> toPixeldartCellMeshParts(HouseExteriorMesh mesh) {
+  return [
+    for (final part in _splitParts(
+      mesh,
+      (material, a, b, c) =>
+          '${_cellForTriangle(mesh.bounds, a, b, c)}:$material',
+    ))
+      ExteriorCellMeshPart(
+        cellId: part.cellId!,
+        material: part.material,
+        mesh: part.mesh,
+      ),
+  ];
+}
+
+List<_MeshPartGroupResult> _splitParts(
+  HouseExteriorMesh mesh,
+  String Function(
+    int material,
+    ExteriorVertex a,
+    ExteriorVertex b,
+    ExteriorVertex c,
+  )
+  keyFor,
+) {
   mesh.validate();
-  final indicesByMaterial = <int, List<int>>{};
+  final groups = <String, _MeshPartGroup>{};
   for (var i = 0; i < mesh.indices.length; i += 3) {
     final a = mesh.indices[i];
     final b = mesh.indices[i + 1];
@@ -68,31 +120,98 @@ List<ExteriorMeshPart> toPixeldartMeshParts(HouseExteriorMesh mesh) {
         '${mesh.vertices[b].material}, ${mesh.vertices[c].material}',
       );
     }
-    (indicesByMaterial[material] ??= <int>[]).addAll([a, b, c]);
+    final key = keyFor(
+      material,
+      mesh.vertices[a],
+      mesh.vertices[b],
+      mesh.vertices[c],
+    );
+    (groups[key] ??= _MeshPartGroup(
+      key: key,
+      cellId: key.contains(':') ? key.substring(0, key.indexOf(':')) : null,
+      material: material,
+    )).indices.addAll([a, b, c]);
   }
-  final parts = <ExteriorMeshPart>[];
-  for (final material in indicesByMaterial.keys.toList()..sort()) {
-    final sourceIndices = indicesByMaterial[material]!;
+  return [
+    for (final group
+        in groups.values.toList()..sort((a, b) => a.key.compareTo(b.key)))
+      group.withMesh(mesh),
+  ];
+}
+
+String _cellForTriangle(
+  ExteriorBounds bounds,
+  ExteriorVertex a,
+  ExteriorVertex b,
+  ExteriorVertex c,
+) {
+  final x = (a.x + b.x + c.x) / 3;
+  final y = (a.y + b.y + c.y) / 3;
+  final z = (a.z + b.z + c.z) / 3;
+  final roofline = bounds.maxY - 2.5;
+  final cell = y >= roofline
+      ? 'opposite-house'
+      : z <= bounds.minZ + 1.2
+      ? 'front'
+      : z >= bounds.maxZ - 1.2
+      ? 'rear-service'
+      : x <= bounds.minX + 1.2 || x >= bounds.maxX - 1.2
+      ? 'side-boundary'
+      : 'street';
+  if (!ExteriorPvs.allCells.contains(cell)) {
+    throw StateError('exterior mesh classifier produced unknown cell $cell');
+  }
+  return cell;
+}
+
+final class _MeshPartGroup {
+  final String key;
+  final String? cellId;
+  final int material;
+  final List<int> indices = [];
+
+  _MeshPartGroup({
+    required this.key,
+    required this.cellId,
+    required this.material,
+  });
+
+  _MeshPartGroupResult withMesh(HouseExteriorMesh source) {
     final remap = <int, int>{};
     final vertices = <ExteriorVertex>[];
-    final indices = <int>[];
-    for (final sourceIndex in sourceIndices) {
+    final localIndices = <int>[];
+    for (final sourceIndex in indices) {
       final localIndex = remap[sourceIndex] ??= vertices.length;
       if (localIndex == vertices.length) {
-        vertices.add(mesh.vertices[sourceIndex]);
+        vertices.add(source.vertices[sourceIndex]);
       }
-      indices.add(localIndex);
+      localIndices.add(localIndex);
     }
     final partMesh = toPixeldartMeshData(
       HouseExteriorMesh(
         vertices: vertices,
-        indices: Uint16List.fromList(indices),
+        indices: Uint16List.fromList(localIndices),
         bounds: _boundsFor(vertices),
       ),
     );
-    parts.add(ExteriorMeshPart(material: material, mesh: partMesh));
+    return _MeshPartGroupResult(
+      key: key,
+      cellId: cellId,
+      material: material,
+      mesh: partMesh,
+    );
   }
-  return parts;
+}
+
+final class _MeshPartGroupResult extends _MeshPartGroup {
+  final pixeldart.MeshData mesh;
+
+  _MeshPartGroupResult({
+    required super.key,
+    required super.cellId,
+    required super.material,
+    required this.mesh,
+  });
 }
 
 ExteriorBounds _boundsFor(List<ExteriorVertex> vertices) {

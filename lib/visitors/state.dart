@@ -1,4 +1,5 @@
-import '../story/schema.dart' show VisitorClaim;
+import '../story/schema.dart'
+    show VisitorClaim, VisitorReaction, ReactionOption;
 
 enum DoorChoice { open, chain, throughDoor, letterbox, ignore }
 
@@ -183,6 +184,7 @@ class ActiveVisitState {
     required this.lineIndex,
     this.choice,
     this.complianceMarked = false,
+    this.reactionChoiceId,
   });
 
   final VisitArrival arrival;
@@ -191,6 +193,7 @@ class ActiveVisitState {
   final int lineIndex;
   final DoorChoice? choice;
   final bool complianceMarked;
+  final String? reactionChoiceId;
 
   Map<String, dynamic> toJson() => {
     'arrival': arrival.toJson(),
@@ -199,6 +202,7 @@ class ActiveVisitState {
     'lineIndex': lineIndex,
     'choice': choice?.name,
     'complianceMarked': complianceMarked,
+    if (reactionChoiceId != null) 'reactionChoiceId': reactionChoiceId,
   };
 
   static ActiveVisitState? tryFromJson(Object? raw) {
@@ -209,12 +213,14 @@ class ActiveVisitState {
     final lineIndex = raw['lineIndex'];
     final choice = raw['choice'];
     final complianceMarked = raw['complianceMarked'] ?? false;
+    final reactionChoiceId = raw['reactionChoiceId'];
     if (arrival == null ||
         tier is! String ||
         phase is! String ||
         lineIndex is! int ||
         lineIndex < 0 ||
         complianceMarked is! bool ||
+        (reactionChoiceId != null && reactionChoiceId is! String) ||
         (choice != null && choice is! String)) {
       return null;
     }
@@ -241,6 +247,7 @@ class ActiveVisitState {
       lineIndex: lineIndex,
       choice: parsedChoice,
       complianceMarked: complianceMarked,
+      reactionChoiceId: reactionChoiceId as String?,
     );
   }
 }
@@ -259,6 +266,7 @@ class VisitState {
   DoorChoice? choice;
   int lineIndex = 0;
   bool complianceMarked = false;
+  String? reactionChoiceId;
 
   String? get currentLine =>
       lineIndex < lines.length ? lines[lineIndex].text : null;
@@ -267,6 +275,9 @@ class VisitState {
       lineIndex < lines.length ? lines[lineIndex].claims : const [];
 
   bool get isComplete => lineIndex >= lines.length;
+
+  /// The authored beat, if this exact compiled line has one.
+  VisitorReaction? reaction;
 }
 
 abstract class VisitorResult {
@@ -297,4 +308,12 @@ class VisitProgress extends VisitorResult {
 
   final VisitState state;
   final bool resolved;
+}
+
+class VisitReactionResult extends VisitorResult {
+  const VisitReactionResult(this.state, this.reaction, this.option);
+
+  final VisitState state;
+  final VisitorReaction reaction;
+  final ReactionOption option;
 }

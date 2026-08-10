@@ -72,8 +72,8 @@ final class HouseInventory {
     if (sourceRef != 'assets/house/house.json') {
       throw StateError('inventory source changed: $sourceRef');
     }
-    if ((modelScale - 1.5).abs() > 0.0001) {
-      throw StateError('inventory modelScale must remain 1.5');
+    if ((modelScale - 2.25).abs() > 0.0001) {
+      throw StateError('inventory modelScale must remain 2.25');
     }
     final assetIds = <String>{};
     for (final asset in assets) {

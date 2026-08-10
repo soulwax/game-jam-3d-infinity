@@ -70,9 +70,12 @@ void main() {
 
   final closedHouse = House(42);
   closedHouse.portalById('hall-living')!.open = false;
+  final livingPortal = closedHouse.portalById('hall-living')!;
+  final livingPortalZ =
+      hall.origin.z + livingPortal.offsetFor('hall') + livingPortal.width * 0.5;
   final closed = _move(
     closedHouse,
-    Vec3(hall.origin.x + 0.2, hallStart.y, hall.origin.z + 3.4),
+    Vec3(hall.origin.x + 0.2, hallStart.y, livingPortalZ),
     'hall',
     Vec3(-1, 0, 0),
   );
@@ -83,7 +86,7 @@ void main() {
 
   final open = _move(
     House(42),
-    Vec3(hall.origin.x + 0.2, hallStart.y, hall.origin.z + 3.4),
+    Vec3(hall.origin.x + 0.2, hallStart.y, livingPortalZ),
     'hall',
     Vec3(-1, 0, 0),
   );
@@ -98,7 +101,7 @@ void main() {
     stairHouse,
     stair.lowerEye,
     'hall',
-    Vec3(0, 0, -5.4),
+    Vec3(0, 0, -8.1),
     frames: 90,
   );
   _expect(
@@ -109,7 +112,7 @@ void main() {
     House(42),
     stair.upperEye,
     'landing',
-    Vec3(0, 0, 5.4),
+    Vec3(0, 0, 8.1),
     frames: 90,
   );
   _expect(

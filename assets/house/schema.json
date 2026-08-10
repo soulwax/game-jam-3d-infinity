@@ -9,7 +9,7 @@
   "requiredTopLevel": ["houseId", "sourceRef", "modelScale", "exteriorMesh", "inventoryPath", "soundscapePath", "levels", "rooms", "portals", "stairs"],
   "roomRequired": ["id", "floor", "origin", "size", "surface", "windows", "portalIds", "focalComposition"],
   "portalRequired": ["id", "a", "b", "facingA", "facingB", "offsetA", "offsetB", "width", "height", "doorKit (non-stair)"],
-  "runtimeEnvelope": {"modelScale": 1.5, "exteriorWallThickness": 0.42, "partitionWallThickness": 0.18},
+  "runtimeEnvelope": {"modelScale": 2.25, "exteriorWallThickness": 0.63, "partitionWallThickness": 0.27},
   "transform": {"position": "vec3", "rotation": "euler-degrees", "scale": "vec3"},
   "inventory": {"path": "inventory.json", "coordinateSpace": "room-local-y-up", "placementScale": "modelScale applied once"},
   "soundscape": {"path": "soundscape.json", "coordinateSpace": "room-local-y-up", "placementScale": "modelScale applied once", "occlusion": "house portal graph"},

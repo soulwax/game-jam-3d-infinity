@@ -16,27 +16,31 @@ void main() {
     File('$root/assets/house/soundscape.json').readAsStringSync(),
   );
   soundscape.validateAgainst(house, inventory);
-  if (soundscape.emitters.length != 4) fail('expected four authored emitters');
+  if (soundscape.emitters.length != 8) fail('expected eight authored emitters');
   final clock = soundscape.emitterFor('hall-clock');
   if (clock.cue('tick') != 'clock-tick' ||
+      clock.cue('cuckoo') != 'clock-cuckoo' ||
+      clock.cue('bell') != 'clock-bell' ||
       clock.cue('chime') != 'clock-chime') {
     fail('clock cues drifted');
   }
   final clockLogic = HouseClock()..reset(day: 1, hour: 11.98);
   final events = clockLogic.advance(day: 1, hour: 12.02);
-  if (events.length != 2 ||
-      events.first.event != 'tick' ||
-      events.last.event != 'chime') {
-    fail('six-hour clock crossing did not emit tick and chime');
+  if (events.map((event) => event.event).join(',') !=
+      'tick,cuckoo,bell,chime') {
+    fail('six-hour clock crossing did not emit tick, cuckoo, bell, and chime');
   }
   if (clockLogic.advance(day: 2, hour: 6).isNotEmpty) {
     fail('day transition replayed historical clock events');
   }
   final service = HouseServiceSoundScheduler()..advance(day: 1, hour: 9.98);
   final serviceEvents = service.advance(day: 1, hour: 10.02);
-  if (serviceEvents.length != 2 ||
+  if (serviceEvents.length != 5 ||
       serviceEvents[0].emitterId != 'kitchen-range' ||
-      serviceEvents[1].emitterId != 'cellar-drain') {
+      serviceEvents[1].emitterId != 'cellar-drain' ||
+      serviceEvents[2].emitterId != 'front-door-knocker' ||
+      serviceEvents[3].emitterId != 'landing-window' ||
+      serviceEvents[4].emitterId != 'kitchen-pipe') {
     fail('service sound schedule drifted');
   }
   print(

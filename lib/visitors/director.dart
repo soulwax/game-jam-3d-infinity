@@ -1,13 +1,22 @@
 import 'package:quarantine/sim/interaction.dart';
+import 'package:quarantine/story/narrative_state.dart';
 import 'package:quarantine/story/schema.dart';
 import 'package:quarantine/visitors/state.dart';
 
 class VisitorDirector {
-  VisitorDirector._(this._visits, this._contacted, this._resolved);
+  VisitorDirector._(
+    this._visits,
+    this._contacted,
+    this._resolved,
+    this._reactions,
+    this._variants,
+  );
 
   final Map<VisitArrival, Map<VisitTier, List<VisitorLine>>> _visits;
   final Set<String> _contacted;
   final Set<VisitArrival> _resolved;
+  final Map<String, VisitorReaction> _reactions;
+  final Map<String, List<VisitorVariant>> _variants;
   final List<VisitorFact> _facts = [];
   VisitState? _active;
 
@@ -20,8 +29,15 @@ class VisitorDirector {
   /// other tier rule is unaffected. Q26 computes and assigns this set once at
   /// boot; an empty set (the default) reproduces pre-§56 behaviour exactly.
   Set<String> standIns = const {};
+  NarrativeState narrative = NarrativeState();
 
   VisitState? get active => _active;
+  VisitorReaction? get currentReaction {
+    final state = _active;
+    if (state == null || state.isComplete) return null;
+    return _reactions['${state.arrival.visitor}:${state.arrival.day}:${state.tier.name}:${state.lines[state.lineIndex].ordinal}'];
+  }
+
   bool isResolved(VisitArrival arrival) => _resolved.contains(arrival);
 
   List<VisitorFact> drainFacts() {
@@ -42,6 +58,7 @@ class VisitorDirector {
             lineIndex: _active!.lineIndex,
             choice: _active!.choice,
             complianceMarked: _active!.complianceMarked,
+            reactionChoiceId: _active!.reactionChoiceId,
           ),
   );
 
@@ -57,7 +74,10 @@ class VisitorDirector {
     final saved = state.active;
     if (saved != null) {
       final tiers = _visits[saved.arrival];
-      final lines = tiers?[saved.tier];
+      final authoredLines = tiers?[saved.tier];
+      final lines = authoredLines == null
+          ? null
+          : _linesFor(saved.arrival, saved.tier, authoredLines);
       if (lines == null ||
           state.resolved.contains(saved.arrival) ||
           saved.phase == VisitPhase.resolved ||
@@ -68,12 +88,23 @@ class VisitorDirector {
               (saved.choice == null || saved.choice == DoorChoice.ignore))) {
         return false;
       }
+      final reaction =
+          _reactions['${saved.arrival.visitor}:${saved.arrival.day}:${saved.tier.name}:${lines[saved.lineIndex].ordinal}'];
+      if (saved.reactionChoiceId != null &&
+          (reaction == null ||
+              !reaction.options.any(
+                (option) => option.id == saved.reactionChoiceId,
+              ))) {
+        return false;
+      }
       active =
           VisitState(arrival: saved.arrival, tier: saved.tier, lines: lines)
             ..phase = saved.phase
             ..lineIndex = saved.lineIndex
             ..choice = saved.choice
-            ..complianceMarked = saved.complianceMarked;
+            ..complianceMarked = saved.complianceMarked
+            ..reactionChoiceId = saved.reactionChoiceId
+            ..reaction = reaction;
     }
     _contacted
       ..clear()
@@ -111,12 +142,12 @@ class VisitorDirector {
       );
     }
     final week = ((arrival.day - 1) ~/ 7) + 1;
-    final preferred = _contacted.contains(arrival.visitor) ||
-            week >= 3 ||
-            exposureElevated
+    final preferred =
+        _contacted.contains(arrival.visitor) || week >= 3 || exposureElevated
         ? VisitTier.compressed
         : VisitTier.full;
-    final standingIn = preferred == VisitTier.full &&
+    final standingIn =
+        preferred == VisitTier.full &&
         standIns.contains(arrival.visitor) &&
         tiers.containsKey(VisitTier.off);
     final wanted = standingIn ? VisitTier.off : preferred;
@@ -125,7 +156,9 @@ class VisitorDirector {
         : (tiers.containsKey(VisitTier.full)
               ? VisitTier.full
               : VisitTier.compressed);
-    _active = VisitState(arrival: arrival, tier: tier, lines: tiers[tier]!);
+    final lines = _linesFor(arrival, tier, tiers[tier]!);
+    _active = VisitState(arrival: arrival, tier: tier, lines: lines);
+    _active!.reaction = currentReaction;
     return VisitStarted(_active!);
   }
 
@@ -196,14 +229,50 @@ class VisitorDirector {
         ),
       );
     }
+    final reaction = currentReaction;
+    if (reaction != null && state.reactionChoiceId == null) {
+      return VisitorUnavailable(
+        VisitorIssue(
+          VisitorIssueCode.invalidPhase,
+          'The visitor is waiting for an answer.',
+        ),
+      );
+    }
     state.phase = VisitPhase.consulting;
     state.lineIndex++;
+    state.reactionChoiceId = null;
     if (state.isComplete) {
       state.phase = VisitPhase.resolved;
       _resolve(state);
       return VisitProgress(state, resolved: true);
     }
     return VisitProgress(state, resolved: false);
+  }
+
+  VisitorResult chooseReaction(String optionId) {
+    final state = _active;
+    final reaction = currentReaction;
+    if (state == null ||
+        reaction == null ||
+        (state.phase != VisitPhase.atDoor &&
+            state.phase != VisitPhase.consulting)) {
+      return const VisitorUnavailable(
+        VisitorIssue(VisitorIssueCode.invalidPhase, 'No reaction is due.'),
+      );
+    }
+    final option = reaction.options
+        .where((candidate) => candidate.id == optionId)
+        .firstOrNull;
+    if (option == null) {
+      return const VisitorUnavailable(
+        VisitorIssue(
+          VisitorIssueCode.invalidPhase,
+          'That answer is not offered.',
+        ),
+      );
+    }
+    state.reactionChoiceId = option.id;
+    return VisitReactionResult(state, reaction, option);
   }
 
   ConsultationResult? cite(
@@ -308,9 +377,43 @@ class VisitorDirector {
         visits[arrival] = (tiers as _ParsedTiers).tiers;
       }
     }
+    final variants = <String, List<VisitorVariant>>{};
+    for (final variant in story.variants.values) {
+      variants.putIfAbsent(variant.targetKey, () => []).add(variant);
+    }
     return VisitorDirectorBuilt(
-      VisitorDirector._(visits, <String>{}, <VisitArrival>{}),
+      VisitorDirector._(
+        visits,
+        <String>{},
+        <VisitArrival>{},
+        Map<String, VisitorReaction>.unmodifiable(story.reactions),
+        {
+          for (final entry in variants.entries)
+            entry.key: List<VisitorVariant>.unmodifiable(entry.value),
+        },
+      ),
     );
+  }
+
+  List<VisitorLine> _linesFor(
+    VisitArrival arrival,
+    VisitTier tier,
+    List<VisitorLine> authored,
+  ) => [for (final line in authored) _lineFor(arrival, tier, line)];
+
+  VisitorLine _lineFor(VisitArrival arrival, VisitTier tier, VisitorLine line) {
+    final key =
+        'visitor:${arrival.visitor}:${arrival.day}:${tier.name}.${line.ordinal}';
+    final variant = _variants[key]
+        ?.where(
+          (candidate) => candidate.conditions.entries.every(
+            (condition) => narrative.hasFlag(condition.key, condition.value),
+          ),
+        )
+        .firstOrNull;
+    return variant == null
+        ? line
+        : VisitorLine(line.ordinal, variant.replacement, line.claims);
   }
 
   static VisitorResult _parseTiers(

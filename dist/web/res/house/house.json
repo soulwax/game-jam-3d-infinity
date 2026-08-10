@@ -2,8 +2,8 @@
   "houseId": "quarantine-house-main",
   "sourceRef": "lib/house/house.dart",
   "status": "authored-shell-v0",
-  "modelScale": 1.5,
-  "exteriorMesh": {"format":"QHMX","version":1,"path":"assets/house/exterior/main_shell.qhmx","materialsPath":"assets/house/exterior/materials.json","viewOnly":true,"wallThickness":0.42,"partitionThickness":0.18},
+  "modelScale": 2.25,
+  "exteriorMesh": {"format":"QHMX","version":1,"path":"assets/house/exterior/main_shell.qhmx","materialsPath":"assets/house/exterior/materials.json","viewOnly":true,"wallThickness":0.63,"partitionThickness":0.27},
   "inventoryPath": "assets/house/inventory.json",
   "soundscapePath": "assets/house/soundscape.json",
   "levels": [

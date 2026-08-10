@@ -2,6 +2,11 @@ import '../engine/math3.dart';
 import 'drift.dart';
 import 'room.dart';
 
+/// The authored blueprint is already represented at 1.5× in the runtime MVP.
+/// This second seam makes the house 50% larger relative to the unchanged
+/// player capsule, producing the spacious presentation profile.
+const double houseSpatialScale = 1.5;
+
 class House {
   final int seed;
   final List<Room> rooms = [];
@@ -14,11 +19,13 @@ class House {
     _buildRooms();
     _buildPortals();
     _applyMvpHorizontalScale();
+    _applySpaciousScale();
     _index();
     _validate();
   }
 
-  /// The first authored-house MVP uses a 1.5x wider/deeper envelope. Vertical
+  /// The first authored-house MVP uses a 1.5x wider/deeper envelope. The
+  /// spacious profile then scales all room axes by 1.5. Vertical
   /// room values are authored explicitly above; this pass keeps every x/z
   /// origin, opening, placement, and stair landmark proportional without
   /// duplicating a second hand-maintained house graph.
@@ -112,6 +119,103 @@ class House {
     }
   }
 
+  void _applySpaciousScale() {
+    Vec3 all(Vec3 value) => value * houseSpatialScale;
+    final originalRooms = List<Room>.from(rooms);
+    rooms
+      ..clear()
+      ..addAll([
+        for (final room in originalRooms)
+          Room(
+            id: room.id,
+            floor: room.floor,
+            size: all(room.size),
+            origin: all(room.origin),
+            windows: [
+              for (final window in room.windows)
+                Window(
+                  id: window.id,
+                  facing: window.facing,
+                  offset: window.offset * houseSpatialScale,
+                  sill: window.sill * houseSpatialScale,
+                  w: window.w * houseSpatialScale,
+                  h: window.h * houseSpatialScale,
+                  frosted: window.frosted,
+                  shutterOpen: window.shutterOpen,
+                ),
+            ],
+            portalIds: room.portalIds,
+            mantles: [
+              for (final mantle in room.mantles)
+                Mantle(
+                  id: mantle.id,
+                  name: mantle.name,
+                  localAt: all(mantle.localAt),
+                  lit: mantle.lit,
+                  broken: mantle.broken,
+                  examineTag: mantle.examineTag,
+                ),
+            ],
+            objects: [
+              for (final object in room.objects)
+                PlacedObject(
+                  id: object.id,
+                  examineTag: object.examineTag,
+                  localAt: all(object.localAt),
+                ),
+            ],
+            surfaceWall: room.surfaceWall,
+            surfaceFloor: room.surfaceFloor,
+            surfaceCeiling: room.surfaceCeiling,
+            doorframeHeightMarks: [
+              for (final mark in room.doorframeHeightMarks)
+                DoorframeHeightMark(
+                  label: mark.label,
+                  heightMetres: mark.heightMetres * houseSpatialScale,
+                ),
+            ],
+          ),
+      ]);
+    final originalPortals = List<Portal>.from(portals);
+    portals
+      ..clear()
+      ..addAll([
+        for (final portal in originalPortals)
+          Portal(
+            id: portal.id,
+            a: portal.a,
+            b: portal.b,
+            facingA: portal.facingA,
+            facingB: portal.facingB,
+            offsetA: portal.offsetA * houseSpatialScale,
+            offsetB: portal.offsetB * houseSpatialScale,
+            width: portal.width * houseSpatialScale,
+            height: portal.height * houseSpatialScale,
+            hingeAtStart: portal.hingeAtStart,
+            sticks: portal.sticks,
+            exterior: portal.exterior,
+            stair: portal.stair,
+            doorKit: portal.doorKit,
+            open: portal.open,
+            locked: portal.locked,
+          ),
+      ]);
+    for (var i = 0; i < stairs.length; i++) {
+      final stair = stairs[i];
+      stairs[i] = StairTransition(
+        id: stair.id,
+        portalId: stair.portalId,
+        landingHeights: [
+          for (final height in stair.landingHeights) height * houseSpatialScale,
+        ],
+        min: all(stair.min),
+        max: all(stair.max),
+        lowerEye: all(stair.lowerEye),
+        upperEye: all(stair.upperEye),
+      );
+    }
+  }
+
   void _buildRooms() {
     rooms.addAll([
       Room(
@@ -201,6 +305,11 @@ class House {
             id: 'ration-book',
             examineTag: 'ration-book',
             localAt: Vec3(0.4, 1.35, 4.1),
+          ),
+          PlacedObject(
+            id: 'under-stair-cupboard',
+            examineTag: 'under-stair-cupboard',
+            localAt: Vec3(0.92, 0.82, 5.55),
           ),
         ],
         surfaceWall: 'wallpaper-damask',
@@ -589,8 +698,8 @@ class House {
     if (windowsFromInside != 9 || windowsFromOutside != 11) {
       throw StateError('window discrepancy must be 9 inside / 11 outside');
     }
-    if (landings != 3 || stairs.single.landingHeights.last != 6.3) {
-      throw StateError('stairs must expose landings at 2.1, 4.2 and 6.3');
+    if (landings != 3 || stairs.single.landingHeights.last != 9.45) {
+      throw StateError('stairs must expose landings at 3.15, 6.3 and 9.45');
     }
     if (portals.length != 9) throw StateError('expected nine physical portals');
     _validateNoOverlaps();
@@ -668,10 +777,13 @@ class House {
       final values = entry.value..sort((a, b) => a.$1.compareTo(b.$1));
       for (var i = 0; i < values.length; i++) {
         for (var j = i + 1; j < values.length; j++) {
+          const epsilon = 0.000001;
           final horizontalOverlap =
-              values[i].$1 < values[j].$2 && values[j].$1 < values[i].$2;
+              values[i].$1 + epsilon < values[j].$2 &&
+              values[j].$1 + epsilon < values[i].$2;
           final verticalOverlap =
-              values[i].$3 < values[j].$4 && values[j].$3 < values[i].$4;
+              values[i].$3 + epsilon < values[j].$4 &&
+              values[j].$3 + epsilon < values[i].$4;
           if (horizontalOverlap && verticalOverlap) {
             throw StateError('overlapping apertures on ${entry.key}');
           }

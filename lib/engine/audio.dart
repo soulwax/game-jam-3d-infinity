@@ -29,6 +29,14 @@ const Map<String, String> sfxSlot = {
   'winnow': 'transient',
   'clock-tick': 'transient',
   'clock-chime': 'mid',
+  'clock-cuckoo': 'mid',
+  'clock-bell': 'mid',
+  'door-knock': 'transient',
+  'door-knock-soft': 'transient',
+  'window-wind': 'air',
+  'house-creak': 'transient',
+  'timber-creak': 'transient',
+  'pipe-tick': 'transient',
   'range-settle': 'transient',
   'cellar-drip': 'transient',
   'cistern-settle': 'transient',
@@ -168,9 +176,15 @@ class Audio {
     if (name.startsWith('vo-')) return _vo;
     if (name == 'clock-tick' ||
         name == 'clock-chime' ||
+        name == 'clock-cuckoo' ||
+        name == 'clock-bell' ||
         name == 'range-settle' ||
         name == 'cellar-drip' ||
-        name == 'cistern-settle') {
+        name == 'cistern-settle' ||
+        name == 'window-wind' ||
+        name == 'house-creak' ||
+        name == 'timber-creak' ||
+        name == 'pipe-tick') {
       return _ambience;
     }
     return switch (sfxSlot[name]) {

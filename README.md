@@ -54,5 +54,9 @@ under `web/res/`.
 
 License/author attribution ships in `web/res/manifest.json` and is shown in-game when used in the code.
 
+Browser evidence for the game and Pixeldart renderer follows one capture
+contract (stable `browser-*.png` names, metadata, and SHA-256 sidecars):
+[`tools/browser/SCREENSHOT_CONTRACT.md`](tools/browser/SCREENSHOT_CONTRACT.md).
+
 _The map of this place is where you look in the
 place the tunnel doesn't show you._

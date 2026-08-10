@@ -4,14 +4,14 @@ import 'exterior_mesh.dart';
 
 /// Builds the first detailed exterior pass from the runtime-scaled house.
 /// The interior planes remain collision truth; this scene wraps them with the
-/// documented 0.42 m exterior wall thickness and keeps all exterior additions
+/// documented 0.63 m exterior wall thickness and keeps all exterior additions
 /// view-only.
 HouseExteriorMesh buildHouseExteriorMesh(House house) {
-  const width = 10.5;
-  const depth = 10.5;
-  const eaves = 8.03;
-  const ridge = 10.88;
-  const wall = 0.42;
+  const width = 10.5 * houseSpatialScale;
+  const depth = 10.5 * houseSpatialScale;
+  const eaves = 8.03 * houseSpatialScale;
+  const ridge = 10.88 * houseSpatialScale;
+  const wall = 0.42 * houseSpatialScale;
   final builder = HouseExteriorMeshBuilder();
 
   for (final facing in Facing.values) {
@@ -166,6 +166,90 @@ void _facade(
   }
   _facadeOpenings(builder, openings, facing, width, depth, wall);
   _facadeDressings(builder, openings, facing, width, depth, wall);
+  _facadeMasonry(builder, openings, facing, width, depth, eaves, wall);
+}
+
+/// Adds restrained recessed-looking course joints to the broad brick fields.
+///
+/// The shell intentionally keeps one brick material slot, so these are shallow
+/// engineering-brick shadow lines rather than a new texture/material. They are
+/// split around windows and doors, which keeps the masonry bond believable at
+/// openings and avoids drawing geometry through the view-only apertures.
+void _facadeMasonry(
+  HouseExteriorMeshBuilder builder,
+  List<_Opening> openings,
+  Facing facing,
+  double width,
+  double depth,
+  double eaves,
+  double wall,
+) {
+  const mortar = 1;
+  final span = facing == Facing.north || facing == Facing.south ? width : depth;
+  final uValues = <double>{0, span};
+  for (final opening in openings) {
+    uValues
+      ..add(opening.u0)
+      ..add(opening.u1);
+  }
+  final sorted = uValues.toList()..sort();
+  // A 0.72 m course cadence reads as hand-laid masonry at the gameplay scale.
+  // The string course at roughly 4 m is left clear as a proper construction
+  // break rather than being covered by a shadow strip.
+  for (var course = 0; course < 5; course++) {
+    final y = 0.68 + course * 0.72;
+    if (y > eaves - 0.28) continue;
+    for (var i = 0; i + 1 < sorted.length; i++) {
+      final u0 = sorted[i] + 0.012;
+      final u1 = sorted[i + 1] - 0.012;
+      if (u1 - u0 < 0.08 ||
+          openings.any((opening) => opening.contains((u0 + u1) * 0.5, y))) {
+        continue;
+      }
+      switch (facing) {
+        case Facing.north:
+          builder.box(
+            minX: u0,
+            minY: y - 0.018,
+            minZ: -wall - 0.026,
+            maxX: u1,
+            maxY: y + 0.018,
+            maxZ: -wall + 0.004,
+            material: mortar,
+          );
+        case Facing.south:
+          builder.box(
+            minX: u0,
+            minY: y - 0.018,
+            minZ: depth + wall - 0.004,
+            maxX: u1,
+            maxY: y + 0.018,
+            maxZ: depth + wall + 0.026,
+            material: mortar,
+          );
+        case Facing.west:
+          builder.box(
+            minX: -wall - 0.026,
+            minY: y - 0.018,
+            minZ: u0,
+            maxX: -wall + 0.004,
+            maxY: y + 0.018,
+            maxZ: u1,
+            material: mortar,
+          );
+        case Facing.east:
+          builder.box(
+            minX: width + wall - 0.004,
+            minY: y - 0.018,
+            minZ: u0,
+            maxX: width + wall + 0.026,
+            maxY: y + 0.018,
+            maxZ: u1,
+            material: mortar,
+          );
+      }
+    }
+  }
 }
 
 void _facadeDressings(
@@ -687,6 +771,49 @@ void _roof(
     maxZ: depth + overhang,
     material: 5,
   );
+  _gableEnds(builder, width, depth, eaves, ridge);
+}
+
+void _gableEnds(
+  HouseExteriorMeshBuilder builder,
+  double width,
+  double depth,
+  double eaves,
+  double ridge,
+) {
+  const brick = 0;
+  const wall = 0.42 * houseSpatialScale;
+  final left = 0.0;
+  final right = width;
+  final apex = width * 0.5;
+  // Close the two triangular end walls under the roof. The front/back faces
+  // use explicit winding and the three narrow returns preserve the period
+  // masonry silhouette from oblique exterior views.
+  final front = -wall - 0.003;
+  final back = depth + wall + 0.003;
+  builder
+    ..triangle(
+      _vertex(left, eaves, front, 0, 0, -1, 0, 0, brick),
+      _vertex(apex, ridge, front, 0, 0, -1, 0.5, 1, brick),
+      _vertex(right, eaves, front, 0, 0, -1, 1, 0, brick),
+    )
+    ..triangle(
+      _vertex(left, eaves, back, 0, 0, 1, 0, 0, brick),
+      _vertex(right, eaves, back, 0, 0, 1, 1, 0, brick),
+      _vertex(apex, ridge, back, 0, 0, 1, 0.5, 1, brick),
+    )
+    ..quad(
+      _vertex(left, eaves, front, -1, 0, 0, 0, 0, brick),
+      _vertex(left, eaves, back, -1, 0, 0, 1, 0, brick),
+      _vertex(apex, ridge, back, -1, 0, 0, 1, 1, brick),
+      _vertex(apex, ridge, front, -1, 0, 0, 0, 1, brick),
+    )
+    ..quad(
+      _vertex(apex, ridge, front, 1, 0, 0, 0, 1, brick),
+      _vertex(apex, ridge, back, 1, 0, 0, 1, 1, brick),
+      _vertex(right, eaves, back, 1, 0, 0, 1, 0, brick),
+      _vertex(right, eaves, front, 1, 0, 0, 0, 0, brick),
+    );
 }
 
 void _roofDetails(
@@ -747,6 +874,7 @@ void _roofDetails(
       material: slate,
     );
   }
+  _roofSlateCourses(builder, width, depth, eaves, ridge, overhang);
   for (final x in [width * 0.25, width * 0.75]) {
     // Lead flashing collars where each stack pierces the slate field.
     builder.box(
@@ -758,6 +886,46 @@ void _roofDetails(
       maxZ: depth * 0.32,
       material: lead,
     );
+  }
+}
+
+void _roofSlateCourses(
+  HouseExteriorMeshBuilder builder,
+  double width,
+  double depth,
+  double eaves,
+  double ridge,
+  double overhang,
+) {
+  const slate = 4;
+  const leftNx = 0.86;
+  const rightNx = -0.86;
+  const ny = 0.51;
+  const nz = -0.04;
+  final xLeft = -overhang;
+  final xRidge = width * 0.5;
+  final xRight = width + overhang;
+  final zStart = -overhang + 0.18;
+  final zSpan = depth + 2 * overhang - 0.36;
+  // Course strips follow the long roof fall. Their tiny lifted offset keeps
+  // the authored slate face readable without introducing a second roof layer.
+  for (var i = 0; i < 10; i++) {
+    final z0 = zStart + zSpan * i / 10;
+    final z1 = zStart + zSpan * (i + 1) / 10 - 0.018;
+    final yOffset = 0.014;
+    builder
+      ..quad(
+        _vertex(xLeft, eaves + yOffset, z0, leftNx, ny, nz, 0, 0, slate),
+        _vertex(xRidge, ridge + yOffset, z0, leftNx, ny, nz, 0.5, 1, slate),
+        _vertex(xRidge, ridge + yOffset, z1, leftNx, ny, nz, 0.5, 1, slate),
+        _vertex(xLeft, eaves + yOffset, z1, leftNx, ny, nz, 0, 0, slate),
+      )
+      ..quad(
+        _vertex(xRidge, ridge + yOffset, z0, rightNx, ny, nz, 0.5, 1, slate),
+        _vertex(xRight, eaves + yOffset, z0, rightNx, ny, nz, 1, 0, slate),
+        _vertex(xRight, eaves + yOffset, z1, rightNx, ny, nz, 1, 0, slate),
+        _vertex(xRidge, ridge + yOffset, z1, rightNx, ny, nz, 0.5, 1, slate),
+      );
   }
 }
 
@@ -860,7 +1028,7 @@ void _frontThreshold(
   House house,
   double width,
 ) {
-  const wallOffset = 0.42;
+  const wallOffset = 0.42 * houseSpatialScale;
   final hall = house.byId('hall')!;
   final door = house.portalById('front-door')!;
   final u0 = hall.origin.x + door.offsetFor('hall');

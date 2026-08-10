@@ -1,7 +1,7 @@
 const { firefox } = require('playwright');
-const { createHash } = require('crypto');
 const fs = require('fs');
 const pathModule = require('path');
+const { writeScreenshotBundle } = require('./screenshot_capture.cjs');
 const {
   decodeAutomationPlayerState,
   loadVisualCaptureManifest,
@@ -11,10 +11,24 @@ const {
 const {
   planKeyboardStep,
   planMouseDelta,
+  poseDelta,
   poseReached,
 } = require('./visual_capture_dispatch.cjs');
 
 const projectVersion = fs.readFileSync('VERSION', 'utf8').trim();
+const expectedHouseInventoryCount = (() => {
+  const file = pathModule.join(
+    process.cwd(),
+    'assets',
+    'house',
+    'inventory.json',
+  );
+  const decoded = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (!Array.isArray(decoded.assets) || decoded.assets.length < 1) {
+    throw new Error(`authored inventory has no assets: ${file}`);
+  }
+  return decoded.assets.length;
+})();
 
 const baseUrl = process.env.AUTOMATION_BASE_URL || 'http://127.0.0.1:8090';
 
@@ -345,7 +359,7 @@ async function driveToVisualCapture(page, selection, label) {
   let bestDistance = Number.POSITIVE_INFINITY;
   let stagnant = 0;
   for (let step = 0; step < 180; step++) {
-    if (poseReached(observed, target)) {
+    if (poseReached(observed, target, { positionTolerance: 0.08 })) {
       return { before, after: observed, steps: step };
     }
     const lookPixels = Math.max(
@@ -365,13 +379,15 @@ async function driveToVisualCapture(page, selection, label) {
       }, { dx: look.x, dy: look.y });
       await page.waitForTimeout(80);
     } else {
-      const plan = planKeyboardStep(observed, target);
+      const plan = planKeyboardStep(observed, target, { positionTolerance: 0.08 });
       if (plan.keys.length === 0) {
         await page.waitForTimeout(80);
       } else {
         try {
           for (const key of plan.keys) await page.keyboard.down(key);
-          await page.waitForTimeout(220);
+          const distance = poseDelta(observed, target).distance;
+          const holdMs = distance < 0.4 ? 60 : distance < 1 ? 120 : 220;
+          await page.waitForTimeout(holdMs);
         } finally {
           for (const key of plan.keys) await page.keyboard.up(key);
         }
@@ -411,23 +427,11 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
     runDir,
     `browser-${automationArgs.scenario}-${safeRoute}${safeSuffix}.png`,
   );
-  await page.screenshot({
-    path: file,
-    animations: 'disabled',
-    caret: 'hide',
-    fullPage: false,
-    scale: 'css',
-  });
-  const bytes = fs.statSync(file).size;
-  if (bytes > 8 * 1024 * 1024) {
-    fs.rmSync(file, { force: true });
-    throw new Error(`automation screenshot exceeds 8 MiB: ${bytes}`);
-  }
-  const metadataFile = file.replace(/\.png$/, '.json');
+  let diagnostics = {};
   let negotiatedProfile = null;
   let profileNegotiation = null;
   try {
-    const diagnostics = JSON.parse(result.diagnostics ?? '{}');
+    diagnostics = JSON.parse(result.diagnostics ?? '{}');
     negotiatedProfile = diagnostics.profile ?? null;
     profileNegotiation = profileNegotiationStatus(
       automationArgs.profile,
@@ -444,9 +448,24 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
           visualCaptureSelection.poseEvidence,
       }
     : null;
-  fs.writeFileSync(
-    metadataFile,
-    `${JSON.stringify({
+  const automationPlayer = result.automationPlayer
+    ? decodeAutomationPlayerState(result.automationPlayer, 'capture automation player')
+    : null;
+  const state = `${automationArgs.scenario}-${routeName}${suffix ? `-${suffix}` : ''}`;
+  const capture = await writeScreenshotBundle(page, {
+    file,
+    standard: {
+      taskId: 'V-01',
+      purpose: 'verification',
+      surface: 'game',
+      state,
+      theme: automationArgs.profile,
+      quality: automationArgs.profile,
+      audience: 'test',
+      altText: `Game automation capture for ${routeName} (${automationArgs.profile})`,
+      notes: 'Captured by the production browser automation harness; not a golden promotion.',
+    },
+    metadata: {
       schemaVersion: 1,
       scenario: automationArgs.scenario,
       requestedRenderer: automationArgs.renderer,
@@ -459,27 +478,37 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
       routePath,
       screenshot: pathModule.basename(file),
       capture: { scale: 'css', animations: 'disabled', fullPage: false },
-      automationPlayer: result.automationPlayer
-        ? decodeAutomationPlayerState(result.automationPlayer, 'capture automation player')
+      buildId: diagnostics.buildId ?? null,
+      gameSha: diagnostics.gameSha ?? null,
+      rendererSha: diagnostics.rendererSha ?? null,
+      sdkVersion: diagnostics.sdkVersion ?? null,
+      lockfileDigest: diagnostics.lockfileDigest ?? null,
+      browser: {
+        name: 'firefox',
+        version: page.context().browser()?.version() ?? null,
+        webgl: result.webgl ?? null,
+      },
+      camera: automationPlayer
+        ? { position: [automationPlayer.eye.x, automationPlayer.eye.y, automationPlayer.eye.z], yaw: automationPlayer.yaw, pitch: automationPlayer.pitch }
         : null,
+      simulation: automationPlayer
+        ? {
+            day: automationPlayer.day,
+            hour: automationPlayer.hour,
+            weather: captureSelection?.fixture?.weather ?? null,
+            rainWindowVisibility: result.rainWindowVisibility == null
+              ? null
+              : Number(result.rainWindowVisibility),
+          }
+        : null,
+      fixture: captureSelection?.fixture ?? null,
+      automationPlayer,
       visualCaptureManifest: visualCaptureManifestInfo,
       visualCaptureSelection: captureSelection,
-    }, null, 2)}\n`,
-  );
-  const digestFile = metadataFile.replace(/\.json$/, '.digest.json');
-  const sha256 = (value) => createHash('sha256').update(value).digest('hex');
-  fs.writeFileSync(
-    digestFile,
-    `${JSON.stringify({
-      schemaVersion: 1,
-      screenshot: pathModule.basename(file),
-      screenshotSha256: sha256(fs.readFileSync(file)),
-      metadata: pathModule.basename(metadataFile),
-      metadataSha256: sha256(fs.readFileSync(metadataFile)),
-    }, null, 2)}\n`,
-  );
-  console.log(`automation-capture: ${file} (${bytes} bytes)`);
-  return { file, metadataFile, digestFile };
+    },
+  });
+  console.log(`automation-capture: ${capture.file} (${capture.bytes} bytes)`);
+  return capture;
 }
 
 function writeEmbodiedEvidence(routeName, routePath, result, evidence, capture) {
@@ -604,7 +633,7 @@ const routes = [
 
 function trackPageHealth(page) {
   const failures = [];
-  page.on('pageerror', (error) => failures.push(`pageerror: ${error}`));
+  page.on('pageerror', (error) => failures.push(`pageerror: ${error}\n${error.stack ?? ''}`));
   page.on('response', (response) => {
     if (response.status() >= 400 && !response.url().endsWith('/favicon.ico')) {
       failures.push(`HTTP ${response.status()}: ${response.url()}`);
@@ -663,8 +692,33 @@ async function dismissVisitorDialogs(page, label) {
           : undefined,
       );
       const failures = trackPageHealth(page);
+      if (visualCaptureSelection) {
+        await page.addInitScript(() => {
+          window.localStorage.removeItem('quarantine.save.active');
+        });
+      }
+      const captureFixtureQuery = visualCaptureSelection
+        ? `&captureSeed=${encodeURIComponent(visualCaptureSelection.fixture.seed)}` +
+          `&captureDay=${encodeURIComponent(visualCaptureSelection.fixture.day)}` +
+          `&captureHour=${encodeURIComponent(visualCaptureSelection.fixture.hour)}` +
+          `&captureWeather=${encodeURIComponent(visualCaptureSelection.fixture.weather)}` +
+          `&captureShutterMap=${encodeURIComponent(JSON.stringify(visualCaptureSelection.fixture.shutters))}` +
+          `&captureShutters=${encodeURIComponent((() => {
+            const states = Object.values(visualCaptureSelection.fixture.shutters);
+            return states.length > 0 && states.every((state) => state === states[0])
+              ? states[0]
+              : 'mixed';
+          })())}` +
+          (() => {
+            const mantle = Object.entries(visualCaptureSelection.fixture.mantles)
+              .find(([, state]) => state === 'on');
+            return mantle
+              ? `&captureMantleId=${encodeURIComponent(mantle[0])}&captureMantleLit=1`
+              : '';
+          })()
+        : '';
       const automationPath = automationArgs
-        ? `${path}${path.includes('?') ? '&' : '?'}automation=1`
+        ? `${path}${path.includes('?') ? '&' : '?'}automation=1${captureFixtureQuery}`
         : path;
       const response = await page.goto(`${baseUrl}${automationPath}`);
       if (!response || response.status() !== 200) {
@@ -689,6 +743,7 @@ async function dismissVisitorDialogs(page, label) {
         fallback: canvas.getAttribute('data-renderer-fallback'),
         diagnostics: canvas.getAttribute('data-renderer-diagnostics'),
         error: canvas.getAttribute('data-renderer-error'),
+        bootError: canvas.getAttribute('data-boot-error'),
         errorStack: canvas.getAttribute('data-renderer-error-stack'),
         bootStack: canvas.getAttribute('data-boot-stack'),
         webgl: (() => {
@@ -709,6 +764,10 @@ async function dismissVisitorDialogs(page, label) {
         frameBudget: canvas.getAttribute('data-renderer-budget'),
         frameSubmits: canvas.getAttribute('data-renderer-frame-submits'),
         automationPlayer: canvas.getAttribute('data-automation-player'),
+        captureMantle: canvas.getAttribute('data-automation-capture-mantle'),
+        captureWeather: canvas.getAttribute('data-automation-capture-weather'),
+        captureShutters: canvas.getAttribute('data-automation-capture-shutters'),
+        rainWindowVisibility: canvas.getAttribute('data-automation-rain-window-visibility'),
         houseManifest: canvas.getAttribute('data-house-manifest'),
         houseManifestSource: canvas.getAttribute('data-house-manifest-source'),
         houseInventory: canvas.getAttribute('data-house-inventory'),
@@ -846,8 +905,11 @@ async function dismissVisitorDialogs(page, label) {
       if (result.houseInventory !== 'validated' ||
           !['res/house/inventory.json', '/res/house/inventory.json'].includes(
             result.houseInventorySource,
-          ) || Number(result.houseInventoryCount) !== 27) {
-        throw new Error(`${name}: authored house inventory was not validated ${JSON.stringify(result)}`);
+          ) || Number(result.houseInventoryCount) !== expectedHouseInventoryCount) {
+        throw new Error(`${name}: authored house inventory was not validated ${JSON.stringify({
+          expectedCount: expectedHouseInventoryCount,
+          result,
+        })}`);
       }
       if (result.houseSoundscape !== 'validated' ||
           !['res/house/soundscape.json', '/res/house/soundscape.json'].includes(
@@ -908,6 +970,9 @@ async function dismissVisitorDialogs(page, label) {
         throw new Error(`${name}: game viewport did not accept keyboard focus`);
       }
       if (visualCaptureSelection) {
+        if (result.bootError) {
+          throw new Error(`${name}: packaged capture boot error ${result.bootError}`);
+        }
         await dismissVisitorDialogs(page, `${name}: visual capture`);
         const dispatched = await driveToVisualCapture(
           page,
@@ -918,7 +983,59 @@ async function dismissVisitorDialogs(page, label) {
           page,
           `${name}: captured pose`,
         );
-        if (!poseReached(capturedPlayer, visualCaptureSelection.camera)) {
+        const settledBootError = await page.locator('#game').getAttribute('data-boot-error');
+        const settledBootStack = await page.locator('#game').getAttribute('data-boot-stack');
+        if (settledBootError) {
+          throw new Error(`${name}: packaged capture boot error after dispatch ${settledBootError}\n${settledBootStack ?? ''}\n${failures.join('; ')}`);
+        }
+        const fixture = visualCaptureSelection.fixture;
+        if (capturedPlayer.day !== fixture.day ||
+            Math.abs(capturedPlayer.hour - fixture.hour) > 0.25) {
+          throw new Error(`${name}: selected capture fixture did not settle ${JSON.stringify({
+            expected: { day: fixture.day, hour: fixture.hour, seed: fixture.seed },
+            observed: { day: capturedPlayer.day, hour: capturedPlayer.hour },
+          })}`);
+        }
+        const expectedMantle = Object.entries(fixture.mantles)
+          .find(([, state]) => state === 'on');
+        if (expectedMantle &&
+            result.captureMantle !== `${expectedMantle[0]}:on`) {
+          throw new Error(`${name}: selected mantle fixture did not settle ${JSON.stringify({
+            expected: `${expectedMantle[0]}:on`,
+            observed: result.captureMantle,
+          })}`);
+        }
+        if (result.captureWeather !== fixture.weather) {
+          throw new Error(`${name}: selected weather fixture did not settle ${JSON.stringify({
+            expected: fixture.weather,
+            observed: result.captureWeather,
+          })}`);
+        }
+        const shutterStates = Object.values(fixture.shutters);
+        const expectedShutters = shutterStates.length > 0 &&
+            shutterStates.every((state) => state === shutterStates[0])
+          ? shutterStates[0]
+          : 'mixed';
+        if (result.captureShutters !== expectedShutters) {
+          throw new Error(`${name}: selected shutter fixture did not settle ${JSON.stringify({
+            expected: expectedShutters,
+            observed: result.captureShutters,
+          })}`);
+        }
+        const openWindows = shutterStates.filter((state) => state === 'open').length;
+        const expectedRainWindowVisibility = Math.max(
+          0.12,
+          Math.min(1, openWindows / Math.max(1, shutterStates.length)),
+        ).toFixed(3);
+        if (result.rainWindowVisibility !== expectedRainWindowVisibility) {
+          throw new Error(`${name}: rain aperture visibility did not settle ${JSON.stringify({
+            expected: expectedRainWindowVisibility,
+            observed: result.rainWindowVisibility,
+          })}`);
+        }
+        if (!poseReached(capturedPlayer, visualCaptureSelection.camera, {
+          positionTolerance: 0.08,
+        })) {
           throw new Error(`${name}: selected capture pose did not settle ${JSON.stringify({ capturedPlayer, target: visualCaptureSelection.camera })}`);
         }
         const captureResult = {

@@ -158,6 +158,12 @@ final class HouseExteriorMeshBuilder {
     _triangle(a, c, d);
   }
 
+  /// Emits one authored face for thin architectural profiles such as gable
+  /// ends. The builder still owns indexed vertex reuse and validation.
+  void triangle(ExteriorVertex a, ExteriorVertex b, ExteriorVertex c) {
+    _triangle(a, b, c);
+  }
+
   void box({
     required double minX,
     required double minY,

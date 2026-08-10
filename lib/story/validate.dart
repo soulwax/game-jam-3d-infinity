@@ -26,6 +26,9 @@ void validateStory(StoryText s) {
   _validateNights(s);
   _validateEndings(s);
   _validateRecords(s);
+  _validateReactions(s);
+  _validateVariants(s);
+  _validateResidues(s);
 }
 
 /// §56.1: a third tier namespace beside `full`/`compressed`. Each namespace
@@ -231,6 +234,78 @@ void _validateRecords(StoryText s) {
   for (final id in requiredRecords) {
     if (!s.records.containsKey(id)) throw TextError('Missing @record $id');
     if (s.records[id]!.isEmpty) throw TextError('@record $id is empty');
+  }
+}
+
+void _validateReactions(StoryText s) {
+  for (final reaction in s.reactions.values) {
+    final dialogue = s.visitors[reaction.visitor]?[reaction.day];
+    final lineKey = '${reaction.tier}.${reaction.ordinal}';
+    if (dialogue == null || !dialogue.containsKey(lineKey)) {
+      throw TextError(
+        'Reaction ${reaction.id} needs existing ${reaction.visitor} '
+        'day ${reaction.day} $lineKey dialogue',
+      );
+    }
+    if (reaction.options.length < 2) {
+      throw TextError('Reaction ${reaction.id} needs at least two options');
+    }
+    final ids = <String>{};
+    for (final option in reaction.options) {
+      if (option.id.isEmpty || !ids.add(option.id)) {
+        throw TextError('Reaction ${reaction.id} has duplicate/empty option');
+      }
+      if (option.label.isEmpty || option.reply.isEmpty) {
+        throw TextError('Reaction ${reaction.id} has an empty option line');
+      }
+      for (final entry in option.effects.entries) {
+        if (entry.key.trim().isEmpty || entry.value.trim().isEmpty) {
+          throw TextError('Reaction ${reaction.id} has an empty effect');
+        }
+      }
+    }
+  }
+}
+
+void _validateVariants(StoryText s) {
+  final targets = <String, String>{};
+  for (final variant in s.variants.values) {
+    final parts = variant.targetKey.split(':');
+    if (parts.length != 4 || parts.first != 'visitor') {
+      throw TextError('Variant ${variant.id} has malformed target');
+    }
+    final day = int.tryParse(parts[2]);
+    if (day == null) throw TextError('Variant ${variant.id} has bad day');
+    final dialogue = s.visitors[parts[1]]?[day];
+    if (dialogue == null || !dialogue.containsKey(parts[3])) {
+      throw TextError(
+        'Variant ${variant.id} needs existing ${variant.targetKey} dialogue',
+      );
+    }
+    final prior = targets[variant.targetKey];
+    if (prior != null) {
+      throw TextError('Variants $prior and ${variant.id} target the same line');
+    }
+    targets[variant.targetKey] = variant.id;
+    for (final condition in variant.conditions.entries) {
+      if (condition.key.trim().isEmpty || condition.value.trim().isEmpty) {
+        throw TextError('Variant ${variant.id} has an empty @when');
+      }
+    }
+  }
+}
+
+void _validateResidues(StoryText s) {
+  for (final entry in s.residues.entries) {
+    final separator = entry.key.indexOf(':');
+    final equals = entry.key.indexOf('=');
+    if (separator <= 0 ||
+        equals <= 0 ||
+        equals > separator ||
+        entry.key.substring(separator + 1).trim().isEmpty ||
+        entry.value.trim().isEmpty) {
+      throw TextError('Residue ${entry.key} has malformed key or text');
+    }
   }
 }
 

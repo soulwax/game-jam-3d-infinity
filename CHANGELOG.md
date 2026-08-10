@@ -6,6 +6,69 @@ on changes players or contributors can feel. Detailed renderer notes belong in
 
 ## Unreleased
 
+- Added a deterministic Pixeldart rain-streak effect driven by weather
+  intensity, with a zero-intensity no-op and a focused renderer contract.
+- Added deterministic weather capture plumbing and a day-3 rain hero pair;
+  Pixeldart now applies rain attenuation and fog response from the weather
+  schedule while visible rain/wet-surface art remains pending.
+- Added a visual-rubric packet builder that verifies all six hero pairs and
+  leaves the eight human score fields explicitly pending.
+- Added deterministic shutter capture state and a living-room open/closed
+  daylight A/B gate; closed windows now attenuate Pixeldart daylight.
+- Added depth-weighted rain wetness in the shadowed-world shader; near surfaces
+  cool, darken, and gain a restrained wet highlight while distant geometry fades
+  before fog. Shader generation and the 51-fixture renderer aggregate pass.
+- Added aperture-aware rain visibility: open, mixed, and closed window states
+  now attenuate screen-space streaks through a renderer-neutral presentation
+  weight. Packaged capture now awaits strict asset-provenance cleanup (VIS-046).
+- Restored the clean package gate by giving eight authored house SFX canonical
+  generated asset sources; manifest and source-inventory paths now agree.
+- Fixed the night capture crash caused by AmbientNotice timers using the wrong
+  browser callback shape; the fourth embodied night pair now captures cleanly.
+- Added the fourth fixed hero capture pair and recorded its Pixeldart pose/pixel
+  gate evidence; the next review target is the visual rubric and rain/wetness.
+- Refined the hall stair geometry with consistent human-scale risers, closed
+  timber carcass, newels, balusters, and a bounded handrail while preserving
+  canonical room bounds and traversal behavior.
+- Expanded the authored house inventory with a lived-in prop packet: carpets,
+  ration tin/book, bread, enamelware, firewood, lamp, coat hooks, and kitchen
+  jars across the house, all with inspectable IDs and route-safe clearances.
+- Added a second domestic packet: newspaper, tea service, mail, gloves,
+  potatoes, kettle, coal shovel, folded blanket, soap, and knitting basket.
+- Increased shell fidelity with room-specific ceiling details: hall timber rails,
+  a living-room ceiling medallion, kitchen battens, and cellar service pipes,
+  all contained within the canonical envelope.
+- Increased exterior house fidelity with opening-aware masonry course shadow
+  lines on all four elevations; the regenerated QHMX shell preserves the same
+  bounds, materials, and collision truth while making the brick envelope read
+  as constructed rather than flat procedural massing.
+- Closed the exterior roof silhouette with thickness-aware brick gable ends at
+  both elevations, removing the unfinished under-roof void in oblique views
+  without changing the canonical envelope or route geometry.
+- Added repeated raised slate courses across both roof planes, giving the roof
+  a readable hand-laid rhythm and material breakup from exterior cameras while
+  keeping the roof envelope and chimney clearances unchanged.
+- Added a modeled under-stair cupboard-room to the hall: recessed darkness,
+  shelf, paneled timber door, surround, and iron latch. It remains view-only
+  because the authored wedge is below safe standing clearance, preserving the
+  eight-room topology and stair collision truth.
+- Added a furniture packet with six room-specific pieces: living armchair and
+  sideboard, bedroom washstand, landing bench, bathroom stool, and spare-room
+  sewing table. Inventory briefs and deterministic render proxies are aligned
+  with wall-biased, route-safe placements.
+- Added an asymmetric occupancy packet: a living fern, hall family photos,
+  kitchen tea towel, bedroom slippers, bathroom towel, and cellar bottle crate.
+  These quiet personal/service traces make rooms feel inhabited without adding
+  route-blocking geometry or mutable simulation state.
+- Expanded the authored soundscape from four to eight spatial emitters: hourly
+  clock ticks, three-hour cuckoo-and-bell calls, front-door knocks, landing wind,
+  upstairs timber settling, and kitchen pipe ticks now join the range, cellar,
+  and cistern ambience with deterministic captions and portal attenuation.
+- Enlarged the authored house by 50% relative to the unchanged player capsule:
+  the runtime model scale is now 2.25×, room axes/portals/stair landmarks,
+  inventory, sound positions, wall thickness, exterior envelope, and QHMX shell
+  are synchronized. Existing fixed-camera visual evidence must be re-captured
+  at the new spatial scale.
 - Added the original brush-cut UI contract: stable palette/scale/motion tokens
   and semantic component states for the upcoming pause-root specimen.
 - Added native semantic brush component wrappers and applied the first
@@ -48,6 +111,19 @@ on changes players or contributors can feel. Detailed renderer notes belong in
 - Added requested/effective accessibility profile persistence with explicit
   reset semantics, keeping platform-default resolution separate from user
   overrides.
+- Added a resolved accessibility UI policy combining scale, reduced effects,
+  captions, contrast, focus visibility, and essential-cue guarantees.
+- Added a browser-independent accessibility route contract for unique semantic
+  IDs, accessible names, required targets, scale bounds, focus controls, and
+  essential-cue coverage.
+- Added typed caption cues for speech, speaker identity, spatial direction, and
+  non-speech events, with an AmbientNotice adapter and empty-cue guard.
+- Added stable caption source/line provenance and AmbientNotice metadata
+  attributes so audio equivalents can be traced without changing story flow.
+- Added an immutable caption catalog with duplicate source/line rejection and
+  provenance lookup for authored audio/story integrations.
+- Added strict JSON ingestion for caption cues, sources, and catalogs so
+  authored manifests fail visibly instead of silently losing accessibility data.
 - Added the first clearance-aware ground-circuit waypoint chain from canonical house geometry, with capsule validation and malformed-waypoint coverage.
 - Added the canonical living-room-to-kitchen crossing with validated portal approaches.
 - Added explicit scenario readiness diagnostics: invalid, draft, and runnable entries now stay distinct.
@@ -61,10 +137,18 @@ on changes players or contributors can feel. Detailed renderer notes belong in
 - Browser capture selection now accepts a manifest ID, checks request compatibility, and records when pose evidence is still absent.
 - Automation builds now expose a validated live player pose/room snapshot for movement-settle evidence.
 - Added a bounded visual-capture dispatcher that plans real mouse/keyboard input and fails on stalled pose arrival.
-- Browser gate diagnostics now retain renderer initialization stacks; Firefox exposed the open optional-extension null-check blocker (VIS-039) instead of producing a false Pixeldart capture.
+- Browser gate diagnostics now retain renderer initialization stacks; the first Firefox run exposed the optional-extension blocker (VIS-039) instead of producing a false Pixeldart capture.
 - The automation runner now forwards visual-capture selection into the browser child and rejects selected captures on renderer fallback.
-- Renderer fixture evidence is green across all 44 scripts; the remaining Firefox blocker is isolated to real optional-extension interop.
-- Pixeldart's aggregate runner now discovers all 44 fixtures and works from either repository root or package root.
+- Initial renderer fixture evidence was green across 44 scripts; the remaining Firefox issue was isolated to real optional-extension interop.
+- Pixeldart's aggregate runner now discovers every fixture from either repository root or package root.
+- Fixed Firefox's optional WebGL anisotropy probing so the canonical Pixeldart renderer starts instead of falling back to Legacy; the aggregate runner now passes all 46 discovered fixtures.
+- Added deterministic pointer-lock dispatch for selected visual captures and produced provenance-pinned clean/final living-room hero sidecars.
+- Fixed selected-capture state: stale saves are cleared, manifest seed/day/hour are injected, and simulation/renderer clocks freeze for repeatable hero pixels.
+- Re-ran the living-room clean/final pair at day 1/hour 8 with settled live pose evidence; visual golden approval remains intentionally pending review.
+- Corrected the post-scale default spawn to the authored hall-entry waypoint, keeping the published hall room and collision state aligned.
+- Added fixed hall-entry clean/final capture evidence; living-room and hall-entry pairs now settle at the same seeded day/hour before review.
+- Added a dependency-free visual pair gate for fixture/camera/pose provenance and calibrated pixel-diff thresholds; both current hero pairs pass.
+- Added a frozen mantle-on living-room pair and a state-delta gate proving the mantle changes real pixels without camera movement.
 - Turned the `days-1-3` browser scenario into a playable Day 1 → Day 2 → Day 3
   loop through the real Rest panel, with save-backed checkpoints and captures.
 - Day-cycle evidence now rejects missing checkpoints or mismatched capture

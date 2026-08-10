@@ -20,7 +20,7 @@
   "poses": [
     {
       "id": "hall-entry",
-      "position": [8.625, 1.65, 0.55],
+      "position": [12.9375, 1.65, 0.825],
       "yaw": 0.0,
       "pitch": 0.0,
       "room": "hall"
@@ -33,9 +33,9 @@
       "portals": ["hall-living"],
       "tickBudget": 900,
       "waypoints": [
-        {"id": "hall-entry", "room": "hall", "position": [8.625, 1.65, 0.55], "radius": 0.35},
-        {"id": "hall-living-out", "room": "hall", "position": [7.3, 1.65, 3.375], "radius": 0.35},
-        {"id": "living-hall-living-in", "room": "living-room", "position": [6.2, 1.65, 3.375], "radius": 0.35}
+        {"id": "hall-entry", "room": "hall", "position": [12.9375, 1.65, 0.825], "radius": 0.35},
+        {"id": "hall-living-out", "room": "hall", "position": [10.95, 1.65, 5.0625], "radius": 0.35},
+        {"id": "living-hall-living-in", "room": "living-room", "position": [9.3, 1.65, 5.0625], "radius": 0.35}
       ]
     },
     {
@@ -44,8 +44,8 @@
       "portals": ["kitchen-living"],
       "tickBudget": 900,
       "waypoints": [
-        {"id": "living-kitchen-out", "room": "living-room", "position": [3.675, 1.65, 5.45], "radius": 0.35},
-        {"id": "kitchen-living-in", "room": "kitchen", "position": [3.675, 1.65, 6.55], "radius": 0.35}
+        {"id": "living-kitchen-out", "room": "living-room", "position": [5.5125, 1.65, 8.175], "radius": 0.35},
+        {"id": "kitchen-living-in", "room": "kitchen", "position": [5.5125, 1.65, 9.825], "radius": 0.35}
       ]
     }
   ],

@@ -7,7 +7,10 @@ import 'schema.dart'
         StoryText,
         VisitorArrivalMetadata,
         VisitorAmbientMetadata,
-        VisitorClaim;
+        VisitorClaim,
+        VisitorReaction,
+        ReactionOption,
+        VisitorVariant;
 
 class TextLibrary {
   static TextLibrary? _instance;
@@ -23,6 +26,9 @@ class TextLibrary {
   late Map<String, dynamic> _records;
   late Map<String, dynamic> _cues;
   late Map<String, dynamic> _claims;
+  late Map<String, dynamic> _reactions;
+  late Map<String, dynamic> _variants;
+  late Map<String, dynamic> _residues;
 
   TextLibrary._();
 
@@ -44,6 +50,15 @@ class TextLibrary {
       _records = decoded['records']!;
       _cues = decoded['cues']!;
       _claims = decoded['claims']!;
+      _reactions = decoded['reactions'] is Map
+          ? Map<String, dynamic>.from(decoded['reactions'] as Map)
+          : <String, dynamic>{};
+      _variants = decoded['variants'] is Map
+          ? Map<String, dynamic>.from(decoded['variants'] as Map)
+          : <String, dynamic>{};
+      _residues = decoded['residues'] is Map
+          ? Map<String, dynamic>.from(decoded['residues'] as Map)
+          : <String, dynamic>{};
     } catch (e) {
       throw 'Failed to load text.json: $e';
     }
@@ -93,6 +108,58 @@ class TextLibrary {
   }
 
   List<String> get visitorNames => _visitors.keys.toList()..sort();
+
+  String? getResidue(String flagKey, String flagValue, String focusId) {
+    final value = _residues['$flagKey=$flagValue:$focusId'];
+    return value is String ? value : null;
+  }
+
+  VisitorReaction? getVisitorReaction(
+    String visitor,
+    int day,
+    String tier,
+    int ordinal,
+  ) {
+    final raw = _reactions['$visitor:$day:$tier:$ordinal'];
+    if (raw is! Map) return null;
+    final id = raw['id'];
+    final rawOptions = raw['options'];
+    if (id is! String || rawOptions is! List) return null;
+    final options = <ReactionOption>[];
+    for (final item in rawOptions) {
+      if (item is! Map ||
+          item['id'] is! String ||
+          item['label'] is! String ||
+          item['reply'] is! String) {
+        return null;
+      }
+      final rawEffects = item['effects'];
+      final effects = <String, String>{};
+      if (rawEffects is Map) {
+        for (final entry in rawEffects.entries) {
+          if (entry.key is! String || entry.value is! String) return null;
+          effects[entry.key as String] = entry.value as String;
+        }
+      }
+      options.add(
+        ReactionOption(
+          id: item['id'] as String,
+          label: item['label'] as String,
+          reply: item['reply'] as String,
+          effects: Map.unmodifiable(effects),
+        ),
+      );
+    }
+    if (options.length < 2) return null;
+    return VisitorReaction(
+      id: id,
+      visitor: visitor,
+      day: day,
+      tier: tier,
+      ordinal: ordinal,
+      options: List.unmodifiable(options),
+    );
+  }
 
   List<int> visitorDays(String visitor) =>
       (getVisitor(visitor)?.keys.toList() ?? const <int>[])..sort();
@@ -180,13 +247,61 @@ class TextLibrary {
       }
       if (ambient.isNotEmpty) story.visitorAmbient[entry.key] = ambient;
     }
+    for (final raw in _reactions.values) {
+      if (raw is! Map ||
+          raw['visitor'] is! String ||
+          raw['day'] is! num ||
+          raw['tier'] is! String ||
+          raw['ordinal'] is! num ||
+          raw['id'] is! String) {
+        continue;
+      }
+      final reaction = getVisitorReaction(
+        raw['visitor'] as String,
+        (raw['day'] as num).toInt(),
+        raw['tier'] as String,
+        (raw['ordinal'] as num).toInt(),
+      );
+      if (reaction != null) story.reactions[reaction.key] = reaction;
+    }
+    for (final raw in _variants.values) {
+      if (raw is! Map ||
+          raw['id'] is! String ||
+          raw['target'] is! String ||
+          raw['replacement'] is! String) {
+        continue;
+      }
+      final conditions = <String, String>{};
+      final rawConditions = raw['when'];
+      if (rawConditions is Map) {
+        for (final entry in rawConditions.entries) {
+          if (entry.key is! String || entry.value is! String) continue;
+          conditions[entry.key as String] = entry.value as String;
+        }
+      }
+      final variant = VisitorVariant(
+        id: raw['id'] as String,
+        targetKey: raw['target'] as String,
+        replacement: raw['replacement'] as String,
+        conditions: Map.unmodifiable(conditions),
+      );
+      story.variants[variant.id] = variant;
+    }
+    for (final entry in _residues.entries) {
+      if (entry.value is String) {
+        story.residues[entry.key] = entry.value as String;
+      }
+    }
     for (final entry in _claims.entries) {
       final raw = entry.value;
       if (raw is! List) continue;
       final claims = <VisitorClaim>[
         for (final item in raw)
           if (item is Map && item['field'] is String && item['value'] is String)
-            VisitorClaim(field: item['field'] as String, value: item['value'] as String),
+            VisitorClaim(
+              field: item['field'] as String,
+              value: item['value'] as String,
+            ),
       ];
       if (claims.isNotEmpty) story.claims[entry.key] = claims;
     }

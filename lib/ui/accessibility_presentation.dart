@@ -24,3 +24,38 @@ final class AccessibilityAnnouncementPolicy {
     return cleanChannel.isEmpty ? cleanText : '$cleanChannel: $cleanText';
   }
 }
+
+/// Renderer-neutral UI projection for resolved accessibility preferences.
+///
+/// High contrast and focus visibility are explicit display inputs, while
+/// motion/photosensitivity controls are resolved from platform/user settings.
+final class AccessibilityUiPolicy {
+  final double uiScale;
+  final bool reducedEffects;
+  final bool captions;
+  final bool highContrast;
+  final bool focusVisible;
+  final bool essentialCues;
+
+  const AccessibilityUiPolicy({
+    required this.uiScale,
+    required this.reducedEffects,
+    required this.captions,
+    required this.highContrast,
+    required this.focusVisible,
+    required this.essentialCues,
+  });
+
+  factory AccessibilityUiPolicy.fromResolved(
+    AccessibilitySettingsResolved resolved, {
+    bool highContrast = false,
+    bool strongHighlights = false,
+  }) => AccessibilityUiPolicy(
+    uiScale: resolved.uiScale,
+    reducedEffects: resolved.reducedMotion || resolved.photosensitivitySafe,
+    captions: resolved.captions,
+    highContrast: highContrast,
+    focusVisible: highContrast || strongHighlights,
+    essentialCues: resolved.essentialCues,
+  );
+}

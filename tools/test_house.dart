@@ -22,15 +22,21 @@ void main() {
     'window discrepancy must remain authored',
   );
   _expect(
-    house.stairs.single.landingHeights.join(',') == '2.1,4.2,6.3',
+    house.stairs.single.landingHeights.every(
+      (height) => [
+        3.15,
+        6.3,
+        9.45,
+      ].any((expected) => (height - expected).abs() < 0.0001),
+    ),
     'stair landing heights must remain stable',
   );
   final living = house.byId('living-room')!;
   _expect(
-    (living.size.x - 6.75).abs() < 0.0001 &&
-        (living.size.y - 3.9).abs() < 0.0001 &&
-        (living.size.z - 6.0).abs() < 0.0001,
-    'MVP rooms must be 1.5x wider, taller, and deeper',
+    (living.size.x - 10.125).abs() < 0.0001 &&
+        (living.size.y - 5.85).abs() < 0.0001 &&
+        (living.size.z - 9.0).abs() < 0.0001,
+    'spacious rooms must be 2.25x wider, taller, and deeper',
   );
 
   for (final room in house.rooms) {
@@ -46,19 +52,22 @@ void main() {
   final bedroom = house.byId('bedroom')!;
   final bedside = bedroom.mantles.singleWhere((m) => m.id == 'mantle-bedroom');
   _expect(
-    bedroom.toWorld(bedside.localAt).y == 6.15,
+    (bedroom.toWorld(bedside.localAt).y - 9.225).abs() < 0.0001,
     'fixture coordinates must be room-local before world conversion',
   );
 
   final hallCapsule = Capsule(
-    base: Vec3(5.5, 0.3, 3.5),
-    tip: Vec3(5.5, 1.5, 3.5),
+    base: Vec3(11.5, 0.3, 3.5),
+    tip: Vec3(11.5, 1.5, 3.5),
   );
   _expect(
     !hallCapsule.intersectsStaticGeometry(house, 'hall'),
     'an in-room capsule must not collide with the room volume',
   );
-  final tooTall = Capsule(base: Vec3(5.5, 0.3, 3.5), tip: Vec3(5.5, 3.0, 3.5));
+  final tooTall = Capsule(
+    base: Vec3(11.5, 0.3, 3.5),
+    tip: Vec3(11.5, 6.0, 3.5),
+  );
   _expect(
     tooTall.intersectsStaticGeometry(house, 'hall'),
     'capsule height must respect the room ceiling',

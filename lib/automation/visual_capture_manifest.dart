@@ -149,7 +149,7 @@ final class VisualCaptureManifest {
           capture.fixture.hour < 0 ||
           capture.fixture.hour >= 24 ||
           !capture.fixture.hour.isFinite ||
-          capture.fixture.weather.trim().isEmpty) {
+          !const {'overcast', 'rain'}.contains(capture.fixture.weather)) {
         errors.add('capture ${capture.id} has invalid fixture time/weather');
       }
       _validateStateMap(

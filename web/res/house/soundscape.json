@@ -11,7 +11,39 @@
       "placementId": "placement-hall-clock",
       "position": [1.22, 2.18, 0.12],
       "gain": 0.34,
-      "cues": {"tick": "clock-tick", "chime": "clock-chime"}
+      "cues": {"tick": "clock-tick", "cuckoo": "clock-cuckoo", "bell": "clock-bell", "chime": "clock-chime"}
+    },
+    {
+      "id": "front-door-knocker",
+      "roomId": "hall",
+      "placementId": "placement-hall-clock",
+      "position": [1.02, 1.18, 0.10],
+      "gain": 0.24,
+      "cues": {"knock": "door-knock", "knock-soft": "door-knock-soft"}
+    },
+    {
+      "id": "landing-window",
+      "roomId": "landing",
+      "placementId": "placement-landing-picture-group",
+      "position": [1.22, 2.05, 1.18],
+      "gain": 0.16,
+      "cues": {"wind": "window-wind", "creak": "house-creak"}
+    },
+    {
+      "id": "bedroom-timber",
+      "roomId": "bedroom",
+      "placementId": "placement-bedroom-lamp",
+      "position": [1.25, 1.35, 1.45],
+      "gain": 0.12,
+      "cues": {"creak": "timber-creak"}
+    },
+    {
+      "id": "kitchen-pipe",
+      "roomId": "kitchen",
+      "placementId": "placement-kitchen-kettle",
+      "position": [4.05, 1.62, 1.42],
+      "gain": 0.14,
+      "cues": {"tick": "pipe-tick"}
     },
     {
       "id": "kitchen-range",

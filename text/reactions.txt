@@ -1,0 +1,157 @@
+# Three threshold choices from the first narrative pass. These are deliberately
+# ordinary actions with consequences that can be remembered later.
+
+@reaction sibling 2 full 4 pears
+@option take-in
+Take the pears in before they bruise.
+@reply
+All right. I heard you move. Keep the soft one for yourself.
+@effect denise.pears=taken
+@option leave
+Leave them on the step, where she put them.
+@reply
+That's fine. The birds will have them by morning, then. They always do.
+@effect denise.pears=left
+@option answer-through
+Answer her without opening the door.
+@reply
+You sound like Dad when you do that. Not the words. The place you put them.
+@effect denise.pears=answered
+
+@reaction child 3 full 1 pencil
+@option offer
+Slide the pencil through the letterbox.
+@reply
+Thank you. Don't shut it yet. I want to hear the house think.
+@effect sylvia.pencil=given
+@option keep
+Keep the pencil. Tell her you have none to spare.
+@reply
+That's all right. I can use the red one. It writes when it wants to.
+@effect sylvia.pencil=kept
+@option ask
+Ask why she needs it before you answer.
+@reply
+For the numbers. They keep changing when I look away.
+@effect sylvia.pencil=questioned
+
+@reaction warden 5 full 3 record
+@option whole
+Show him the whole journal, open flat.
+@reply
+Thank you. That is more than the box requires. I won't read the private parts.
+@effect sowerby.record=whole
+@option card
+Show him only the page with the collection card.
+@reply
+That will do. You have kept the useful distinction. Most people don't.
+@effect sowerby.record=card
+@option close
+Close the book and say the record is personal.
+@reply
+Of course. Personal is a category. I'll write “not produced” and come again.
+@effect sowerby.record=refused
+
+@reaction sibling 14 full 2 revision
+@option accept
+Let Denise's version stand.
+@reply
+Thank you. I wanted you to say that, but not because I wanted to win.
+@effect denise.revision=accepted
+@option prosecute
+Ask whether the rest of her memory is wrong too.
+@reply
+There it is. I give you one thing back and you weigh the whole house with it.
+@effect denise.revision=prosecuted
+@option pencil
+Offer her the pencil and ask what she wants remembered.
+@reply
+No. Keep it. I have enough things that belong to me in other people's houses.
+@effect denise.revision=offered
+
+@reaction stranger 17 compressed 1 case
+@option accept-case
+Take the sewing case and ask what is inside.
+@reply
+The things she kept from the light. A button, a blue thread, and the name she used before yours.
+@effect stranger.case=accepted
+@option ask-source
+Ask where they found it.
+@reply
+In a room that had not chosen to be locked. Your mother left doors between.
+@effect stranger.case=questioned
+@option leave-case
+Leave the case on the step.
+@reply
+Good. Keep the seam where it is. Some houses only stay shut while nobody claims the key.
+@effect stranger.case=refused
+
+@reaction caller 5 full 3 dish
+@option settle
+Say the dish is here and settle the debt.
+@reply
+Then I'll call once, and no more. My mother would have called that decent.
+@effect hallow.dish=returned
+@option ask
+Ask where the dish was last left before you look.
+@reply
+On the dresser by the back door. Blue rim, hairline crack. I know a thing by its damage.
+@effect hallow.dish=asked
+@option withhold
+Say the previous tenant is not recorded here.
+@reply
+No. That's not the same as saying she didn't owe me.
+@effect hallow.dish=withheld
+
+# Quiet callbacks: one line changes when a remembered object or boundary is
+# revisited. Missing/legacy state leaves the original corpus line untouched.
+
+@variant sylvia-19-pencil-given
+@when sylvia.pencil=given
+@replace visitor:child:19:compressed.1
+I put the pencil somewhere safe. I don't know where safe is yet.
+
+@variant denise-19-pears-taken
+@when denise.pears=taken
+@replace visitor:sibling:19:compressed.2
+I brought none today. You had the last before they turned.
+
+@variant sowerby-13-record-refused
+@when sowerby.record=refused
+@replace visitor:warden:13:full.2
+If your book remains private, the card will stand in for it. A poorer witness.
+
+@variant hallow-20-dish-returned
+@when hallow.dish=returned
+@replace visitor:caller:20:compressed.2
+Two pound is settled. The dish is where it ought to be. Say Mrs Hallow called.
+
+# Material residues are revealed only when the player looks at an existing
+# object. They are notices, not pickups; the ordinary inspection remains the
+# fallback when the fact is absent.
+
+@residue denise.pears=taken bread-loaf
+The paper beneath the loaf holds a sticky crescent and the faint smell of pear.
+
+@residue sylvia.pencil=given journal-desk
+A fresh pencil shaving sits in the desk groove, though the sharpener is closed.
+
+@residue sowerby.record=refused journal-desk
+The page edge is pressed flat where another hand asked for it and was refused.
+
+@residue stranger.case=accepted journal-desk
+The sewing case rests beside the journal. Its brass clasp is warm, though the room is cold.
+
+@residue hallow.dish=returned hall-mail
+A narrow receipt lies with the post. The ink has bled at the word “dish,” but the amount is clear.
+
+# Ignored visits leave ordinary evidence, never a punishment or a new quest.
+
+@residue ignored.sibling.2=true hall-mail
+A calling card has slipped beneath the post. The corner is damp; no name shows.
+
+@residue ignored.child.3=true coat-hooks
+Two light taps have marked the wood below the coats. They could be pipes.
+
+@residue ignored.warden.5=true ration-book
+The ration book is open to a blank margin, held down by a square of official paper.

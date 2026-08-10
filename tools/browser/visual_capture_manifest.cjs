@@ -58,6 +58,15 @@ function validateManifest(value, filePath) {
         !Number.isInteger(capture.viewport.height) ||
         capture.viewport.width <= 0 || capture.viewport.height <= 0 ||
         typeof capture.profile !== 'string' || !capture.fixture ||
+        typeof capture.fixture !== 'object' || Array.isArray(capture.fixture) ||
+        !Number.isInteger(capture.fixture.day) || capture.fixture.day < 1 ||
+        typeof capture.fixture.hour !== 'number' ||
+        !Number.isFinite(capture.fixture.hour) ||
+        capture.fixture.hour < 0 || capture.fixture.hour >= 24 ||
+        !['overcast', 'rain'].includes(capture.fixture.weather) ||
+        !stateMap(capture.fixture.shutters, ['open', 'closed']) ||
+        !stateMap(capture.fixture.mantles, ['on', 'off']) ||
+        !stateMap(capture.fixture.portals, ['open', 'closed']) ||
         !Array.isArray(capture.requiredMetadata) ||
         capture.requiredMetadata.length === 0) {
       throw new Error(`visual capture manifest entry is invalid: ${filePath}`);
@@ -76,6 +85,12 @@ function validateManifest(value, filePath) {
       throw new Error(`visual capture manifest pair drifts: ${pairId}`);
     }
   }
+}
+
+function stateMap(value, allowed) {
+  return value && typeof value === 'object' && !Array.isArray(value) &&
+    Object.keys(value).length > 0 &&
+    Object.values(value).every((state) => allowed.includes(state));
 }
 
 function samePair(a, b) {

@@ -74,6 +74,85 @@ StoryText _loadCompiledStory(Map<String, Map<String, dynamic>> corpus) {
     ];
     if (claims.isNotEmpty) story.claims[entry.key] = claims;
   }
+  for (final entry in corpus['reactions']!.entries) {
+    final raw = entry.value;
+    if (raw is! Map ||
+        raw['id'] is! String ||
+        raw['visitor'] is! String ||
+        raw['day'] is! num ||
+        raw['tier'] is! String ||
+        raw['ordinal'] is! num ||
+        raw['options'] is! List) {
+      continue;
+    }
+    final options = <ReactionOption>[];
+    for (final item in raw['options'] as List) {
+      if (item is! Map ||
+          item['id'] is! String ||
+          item['label'] is! String ||
+          item['reply'] is! String) {
+        continue;
+      }
+      final effects = <String, String>{};
+      final rawEffects = item['effects'];
+      if (rawEffects is Map) {
+        for (final effect in rawEffects.entries) {
+          if (effect.key is String && effect.value is String) {
+            effects[effect.key as String] = effect.value as String;
+          }
+        }
+      }
+      options.add(
+        ReactionOption(
+          id: item['id'] as String,
+          label: item['label'] as String,
+          reply: item['reply'] as String,
+          effects: effects,
+        ),
+      );
+    }
+    if (options.length >= 2) {
+      final reaction = VisitorReaction(
+        id: raw['id'] as String,
+        visitor: raw['visitor'] as String,
+        day: (raw['day'] as num).toInt(),
+        tier: raw['tier'] as String,
+        ordinal: (raw['ordinal'] as num).toInt(),
+        options: options,
+      );
+      story.reactions[reaction.key] = reaction;
+    }
+  }
+  for (final entry in corpus['variants']!.entries) {
+    final raw = entry.value;
+    if (raw is! Map ||
+        raw['id'] is! String ||
+        raw['target'] is! String ||
+        raw['replacement'] is! String) {
+      continue;
+    }
+    final conditions = <String, String>{};
+    final rawConditions = raw['when'];
+    if (rawConditions is Map) {
+      for (final condition in rawConditions.entries) {
+        if (condition.key is String && condition.value is String) {
+          conditions[condition.key as String] = condition.value as String;
+        }
+      }
+    }
+    final variant = VisitorVariant(
+      id: raw['id'] as String,
+      targetKey: raw['target'] as String,
+      replacement: raw['replacement'] as String,
+      conditions: conditions,
+    );
+    story.variants[variant.id] = variant;
+  }
+  for (final entry in corpus['residues']!.entries) {
+    if (entry.value is String) {
+      story.residues[entry.key] = entry.value as String;
+    }
+  }
   return story;
 }
 
@@ -103,8 +182,22 @@ VisitorDirector _director(StoryText story) {
   return director!;
 }
 
-InteractionEngine _engine(Journal journal) =>
-    InteractionEngine(journal: journal, time: GameTime(dayNumber: 1, dayLengthSeconds: 24));
+InteractionEngine _engine(Journal journal) => InteractionEngine(
+  journal: journal,
+  time: GameTime(dayNumber: 1, dayLengthSeconds: 24),
+);
+
+void _advanceThrough(VisitorDirector director) {
+  while (director.active != null) {
+    final reaction = director.currentReaction;
+    if (reaction != null) director.chooseReaction(reaction.options.first.id);
+    final progress = director.advanceLine();
+    _expect(
+      progress is VisitProgress,
+      'every authored reaction must be answerable before advancing',
+    );
+  }
+}
 
 void main() {
   final corpus = _loadCorpus();
@@ -155,7 +248,10 @@ void main() {
       for (final a in directorB.arrivalsForDay(day))
         '${a.day}:${a.hour}:${a.order}:${a.visitor}',
   ].join('|');
-  _expect(scheduleA == scheduleB, 'same authored corpus must yield the same queue');
+  _expect(
+    scheduleA == scheduleB,
+    'same authored corpus must yield the same queue',
+  );
 
   // 3. All five door choices resolve to exactly one terminal state, one event
   // set, and no duplicate compliance mark.
@@ -168,7 +264,10 @@ void main() {
         .firstWhere((a) => a.visitor == 'warden');
     director.begin(arrival);
     final chosen = director.choose(choice);
-    _expect(chosen is VisitChoiceResult, '$choice must yield a typed choice result');
+    _expect(
+      chosen is VisitChoiceResult,
+      '$choice must yield a typed choice result',
+    );
 
     if (choice != DoorChoice.ignore) {
       director.advanceLine();
@@ -199,13 +298,17 @@ void main() {
         journal[conflicting.ordinal]!.margin == marginAfterFirst,
         'a warden margin annotation must not be overwritten by a later citation',
       );
-      while (director.active != null) {
-        director.advanceLine();
-      }
+      _advanceThrough(director);
     }
 
-    _expect(director.isResolved(arrival), '$choice must resolve the visit exactly once');
-    _expect(director.active == null, '$choice must leave no active visit behind');
+    _expect(
+      director.isResolved(arrival),
+      '$choice must resolve the visit exactly once',
+    );
+    _expect(
+      director.active == null,
+      '$choice must leave no active visit behind',
+    );
 
     final facts = director.drainFacts();
     final answeredOrIgnored = facts.where(
@@ -218,7 +321,9 @@ void main() {
       '$choice must emit exactly one answered/ignored fact, got '
       '${answeredOrIgnored.length}',
     );
-    final exposures = facts.where((f) => f.kind == VisitorFactKind.exposureAccepted);
+    final exposures = facts.where(
+      (f) => f.kind == VisitorFactKind.exposureAccepted,
+    );
     _expect(
       exposures.length == (choice == DoorChoice.open ? 1 : 0),
       '$choice must emit exposureAccepted only for open, got ${exposures.length}',
@@ -227,7 +332,10 @@ void main() {
       final contradictions = facts.where(
         (f) => f.kind == VisitorFactKind.entryContradicted,
       );
-      _expect(contradictions.length == 2, '$choice must record both citations as facts');
+      _expect(
+        contradictions.length == 2,
+        '$choice must record both citations as facts',
+      );
     }
   }
 
@@ -293,7 +401,10 @@ void main() {
 
     final encoded = jsonEncode(director.snapshot.toJson());
     final restoredState = VisitorDirectorState.tryFromJson(jsonDecode(encoded));
-    _expect(restoredState != null, 'active visit snapshot must round-trip through JSON');
+    _expect(
+      restoredState != null,
+      'active visit snapshot must round-trip through JSON',
+    );
     final resumed = _director(story);
     _expect(resumed.restore(restoredState!), 'mid-line visit must restore');
     _expect(
@@ -303,13 +414,16 @@ void main() {
           resumed.active?.complianceMarked == true,
       'restored visit must continue with identical phase, line and compliance state',
     );
-    while (resumed.active != null) {
-      resumed.advanceLine();
-    }
-    _expect(resumed.isResolved(arrival), 'resumed visit must resolve identically');
+    _advanceThrough(resumed);
+    _expect(
+      resumed.isResolved(arrival),
+      'resumed visit must resolve identically',
+    );
 
     final resolvedEncoded = jsonEncode(resumed.snapshot.toJson());
-    final resolvedState = VisitorDirectorState.tryFromJson(jsonDecode(resolvedEncoded));
+    final resolvedState = VisitorDirectorState.tryFromJson(
+      jsonDecode(resolvedEncoded),
+    );
     final afterResolve = _director(story);
     _expect(
       afterResolve.restore(resolvedState!),
@@ -335,7 +449,10 @@ void main() {
     final director = _director(fixture);
     final arrival = director.arrivalsForDay(1).single;
     final started = director.begin(arrival) as VisitStarted;
-    _expect(started.state.currentLine == 'first line', 'text-only line must be visible');
+    _expect(
+      started.state.currentLine == 'first line',
+      'text-only line must be visible',
+    );
     director.choose(DoorChoice.open);
     director.advanceLine();
     final progress = director.advanceLine() as VisitProgress;
@@ -377,7 +494,9 @@ void main() {
         .firstWhere((a) => a.visitor == 'neighbour');
     final started = director.begin(arrival) as VisitStarted;
     _expect(
-      started.state.currentClaims.any((c) => c.field == 'object' && c.value == 'the sighting'),
+      started.state.currentClaims.any(
+        (c) => c.field == 'object' && c.value == 'the sighting',
+      ),
       'neighbour day 8 full.1 must carry its authored object=the sighting claim',
     );
     director.choose(DoorChoice.open);
@@ -399,7 +518,10 @@ void main() {
       'a conflicting entry against object=the sighting must contradict, got '
       '${result.comparison.kind}',
     );
-    _expect(!result.worldConfirms, 'a contradicted citation must not confirm the world');
+    _expect(
+      !result.worldConfirms,
+      'a contradicted citation must not confirm the world',
+    );
 
     final freshDirector = _director(story);
     final unclaimed = freshDirector
@@ -424,5 +546,7 @@ void main() {
     );
   }
 
-  print('q13 tests passed: ${story.visitors.length} visitors, $totalArrivals arrivals');
+  print(
+    'q13 tests passed: ${story.visitors.length} visitors, $totalArrivals arrivals',
+  );
 }

@@ -13,6 +13,8 @@ import 'save.dart';
 import 'domain_event.dart';
 import 'presentation_snapshot.dart';
 import 'domain_snapshot.dart';
+import '../story/narrative_state.dart';
+import '../story/schema.dart' show ReactionOption, VisitorReaction;
 
 enum GameSessionEventType {
   timeAdvanced,
@@ -86,7 +88,10 @@ class GameSession {
     this._journal,
     this._dayLoop,
     this._difficulty,
-  );
+    NarrativeState? narrative,
+  ) : _narrative = narrative ?? NarrativeState();
+
+  final NarrativeState _narrative;
 
   factory GameSession.create({
     required Vocabulary vocabulary,
@@ -120,6 +125,7 @@ class GameSession {
       journal,
       DayLoop(journal: journal, time: time),
       DifficultyState(),
+      NarrativeState(),
     );
   }
 
@@ -173,6 +179,8 @@ class GameSession {
     final difficulty = DifficultyState.fromJson(
       Map<String, dynamic>.from(difficultyJson),
     );
+    final narrative =
+        NarrativeState.tryFromJson(run['narrative']) ?? NarrativeState();
     return GameSession._(
       seed,
       runSeed,
@@ -181,6 +189,7 @@ class GameSession {
       journal,
       dayLoop,
       difficulty,
+      narrative,
     );
   }
 
@@ -192,6 +201,7 @@ class GameSession {
   int get runSeed => _runSeed;
   double get recordAccuracy => _difficulty.accuracy;
   bool get complianceFloorTripped => _difficulty.complianceTriggered;
+  NarrativeState get narrative => _narrative;
 
   GameSessionSnapshot get snapshot => GameSessionSnapshot(
     day: _time.dayNumber,
@@ -221,6 +231,7 @@ class GameSession {
         'complianceFloorTripped': _difficulty.complianceTriggered,
         'isolationElevatesExposure': isolationElevatesExposure,
       },
+      'narrative': _narrative.toJson(),
     },
   );
 
@@ -235,7 +246,7 @@ class GameSession {
     },
     journal: _journal.toJson(),
     house: HouseState.capture(_house).toJson(),
-    content: const {},
+    content: {'narrative': _narrative.toJson()},
     features: {'difficulty': _difficulty.toJson()},
     secondRun: const {},
   );
@@ -252,9 +263,43 @@ class GameSession {
           'dayLoop': _dayLoop.toJson(),
           'journal': _journal.toJson(),
           'difficulty': _difficulty.toJson(),
+          'narrative': _narrative.toJson(),
         },
         meta: meta,
       );
+
+  bool applyNarrativeReaction(VisitorReaction reaction, ReactionOption option) {
+    if (!reaction.options.any((candidate) => candidate.id == option.id)) {
+      return false;
+    }
+    _narrative.apply(reaction, option);
+    return true;
+  }
+
+  /// Freezes one real journal line for a diegetic quotation. Once selected,
+  /// later drift or correction cannot rewrite the note a visitor carried.
+  FrozenJournalQuote? freezeJournalQuote(String sceneId) {
+    final existing = _narrative.quoteFor(sceneId);
+    if (existing != null) return existing;
+    final entries = _journal.entries.toList()
+      ..sort((a, b) => a.ordinal.compareTo(b.ordinal));
+    if (entries.isEmpty) return null;
+    final corrected = entries.where((entry) => entry.corrected).toList();
+    final pool = corrected.isNotEmpty ? corrected : entries;
+    var hash = _runSeed ^ 0x51F15E;
+    for (final codeUnit in sceneId.codeUnits) {
+      hash = ((hash * 31) + codeUnit) & 0x7fffffff;
+    }
+    final entry = pool[hash % pool.length];
+    final quote = FrozenJournalQuote(
+      sceneId: sceneId,
+      ordinal: entry.ordinal,
+      revision: entry.revisions.length - 1,
+      text: entry.current.toString(),
+    );
+    _narrative.rememberQuote(quote);
+    return quote;
+  }
 
   /// Advances the clock within its current day only.
   ///
@@ -339,6 +384,7 @@ class GameSession {
     for (final fact in facts) {
       if (fact.kind == VisitorFactKind.visitorIgnored) {
         _difficulty.addDeflectedVisitor();
+        _narrative.rememberIgnoredVisit(fact.visitor, fact.day);
       }
     }
   }

@@ -19,9 +19,9 @@ const manifestPath = path.join(
   'captures.json',
 );
 const manifest = loadVisualCaptureManifest(manifestPath);
-assert.strictEqual(manifest.captures.length, 4);
+assert.strictEqual(manifest.captures.length, 12);
 assert.strictEqual(visualCaptureManifestSummary(manifest).status, 'validated');
-assert.strictEqual(visualCaptureManifestSummary(manifest).captureCount, 4);
+assert.strictEqual(visualCaptureManifestSummary(manifest).captureCount, 12);
 const selected = selectVisualCapture(manifest, 'hero-hall-entry-final', {
   scenario: 'ground-circuit',
   profile: 'clean',
@@ -34,6 +34,14 @@ assert.strictEqual(selected.poseEvidence, 'not-captured');
 assert.strictEqual(selected.selectionMode, 'manifest-selector-only');
 assert.deepStrictEqual(selected.camera.position, [8.625, 1.65, 0.55]);
 assert.deepStrictEqual(selected.mismatches, []);
+const rain = selectVisualCapture(manifest, 'hero-living-rain-clean', {
+  scenario: 'ground-circuit',
+  profile: 'clean',
+  width: 960,
+  height: 540,
+});
+assert.strictEqual(rain.status, 'selected');
+assert.strictEqual(rain.fixture.weather, 'rain');
 assert.strictEqual(
   decodeAutomationPlayerState(JSON.stringify({
     schemaVersion: 1,
@@ -78,6 +86,15 @@ try {
   assert.throws(
     () => loadVisualCaptureManifest(malformedPath),
     /pair drifts/,
+  );
+
+  const invalidStatePath = path.join(temporary, 'invalid-state.json');
+  const invalidState = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+  invalidState.captures[0].fixture.shutters['living-north-west'] = 'ajar';
+  fs.writeFileSync(invalidStatePath, JSON.stringify(invalidState));
+  assert.throws(
+    () => loadVisualCaptureManifest(invalidStatePath),
+    /entry is invalid/,
   );
 
   const missingPath = path.join(temporary, 'missing.json');
