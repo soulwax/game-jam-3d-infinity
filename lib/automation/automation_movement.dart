@@ -109,7 +109,8 @@ final class AutomationMovementController {
   final List<Vec3> _recentPositions = <Vec3>[];
   double? _previousHeadingError;
   int _headingReversals = 0;
-  AutomationMovementRecoveryMode _recoveryMode = AutomationMovementRecoveryMode.none;
+  AutomationMovementRecoveryMode _recoveryMode =
+      AutomationMovementRecoveryMode.none;
   int _recoveryTicksRemaining = 0;
   int _recoveryAttempts = 0;
 
@@ -240,7 +241,10 @@ final class AutomationMovementController {
       -1.0,
       1.0,
     );
-    final strafe = ((dx * cosYaw - dz * sinYaw) / distanceSafe).clamp(
+    // Match Camera.lookFrom/Pixeldart's right-handed basis. At yaw 0,
+    // screen-right is world -X; the previous formula used +X and drove
+    // authored browser routes in the opposite lateral direction.
+    final strafe = ((-dx * cosYaw + dz * sinYaw) / distanceSafe).clamp(
       -1.0,
       1.0,
     );

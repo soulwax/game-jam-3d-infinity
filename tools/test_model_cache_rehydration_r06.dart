@@ -67,6 +67,7 @@ void main() {
   check(entrySmall.indexType == 'Uint16', 'Small model uses Uint16 index type');
   check(entryLarge.indexType == 'Uint32', 'Large model (>65,535 verts) uses Uint32 index type');
   check(cacheManager.cachedModelCount == 2, '2 unique models cached');
+  check(cacheManager.activeGpuMeshHandleCount == 2, '2 live GPU mesh handles retained');
 
   // 3. Deduplication check
   final entrySmallDup = cacheManager.cacheModel(smallPkg);
@@ -78,10 +79,15 @@ void main() {
   cacheManager.rehydrateContext();
   check(entrySmall.gpuMeshHandle != oldHandleSmall, 'GPU handle rehydrated with new handle after context loss');
   check(cacheManager.cachedModelCount == 2, 'Cached count remains 2 after rehydration');
+  check(cacheManager.activeGpuMeshHandleCount == 2, 'Rehydration preserves handle ownership count');
+
+  // A stale release must not underflow a ref-count or fabricate a second free.
+  check(cacheManager.releaseModel('missing-model') == false, 'Missing release is a no-op');
 
   // 5. Handle Release & Leak Check
   final leakFree = cacheManager.validateNoHandleLeaks();
   check(leakFree, 'Releasing all references leaves zero live GPU handles');
 
-  print('R-06: Model cache rehydration test passed cleanly!');
+  check(cacheManager.activeGpuMeshHandleCount == 0, 'No live handles remain after release');
+  print('R-06: Model cache rehydration lifecycle test passed cleanly!');
 }

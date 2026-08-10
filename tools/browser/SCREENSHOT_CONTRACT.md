@@ -137,6 +137,9 @@ the acceptance result is `roomStable`, unchanged PVS cells, unchanged retained
 resource counters, stable texture handles, and stable shadow-caster policy.
 The probe also validates `data-automation-portals` for the authoritative
 `hall-cellar` `open`/`locked`/`sticks`/`passable` facts, checks the planner's
-`-12 dB` / `1100 Hz` cellar transmission and room IR, and backs away to prove
+`-12 dB` / `1100 Hz` / `muffle01=0.55` cellar transmission, barrier IDs,
+reason trace, live muffle-meter range, and room IR, then backs away to prove
 return-to-origin pose stability. Its focused contract fixture rejects altered
-door, audio, and pose-drift metadata.
+door, audio, barrier, reason, and pose-drift metadata. This is planner and
+scheduled-transfer telemetry; it does not claim audible playback. Use the
+headed `audio_hardware_smoke.cjs` for the separate PipeWire sink-input lane.

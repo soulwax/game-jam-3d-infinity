@@ -2,10 +2,7 @@ import 'dart:math' as math;
 import 'package:quarantine/engine/math3.dart';
 
 /// Distance attenuation model for 3D spatialized sound sources.
-enum DistanceModel {
-  inverseSquare,
-  linearClamp,
-}
+enum DistanceModel { inverseSquare, linearClamp }
 
 /// Evaluated 3D spatial audio presentation parameters for WebAudio nodes.
 class SpatialAudioState {
@@ -13,29 +10,35 @@ class SpatialAudioState {
   final double gainLinear;
   final double pan;
   final double cutoffHz;
+  final double muffle01;
   final double reflectionDelayMs;
   final String sourceRoom;
   final String listenerRoom;
+  final String obstructionReason;
 
   const SpatialAudioState({
     required this.gainDb,
     required this.gainLinear,
     required this.pan,
     required this.cutoffHz,
+    required this.muffle01,
     required this.reflectionDelayMs,
     required this.sourceRoom,
     required this.listenerRoom,
+    required this.obstructionReason,
   });
 
   Map<String, dynamic> toJson() => {
-        'gainDb': gainDb,
-        'gainLinear': gainLinear,
-        'pan': pan,
-        'cutoffHz': cutoffHz,
-        'reflectionDelayMs': reflectionDelayMs,
-        'sourceRoom': sourceRoom,
-        'listenerRoom': listenerRoom,
-      };
+    'gainDb': gainDb,
+    'gainLinear': gainLinear,
+    'pan': pan,
+    'cutoffHz': cutoffHz,
+    'muffle01': muffle01,
+    'reflectionDelayMs': reflectionDelayMs,
+    'sourceRoom': sourceRoom,
+    'listenerRoom': listenerRoom,
+    'obstructionReason': obstructionReason,
+  };
 }
 
 /// Evaluates 3D spatial positioning, distance attenuation, and acoustic occlusion.
@@ -68,10 +71,12 @@ class SpatialAudioOcclusionCoordinator {
 
     double gainLinear = 1.0;
     if (distanceModel == DistanceModel.inverseSquare) {
-      gainLinear = refDistance / (refDistance + rolloffFactor * (dist - refDistance));
+      gainLinear =
+          refDistance / (refDistance + rolloffFactor * (dist - refDistance));
     } else {
       final clampedDist = math.min(dist, maxDistance);
-      gainLinear = 1.0 - (clampedDist - refDistance) / (maxDistance - refDistance);
+      gainLinear =
+          1.0 - (clampedDist - refDistance) / (maxDistance - refDistance);
     }
     gainLinear = gainLinear.clamp(0.0, 1.0);
 
@@ -79,21 +84,28 @@ class SpatialAudioOcclusionCoordinator {
     final cosYaw = math.cos(listenerYaw);
     final sinYaw = math.sin(listenerYaw);
     // Transform delta to listener relative coordinates
-    final relX = delta.x * cosYaw - delta.z * sinYaw;
+    // Screen-right uses forward × up, the same handedness as Camera and
+    // Pixeldart. The former +X basis made left/right panning mirror the view.
+    final relX = -delta.x * cosYaw + delta.z * sinYaw;
     final relZ = delta.x * sinYaw + delta.z * cosYaw;
     final relAngle = math.atan2(relX, relZ);
     final pan = math.sin(relAngle).clamp(-1.0, 1.0);
 
     // 3. Acoustic occlusion filter cutoff calculation
     double cutoffHz = 20000.0; // Unoccluded full bandwidth
+    var muffle01 = 0.0;
+    var obstructionReason = 'same-room-clear';
     if (!isSameRoom) {
       // Cross-room wall & portal muffle interpolation
       final muffleFactor = (1.0 - doorMuffleFraction).clamp(0.0, 1.0);
+      muffle01 = muffleFactor;
+      obstructionReason = 'wall+portal';
       cutoffHz = 500.0 + muffleFactor * 7500.0;
       gainLinear *= (0.4 + 0.6 * doorMuffleFraction);
     }
 
-    final gainDb = 20.0 * (gainLinear > 1e-4 ? math.log(gainLinear) / math.ln10 : -4.0);
+    final gainDb =
+        20.0 * (gainLinear > 1e-4 ? math.log(gainLinear) / math.ln10 : -4.0);
     final reflectionDelayMs = isSameRoom ? 15.0 : 45.0;
 
     return SpatialAudioState(
@@ -101,9 +113,11 @@ class SpatialAudioOcclusionCoordinator {
       gainLinear: gainLinear,
       pan: pan,
       cutoffHz: cutoffHz,
+      muffle01: muffle01,
       reflectionDelayMs: reflectionDelayMs,
       sourceRoom: sourceRoom,
       listenerRoom: listenerRoom,
+      obstructionReason: obstructionReason,
     );
   }
 }

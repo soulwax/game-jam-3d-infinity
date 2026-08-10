@@ -4476,12 +4476,14 @@ _.e=c
 _.r=d
 _.w=e
 _.x=f},
-mO:function mO(a,b,c,d,e){var _=this
+mO:function mO(a,b,c,d,e,f,g){var _=this
 _.a=a
-_.c=b
-_.d=c
-_.e=d
-_.f=e},
+_.b=b
+_.c=c
+_.d=d
+_.e=e
+_.f=f
+_.r=g},
 mI:function mI(a,b,c){this.a=a
 this.b=b
 this.c=c},
@@ -6890,7 +6892,7 @@ r=new A.qe(a,h,b,r,j,f,k,g,i,d,e,l==null?null:A.b2(l,s,t.X))
 r.kh(a,b,c,d,e,f,g,h,i,j,k,l)
 return r},
 qf(a,b,c,d,e){var s=A.m3("RENDERER_SHA"),r=A.m3("GAME_SHA"),q=A.m3("DART_SDK_VERSION")
-return A.xR(a,"aae3a5974460-b95463f82d41-dirty",b,c,d,r,A.m3("LOCKFILE_SHA256"),e,A.m3("PROJECT_VERSION"),s,q,null)},
+return A.xR(a,"d3cabbbccd8d-b95463f82d41-dirty",b,c,d,r,A.m3("LOCKFILE_SHA256"),e,A.m3("PROJECT_VERSION"),s,q,null)},
 m3(a){var s=B.iU.h(0,a)
 return s.length===0?null:s},
 qe:function qe(a,b,c,d,e,f,g,h,i,j,k,l){var _=this
@@ -8599,7 +8601,7 @@ if(d!=null)if($.Y.j().e.h(0,"cellar")!=null){r=$.Y.j()
 q=$.ax
 q=r.e.h(0,q)!=null
 r=q}if(r){c=d.ce("cellar",$.ax)
-$.B.j().setAttribute("data-audio-transmission-cellar",B.k.ah(A.N(["sourceRoom","cellar","listenerRoom",$.ax,"portalPath",c.a,"gainDb",c.c,"lowPassHz",c.d,"muffle01",c.e,"reachable",c.f],l,h),b))}else $.B.j().setAttribute("data-audio-transmission-cellar","unavailable")},
+$.B.j().setAttribute("data-audio-transmission-cellar",B.k.ah(A.N(["sourceRoom","cellar","listenerRoom",$.ax,"portalPath",c.a,"gainDb",c.c,"lowPassHz",c.d,"muffle01",c.e,"barrierIds",c.b,"reasonTrace",c.r,"reachable",c.f],l,h),b))}else $.B.j().setAttribute("data-audio-transmission-cellar","unavailable")},
 me(a){var s,r,q,p,o,n,m,l,k,j,i,h
 if($.bS.j().a!==B.C){A.h_("save unavailable during rupture")
 return}try{r=$.wg.j()
@@ -9379,15 +9381,15 @@ $.e8=i
 $.e8=B.d.H(i,-1.5607963267948965,1.5607963267948965)
 i=o.a
 j=o.c
-f=new A.b(i*Math.cos($.c5)+j*Math.sin($.c5),0,j*Math.cos($.c5)-i*Math.sin($.c5)).gaa().a7(0,2)
-i=$.mi()
+f=new A.b(-i*Math.cos($.c5)+j*Math.sin($.c5),0,i*Math.sin($.c5)+j*Math.cos($.c5)).gaa().a7(0,2)
+j=$.mi()
 if(!isFinite(a8)||a8<0)A.j(A.an(a8,"dt","must be finite and non-negative"))
 e=f.a!==0||f.c!==0?14:10
 if(!isFinite(e))A.j(A.an(e,"rate","must be finite and positive"))
 s=Math.exp(-e*a8)
-l=i.a
+l=j.a
 s=l.a8(0,f.ao(0,l).a7(0,1-s))
-i.a=s
+j.a=s
 d=$.iQ.j().nR($.Y.j(),$.ax,$.f_(),s.a7(0,a8))
 $.wG=d.a
 if($.bS.j().a!==B.bs&&$.bS.j().a!==B.a_)$.ax=d.b
@@ -15038,12 +15040,12 @@ A.mO.prototype={}
 A.mI.prototype={
 k7(a,b,c){var s
 for(s=this.b.gaA(),s=s.gt(s);s.m();)s.gn().C()},
-jd(a,b,a0){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c
-t.gG.a(a0)
+jd(a,a0,a1){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b
+t.gG.a(a1)
 s=this.a.e
 if(s.h(0,a)==null)throw A.d(A.m("audio source room missing: "+a))
-if(s.h(0,b)==null)throw A.d(A.m("audio listener room missing: "+b))
-r=this.lP(a,b)
+if(s.h(0,a0)==null)throw A.d(A.m("audio listener room missing: "+a0))
+r=this.lP(a,a0)
 s=t.s
 q=A.e([],s)
 p=A.e([],s)
@@ -15051,14 +15053,14 @@ for(o=r.a,n=o.length,m=this.b,l=0,k=2e4,j=0,i=0;i<o.length;o.length===n||(0,A.r)
 g=h.a
 f=m.h(0,g)
 if(f==null)f=B.bT
-e=f.ce(h,a0.h(0,g))
+e=f.ce(h,a1.h(0,g))
 d=e.b
 l+=e.a
 if(d<k)k=d
 j=1-(1-j)*(1-e.c)
 if(!B.a.q(q,g))B.a.l(q,g)
 B.a.l(p,"portal:"+g)}n=!r.b
-if(n&&a!==b){B.a.l(p,"unreachable")
+if(n&&a!==a0){B.a.l(p,"unreachable")
 l=-48
 k=240
 j=1}s=A.e([],s)
@@ -15066,13 +15068,13 @@ for(m=o.length,i=0;i<o.length;o.length===m||(0,A.r)(o),++i)s.push(o[i].a)
 o=B.d.H(l,-60,0)
 m=B.c.H(k,120,2e4)
 g=B.d.H(j,0,1)
-n=!n||a===b
-if(p.length!==0)B.a.a6(p,"; ")
-c=t.N
-s=A.aj(s,c)
-A.aj(q,c)
+n=!n||a===a0
+c=p.length===0?"unobstructed":B.a.a6(p,"; ")
+b=t.N
+s=A.aj(s,b)
+b=A.aj(q,b)
 if(!isFinite(g)||g<0||g>1)A.j(B.fz)
-return new A.mO(s,o,m,g,n)},
+return new A.mO(s,b,o,m,g,n,c)},
 ce(a,b){return this.jd(a,b,B.b9)},
 lP(a0,a1){var s,r,q,p,o,n,m,l,k,j,i,h,g,f,e,d,c,b,a
 if(a0===a1)return B.m2
@@ -15130,9 +15132,9 @@ else s=c>1.5607963267948965?1.5607963267948965:c
 r=Math.cos(s)
 q=new A.b(Math.sin(b)*r,Math.sin(s),Math.cos(b)*r)
 p.b=q
-q=$.Al().bl(q).gaa()
+q=q.bl($.Al()).gaa()
 p.d=q
-p.c=p.b.bl(q).gaa()
+p.c=q.bl(p.b).gaa()
 p.a=a}}
 A.nU.prototype={}
 A.kK.prototype={}
@@ -22639,7 +22641,7 @@ B.iS=new A.a4(B.cT,["Move forward","Move back","Move left","Move right","Interac
 B.jx={uScene:0,uHistory:1}
 B.iT=new A.a4(B.jx,[0,1],t.I)
 B.j6={RENDERER_SHA:0,GAME_SHA:1,DART_SDK_VERSION:2,LOCKFILE_SHA256:3,PROJECT_VERSION:4}
-B.iU=new A.a4(B.j6,["b95463f82d4116a129437eaed9ebe225e46cbffd","aae3a59744600cfea3d116d1196588a5134a1c67","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29","0.1.2.0"],t.p)
+B.iU=new A.a4(B.j6,["b95463f82d4116a129437eaed9ebe225e46cbffd","d3cabbbccd8d23322d58bdd7c106e81296ebf7cf","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29","0.1.2.0"],t.p)
 B.jk={aPosition:0,aUvMat:1}
 B.cM=new A.a4(B.jk,[0,4],t.I)
 B.jy={uScene:0,uLut:1}

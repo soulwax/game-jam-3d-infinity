@@ -33,6 +33,10 @@ void main() {
   }
 
   // 3. Neutral scene lighting test
+  check(
+    lib.allMaterials.every((material) => material.hasValidParameters),
+    'Every descriptor passes strict parameter validation',
+  );
   final validLighting = lib.validateNeutralSceneLighting();
   check(validLighting, 'Neutral scene lighting validation must pass across all families');
 

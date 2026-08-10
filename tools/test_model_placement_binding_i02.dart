@@ -12,6 +12,15 @@ void check(bool condition, String message) {
   if (!condition) throw StateError('FAIL: $message');
 }
 
+void expectFormatException(void Function() action, String message) {
+  try {
+    action();
+  } on FormatException {
+    return;
+  }
+  throw StateError('FAIL: expected FormatException for $message');
+}
+
 void main() {
   final proofRegistry = ProofAssetRegistry();
   final bindingRegistry = ModelPlacementBindingRegistry();
@@ -58,5 +67,25 @@ void main() {
   check(restoredDesk.stateKeys['drawerOpenFraction'] == 0.4, 'Restored state key value');
   check(restoredDesk.socketBindings['desk_top_center'] == 'placement-table-lamp', 'Restored socket binding');
 
-  print('I-02: Model placement binding test passed cleanly!');
+  // 4. Malformed transforms and maps fail closed instead of creating NaN/zero-scale bindings.
+  final validJson = b1.toJson();
+  expectFormatException(
+    () => ModelPlacementBinding.fromJson({...validJson, 'rotation': [0, 0]}),
+    'short rotation',
+  );
+  expectFormatException(
+    () => ModelPlacementBinding.fromJson({...validJson, 'scale': 0}),
+    'zero scale',
+  );
+  expectFormatException(
+    () => ModelPlacementBinding.fromJson({...validJson, 'socketBindings': {'bad': 1}}),
+    'non-string socket map',
+  );
+  expectFormatException(
+    () => newRegistry.restoreState({'bindings': [validJson, validJson]}),
+    'duplicate restored placement',
+  );
+  check(newRegistry.allBindings.length == 2, 'failed restore leaves existing registry intact');
+
+  print('I-02: Model placement binding strict decode and state test passed cleanly!');
 }

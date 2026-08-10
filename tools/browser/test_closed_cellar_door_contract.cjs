@@ -21,11 +21,13 @@ const base = {
   }), 'fixture'),
   cellarTransmission: parseCellarTransmission(JSON.stringify({
     sourceRoom: 'cellar', listenerRoom: 'hall', portalPath: ['hall-cellar'],
-    gainDb: -12, lowPassHz: 1100, muffle01: 0.55, reachable: true,
+    gainDb: -12, lowPassHz: 1100, muffle01: 0.55,
+    barrierIds: ['hall-cellar'], reasonTrace: 'portal:hall-cellar', reachable: true,
   }), 'fixture'),
   audioPlanner: 'validated',
   audioRoomIr: 'ir-stone',
   audioSpatial: 0,
+  audioMuffle: 0,
 };
 
 validateClosedCellarDoorState(base, 'valid fixture');

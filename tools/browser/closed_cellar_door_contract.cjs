@@ -38,6 +38,13 @@ function parseCellarTransmission(raw, label = 'cellar transmission') {
   if (parsed.muffle01 < 0 || parsed.muffle01 > 1) {
     throw new Error(`${label}: muffle01 is outside [0,1]`);
   }
+  if (!Array.isArray(parsed.barrierIds) ||
+      parsed.barrierIds.some((value) => typeof value !== 'string')) {
+    throw new Error(`${label}: barrier IDs are invalid`);
+  }
+  if (typeof parsed.reasonTrace !== 'string' || parsed.reasonTrace.length === 0) {
+    throw new Error(`${label}: reason trace is missing`);
+  }
   if (typeof parsed.reachable !== 'boolean') {
     throw new Error(`${label}: reachability is invalid`);
   }
@@ -67,11 +74,17 @@ function validateClosedCellarDoorState(state, label = 'cellar door') {
       transmission.reachable !== true ||
       transmission.gainDb !== -12 ||
       transmission.lowPassHz !== 1100 ||
-      transmission.muffle01 !== 0.55) {
+      transmission.muffle01 !== 0.55 ||
+      transmission.barrierIds.join('|') !== 'hall-cellar' ||
+      !transmission.reasonTrace.includes('portal:hall-cellar')) {
     throw new Error(`${label}: closed-door transmission is not -12 dB / 1100 Hz`);
   }
   if (typeof state.audioRoomIr !== 'string' || state.audioRoomIr.length === 0) {
     throw new Error(`${label}: room impulse response is missing`);
+  }
+  if (!Number.isFinite(state.audioMuffle) ||
+      state.audioMuffle < 0 || state.audioMuffle > 1) {
+    throw new Error(`${label}: live audio muffle meter is invalid`);
   }
   if (!Number.isInteger(state.audioSpatial) || state.audioSpatial < 0) {
     throw new Error(`${label}: spatial-source count is invalid`);

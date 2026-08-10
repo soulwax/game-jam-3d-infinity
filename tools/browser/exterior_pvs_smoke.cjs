@@ -216,7 +216,8 @@ async function run() {
     await capture(page, before, 'browser-game-pvs-hall', 'Before transition: hall/front PVS working set.');
 
     // At the authored yaw-zero start, W advances down the hall toward the
-    // hall-kitchen portal; A then crosses its west-facing opening.
+    // hall-kitchen portal; D then crosses its west-facing opening. The camera
+    // uses a right-handed +Z basis, so screen-right is world west at yaw zero.
     // The runtime house now applies the 2.25x authored horizontal scale;
     // derive enough forward travel to reach the hall-kitchen portal lane
     // before the adaptive lateral crossing below.
@@ -225,7 +226,7 @@ async function run() {
     console.log(`quarantine-exterior-pvs-approach: ${JSON.stringify(approach)}`);
     const hallToKitchenSteps = await driveUntilRoom(
       page,
-      'a',
+      'd',
       'kitchen',
       'hall-kitchen route',
     );
@@ -262,10 +263,10 @@ async function run() {
     await capture(page, after, 'browser-game-pvs-kitchen', 'After hall-kitchen portal crossing: kitchen/rear-service PVS working set.');
 
     // Continue through the authored kitchen-living portal. S backs away from
-    // the hall opening, D reaches the portal lane, and S crosses physically;
+    // the hall opening, A reaches the portal lane, and S crosses physically;
     // this is a third room stop, not a teleport or room override.
     await hold(page, 's', 2500);
-    await hold(page, 'a', 2200);
+    await hold(page, 'd', 2200);
     const kitchenToLivingSteps = await driveUntilRoom(
       page,
       's',

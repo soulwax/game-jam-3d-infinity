@@ -9,9 +9,9 @@ Never _fail(String message) => throw StateError(message);
 /// sync by hand since that function lives outside the package's public API.
 Vec3 _worldMoveDir(Vec3 moveDir, double yaw) {
   return Vec3(
-    moveDir.x * math.cos(yaw) + moveDir.z * math.sin(yaw),
+    -moveDir.x * math.cos(yaw) + moveDir.z * math.sin(yaw),
     0,
-    moveDir.z * math.cos(yaw) - moveDir.x * math.sin(yaw),
+    moveDir.x * math.sin(yaw) + moveDir.z * math.cos(yaw),
   ).normalized;
 }
 
@@ -54,6 +54,12 @@ void main() {
   }
 
   camera.lookFrom(simulationEye, 0, 0);
+  if (camera.right.x >= 0 || camera.right.z.abs() > 1e-9) {
+    _fail(
+      'yaw-zero right vector must use the Pixeldart right-handed basis '
+      '(world -X), got ${camera.right}',
+    );
+  }
   if (camera.eye.x != simulationEye.x ||
       camera.eye.y != simulationEye.y ||
       camera.eye.z != simulationEye.z) {

@@ -21,14 +21,14 @@ class ModelCacheEntry {
   });
 
   Map<String, dynamic> toJson() => {
-        'assetId': assetId,
-        'indexType': indexType,
-        'vertexCount': vertexCount,
-        'triangleCount': triangleCount,
-        'lodLevels': lodLevels,
-        'refCount': refCount,
-        'gpuMeshHandle': gpuMeshHandle,
-      };
+    'assetId': assetId,
+    'indexType': indexType,
+    'vertexCount': vertexCount,
+    'triangleCount': triangleCount,
+    'lodLevels': lodLevels,
+    'refCount': refCount,
+    'gpuMeshHandle': gpuMeshHandle,
+  };
 }
 
 /// R-06 Model Cache, Uint16/Uint32 Index Selection, Ref-Counting, and Context Rehydration Manager.
@@ -37,6 +37,9 @@ class ModelCacheRehydrationManager {
   int _nextHandleId = 1000;
 
   int get cachedModelCount => _cache.length;
+
+  /// Number of retained mesh handles currently owned by the cache.
+  int get activeGpuMeshHandleCount => _cache.length;
 
   ModelCacheEntry? getEntry(String assetId) => _cache[assetId];
 
@@ -87,6 +90,7 @@ class ModelCacheRehydrationManager {
   bool releaseModel(String assetId) {
     final entry = _cache[assetId];
     if (entry == null) return false;
+    if (entry.refCount <= 0) return false;
 
     entry.refCount--;
     if (entry.refCount <= 0) {

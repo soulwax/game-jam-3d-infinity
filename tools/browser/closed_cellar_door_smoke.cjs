@@ -59,6 +59,7 @@ async function readState(page, label) {
     audioPlanner: canvas.getAttribute('data-audio-planner'),
     audioRoomIr: canvas.getAttribute('data-audio-room-ir'),
     audioSpatial: canvas.getAttribute('data-audio-spatial-active'),
+    audioMuffle: canvas.getAttribute('data-audio-muffle01'),
     cellarTransmission: canvas.getAttribute('data-audio-transmission-cellar'),
   }));
   const player = parsePlayer(raw.player);
@@ -77,6 +78,7 @@ async function readState(page, label) {
     audioPlanner: raw.audioPlanner,
     audioRoomIr: raw.audioRoomIr,
     audioSpatial: Number(raw.audioSpatial),
+    audioMuffle: Number(raw.audioMuffle),
     cellarTransmission: parseCellarTransmission(raw.cellarTransmission, label),
   };
 }

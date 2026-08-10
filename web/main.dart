@@ -2794,6 +2794,8 @@ void _publishAutomationPlayerState() {
         'gainDb': transmission.gainDb,
         'lowPassHz': transmission.lowPassHz,
         'muffle01': transmission.muffle01,
+        'barrierIds': transmission.barrierIds,
+        'reasonTrace': transmission.reasonTrace,
         'reachable': transmission.reachable,
       }),
     );
@@ -3599,9 +3601,9 @@ void _update(double dt) {
 
   final desiredVelocity =
       Vec3(
-        moveDir.x * math.cos(_simYaw) + moveDir.z * math.sin(_simYaw),
+        -moveDir.x * math.cos(_simYaw) + moveDir.z * math.sin(_simYaw),
         0,
-        moveDir.z * math.cos(_simYaw) - moveDir.x * math.sin(_simYaw),
+        moveDir.x * math.sin(_simYaw) + moveDir.z * math.cos(_simYaw),
       ).normalized *
       playerSpeed;
   final moveWorld = _motion.advance(

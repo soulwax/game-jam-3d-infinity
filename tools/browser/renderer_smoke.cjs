@@ -619,7 +619,7 @@ function writeEmbodiedEvidence(routeName, routePath, result, evidence, capture) 
     actions: [
       'visitor.ignore-until-clear',
       'KeyS:1000ms',
-      'KeyA:600ms',
+      'KeyD:600ms',
       'KeyW:500ms',
       'KeyE:mantle-living-second',
       'departure:cardinal-probes+KeyS:800ms',
@@ -1169,11 +1169,11 @@ async function dismissVisitorDialogs(page, label) {
         await page.keyboard.up('s');
         traceInput('KeyS:up');
         await page.waitForTimeout(120);
-        traceInput('KeyA:down');
-        await page.keyboard.down('a');
+        traceInput('KeyD:down');
+        await page.keyboard.down('d');
         await page.waitForTimeout(600);
-        await page.keyboard.up('a');
-        traceInput('KeyA:up');
+        await page.keyboard.up('d');
+        traceInput('KeyD:up');
         await page.waitForTimeout(120);
         traceInput('KeyW:down');
         await page.keyboard.down('w');
