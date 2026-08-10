@@ -6,7 +6,7 @@
   "handedness": "right",
   "canonicalSource": "lib/house/house.dart",
   "renderMeaning": "Renderer-neutral authored geometry and placement data; simulation remains the canonical owner until the house-data migration gate is accepted.",
-  "requiredTopLevel": ["houseId", "sourceRef", "modelScale", "exteriorMesh", "inventoryPath", "soundscapePath", "levels", "rooms", "portals", "stairs"],
+  "requiredTopLevel": ["houseId", "sourceRef", "modelScale", "exteriorMesh", "inventoryPath", "soundscapePath", "surfaceMaterialsPath", "levels", "rooms", "portals", "stairs"],
   "roomRequired": ["id", "floor", "origin", "size", "surface", "windows", "portalIds", "focalComposition"],
   "portalRequired": ["id", "a", "b", "facingA", "facingB", "offsetA", "offsetB", "width", "height", "doorKit (non-stair)"],
   "runtimeEnvelope": {"modelScale": 2.25, "exteriorWallThickness": 0.63, "partitionWallThickness": 0.27},

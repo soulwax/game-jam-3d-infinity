@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:quarantine/house/exterior_mesh.dart';
 import 'package:quarantine/house/exterior_pvs.dart';
+import 'package:quarantine/house/geometry.dart';
 
 Never fail(String message) => throw StateError('house scene: $message');
 
@@ -46,7 +47,10 @@ void main() {
     'exterior mesh must remain view-only',
   );
   require(
-    exteriorMesh['wallThickness'] == 0.63,
+    ((exteriorMesh['wallThickness'] as num).toDouble() -
+                houseExteriorWallThickness)
+            .abs() <
+        0.0001,
     'exterior wall thickness drifted',
   );
   final materialsPath = '$root/${exteriorMesh['materialsPath']}';

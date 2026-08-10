@@ -74,7 +74,8 @@ void main() {
   final openTransmission = planner.transmission('hall', 'living-room');
   _expect(
     openTransmission.portalPath.join(',') == 'hall-living' &&
-        openTransmission.reachable,
+        openTransmission.reachable &&
+        openTransmission.muffle01 == 0.0,
     'public transmission route is wrong: ${openTransmission.portalPath}',
   );
 
@@ -90,7 +91,9 @@ void main() {
   );
   final closedTransmission = planner.transmission('hall', 'living-room');
   _expect(
-    closedTransmission.gainDb == -18 && closedTransmission.lowPassHz == 900,
+    closedTransmission.gainDb == -18 &&
+        closedTransmission.lowPassHz == 900 &&
+        closedTransmission.muffle01 == 0.55,
     'public transmission did not observe portal state',
   );
   portal.locked = true;
@@ -99,7 +102,7 @@ void main() {
     AcousticListener(roomId: 'living-room', position: Vec3(1, 1, 1)),
   );
   _expect(
-    sealed.gainDb == -40 && sealed.lowPassHz == 180,
+    sealed.gainDb == -40 && sealed.lowPassHz == 180 && sealed.muffle01 == 1.0,
     'locked portal transmission is wrong',
   );
   portal.locked = false;
@@ -115,7 +118,15 @@ void main() {
     rejected = true;
   }
   _expect(rejected, 'missing listener room was accepted');
+
+  var invalidMuffle = false;
+  try {
+    const AcousticPortalProfile(closedMuffle01: 1.2).validate();
+  } catch (_) {
+    invalidMuffle = true;
+  }
+  _expect(invalidMuffle, 'out-of-range muffle profile was accepted');
   print(
-    'audio planner: deterministic cues and weighted portal transmission pass',
+    'audio planner: deterministic cues, portal transmission, and muffle meter pass',
   );
 }

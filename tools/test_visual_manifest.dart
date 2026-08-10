@@ -41,6 +41,14 @@ void main() {
             2,
     'rain clean/final pair exists with explicit weather state',
   );
+  _expect(
+    manifest.captures
+        .where((capture) =>
+            capture.pairId == 'hero-living-rain' ||
+            capture.pairId == 'hero-living-shutter')
+        .every((capture) => capture.requiredMetadata.contains('simulation')),
+    'rain and shutter pairs require published simulation telemetry',
+  );
 
   final unknownWaypoint = VisualCaptureManifest.decode(
     File(

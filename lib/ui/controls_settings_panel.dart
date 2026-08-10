@@ -1,8 +1,8 @@
-import 'dart:js_interop';
-
 import 'package:web/web.dart' as web;
 
 import 'controls_settings.dart';
+import 'brush_components.dart';
+import 'brush_theme.dart';
 import 'panel.dart';
 
 class ControlsSettingsPanel extends Panel {
@@ -15,12 +15,25 @@ class ControlsSettingsPanel extends Panel {
   final Map<String, web.HTMLButtonElement> _bindingButtons = {};
   web.HTMLElement? _status;
   web.HTMLElement? _conflictActions;
+  String? _activeBindingAction;
 
   ControlsSettingsPanel(web.Document document) : super(document) {
     _editor = ControlsBindingEditor(_profile);
-    root.setAttribute('aria-label', 'Controls settings');
+    root
+      ..className = '${root.className} brush-page-frame'
+      ..setAttribute('aria-label', 'Controls settings')
+      ..setAttribute('data-brush-kind', 'frame')
+      ..setAttribute('data-brush-state', 'normal');
     root.appendChild(
-      buildElement(document, 'h1', cls: 'journal-title', text: 'Controls'),
+      BrushComponents.heading(
+        document,
+        const BrushComponentContract(
+          id: 'settings.controls.heading',
+          kind: BrushComponentKind.heading,
+          label: 'Controls',
+        ),
+        level: 1,
+      ),
     );
     root.appendChild(
       buildElement(
@@ -54,16 +67,16 @@ class ControlsSettingsPanel extends Panel {
       final row = buildElement(document, 'div', cls: 'setting-row');
       row.setAttribute('aria-label', '${entry.value}: $bindingLabel');
       row.appendChild(buildElement(document, 'span', text: entry.value));
-      final button =
-          buildElement(document, 'button', cls: 'door-continue')
-                as web.HTMLButtonElement
-            ..setAttribute('type', 'button')
-            ..id = 'settings.controls.bind.$action';
-      button.addEventListener(
-        'click',
-        ((web.Event _) {
-          _beginCapture(action);
-        }).toJS,
+      final button = BrushComponents.keybind(
+        document,
+        BrushComponentContract(
+          id: 'settings.controls.bind.$action',
+          kind: BrushComponentKind.keybind,
+          label: entry.value,
+          description: 'change $action binding',
+        ),
+        binding: bindingLabel,
+        onPressed: () => _beginCapture(action),
       );
       row.appendChild(button);
       reference.appendChild(row);
@@ -76,17 +89,15 @@ class ControlsSettingsPanel extends Panel {
     _conflictActions = buildElement(document, 'div', cls: 'pause-actions');
     root.appendChild(_conflictActions!);
     _refreshBindings();
-    final back =
-        buildElement(document, 'button', cls: 'door-continue', text: 'back')
-              as web.HTMLButtonElement
-          ..setAttribute('type', 'button')
-          ..id = 'settings.controls.back'
-          ..setAttribute('aria-label', 'back to settings categories');
-    back.addEventListener(
-      'click',
-      ((web.Event _) {
-        onBack?.call();
-      }).toJS,
+    final back = BrushComponents.button(
+      document,
+      const BrushComponentContract(
+        id: 'settings.controls.back',
+        kind: BrushComponentKind.button,
+        label: 'back',
+        description: 'back to settings categories',
+      ),
+      onPressed: () => onBack?.call(),
     );
     root.appendChild(back);
   }
@@ -102,11 +113,26 @@ class ControlsSettingsPanel extends Panel {
     final result = _editor.begin(action);
     _status?.textContent =
         result.message ?? 'press a key for $action; Escape cancels';
+    if (result.status == BindingCaptureStatus.capturing) {
+      _activeBindingAction = action;
+      final button = _bindingButtons[action];
+      if (button != null) {
+        BrushComponents.setState(button, BrushComponentState.remapping);
+      }
+    }
     _clearConflictActions();
   }
 
   void _finishCapture(BindingCaptureResult result) {
     _status?.textContent = result.message ?? result.status.name;
+    final action = _activeBindingAction;
+    if (action != null) {
+      final state = result.status == BindingCaptureStatus.conflict
+          ? BrushComponentState.error
+          : BrushComponentState.normal;
+      final button = _bindingButtons[action];
+      if (button != null) BrushComponents.setState(button, state);
+    }
     if (result.status == BindingCaptureStatus.conflict) {
       _showConflictActions();
     } else if (result.status == BindingCaptureStatus.applied) {
@@ -115,6 +141,7 @@ class ControlsSettingsPanel extends Panel {
       _refreshBindings();
     } else {
       _clearConflictActions();
+      _activeBindingAction = null;
     }
   }
 
@@ -123,20 +150,15 @@ class ControlsSettingsPanel extends Panel {
     final parent = _conflictActions;
     if (parent == null) return;
     for (final resolution in BindingConflictResolution.values) {
-      final button =
-          buildElement(
-                  parent.ownerDocument!,
-                  'button',
-                  cls: 'door-continue',
-                  text: resolution.name,
-                )
-                as web.HTMLButtonElement
-            ..setAttribute('type', 'button');
-      button.addEventListener(
-        'click',
-        ((web.Event _) {
-          _finishCapture(_editor.resolve(resolution));
-        }).toJS,
+      final button = BrushComponents.button(
+        parent.ownerDocument!,
+        BrushComponentContract(
+          id: 'settings.controls.resolve.${resolution.name}',
+          kind: BrushComponentKind.button,
+          label: resolution.name,
+          description: 'resolve key binding conflict',
+        ),
+        onPressed: () => _finishCapture(_editor.resolve(resolution)),
       );
       parent.appendChild(button);
     }
@@ -154,6 +176,7 @@ class ControlsSettingsPanel extends Panel {
     for (final entry in _bindingButtons.entries) {
       entry.value.textContent =
           _editor.profile.bindings[entry.key] ?? 'unbound';
+      BrushComponents.setState(entry.value, BrushComponentState.normal);
     }
   }
 
@@ -167,21 +190,23 @@ class ControlsSettingsPanel extends Panel {
   ) {
     final row = buildElement(document, 'label', cls: 'setting-row');
     row.appendChild(buildElement(document, 'span', text: label));
-    final input = document.createElement('input') as web.HTMLInputElement
-      ..type = 'range'
-      ..min = '$min'
-      ..max = '$max'
-      ..step = '0.1';
-    input.addEventListener(
-      'input',
-      ((web.Event _) {
-        final value = double.tryParse(input.value) ?? 1;
+    final input = BrushComponents.slider(
+      document,
+      BrushComponentContract(
+        id: 'settings.controls.$key',
+        kind: BrushComponentKind.slider,
+        label: label,
+      ),
+      value: 1,
+      min: min,
+      max: max,
+      onChanged: (next) {
         _emit(
           key == 'horizontalSensitivity'
-              ? _profile.copyWith(horizontalSensitivity: value)
-              : _profile.copyWith(verticalSensitivity: value),
+              ? _profile.copyWith(horizontalSensitivity: next)
+              : _profile.copyWith(verticalSensitivity: next),
         );
-      }).toJS,
+      },
     );
     row.appendChild(input);
     parent.appendChild(row);
@@ -195,18 +220,21 @@ class ControlsSettingsPanel extends Panel {
     String label,
   ) {
     final row = buildElement(document, 'label', cls: 'setting-toggle');
-    final input = document.createElement('input') as web.HTMLInputElement
-      ..type = 'checkbox';
-    input.addEventListener(
-      'change',
-      ((web.Event _) {
-        final value = input.checked;
+    final input = BrushComponents.toggle(
+      document,
+      BrushComponentContract(
+        id: 'settings.controls.$key',
+        kind: BrushComponentKind.toggle,
+        label: label,
+      ),
+      checked: false,
+      onChanged: (value) {
         _emit(switch (key) {
           'invertX' => _profile.copyWith(invertX: value),
           'invertY' => _profile.copyWith(invertY: value),
           _ => _profile.copyWith(holdToInteract: value),
         });
-      }).toJS,
+      },
     );
     row
       ..appendChild(input)

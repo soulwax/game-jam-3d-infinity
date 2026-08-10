@@ -5,18 +5,52 @@ import 'math3.dart';
 
 final Vec3 _worldUp = Vec3(0, 1, 0);
 
+/// Camera lens values are presentation configuration, not gameplay state.
+/// Profiles can be swapped without changing camera pose, focus, or movement.
+final class CameraLens {
+  final double fovYRadians;
+  final double near;
+  final double far;
+
+  const CameraLens({
+    required this.fovYRadians,
+    required this.near,
+    required this.far,
+  });
+
+  static const standard = CameraLens(
+    fovYRadians: 1.0471975511965976,
+    near: 0.1,
+    far: 60.0,
+  );
+  static const wide = CameraLens(
+    fovYRadians: 1.3089969389957472,
+    near: 0.1,
+    far: 60.0,
+  );
+  static const intimate = CameraLens(
+    fovYRadians: 0.8726646259971648,
+    near: 0.08,
+    far: 45.0,
+  );
+
+  CameraLens withFovDegrees(double degrees) =>
+      CameraLens(fovYRadians: degrees * math.pi / 180, near: near, far: far);
+}
+
 class Camera {
   Vec3 eye;
   Vec3 fwd;
   Vec3 up;
   Vec3 right;
   double roll;
+  CameraLens lens;
 
   double breathScale = 1;
 
   double _bt = 0;
 
-  Camera()
+  Camera({this.lens = CameraLens.standard})
     : eye = Vec3(0, 0, 0),
       fwd = Vec3(0, 0, 1),
       up = Vec3(0, 1, 0),

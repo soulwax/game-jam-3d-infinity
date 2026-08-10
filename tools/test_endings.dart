@@ -1,4 +1,5 @@
 import 'package:quarantine/game/ending.dart';
+import 'package:quarantine/story/narrative_state.dart';
 
 Never _fail(String message) => throw StateError('ending test failed: $message');
 void _expect(bool value, String message) {
@@ -88,6 +89,48 @@ void main() {
   _expect(
     EndingState.tryFromJson(state.toJson())?.kind == state.kind,
     'ending state persists',
+  );
+  final synchronisedTexture = NarrativeEndingTexture.forRun(
+    NarrativeState(
+      flags: {
+        'denise.revision': 'accepted',
+        'sylvia.pencil': 'given',
+      },
+    ),
+    EndingKind.synchronisation,
+  );
+  _expect(
+    synchronisedTexture.single.contains('correction'),
+    'synchronisation texture repeats a recorded relational fact',
+  );
+  final ruptureTexture = NarrativeEndingTexture.forRun(
+    NarrativeState(flags: {'stranger.case': 'accepted'}),
+    EndingKind.rupture,
+  );
+  _expect(
+    ruptureTexture.length == 1 && ruptureTexture.single.contains('sewing case'),
+    'rupture texture repeats one accepted object only',
+  );
+  _expect(
+    NarrativeEndingTexture.forRun(
+      NarrativeState(),
+      EndingKind.compliance,
+    ).isEmpty,
+    'unknown narrative state adds no invented ending texture',
+  );
+  final savedNarrative = NarrativeState(
+    flags: {'attercliffe.plate': 'kept'},
+  );
+  final restoredNarrative = NarrativeState.tryFromJson(
+    savedNarrative.toJson(),
+  );
+  _expect(
+    restoredNarrative != null &&
+        NarrativeEndingTexture.forRun(
+              restoredNarrative,
+              EndingKind.compliance,
+            ).single.contains('second place'),
+    'ending texture survives narrative save and restore',
   );
   print(
     'ending resolver selects all three authored outcomes deterministically',

@@ -1,0 +1,19 @@
+{
+  "format": "house-surface-materials-v1",
+  "textureManifest": "web/res/manifest.json",
+  "materials": [
+    {"id":"wallpaper-stripes","family":"wall","textureKey":"wall-plaster","tint":"#B3A18B","roughness":0.82,"uvMetres":0.55,"notes":"warm striped paper over lightly uneven plaster"},
+    {"id":"wallpaper-damask","family":"wall","textureKey":"wall-plaster","tint":"#8D7771","roughness":0.76,"uvMetres":0.42,"notes":"dark formal paper with compressed repeat"},
+    {"id":"wallpaper-floral","family":"wall","textureKey":"wall-plaster","tint":"#A99E83","roughness":0.79,"uvMetres":0.48,"notes":"faded floral paper in the service rooms"},
+    {"id":"wallpaper-damp","family":"wall","textureKey":"grime","tint":"#6C716D","roughness":0.94,"uvMetres":0.76,"notes":"cellar damp and mineral bloom"},
+    {"id":"wallpaper-faded","family":"wall","textureKey":"wall-plaster","tint":"#B9B09D","roughness":0.86,"uvMetres":0.62,"notes":"sun-faded upper-room paper"},
+    {"id":"wallpaper-tiles","family":"wall","textureKey":"floor-linoleum","tint":"#B4B7A9","roughness":0.63,"uvMetres":0.28,"notes":"small cool ceramic repeat"},
+    {"id":"wallpaper-peeling","family":"wall","textureKey":"grime","tint":"#8E8678","roughness":0.91,"uvMetres":0.68,"notes":"flaking paper with exposed dirt"},
+    {"id":"floor-wood","family":"floor","textureKey":"wall-plaster","tint":"#76563F","roughness":0.88,"uvMetres":0.22,"notes":"board geometry carries the grain rhythm"},
+    {"id":"floor-linoleum","family":"floor","textureKey":"floor-linoleum","tint":"#74786C","roughness":0.61,"uvMetres":0.62,"notes":"worn service-room sheet flooring"},
+    {"id":"floor-tiles","family":"floor","textureKey":"floor-linoleum","tint":"#B2AEA2","roughness":0.57,"uvMetres":0.86,"notes":"checker tile blocks over the supplied tile texture"},
+    {"id":"floor-concrete","family":"floor","textureKey":"grime","tint":"#77736B","roughness":0.96,"uvMetres":0.92,"notes":"cold cellar slab with localized staining"},
+    {"id":"ceiling-plaster","family":"ceiling","textureKey":"wall-plaster","tint":"#C0B9AA","roughness":0.84,"uvMetres":0.70,"notes":"quiet matte plaster"},
+    {"id":"ceiling-pipes","family":"ceiling","textureKey":"ceiling-stained","tint":"#77736A","roughness":0.92,"uvMetres":0.84,"notes":"stained service ceiling around iron runs"}
+  ]
+}

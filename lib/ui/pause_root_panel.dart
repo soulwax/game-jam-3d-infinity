@@ -20,9 +20,21 @@ class PauseRootPanel extends Panel {
   void Function()? onBack;
 
   PauseRootPanel(web.Document document) : super(document) {
-    root.setAttribute('aria-label', 'Pause menu');
+    root
+      ..className = '${root.className} brush-page-frame'
+      ..setAttribute('aria-label', 'Pause menu')
+      ..setAttribute('data-brush-kind', 'frame')
+      ..setAttribute('data-brush-state', 'normal');
     root.appendChild(
-      buildElement(document, 'h1', cls: 'journal-title', text: 'Paused'),
+      BrushComponents.heading(
+        document,
+        const BrushComponentContract(
+          id: 'pause.heading',
+          kind: BrushComponentKind.heading,
+          label: 'Paused',
+        ),
+        level: 1,
+      ),
     );
     root.appendChild(
       buildElement(

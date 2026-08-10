@@ -30,7 +30,7 @@
         "buildId", "scenario", "cameraId", "requestedRenderer",
         "effectiveRenderer", "requestedProfile", "effectiveProfile",
         "viewport", "fixture", "screenshotSha256", "domainDigest",
-        "rendererDigest"
+        "rendererDigest", "simulation"
       ]
     },
     {
@@ -61,7 +61,7 @@
         "buildId", "scenario", "cameraId", "requestedRenderer",
         "effectiveRenderer", "requestedProfile", "effectiveProfile",
         "viewport", "fixture", "screenshotSha256", "domainDigest",
-        "rendererDigest"
+        "rendererDigest", "simulation"
       ]
     },
     {
@@ -162,7 +162,8 @@
         "fixture",
         "screenshotSha256",
         "domainDigest",
-        "rendererDigest"
+        "rendererDigest",
+        "simulation"
       ]
     },
     {
@@ -201,7 +202,8 @@
         "fixture",
         "screenshotSha256",
         "domainDigest",
-        "rendererDigest"
+        "rendererDigest",
+        "simulation"
       ]
     },
     {
@@ -319,7 +321,7 @@
         "buildId", "scenario", "cameraId", "requestedRenderer",
         "effectiveRenderer", "requestedProfile", "effectiveProfile",
         "viewport", "fixture", "screenshotSha256", "domainDigest",
-        "rendererDigest"
+        "rendererDigest", "simulation"
       ]
     },
     {
@@ -353,7 +355,7 @@
         "buildId", "scenario", "cameraId", "requestedRenderer",
         "effectiveRenderer", "requestedProfile", "effectiveProfile",
         "viewport", "fixture", "screenshotSha256", "domainDigest",
-        "rendererDigest"
+        "rendererDigest", "simulation"
       ]
     },
     {
@@ -380,7 +382,7 @@
         "shutters": {"living-north-west": "closed", "living-north-east": "closed"},
         "mantles": {"mantle-living": "on", "mantle-living-second": "off"}
       },
-      "requiredMetadata": ["buildId", "scenario", "cameraId", "requestedRenderer", "effectiveRenderer", "requestedProfile", "effectiveProfile", "viewport", "fixture", "screenshotSha256", "domainDigest", "rendererDigest"]
+      "requiredMetadata": ["buildId", "scenario", "cameraId", "requestedRenderer", "effectiveRenderer", "requestedProfile", "effectiveProfile", "viewport", "fixture", "screenshotSha256", "domainDigest", "rendererDigest", "simulation"]
     },
     {
       "id": "hero-living-shutter-final",
@@ -406,7 +408,7 @@
         "shutters": {"living-north-west": "closed", "living-north-east": "closed"},
         "mantles": {"mantle-living": "on", "mantle-living-second": "off"}
       },
-      "requiredMetadata": ["buildId", "scenario", "cameraId", "requestedRenderer", "effectiveRenderer", "requestedProfile", "effectiveProfile", "viewport", "fixture", "screenshotSha256", "domainDigest", "rendererDigest"]
+      "requiredMetadata": ["buildId", "scenario", "cameraId", "requestedRenderer", "effectiveRenderer", "requestedProfile", "effectiveProfile", "viewport", "fixture", "screenshotSha256", "domainDigest", "rendererDigest", "simulation"]
     }
   ]
 }

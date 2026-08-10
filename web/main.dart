@@ -43,6 +43,8 @@ import 'package:quarantine/house/exterior_scene.dart';
 import 'package:quarantine/house/interaction.dart';
 import 'package:quarantine/house/lighting.dart' as house_lighting;
 import 'package:quarantine/house/room.dart';
+import 'package:quarantine/house/scale_profile.dart';
+import 'package:quarantine/house/surface_materials.dart';
 import 'package:quarantine/journal/entry.dart' show Vocabulary;
 import 'package:quarantine/sim/interaction.dart';
 import 'package:quarantine/sim/rupture.dart';
@@ -100,6 +102,13 @@ _PixeldartWebRuntime? _pixeldartRuntime;
 _LegacyWebRuntime? _legacyRuntime;
 late WeatherSchedule _weatherSchedule;
 
+final class _RoomSurfaceSpec {
+  final String surface;
+  final Float32List vertices;
+
+  const _RoomSurfaceSpec(this.surface, this.vertices);
+}
+
 final class _PixeldartWebRuntime implements RendererRuntime {
   static const _capabilityBridge = PixeldartCapabilityBridge();
   final web.WebGL2RenderingContext context;
@@ -112,10 +121,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   late px.QualityProfile _profile;
   String? _profileFallbackReason;
   final List<px.MeshHandle> _sceneMeshes = [];
-  final Map<String, px.MeshHandle> _roomMeshesById = {};
+  final Map<String, List<px.MeshHandle>> _roomMeshesById = {};
   final List<px.InstanceId> _sceneItems = [];
   final Map<String, px.InstanceId> _sceneItemsByRoom = {};
   final Map<String, px.RetainedItemDescriptor> _sceneDescriptors = {};
+  final Map<String, List<px.InstanceId>> _roomSurfaceItemsByRoom = {};
+  final Map<String, List<px.RetainedItemDescriptor>>
+  _roomSurfaceDescriptorsByRoom = {};
   final Map<String, px.InstanceId> _inventoryItemsById = {};
   final Map<String, px.RetainedItemDescriptor> _inventoryDescriptors = {};
   final List<px.MeshHandle> _inventoryMeshes = [];
@@ -129,6 +141,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   final Map<String, px.TextureHandle> _textures = {};
   final Map<String, String> _exteriorTextureKeys = {};
   final Map<String, px.MaterialHandle> _roomMaterials = {};
+  final Map<String, Map<String, px.MaterialHandle>> _roomSurfaceMaterials = {};
   final Map<String, px.MaterialHandle> _inventoryMaterials = {};
   px.MaterialHandle? _sceneMaterial;
   px.CameraView? _cameraView;
@@ -263,6 +276,16 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       height: 512,
       debugLabel: 'texture:grime',
     );
+    // Keep the authored texture keys resident even when an optional image is
+    // absent. Materials can therefore retain their handles and use the
+    // renderer's neutral fallback until the manifest image arrives.
+    for (final key in const ['floor-linoleum', 'ceiling-stained']) {
+      _textures[key] = _renderer.resources.registerTexture(
+        width: 256,
+        height: 256,
+        debugLabel: 'texture:$key',
+      );
+    }
     _publishTextureResidency();
     _sceneMaterial = _renderer.resources.registerMaterial(
       px.MaterialDefinition(
@@ -275,30 +298,35 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         uvScaleV: 1.0,
       ),
     );
-    _roomMaterials['cellar'] = _renderer.resources.registerMaterial(
-      px.MaterialDefinition(
-        key: 'quarantine-house-cellar',
-        albedoTexture: _textures['grime'],
-        tintR: 0.29,
-        tintG: 0.28,
-        tintB: 0.30,
-        uvScaleU: 1.0,
-        uvScaleV: 1.0,
-      ),
-    );
-    for (final room in house.rooms.where((room) => room.id != 'cellar')) {
-      final tint = _roomTint(room.id);
-      _roomMaterials[room.id] = _renderer.resources.registerMaterial(
-        px.MaterialDefinition(
-          key: 'quarantine-house-${room.id}-gothic',
-          albedoTexture: _textures['wall-plaster'],
-          tintR: tint.$1,
-          tintG: tint.$2,
-          tintB: tint.$3,
-          uvScaleU: 1.0,
-          uvScaleV: 1.0,
-        ),
-      );
+    for (final room in house.rooms) {
+      final surfaces = <String, px.MaterialHandle>{};
+      for (final entry in <String, String>{
+        'wall': room.surfaceWall,
+        'floor': room.surfaceFloor,
+        'ceiling': room.surfaceCeiling,
+      }.entries) {
+        final authored = HouseSurfaceMaterials.forId(entry.value);
+        final tint = _surfaceTint(authored.tint);
+        final material = _renderer.resources.registerMaterial(
+          px.MaterialDefinition(
+            key: 'quarantine-house-${room.id}-${entry.key}-${authored.id}',
+            albedoTexture: _textures[authored.textureKey],
+            tintR: tint.$1,
+            tintG: tint.$2,
+            tintB: tint.$3,
+            roughness: authored.roughness,
+            // Geometry owns authored metre-density UVs; retain a neutral
+            // renderer scale so this binding cannot double-repeat the art.
+            uvScaleU: 1.0,
+            uvScaleV: 1.0,
+          ),
+        );
+        surfaces[entry.key] = material;
+      }
+      _roomSurfaceMaterials[room.id] = surfaces;
+      // Existing decorations and portal leaves intentionally use the wall
+      // surface variant as their room presentation material.
+      _roomMaterials[room.id] = surfaces['wall']!;
     }
     for (final kind in const [
       'architecture',
@@ -324,22 +352,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       );
     }
     for (final room in house.rooms) {
-      final mesh = _roomMesh(house, room);
-      final handle = _renderer.resources.registerMesh(
-        mesh,
-        debugLabel: 'room:${room.id}',
-      );
-      _sceneMeshes.add(handle);
-      _roomMeshesById[room.id] = handle;
-      final descriptor = px.RetainedItemDescriptor(
-        mesh: handle,
-        material: _materialForRoom(room.id),
-      );
-      final item = _world.addItem(descriptor);
-      _sceneItems.add(item);
-      _sceneItemsByRoom[room.id] = item;
-      _sceneDescriptors[room.id] = descriptor;
+      _installRoomSurfaces(house, room);
     }
+    _publishHouseMaterialBindings(house);
+    _canvas.setAttribute(
+      'data-renderer-house-model-scale',
+      houseModelScale.toStringAsFixed(2),
+    );
     for (final room in house.rooms) {
       for (final window in room.windows) {
         _addDecoration(
@@ -488,14 +507,20 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         visible.add(adjacent);
       }
     }
-    for (final entry in _sceneItemsByRoom.entries) {
-      final base = _sceneDescriptors[entry.key]!;
-      final descriptor = _withVisibility(
-        base,
-        visible.contains(entry.key) ? -1 : 0,
-      );
-      _world.updateItem(entry.value, descriptor);
-      _sceneDescriptors[entry.key] = descriptor;
+    for (final entry in _roomSurfaceItemsByRoom.entries) {
+      final mask = visible.contains(entry.key) ? -1 : 0;
+      final items = entry.value;
+      final bases = _roomSurfaceDescriptorsByRoom[entry.key]!;
+      final descriptors = <px.RetainedItemDescriptor>[];
+      for (var i = 0; i < items.length; i++) {
+        final descriptor = _withVisibility(bases[i], mask);
+        _world.updateItem(items[i], descriptor);
+        descriptors.add(descriptor);
+      }
+      _roomSurfaceDescriptorsByRoom[entry.key] = descriptors;
+      // Keep the wall alias used by decorations and compatibility diagnostics.
+      if (descriptors.isNotEmpty)
+        _sceneDescriptors[entry.key] = descriptors.first;
     }
     for (final decoration in _decorations) {
       final mask = visible.contains(decoration.roomId) && decoration.isVisible()
@@ -582,36 +607,54 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   /// accumulating GPU resources.
   void refreshRoomGeometry(House house, String roomId) {
     if (!_initialized) return;
-    final item = _sceneItemsByRoom[roomId];
-    final descriptor = _sceneDescriptors[roomId];
-    final oldMesh = _roomMeshesById[roomId];
+    final items = _roomSurfaceItemsByRoom[roomId];
+    final descriptors = _roomSurfaceDescriptorsByRoom[roomId];
+    final oldMeshes = _roomMeshesById[roomId];
     final room = house.byId(roomId);
-    if (item == null || descriptor == null || oldMesh == null || room == null) {
+    if (items == null ||
+        descriptors == null ||
+        oldMeshes == null ||
+        room == null) {
       return;
     }
-    final nextMesh = _renderer.resources.registerMesh(
-      _roomMesh(house, room),
-      debugLabel: 'room:$roomId:drift-${house.drift.landedCount}',
-    );
-    final nextDescriptor = px.RetainedItemDescriptor(
-      mesh: nextMesh,
-      material: descriptor.material,
-      transform: descriptor.transform,
-      visibilityMask: descriptor.visibilityMask,
-      drawMode: descriptor.drawMode,
-      blendMode: descriptor.blendMode,
-      castsShadow: descriptor.castsShadow,
-      receivesShadow: descriptor.receivesShadow,
-      sortTiebreaker: descriptor.sortTiebreaker,
-      instanceFamilyKey: descriptor.instanceFamilyKey,
-    );
-    _world.updateItem(item, nextDescriptor);
-    _sceneDescriptors[roomId] = nextDescriptor;
-    _roomMeshesById[roomId] = nextMesh;
-    _sceneMeshes
-      ..remove(oldMesh)
-      ..add(nextMesh);
-    _renderer.resources.releaseMesh(oldMesh);
+    final specs = _roomSurfaceSpecs(house, room);
+    if (specs.length != items.length || specs.length != oldMeshes.length)
+      return;
+    final nextMeshes = <px.MeshHandle>[];
+    final nextDescriptors = <px.RetainedItemDescriptor>[];
+    for (var i = 0; i < specs.length; i++) {
+      final spec = specs[i];
+      final nextMesh = _renderer.resources.registerMesh(
+        _meshFromVertices(spec.vertices),
+        debugLabel:
+            'room:$roomId:${spec.surface}-drift-${house.drift.landedCount}',
+      );
+      final base = descriptors[i];
+      final nextDescriptor = px.RetainedItemDescriptor(
+        mesh: nextMesh,
+        material: base.material,
+        transform: base.transform,
+        visibilityMask: base.visibilityMask,
+        drawMode: base.drawMode,
+        blendMode: base.blendMode,
+        castsShadow: base.castsShadow,
+        receivesShadow: base.receivesShadow,
+        sortTiebreaker: base.sortTiebreaker,
+        instanceFamilyKey: base.instanceFamilyKey,
+      );
+      _world.updateItem(items[i], nextDescriptor);
+      nextMeshes.add(nextMesh);
+      nextDescriptors.add(nextDescriptor);
+      final oldMesh = oldMeshes[i];
+      _sceneMeshes
+        ..remove(oldMesh)
+        ..add(nextMesh);
+      _renderer.resources.releaseMesh(oldMesh);
+    }
+    _roomMeshesById[roomId] = nextMeshes;
+    _roomSurfaceDescriptorsByRoom[roomId] = nextDescriptors;
+    if (nextDescriptors.isNotEmpty)
+      _sceneDescriptors[roomId] = nextDescriptors.first;
     _canvas.setAttribute(
       'data-renderer-geometry-refreshes',
       '${_geometryRefreshes + 1}',
@@ -754,10 +797,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final aspect = width / height;
     final view = px.Mat4.lookAt(eye: eye, forward: forward, up: up);
     final projection = px.Mat4.perspective(
-      fovYRadians: math.pi / 3,
+      fovYRadians: camera.lens.fovYRadians,
       aspect: aspect,
-      near: glDepthNear,
-      far: glDepthFar,
+      near: camera.lens.near,
+      far: camera.lens.far,
     );
     _cameraView = px.CameraView(
       view: view,
@@ -765,8 +808,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       viewProjection: projection * view,
       eye: eye,
       forward: forward,
-      near: glDepthNear,
-      far: glDepthFar,
+      near: camera.lens.near,
+      far: camera.lens.far,
       aspect: aspect,
     );
   }
@@ -874,10 +917,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final eye = px.Vec3.zero;
     final view = px.Mat4.identity();
     final projection = px.Mat4.perspective(
-      fovYRadians: math.pi / 3,
+      fovYRadians: _cameraLens.fovYRadians,
       aspect: width / height,
-      near: glDepthNear,
-      far: glDepthFar,
+      near: _cameraLens.near,
+      far: _cameraLens.far,
     );
     return px.CameraView(
       view: view,
@@ -885,31 +928,106 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       viewProjection: projection * view,
       eye: eye,
       forward: const px.Vec3(0, 0, 1),
-      near: glDepthNear,
-      far: glDepthFar,
+      near: _cameraLens.near,
+      far: _cameraLens.far,
       aspect: width / height,
     );
   }
 
-  px.MeshData _roomMesh(House house, Room room) {
+  List<_RoomSurfaceSpec> _roomSurfaceSpecs(House house, Room room) {
     final geometry = buildRoomGeometry(house, room);
-    // Door leaves are stateful Pixeldart items; keep the static frame,
-    // hardware, and room shell here while avoiding a baked duplicate leaf.
     final staticDoors = buildDoorStaticGeometry(house, room);
-    final vertices = Float32List.fromList([
-      ...geometry.floor,
-      ...geometry.ceiling,
-      ...geometry.walls,
-      ...staticDoors,
-    ]);
+    return [
+      _RoomSurfaceSpec(
+        'wall',
+        Float32List.fromList([...geometry.walls, ...staticDoors]),
+      ),
+      _RoomSurfaceSpec('floor', geometry.floor),
+      _RoomSurfaceSpec('ceiling', geometry.ceiling),
+    ];
+  }
+
+  px.MeshData _meshFromVertices(Float32List vertices) {
     final points = <px.Vec3>[];
     for (var i = 0; i < vertices.length; i += vertexStride) {
       points.add(px.Vec3(vertices[i], vertices[i + 1], vertices[i + 2]));
+    }
+    if (points.isEmpty) {
+      throw StateError('house surface mesh cannot be empty');
     }
     return px.MeshData(
       layout: px.VertexLayoutDescriptor.compatibility14,
       vertices: vertices,
       localBounds: px.Aabb.fromPoints(points),
+    );
+  }
+
+  void _installRoomSurfaces(House house, Room room) {
+    final specs = _roomSurfaceSpecs(house, room);
+    final materials = _roomSurfaceMaterials[room.id];
+    if (materials == null) {
+      throw StateError('surface materials missing for room ${room.id}');
+    }
+    final meshes = <px.MeshHandle>[];
+    final items = <px.InstanceId>[];
+    final descriptors = <px.RetainedItemDescriptor>[];
+    for (final spec in specs) {
+      final mesh = _renderer.resources.registerMesh(
+        _meshFromVertices(spec.vertices),
+        debugLabel: 'room:${room.id}:${spec.surface}',
+      );
+      final descriptor = px.RetainedItemDescriptor(
+        mesh: mesh,
+        material: materials[spec.surface]!,
+        visibilityMask: -1,
+        castsShadow: true,
+        receivesShadow: true,
+      );
+      final item = _world.addItem(descriptor);
+      _sceneMeshes.add(mesh);
+      _sceneItems.add(item);
+      meshes.add(mesh);
+      items.add(item);
+      descriptors.add(descriptor);
+    }
+    _roomMeshesById[room.id] = meshes;
+    _roomSurfaceItemsByRoom[room.id] = items;
+    _roomSurfaceDescriptorsByRoom[room.id] = descriptors;
+    if (items.isNotEmpty) _sceneItemsByRoom[room.id] = items.first;
+    if (descriptors.isNotEmpty) _sceneDescriptors[room.id] = descriptors.first;
+  }
+
+  void _publishHouseMaterialBindings(House house) {
+    final bindings = <String>[];
+    final handleBindings = <String>[];
+    for (final room in house.rooms) {
+      final roomMaterials = _roomSurfaceMaterials[room.id];
+      if (roomMaterials == null) continue;
+      for (final entry in <String, String>{
+        'wall': room.surfaceWall,
+        'floor': room.surfaceFloor,
+        'ceiling': room.surfaceCeiling,
+      }.entries) {
+        final material = HouseSurfaceMaterials.forId(entry.value);
+        bindings.add(
+          '${room.id}:${entry.key}=${material.id}:${material.textureKey}',
+        );
+        final handle = roomMaterials[entry.key];
+        if (handle != null) {
+          handleBindings.add(
+            '${room.id}.${entry.key}=${handle.slot}.${handle.generation}',
+          );
+        }
+      }
+    }
+    handleBindings.sort();
+    _canvas.setAttribute(
+      'data-renderer-house-materials',
+      (bindings..sort()).join(','),
+    );
+    _canvas.setAttribute(
+      'data-renderer-house-surface-bindings',
+      handleBindings.join(','),
     );
   }
 
@@ -1006,16 +1124,11 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _ => (0.38, 0.25, 0.19),
   };
 
-  (double, double, double) _roomTint(String roomId) => switch (roomId) {
-    'living-room' => (0.43, 0.38, 0.43),
-    'hall' => (0.36, 0.39, 0.46),
-    'kitchen' => (0.45, 0.42, 0.35),
-    'bedroom' => (0.34, 0.36, 0.45),
-    'landing' => (0.31, 0.34, 0.40),
-    'bathroom' => (0.42, 0.44, 0.43),
-    'spare-room' => (0.34, 0.30, 0.36),
-    _ => (0.46, 0.44, 0.48),
-  };
+  (double, double, double) _surfaceTint(int tint) => (
+    ((tint >> 16) & 0xff) / 255.0,
+    ((tint >> 8) & 0xff) / 255.0,
+    (tint & 0xff) / 255.0,
+  );
 
   void _inventoryBox(StaticMeshBuilder builder, Vec3 min, Vec3 max, int color) {
     final p000 = Vec3(min.x, min.y, min.z);
@@ -1042,7 +1155,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   Future<void> loadTextures(Map<String, String> urls) async {
     if (!_initialized) return;
     await Future.wait([
-      for (final key in const ['wall-plaster', 'grime'])
+      for (final key in const [
+        'wall-plaster',
+        'grime',
+        'floor-linoleum',
+        'ceiling-stained',
+      ])
         if (urls[key] case final url?) _loadTexture(key, url),
     ]);
   }
@@ -1513,6 +1631,19 @@ final String? _automationCaptureMantleId = _automationDiagnosticsEnabled
 final bool _automationCaptureMantleLit =
     Uri.base.queryParameters['captureMantleLit'] == '1';
 
+CameraLens _readCameraLens() {
+  final profile = switch (Uri.base.queryParameters['cameraProfile']) {
+    'wide' => CameraLens.wide,
+    'intimate' => CameraLens.intimate,
+    _ => CameraLens.standard,
+  };
+  final fovDegrees = double.tryParse(
+    Uri.base.queryParameters['cameraFov'] ?? '',
+  );
+  if (fovDegrees == null || !fovDegrees.isFinite) return profile;
+  return profile.withFovDegrees(fovDegrees.clamp(35.0, 100.0).toDouble());
+}
+
 Vec3 _simEye = Vec3(0, 0, 0);
 Vec3 _prevEye = Vec3(0, 0, 0);
 Vec3 _viewEye = Vec3(0, 0, 0);
@@ -1522,7 +1653,7 @@ double _simPitch = 0;
 // The house applies its 1.5x horizontal scale at construction time. Keep the
 // playable start on the authored ground-circuit hall-entry waypoint instead of
 // the pre-scale living-room coordinate.
-final Vec3 _defaultPlayerEye = Vec3(12.9375, 1.65, 0.825);
+final CameraLens _cameraLens = _readCameraLens();
 
 String _currentRoom = 'hall';
 late Capsule _playerCapsule;
@@ -2037,7 +2168,7 @@ Future<void> main() async {
   _publishRendererDiagnostics();
   try {
     _setBootPhase('initializing');
-    _camera = Camera();
+    _camera = Camera(lens: _cameraLens);
     _systemReducedMotion = web.window
         .matchMedia('(prefers-reduced-motion: reduce)')
         .matches;
@@ -2140,7 +2271,7 @@ Future<void> main() async {
     _pixeldartRuntime?.attachHouse(_house);
     _time = _session.time;
 
-    _simEye = _defaultPlayerEye;
+    _simEye = _house.defaultPlayerEye(playerEyeHeight);
     _prevEye = _simEye;
     _viewEye = _simEye;
     final initialCapsuleBase =
@@ -2504,6 +2635,7 @@ void _publishAutomationPlayerState() {
         'portalPath': transmission.portalPath,
         'gainDb': transmission.gainDb,
         'lowPassHz': transmission.lowPassHz,
+        'muffle01': transmission.muffle01,
         'reachable': transmission.reachable,
       }),
     );
@@ -2918,6 +3050,75 @@ void _resize() {
   if (surface != null) _canvas.setAttribute('data-renderer-surface', surface);
 }
 
+void _handleControllerActions() {
+  final panel = _activePanel;
+  if (panel != null) {
+    if (_input.wasControllerActionPressed('pause') ||
+        _input.wasControllerActionPressed('secondary')) {
+      _controllerBack(panel);
+      return;
+    }
+    if (_input.wasControllerCodePressed('GamepadDpadUp')) {
+      _movePanelFocus(panel, -1);
+      return;
+    }
+    if (_input.wasControllerCodePressed('GamepadDpadDown')) {
+      _movePanelFocus(panel, 1);
+      return;
+    }
+    if (_input.wasControllerActionPressed('interact')) {
+      final active = web.document.activeElement;
+      if (active is web.HTMLElement && panel.root.contains(active)) {
+        active.callMethod<JSAny?>('click'.toJS);
+      }
+    }
+    return;
+  }
+  if (_input.wasControllerActionPressed('pause')) {
+    _openPanel(_pauseRoot);
+    return;
+  }
+  if (_door.visitorPresent) return;
+  if (_input.wasControllerActionPressed('journal')) {
+    _togglePanel(_journal);
+  } else if (_input.wasControllerActionPressed('sleep')) {
+    _togglePanel(_sleepPanel);
+  }
+}
+
+void _controllerBack(Panel panel) {
+  if (panel == _pauseRoot) {
+    panel.close();
+    return;
+  }
+  if (panel == _settingsIndex ||
+      panel is SettingsPanel ||
+      panel is GraphicsSettingsPanel ||
+      panel is ControlsSettingsPanel) {
+    _returnFromPausePage(panel);
+    return;
+  }
+  panel.close();
+}
+
+void _movePanelFocus(Panel panel, int direction) {
+  final nodes = panel.root.querySelectorAll(
+    'button:not([disabled]),input:not([disabled]),select:not([disabled]),'
+    'textarea:not([disabled]),[tabindex]:not([tabindex="-1"])',
+  );
+  final focusable = <web.HTMLElement>[
+    for (var i = 0; i < nodes.length; i++)
+      if (nodes.item(i) case final web.HTMLElement element) element,
+  ];
+  if (focusable.isEmpty) return;
+  final active = web.document.activeElement;
+  final index = focusable.indexOf(active is web.HTMLElement ? active : panel.root);
+  final next = index < 0
+      ? (direction < 0 ? focusable.length - 1 : 0)
+      : (index + direction + focusable.length) % focusable.length;
+  focusable[next].focus();
+}
+
 void _raf(num ts) {
   try {
     final now = ts.toDouble();
@@ -2931,6 +3132,18 @@ void _raf(num ts) {
     if (frameTime > _maxFrameTime) frameTime = _maxFrameTime;
 
     _updateFps(frameTime);
+    _input.pollGamepad();
+    _canvas.setAttribute(
+      'data-controller',
+      _input.gamepadConnected ? 'standard' : 'none',
+    );
+    final controllerId = _input.gamepadId;
+    if (controllerId != null) {
+      _canvas.setAttribute('data-controller-id', controllerId);
+    } else {
+      _canvas.removeAttribute('data-controller-id');
+    }
+    _handleControllerActions();
 
     if (!_paused && _activePanel == null) {
       _accumulator += frameTime;
@@ -2986,6 +3199,10 @@ void _raf(num ts) {
         _canvas.setAttribute(
           'data-audio-spatial-active',
           '${audio.activeSpatialSources}',
+        );
+        _canvas.setAttribute(
+          'data-audio-muffle01',
+          audio.maxActiveMuffle01.toStringAsFixed(3),
         );
         _canvas.setAttribute(
           'data-audio-music-started',
@@ -3174,8 +3391,12 @@ void _update(double dt) {
   final mouseDx = _input.mouseDx;
   final mouseDy = _input.mouseDy;
 
-  _simYaw += mouseDx * mouseSensitivity;
-  _simPitch -= mouseDy * mouseSensitivity;
+  _simYaw +=
+      mouseDx * mouseSensitivity +
+      _input.gamepadLookX * gamepadLookRadiansPerSecond * dt;
+  _simPitch -=
+      mouseDy * mouseSensitivity +
+      _input.gamepadLookY * gamepadLookRadiansPerSecond * dt;
   _simPitch = _simPitch.clamp(-Camera.pitchLimit, Camera.pitchLimit);
 
   final desiredVelocity =
@@ -3419,7 +3640,11 @@ void _presentEnding(EndingState ending) {
   _runEnded = true;
   _motion.stop();
   _openPanel(_endingPanel);
-  _endingPanel.showEnding(ending, textLibrary.getEnding(ending.kind.name));
+  final lines = [
+    ...textLibrary.getEnding(ending.kind.name),
+    ...NarrativeEndingTexture.forRun(_session.narrative, ending.kind),
+  ];
+  _endingPanel.showEnding(ending, lines);
 }
 
 void _chooseDoorResponse(String rawChoice) {

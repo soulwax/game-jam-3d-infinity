@@ -25,10 +25,10 @@ void main() {
     }
   }
   final story = parseStory(sources);
-  _expect(story.reactions.length == 6, 'six authored beats are present');
+  _expect(story.reactions.length == 12, 'twelve authored beats are present');
   _expect(
-    story.residues.length == 8,
-    'eight authored material residues are present',
+    story.residues.length == 14,
+    'fourteen authored material residues are present',
   );
   _expect(
     story.residues['denise.pears=taken:bread-loaf']?.contains('pear') == true,
@@ -112,6 +112,87 @@ void main() {
   _expect(
     story.variants.containsKey('hallow-20-dish-returned'),
     'Hallow closure variant is authored',
+  );
+  final ayling = story.reactions.values.firstWhere(
+    (reaction) =>
+        reaction.visitor == 'ayling' &&
+        reaction.day == 17 &&
+        reaction.tier == 'compressed' &&
+        reaction.ordinal == 2,
+  );
+  _expect(ayling.id == 'clipboard', 'Ayling clipboard beat is authored');
+  _expect(ayling.options.length == 3, 'Ayling clipboard has three choices');
+  _expect(
+    story.variants.containsKey('ayling-20-trusted'),
+    'Ayling trust callback is authored',
+  );
+  final ronnie = story.reactions.values.firstWhere(
+    (reaction) =>
+        reaction.visitor == 'hazmat-boy' &&
+        reaction.day == 11 &&
+        reaction.tier == 'full' &&
+        reaction.ordinal == 1,
+  );
+  _expect(ronnie.id == 'word', 'Ronnie word beat is authored');
+  _expect(ronnie.options.length == 3, 'Ronnie word has three choices');
+  _expect(
+    story.variants.containsKey('ronnie-18-name'),
+    'Ronnie name callback is authored',
+  );
+  final attercliffe = story.reactions.values.firstWhere(
+    (reaction) =>
+        reaction.visitor == 'widow' &&
+        reaction.day == 16 &&
+        reaction.tier == 'full' &&
+        reaction.ordinal == 2,
+  );
+  _expect(attercliffe.id == 'plate', 'Attercliffe plate beat is authored');
+  _expect(
+    attercliffe.options.length == 3,
+    'Attercliffe plate has three choices',
+  );
+  _expect(
+    story.variants.containsKey('attercliffe-20-plate-kept'),
+    'Attercliffe plate callback is authored',
+  );
+  final marchant = story.reactions.values.firstWhere(
+    (reaction) =>
+        reaction.visitor == 'doctor' &&
+        reaction.day == 6 &&
+        reaction.tier == 'full' &&
+        reaction.ordinal == 4,
+  );
+  _expect(marchant.id == 'entry', 'Marchant entry beat is authored');
+  _expect(marchant.options.length == 3, 'Marchant entry has three choices');
+  _expect(
+    story.variants.containsKey('marchant-15-entry-invited'),
+    'Marchant entry callback is authored',
+  );
+  final iris = story.reactions.values.firstWhere(
+    (reaction) =>
+        reaction.visitor == 'neighbour' &&
+        reaction.day == 7 &&
+        reaction.tier == 'full' &&
+        reaction.ordinal == 5,
+  );
+  _expect(iris.id == 'wall', 'Iris wall beat is authored');
+  _expect(iris.options.length == 3, 'Iris wall has three choices');
+  _expect(
+    story.variants.containsKey('iris-20-wall-promised'),
+    'Iris wall callback is authored',
+  );
+  final ashworth = story.reactions.values.firstWhere(
+    (reaction) =>
+        reaction.visitor == 'stranger' &&
+        reaction.day == 6 &&
+        reaction.tier == 'full' &&
+        reaction.ordinal == 5,
+  );
+  _expect(ashworth.id == 'detail', 'Ashworth detail beat is authored');
+  _expect(ashworth.options.length == 3, 'Ashworth detail has three choices');
+  _expect(
+    story.variants.containsKey('ashworth-13-detail-accepted'),
+    'Ashworth detail callback is authored',
   );
 
   final vocabulary = Vocabulary({

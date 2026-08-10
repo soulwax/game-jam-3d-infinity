@@ -58,5 +58,11 @@ Browser evidence for the game and Pixeldart renderer follows one capture
 contract (stable `browser-*.png` names, metadata, and SHA-256 sidecars):
 [`tools/browser/SCREENSHOT_CONTRACT.md`](tools/browser/SCREENSHOT_CONTRACT.md).
 
+Presentation tuning is centralized: resize the authored house through
+`lib/house/scale_profile.dart`, then update the mirrored manifest `modelScale`
+value and run the house manifest tests. Camera projection can be varied without
+editing gameplay by adding `?cameraProfile=wide`, `?cameraProfile=intimate`, or
+`?cameraFov=72` to the web URL; FOV overrides are bounded to 35–100 degrees.
+
 _The map of this place is where you look in the
 place the tunnel doesn't show you._

@@ -21,7 +21,7 @@ const base = {
   }), 'fixture'),
   cellarTransmission: parseCellarTransmission(JSON.stringify({
     sourceRoom: 'cellar', listenerRoom: 'hall', portalPath: ['hall-cellar'],
-    gainDb: -12, lowPassHz: 1100, reachable: true,
+    gainDb: -12, lowPassHz: 1100, muffle01: 0.55, reachable: true,
   }), 'fixture'),
   audioPlanner: 'validated',
   audioRoomIr: 'ir-stone',
@@ -40,6 +40,9 @@ for (const mutate of [
   } } }),
   (state) => ({ ...state, cellarTransmission: {
     ...state.cellarTransmission, lowPassHz: 20000,
+  } }),
+  (state) => ({ ...state, cellarTransmission: {
+    ...state.cellarTransmission, muffle01: 1.5,
   } }),
   (state) => ({ ...state, audioPlanner: 'unavailable' }),
 ]) {

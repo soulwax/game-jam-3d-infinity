@@ -6,11 +6,20 @@ import 'package:web/web.dart' as web;
 import 'interaction_press_policy.dart';
 import 'input_action_map.dart';
 import 'math3.dart';
+import 'xbox_gamepad.dart';
 
 class Input {
+  final web.Window _window;
   final web.Document _document;
   final Set<String> _held = <String>{};
   final Set<String> _pressed = <String>{};
+  Set<String> _gamepadHeld = <String>{};
+  final Set<String> _gamepadPressed = <String>{};
+  final Set<String> _gamepadSuppressed = <String>{};
+  Vec3 _gamepadMove = Vec3(0, 0, 0);
+  double _gamepadLookX = 0;
+  double _gamepadLookY = 0;
+  String? _gamepadId;
 
   double _mouseDx = 0;
   double _mouseDy = 0;
@@ -38,7 +47,12 @@ class Input {
 
   bool wasActionPressed(String action) => _wasActionPressed(action);
 
-  Input(web.Window window) : _document = window.document {
+  bool wasControllerActionPressed(String action) =>
+      _bindings.consumePressed(action, _gamepadPressed);
+
+  bool wasControllerCodePressed(String code) => _gamepadPressed.remove(code);
+
+  Input(web.Window window) : _window = window, _document = window.document {
     window.addEventListener('keydown', _onKeyDown.toJS);
     window.addEventListener('keyup', _onKeyUp.toJS);
     window.addEventListener('mousemove', _onMouseMove.toJS);
@@ -101,6 +115,10 @@ class Input {
 
   double get mouseDx => _mouseDx;
   double get mouseDy => _mouseDy;
+  double get gamepadLookX => _gameplayEnabled ? _gamepadLookX : 0;
+  double get gamepadLookY => _gameplayEnabled ? _gamepadLookY : 0;
+  bool get gamepadConnected => _gamepadId != null;
+  String? get gamepadId => _gamepadId;
 
   Vec3 get moveVector {
     var x = 0.0;
@@ -109,8 +127,9 @@ class Input {
     if (_isActionDown('moveRight')) x += 1;
     if (_isActionDown('moveForward')) z += 1;
     if (_isActionDown('moveBack')) z -= 1;
-    final v = Vec3(x, 0, z);
-    _moveThisFrame = x != 0 || z != 0;
+    final v = Vec3(x, 0, z) +
+        (_gameplayEnabled ? _gamepadMove : Vec3(0, 0, 0));
+    _moveThisFrame = v.x != 0 || v.z != 0;
     return v.length > 1 ? v.normalized : v;
   }
 
@@ -123,8 +142,69 @@ class Input {
   /// normal interaction remains an immediate key edge.
   void step(double dt) {
     if (_interactPolicy.step(dt)) {
-      final held = _bindings.codesFor('interact');
-      if (held.isNotEmpty) _pressed.add(held.first);
+      for (final code in _bindings.codesFor('interact')) {
+        if (_held.contains(code)) {
+          _pressed.add(code);
+          break;
+        }
+        if (_gamepadHeld.contains(code) &&
+            !_gamepadSuppressed.contains(code)) {
+          _gamepadPressed.add(code);
+          break;
+        }
+      }
+    }
+  }
+
+  /// Polls the browser's standard gamepad layout once per visual frame.
+  /// Unsupported layouts remain inert rather than guessing vendor indices.
+  void pollGamepad() {
+    StandardGamepadSnapshot? snapshot;
+    for (final pad in _window.navigator.getGamepads().toDart) {
+      if (pad == null || !pad.connected || pad.mapping != 'standard') continue;
+      snapshot = StandardGamepadSnapshot(
+        connected: true,
+        id: pad.id,
+        mapping: pad.mapping,
+        axes: [for (final axis in pad.axes.toDart) axis.toDartDouble],
+        buttons: [
+          for (final button in pad.buttons.toDart)
+            button.pressed ? 1.0 : button.value.toDouble(),
+        ],
+      );
+      break;
+    }
+    final frame = XboxGamepadLayout.map(
+      snapshot ??
+          const StandardGamepadSnapshot(
+            connected: false,
+            id: '',
+            mapping: '',
+            axes: [],
+            buttons: [],
+          ),
+    );
+    final nextHeld = frame.held;
+    final hadGamepadInteract = _bindings.anyDown('interact', _gamepadHeld);
+    _gamepadSuppressed.removeWhere((code) => !nextHeld.contains(code));
+    for (final code in nextHeld) {
+      if (!_gamepadHeld.contains(code) && !_gamepadSuppressed.contains(code)) {
+        if (_bindings.codesFor('interact').contains(code)) {
+          if (_interactPolicy.keyDown()) _gamepadPressed.add(code);
+        } else {
+          _gamepadPressed.add(code);
+        }
+      }
+    }
+    _gamepadHeld = Set<String>.from(nextHeld);
+    _gamepadMove = frame.move;
+    _gamepadLookX = frame.lookX;
+    _gamepadLookY = frame.lookY;
+    _gamepadId = snapshot?.id;
+    if (hadGamepadInteract &&
+        !_bindings.anyDown('interact', nextHeld) &&
+        !_bindings.anyDown('interact', _held)) {
+      _interactPolicy.keyUp();
     }
   }
 
@@ -136,6 +216,7 @@ class Input {
     _mouseDx = 0;
     _mouseDy = 0;
     _pressed.clear();
+    _gamepadPressed.clear();
     _moveThisFrame = false;
   }
 
@@ -174,15 +255,25 @@ class Input {
   double _movement(web.MouseEvent e, String name) =>
       e.getProperty<JSNumber?>(name.toJS)?.toDartDouble ?? 0;
 
-  bool _isActionDown(String action) => _bindings.anyDown(action, _held);
+  bool _isActionDown(String action) {
+    if (!_gameplayEnabled) return false;
+    return _bindings.anyDown(action, {
+      ..._held,
+      for (final code in _gamepadHeld)
+        if (!_gamepadSuppressed.contains(code)) code,
+    });
+  }
 
   bool _wasActionPressed(String action) {
-    return _bindings.consumePressed(action, _pressed);
+    return _bindings.consumePressed(action, _pressed) ||
+        _bindings.consumePressed(action, _gamepadPressed);
   }
 
   void _clearGameplayState() {
     _held.clear();
     _pressed.clear();
+    _gamepadPressed.clear();
+    _gamepadSuppressed.addAll(_gamepadHeld);
     _mouseDx = 0;
     _mouseDy = 0;
     _moveThisFrame = false;

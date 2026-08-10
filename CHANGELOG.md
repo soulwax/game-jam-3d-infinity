@@ -21,8 +21,14 @@ on changes players or contributors can feel. Detailed renderer notes belong in
 - Added aperture-aware rain visibility: open, mixed, and closed window states
   now attenuate screen-space streaks through a renderer-neutral presentation
   weight. Packaged capture now awaits strict asset-provenance cleanup (VIS-046).
+- Atmospheric capture pairs now require simulation telemetry; the browser
+  harness rejects missing rain-window visibility before writing evidence.
+- Restored the brush heading component family and fixed the settings reset
+  contract so the packaged release build compiles again.
 - Restored the clean package gate by giving eight authored house SFX canonical
   generated asset sources; manifest and source-inventory paths now agree.
+- Added a deterministic asset-provenance test covering manifest, soundscape, and
+  source-inventory coverage; audit warnings now report the live 43-asset count.
 - Fixed the night capture crash caused by AmbientNotice timers using the wrong
   browser callback shape; the fourth embodied night pair now captures cleanly.
 - Added the fourth fixed hero capture pair and recorded its Pixeldart pose/pixel
@@ -69,6 +75,14 @@ on changes players or contributors can feel. Detailed renderer notes belong in
   inventory, sound positions, wall thickness, exterior envelope, and QHMX shell
   are synchronized. Existing fixed-camera visual evidence must be re-captured
   at the new spatial scale.
+- Added a house-owned surface palette for all 13 canonical wall, floor, and
+  ceiling IDs. Existing plaster, grime, linoleum, and stained-ceiling textures
+  now receive room-specific tint, roughness, and UV-density metadata, while the
+  live room geometry uses the same variants for visible color and texture scale.
+- Centralized house resizing in `lib/house/scale_profile.dart`; exterior,
+  walls, inventory validation, stair/spawn anchors, and room geometry now share
+  one scale seam. Camera projection now supports standard, wide, intimate, and
+  bounded URL-selected FOV profiles without changing simulation movement.
 - Added the original brush-cut UI contract: stable palette/scale/motion tokens
   and semantic component states for the upcoming pause-root specimen.
 - Added native semantic brush component wrappers and applied the first
@@ -77,6 +91,10 @@ on changes players or contributors can feel. Detailed renderer notes belong in
   100/150/200% text-scale, high-contrast, narrow, and reduced-motion paths.
 - Completed PF-01's selected and destructive semantic states with structural,
   typographic, and contrast distinctions that do not rely on red alone.
+- Extended the original brush-cut UI from the pause-root specimen through
+  Settings, Controls, reset actions, and key rebinding. Key capture now visibly
+  signals remapping/conflict state while retaining native control semantics and
+  stable automation IDs.
 - Added a backward-compatible Controls v2 multi-binding contract with v1
   migration, reserved/conflict validation, and transactional alternative-key
   capture.

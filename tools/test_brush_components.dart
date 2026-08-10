@@ -7,7 +7,28 @@ void check(bool condition, String message) {
 void main() {
   BrushStateSheet.validate();
   const kinds = BrushComponentKind.values;
-  check(kinds.length == 8, 'all PF-01 component families remain registered');
+  const expectedKinds = {
+    BrushComponentKind.heading,
+    BrushComponentKind.button,
+    BrushComponentKind.tab,
+    BrushComponentKind.slider,
+    BrushComponentKind.toggle,
+    BrushComponentKind.keybind,
+    BrushComponentKind.dialog,
+    BrushComponentKind.toast,
+    BrushComponentKind.page,
+  };
+  check(
+    kinds.length == expectedKinds.length &&
+        kinds.toSet().containsAll(expectedKinds),
+    'all PF-01 component families remain registered',
+  );
+  check(
+    kinds.contains(BrushComponentKind.heading) &&
+        kinds.contains(BrushComponentKind.page) &&
+        kinds.contains(BrushComponentKind.keybind),
+    'heading, page, and keybind families remain explicit',
+  );
   const focus = BrushComponentContract(
     id: 'pause.settings',
     kind: BrushComponentKind.button,
@@ -33,23 +54,29 @@ void main() {
     state: BrushComponentState.error,
   );
   error.validate();
-  check(error.accessibleName.contains('press a key'),
-      'error/keybind status retains its accessible description');
   check(
-    BrushStateSheet.statesFor(BrushComponentKind.keybind)
-        .contains(BrushComponentState.remapping),
+    error.accessibleName.contains('press a key'),
+    'error/keybind status retains its accessible description',
+  );
+  check(
+    BrushStateSheet.statesFor(
+      BrushComponentKind.keybind,
+    ).contains(BrushComponentState.remapping),
     'keybind state sheet includes remapping',
   );
   check(
-    !BrushStateSheet.statesFor(BrushComponentKind.button)
-        .contains(BrushComponentState.remapping),
+    !BrushStateSheet.statesFor(
+      BrushComponentKind.button,
+    ).contains(BrushComponentState.remapping),
     'ordinary action state sheet excludes remapping',
   );
   check(
-    BrushStateSheet.statesFor(BrushComponentKind.button)
-            .contains(BrushComponentState.selected) &&
-        BrushStateSheet.statesFor(BrushComponentKind.button)
-            .contains(BrushComponentState.destructive),
+    BrushStateSheet.statesFor(
+          BrushComponentKind.button,
+        ).contains(BrushComponentState.selected) &&
+        BrushStateSheet.statesFor(
+          BrushComponentKind.button,
+        ).contains(BrushComponentState.destructive),
     'ordinary action state sheet includes selected and destructive states',
   );
   print('brush components: semantic families and state reachability pass');

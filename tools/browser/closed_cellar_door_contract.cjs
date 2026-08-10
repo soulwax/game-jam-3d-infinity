@@ -32,8 +32,11 @@ function parseCellarTransmission(raw, label = 'cellar transmission') {
       parsed.portalPath.some((value) => typeof value !== 'string')) {
     throw new Error(`${label}: portal path is invalid`);
   }
-  for (const key of ['gainDb', 'lowPassHz']) {
+  for (const key of ['gainDb', 'lowPassHz', 'muffle01']) {
     if (!Number.isFinite(parsed[key])) throw new Error(`${label}: ${key} is invalid`);
+  }
+  if (parsed.muffle01 < 0 || parsed.muffle01 > 1) {
+    throw new Error(`${label}: muffle01 is outside [0,1]`);
   }
   if (typeof parsed.reachable !== 'boolean') {
     throw new Error(`${label}: reachability is invalid`);
@@ -63,7 +66,8 @@ function validateClosedCellarDoorState(state, label = 'cellar door') {
       transmission.portalPath.join('|') !== 'hall-cellar' ||
       transmission.reachable !== true ||
       transmission.gainDb !== -12 ||
-      transmission.lowPassHz !== 1100) {
+      transmission.lowPassHz !== 1100 ||
+      transmission.muffle01 !== 0.55) {
     throw new Error(`${label}: closed-door transmission is not -12 dB / 1100 Hz`);
   }
   if (typeof state.audioRoomIr !== 'string' || state.audioRoomIr.length === 0) {

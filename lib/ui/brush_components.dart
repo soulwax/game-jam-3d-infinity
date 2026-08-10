@@ -43,12 +43,14 @@ final class BrushComponents {
     String? text,
   }) {
     contract.validate();
-    final button = buildElement(
-      document,
-      'button',
-      cls: _classes('brush-button', contract),
-      text: text ?? contract.label,
-    ) as web.HTMLButtonElement;
+    final button =
+        buildElement(
+              document,
+              'button',
+              cls: _classes('brush-button', contract),
+              text: text ?? contract.label,
+            )
+            as web.HTMLButtonElement;
     _decorate(button, contract);
     button
       ..type = 'button'
@@ -140,6 +142,21 @@ final class BrushComponents {
     );
     result.setAttribute('aria-label', '${contract.accessibleName}: $binding');
     return result;
+  }
+
+  /// Updates only visual state metadata; element role, ID, and handlers stay
+  /// intact while an interaction such as key capture changes state.
+  static void setState(web.HTMLElement element, BrushComponentState state) {
+    final classes =
+        element.className
+            .split(RegExp(r'\s+'))
+            .where(
+              (value) => value.isNotEmpty && !value.startsWith('brush-state-'),
+            )
+            .toList()
+          ..add('brush-state-${state.name}');
+    element.className = classes.join(' ');
+    element.setAttribute('data-brush-state', state.name);
   }
 
   static web.HTMLElement pageFrame(

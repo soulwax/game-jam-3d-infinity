@@ -6,6 +6,7 @@
   "exteriorMesh": {"format":"QHMX","version":1,"path":"assets/house/exterior/main_shell.qhmx","materialsPath":"assets/house/exterior/materials.json","viewOnly":true,"wallThickness":0.63,"partitionThickness":0.27},
   "inventoryPath": "assets/house/inventory.json",
   "soundscapePath": "assets/house/soundscape.json",
+  "surfaceMaterialsPath": "assets/house/materials.json",
   "levels": [
     {"id":"cellar","kind":"below-grade","floorY":-2.0},
     {"id":"ground","kind":"ground","floorY":0.0},

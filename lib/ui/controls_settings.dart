@@ -15,19 +15,19 @@ const controlsActionLabels = <String, String>{
 };
 
 const _defaultActionBindings = <String, List<String>>{
-  'moveForward': ['KeyW'],
-  'moveBack': ['KeyS'],
-  'moveLeft': ['KeyA'],
-  'moveRight': ['KeyD'],
-  'interact': ['KeyE'],
-  'secondary': ['KeyQ'],
-  'run': ['ShiftLeft'],
-  'crouch': ['ControlLeft'],
-  'rotate': ['KeyR'],
-  'reach': ['KeyF'],
-  'journal': ['KeyJ'],
+  'moveForward': ['KeyW', 'GamepadDpadUp'],
+  'moveBack': ['KeyS', 'GamepadDpadDown'],
+  'moveLeft': ['KeyA', 'GamepadDpadLeft'],
+  'moveRight': ['KeyD', 'GamepadDpadRight'],
+  'interact': ['KeyE', 'GamepadA', 'GamepadRT'],
+  'secondary': ['KeyQ', 'GamepadB'],
+  'run': ['ShiftLeft', 'GamepadLB', 'GamepadLStick'],
+  'crouch': ['ControlLeft', 'GamepadLT', 'GamepadRStick'],
+  'rotate': ['KeyR', 'GamepadX'],
+  'reach': ['KeyF', 'GamepadRB'],
+  'journal': ['KeyJ', 'GamepadY', 'GamepadView'],
   'sleep': ['KeyL'],
-  'pause': ['Escape'],
+  'pause': ['Escape', 'GamepadMenu'],
 };
 
 /// Stable, browser-independent names for pointer bindings.
@@ -44,6 +44,24 @@ final class ControlsBindingToken {
     'Mouse4',
   };
   static const wheelDirections = <String>{'WheelUp', 'WheelDown'};
+  static const gamepadButtons = <String>{
+    'GamepadA',
+    'GamepadB',
+    'GamepadX',
+    'GamepadY',
+    'GamepadLB',
+    'GamepadRB',
+    'GamepadLT',
+    'GamepadRT',
+    'GamepadView',
+    'GamepadMenu',
+    'GamepadLStick',
+    'GamepadRStick',
+    'GamepadDpadUp',
+    'GamepadDpadDown',
+    'GamepadDpadLeft',
+    'GamepadDpadRight',
+  };
   static const reserved = <String>{'Escape', 'Tab', 'F11'};
 
   static bool isValid(String token) =>
@@ -51,12 +69,34 @@ final class ControlsBindingToken {
       !reserved.contains(token) &&
       (mouseButtons.contains(token) ||
           wheelDirections.contains(token) ||
+          gamepadButtons.contains(token) ||
           !token.startsWith('Mouse'));
 
   static String label(String token) {
     if (token.startsWith('Mouse')) {
       final number = token.substring('Mouse'.length);
       return 'Mouse button $number';
+    }
+    if (token.startsWith('Gamepad')) {
+      return switch (token) {
+        'GamepadLB' => 'Xbox left bumper',
+        'GamepadRB' => 'Xbox right bumper',
+        'GamepadLT' => 'Xbox left trigger',
+        'GamepadRT' => 'Xbox right trigger',
+        'GamepadView' => 'Xbox View button',
+        'GamepadMenu' => 'Xbox Menu button',
+        'GamepadLStick' => 'Xbox left stick press',
+        'GamepadRStick' => 'Xbox right stick press',
+        'GamepadDpadUp' => 'Xbox D-pad up',
+        'GamepadDpadDown' => 'Xbox D-pad down',
+        'GamepadDpadLeft' => 'Xbox D-pad left',
+        'GamepadDpadRight' => 'Xbox D-pad right',
+        'GamepadA' => 'Xbox A',
+        'GamepadB' => 'Xbox B',
+        'GamepadX' => 'Xbox X',
+        'GamepadY' => 'Xbox Y',
+        _ => token,
+      };
     }
     return switch (token) {
       'WheelUp' => 'Mouse wheel up',

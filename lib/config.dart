@@ -95,6 +95,7 @@ const double playerSpeed = 2.0;
 const double playerAcceleration = 14.0;
 const double playerDrag = 10.0;
 const double mouseSensitivity = 0.0028;
+const double gamepadLookRadiansPerSecond = 2.4;
 const double playerCapsuleRadius = 0.3;
 const double playerEyeHeight = 1.65;
 const double playerCapsuleHeight = 1.8;

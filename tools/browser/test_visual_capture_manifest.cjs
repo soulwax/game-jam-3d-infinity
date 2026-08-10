@@ -42,6 +42,15 @@ const rain = selectVisualCapture(manifest, 'hero-living-rain-clean', {
 });
 assert.strictEqual(rain.status, 'selected');
 assert.strictEqual(rain.fixture.weather, 'rain');
+assert(rain.requiredMetadata.includes('simulation'));
+const shutter = selectVisualCapture(manifest, 'hero-living-shutter-clean', {
+  scenario: 'ground-circuit',
+  profile: 'clean',
+  width: 960,
+  height: 540,
+});
+assert.strictEqual(shutter.status, 'selected');
+assert(shutter.requiredMetadata.includes('simulation'));
 assert.strictEqual(
   decodeAutomationPlayerState(JSON.stringify({
     schemaVersion: 1,

@@ -2,7 +2,7 @@ const { firefox } = require('playwright');
 const { writeScreenshotBundle } = require('./screenshot_capture.cjs');
 
 const baseUrl = process.env.PIXELDART_RESIDENCY_BASE_URL ||
-  'http://127.0.0.1:8092/external/pixeldart/web/renderer_test/?r09-residency=1';
+  'http://127.0.0.1:8092/tmp/r09-web/?r09-residency=1';
 const outputDir = process.env.PIXELDART_RESIDENCY_OUTPUT || 'tmp/r09-renderer';
 
 function readCanvas(page) {
@@ -106,7 +106,7 @@ async function run() {
       { timeout: 15000, polling: 25 },
     );
     const pending = await readCanvas(page);
-    await capture(page, 'pending', pending);
+    const pendingCapture = await capture(page, 'pending', pending);
     await page.waitForFunction(
       () => document.querySelector('#test-canvas')?.getAttribute(
         'data-r09-texture-residency-status') === 'resident',
@@ -114,7 +114,7 @@ async function run() {
       { timeout: 15000, polling: 25 },
     );
     const resident = await readCanvas(page);
-    await capture(page, 'resident', resident);
+    const residentCapture = await capture(page, 'resident', resident);
 
     if (errors.length > 0) throw new Error(`page errors: ${errors.join('\n')}`);
     if (pending.status !== 'pending' || pending.draw !== 'fallback-material' ||
@@ -123,6 +123,11 @@ async function run() {
     }
     if (!pending.handle || pending.handle !== resident.handle) {
       throw new Error(`logical texture handle changed across upload: ${JSON.stringify({ pending, resident })}`);
+    }
+    const pendingPng = require('fs').readFileSync(pendingCapture.file);
+    const residentPng = require('fs').readFileSync(residentCapture.file);
+    if (pendingPng.equals(residentPng)) {
+      throw new Error('pending and resident renderer captures were pixel-identical');
     }
     const pendingCalls = pending.webglCalls;
     const residentCalls = resident.webglCalls;

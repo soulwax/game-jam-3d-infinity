@@ -1,15 +1,16 @@
 import 'dart:typed_data';
 
-import '../config.dart';
 import '../engine/math3.dart';
 import '../engine/mesh.dart';
 import 'house.dart';
 import 'room.dart';
+import 'scale_profile.dart';
+import 'surface_materials.dart';
 
 /// Runtime MVP shell thicknesses: authored 0.28 m exterior / 0.12 m
 /// partition sections, uniformly expanded by the 2.25x spacious house scale.
-const double houseExteriorWallThickness = 0.63;
-const double housePartitionWallThickness = 0.27;
+const double houseExteriorWallThickness = 0.28 * houseModelScale;
+const double housePartitionWallThickness = 0.12 * houseModelScale;
 
 /// CPU-only retained geometry shared by the legacy emitter and presentation
 /// adapters. It reads authored house facts but owns no renderer handles.
@@ -37,14 +38,16 @@ RoomGeometry buildRoomGeometry(House house, Room room) {
   final doors = StaticMeshBuilder();
   final o = room.origin;
   final s = house.effectiveSize(room);
+  final floorMaterial = HouseSurfaceMaterials.forId(room.surfaceFloor);
+  final ceilingMaterial = HouseSurfaceMaterials.forId(room.surfaceCeiling);
   floor.quad(
     Vec3(o.x, o.y, o.z),
     Vec3(o.x, o.y, o.z + s.z),
     Vec3(o.x + s.x, o.y, o.z + s.z),
     Vec3(o.x + s.x, o.y, o.z),
-    0xA8A8A8,
-    uScale: s.x / texWorldSize,
-    vScale: s.z / texWorldSize,
+    floorMaterial.tint,
+    uScale: s.x / floorMaterial.uvMetres,
+    vScale: s.z / floorMaterial.uvMetres,
   );
   _addFloorFinish(floor, room, s);
   ceiling.quad(
@@ -52,9 +55,9 @@ RoomGeometry buildRoomGeometry(House house, Room room) {
     Vec3(o.x + s.x, o.y + s.y, o.z),
     Vec3(o.x + s.x, o.y + s.y, o.z + s.z),
     Vec3(o.x, o.y + s.y, o.z + s.z),
-    0xC0C0C0,
-    uScale: s.x / texWorldSize,
-    vScale: s.z / texWorldSize,
+    ceilingMaterial.tint,
+    uScale: s.x / ceilingMaterial.uvMetres,
+    vScale: s.z / ceilingMaterial.uvMetres,
   );
   _addCeilingDetails(ceiling, room, s);
   for (final facing in Facing.values) {
@@ -166,12 +169,15 @@ void _addFloorFinish(StaticMeshBuilder builder, Room room, Vec3 size) {
   final x = room.origin.x;
   final y = room.origin.y;
   final z = room.origin.z;
+  final material = HouseSurfaceMaterials.forId(room.surfaceFloor);
   if (room.surfaceFloor == 'floor-wood') {
     const boardDepth = 0.15;
     final boardCount = (size.z / 0.22).floor();
     for (var i = 0; i < boardCount; i++) {
       final z0 = z + i * 0.22 + 0.018;
-      final tone = i.isEven ? 0x795A43 : 0x6B4B37;
+      final tone = i.isEven
+          ? _shade(material.tint, 1.04)
+          : _shade(material.tint, 0.84);
       _box(
         builder,
         Vec3(x, y + 0.004, z0),
@@ -218,7 +224,7 @@ void _addFloorFinish(StaticMeshBuilder builder, Room room, Vec3 size) {
         builder,
         Vec3(x + 0.08, y + 0.004, z0),
         Vec3(x + size.x - 0.08, y + 0.012, z0 + 0.50),
-        i.isEven ? 0x76796C : 0x686B61,
+        i.isEven ? _shade(material.tint, 1.04) : _shade(material.tint, 0.88),
       );
     }
     return;
@@ -232,7 +238,9 @@ void _addFloorFinish(StaticMeshBuilder builder, Room room, Vec3 size) {
           builder,
           Vec3(x0, y + 0.004, z0),
           Vec3(x0 + 0.78, y + 0.012, z0 + 0.78),
-          (ix + iz).isEven ? 0xB9B4A8 : 0xA29D94,
+          (ix + iz).isEven
+              ? _shade(material.tint, 1.06)
+              : _shade(material.tint, 0.88),
         );
       }
     }
@@ -243,13 +251,13 @@ void _addFloorFinish(StaticMeshBuilder builder, Room room, Vec3 size) {
       builder,
       Vec3(x + 0.08, y + 0.004, z + 0.08),
       Vec3(x + size.x - 0.08, y + 0.014, z + size.z - 0.08),
-      0x77736B,
+      material.tint,
     );
     _box(
       builder,
       Vec3(x + 2.20, y + 0.015, z + 2.45),
       Vec3(x + 2.68, y + 0.021, z + 2.93),
-      0x4A4944,
+      _shade(material.tint, 0.58),
     );
   }
 }
@@ -1714,14 +1722,15 @@ void _wallQuad(
     Facing.east => Vec3(-inset, 0, 0),
     Facing.west => Vec3(inset, 0, 0),
   };
+  final material = HouseSurfaceMaterials.forId(room.surfaceWall);
   builder.quad(
     a + roomSide,
     b + roomSide,
     c + roomSide,
     d + roomSide,
-    0x8B8B8B,
-    uScale: (u1 - u0) / texWorldSize,
-    vScale: (v1 - v0) / texWorldSize,
+    HouseSurfaceMaterials.forId(room.surfaceWall).tint,
+    uScale: (u1 - u0) / material.uvMetres,
+    vScale: (v1 - v0) / material.uvMetres,
   );
   // Keep the canonical interior face at the room boundary, then cap a real
   // structural section outward. This gives every wall visible reveal/contact
@@ -1739,7 +1748,19 @@ void _wallQuad(
     Facing.east => Vec3(a.x + thickness, c.y, b.z),
     Facing.west => Vec3(d.x, c.y, b.z),
   };
-  _box(builder, min, max, 0x8B8B8B);
+  _box(
+    builder,
+    min,
+    max,
+    _shade(HouseSurfaceMaterials.forId(room.surfaceWall).tint, 0.68),
+  );
+}
+
+int _shade(int rgb, double factor) {
+  int channel(int value) => (value * factor).round().clamp(0, 255);
+  return (channel((rgb >> 16) & 0xff) << 16) |
+      (channel((rgb >> 8) & 0xff) << 8) |
+      channel(rgb & 0xff);
 }
 
 double _wallThickness(Room room, Facing facing) {
@@ -1747,9 +1768,9 @@ double _wallThickness(Room room, Facing facing) {
     Facing.west => room.origin.x == 0,
     Facing.north => room.origin.z == 0,
     Facing.east =>
-      (room.origin.x + room.size.x - 10.5 * houseSpatialScale).abs() < 0.001,
+      (room.origin.x + room.size.x - 10.5 * houseModelScale).abs() < 0.001,
     Facing.south =>
-      (room.origin.z + room.size.z - 10.5 * houseSpatialScale).abs() < 0.001,
+      (room.origin.z + room.size.z - 10.5 * houseModelScale).abs() < 0.001,
   };
   return atOuterEdge ? houseExteriorWallThickness : housePartitionWallThickness;
 }

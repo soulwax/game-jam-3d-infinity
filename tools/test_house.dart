@@ -1,6 +1,7 @@
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/house.dart';
+import 'package:quarantine/house/scale_profile.dart';
 
 Never _fail(String message) => throw StateError(message);
 
@@ -24,19 +25,19 @@ void main() {
   _expect(
     house.stairs.single.landingHeights.every(
       (height) => [
-        3.15,
-        6.3,
-        9.45,
+        1.4 * houseModelScale,
+        2.8 * houseModelScale,
+        4.2 * houseModelScale,
       ].any((expected) => (height - expected).abs() < 0.0001),
     ),
     'stair landing heights must remain stable',
   );
   final living = house.byId('living-room')!;
   _expect(
-    (living.size.x - 10.125).abs() < 0.0001 &&
-        (living.size.y - 5.85).abs() < 0.0001 &&
-        (living.size.z - 9.0).abs() < 0.0001,
-    'spacious rooms must be 2.25x wider, taller, and deeper',
+    (living.size.x - 4.5 * houseModelScale).abs() < 0.0001 &&
+        (living.size.y - 2.6 * houseModelScale).abs() < 0.0001 &&
+        (living.size.z - 4.0 * houseModelScale).abs() < 0.0001,
+    'rooms must derive dimensions from the house scale profile',
   );
 
   for (final room in house.rooms) {

@@ -3,6 +3,7 @@
 /// The visual layer may render these values with CSS, but semantic order,
 /// hit-boxes, and accessibility state remain independent of the treatment.
 enum BrushComponentKind {
+  heading,
   button,
   tab,
   slider,

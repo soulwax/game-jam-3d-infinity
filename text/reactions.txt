@@ -103,6 +103,108 @@ Say the previous tenant is not recorded here.
 No. That's not the same as saying she didn't owe me.
 @effect hallow.dish=withheld
 
+@reaction ayling 17 compressed 2 clipboard
+@option hand-over
+Put the record in her hands.
+@reply
+I'll put your name first? No. That's not how it works. You needn't make it easy.
+@effect ayling.return=trusted
+@option question
+Ask which absent households she has already marked present.
+@reply
+Don't. If you make me name them, I choose between the truth and keeping the road intact.
+@effect ayling.return=questioned
+@option withhold
+Close the record and keep it from her.
+@reply
+All right. I'll mark it not produced. I know what that does to a person.
+@effect ayling.return=withheld
+
+@reaction hazmat-boy 11 full 1 word
+@option ask-name
+Ask him to say his own name instead.
+@reply
+Ronnie. I can say that. It isn't on the form, but it's mine.
+@effect ronnie.response=named
+@option accept-gap
+Tell him the missing word is enough for now.
+@reply
+Right. Thank you. I can finish a round if I know when not to.
+@effect ronnie.response=trusted
+@option press-word
+Ask what word he was given.
+@reply
+I was given it. I only don't have it now.
+@effect ronnie.response=pressed
+
+@reaction widow 16 full 2 plate
+@option leave-plate
+Tell her to leave the plate where it is.
+@reply
+Thank you. It is a small thing, but dinner has a shape when the place is set.
+@effect attercliffe.plate=kept
+@option ask-him
+Ask whether he would want the plate there.
+@reply
+He'd say I was making a fuss. He always did, when I was trying not to.
+@effect attercliffe.plate=questioned
+@option clear-plate
+Suggest she put the plate away for tonight.
+@reply
+Yes. All right. I can do one evening without the table telling me what happened.
+@effect attercliffe.plate=cleared
+
+@reaction doctor 6 full 4 entry
+@option answer-order
+Give him the last three days in order.
+@reply
+Good. I can record that without turning it into a verdict.
+@effect marchant.entry=answered
+@option admit-uncertainty
+Say you remember the order but not the days.
+@reply
+That's an answer. People think the uncertainty is what needs hiding.
+@effect marchant.entry=deflected
+@option invite-in
+Let him cross the threshold to write it down.
+@reply
+Thank you. I won't make a room of it. Just the edge of the table.
+@effect marchant.entry=invited
+
+@reaction neighbour 7 full 5 wall
+@option stop-asking
+Ask her to stop asking for the matching answer.
+@reply
+All right. I can stop. Ron will ask what I got wrong, but that is my business.
+@effect iris.knocks=stopped
+@option match-answer
+Give her the green door and two-window answer.
+@reply
+Thank you. Ron will be glad. He worries when a thing doesn't match.
+@effect iris.knocks=matched
+@option wall-knock
+Promise to use two knocks if you need her.
+@reply
+Good. If I hear two, I'll know it's you. If I hear one, I'll listen anyway.
+@effect iris.knocks=promised
+
+@reaction stranger 6 full 5 detail
+@option let-stand
+Let the identifying detail stand without asking for its source.
+@reply
+All right. I won't add it to the list. Some things are safer without a heading.
+@effect ashworth.detail=accepted
+@option ask-source
+Ask who told him.
+@reply
+Nobody told me. That's the part I promised not to improve.
+@effect ashworth.detail=questioned
+@option correct-him
+Say he has you mistaken for somebody else.
+@reply
+Then I am. It happens to both of us.
+@effect ashworth.detail=refused
+
 # Quiet callbacks: one line changes when a remembered object or boundary is
 # revisited. Missing/legacy state leaves the original corpus line untouched.
 
@@ -126,6 +228,36 @@ If your book remains private, the card will stand in for it. A poorer witness.
 @replace visitor:caller:20:compressed.2
 Two pound is settled. The dish is where it ought to be. Say Mrs Hallow called.
 
+@variant ayling-20-trusted
+@when ayling.return=trusted
+@replace visitor:ayling:20:compressed.2
+I'll write down that you gave it me. It's a small thing, but I know what small things do.
+
+@variant ronnie-18-name
+@when ronnie.response=named
+@replace visitor:hazmat-boy:18:compressed.1
+I came back round, like I said I would. I'm Ronnie, by the way.
+
+@variant attercliffe-20-plate-kept
+@when attercliffe.plate=kept
+@replace visitor:widow:20:compressed.1
+Nothing left to do today. I sat with him a while, same as always. The plate was there.
+
+@variant marchant-15-entry-invited
+@when marchant.entry=invited
+@replace visitor:doctor:15:compressed.2
+Nothing to ask. You're marked as before. I did read what you left me.
+
+@variant iris-20-wall-promised
+@when iris.knocks=promised
+@replace visitor:neighbour:20:compressed.1
+You're in, then. I heard two, though you didn't use the wall.
+
+@variant ashworth-13-detail-accepted
+@when ashworth.detail=accepted
+@replace visitor:stranger:13:full.3
+Your writing slopes back when you're tired. I liked it then, and I still do.
+
 # Material residues are revealed only when the player looks at an existing
 # object. They are notices, not pickups; the ordinary inspection remains the
 # fallback when the fact is absent.
@@ -144,6 +276,24 @@ The sewing case rests beside the journal. Its brass clasp is warm, though the ro
 
 @residue hallow.dish=returned hall-mail
 A narrow receipt lies with the post. The ink has bled at the word “dish,” but the amount is clear.
+
+@residue ayling.return=withheld hall-mail
+A carbon corner shows beneath the post. This house's line is blank, but writing pressed through.
+
+@residue ronnie.response=named hall-mail
+A route card has been folded twice and tucked by the post. Someone has written “Ronnie” on the back.
+
+@residue attercliffe.plate=cleared hall-mail
+A clean circle marks where the second plate sat. The table has been wiped around it.
+
+@residue marchant.entry=invited journal-desk
+A clean rectangle on the desk shows where the health sheet rested. The pencil marks are yours.
+
+@residue iris.knocks=stopped hall-mail
+A quarter of tea sits by the post, gone cold before anyone asked for it.
+
+@residue ashworth.detail=accepted journal-desk
+The journal's top corner is turned down, as if someone paused there and chose not to read on.
 
 # Ignored visits leave ordinary evidence, never a punishment or a new quest.
 

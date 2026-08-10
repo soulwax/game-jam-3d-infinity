@@ -217,6 +217,29 @@ button:focus-visible,
   text-decoration-thickness: 1px;
 }
 
+.brush-slider,
+.brush-toggle {
+  accent-color: var(--brush-amber);
+}
+
+.brush-slider {
+  min-width: 0;
+  border-block: 1px solid rgba(198, 172, 113, 0.35);
+  border-radius: 0;
+  background: linear-gradient(90deg, rgba(198, 172, 113, 0.16), transparent);
+}
+
+.brush-slider:focus-visible,
+.brush-toggle:focus-visible {
+  outline: 2px solid var(--brush-focus);
+  outline-offset: 3px;
+}
+
+.brush-toggle {
+  inline-size: 1.15rem;
+  block-size: 1.15rem;
+}
+
 .brush-page-frame,
 .brush-dialog {
   border-left: 3px solid var(--brush-amber);
@@ -246,6 +269,11 @@ button:focus-visible,
 :root.high-contrast .brush-button:disabled,
 :root.high-contrast .brush-state-disabled {
   opacity: 0.72;
+}
+
+:root.high-contrast .brush-slider,
+:root.high-contrast .brush-toggle {
+  accent-color: var(--brush-focus);
 }
 
 @media (max-width: 36rem) {

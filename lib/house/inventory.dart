@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import '../engine/math3.dart';
 import 'house.dart';
+import 'scale_profile.dart';
 
 /// Renderer-neutral, data-driven model inventory for the authored house.
 ///
@@ -72,8 +73,10 @@ final class HouseInventory {
     if (sourceRef != 'assets/house/house.json') {
       throw StateError('inventory source changed: $sourceRef');
     }
-    if ((modelScale - 2.25).abs() > 0.0001) {
-      throw StateError('inventory modelScale must remain 2.25');
+    if ((modelScale - houseModelScale).abs() > 0.0001) {
+      throw StateError(
+        'inventory modelScale must match house profile $houseModelScale',
+      );
     }
     final assetIds = <String>{};
     for (final asset in assets) {

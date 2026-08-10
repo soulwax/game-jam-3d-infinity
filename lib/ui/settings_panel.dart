@@ -5,6 +5,8 @@ import 'package:web/web.dart' as web;
 import 'panel.dart';
 import 'audio_settings.dart';
 import 'accessibility_settings.dart';
+import 'brush_components.dart';
+import 'brush_theme.dart';
 import 'pause_settings_contract.dart';
 import 'settings_registry.dart';
 import 'gameplay_settings.dart';
@@ -33,16 +35,27 @@ class SettingsPanel extends Panel {
   web.HTMLInputElement? _strongHighlights;
   final Map<String, web.HTMLSelectElement> _gameplaySelects = {};
   web.HTMLInputElement? _contextualReminders;
-  GameplaySettingsProfile _gameplayOptions =
-      GameplaySettingsProfile.firstRun;
+  GameplaySettingsProfile _gameplayOptions = GameplaySettingsProfile.firstRun;
 
   SettingsPanel(web.Document document, {this.page}) : super(document) {
     final pageLabel = page == null
         ? 'House settings'
         : '${PauseSettingsContract.labels[page]} settings';
-    root.setAttribute('aria-label', pageLabel);
+    root
+      ..className = '${root.className} brush-page-frame'
+      ..setAttribute('aria-label', pageLabel)
+      ..setAttribute('data-brush-kind', 'frame')
+      ..setAttribute('data-brush-state', 'normal');
     root.appendChild(
-      buildElement(document, 'h2', cls: 'journal-title', text: pageLabel),
+      BrushComponents.heading(
+        document,
+        BrushComponentContract(
+          id: 'settings.${page?.name ?? 'root'}.heading',
+          kind: BrushComponentKind.heading,
+          label: pageLabel,
+        ),
+        level: 2,
+      ),
     );
     root.appendChild(
       buildElement(
@@ -90,51 +103,48 @@ class SettingsPanel extends Panel {
 
     final resets = buildElement(document, 'div', cls: 'settings-grid');
     for (final category in SettingCategory.values.where(_includesCategory)) {
-      final button =
-          buildElement(
-                  document,
-                  'button',
-                  cls: 'door-continue',
-                  text: 'reset ${category.name}',
-                )
-                as web.HTMLButtonElement
-            ..setAttribute('type', 'button');
-      button.addEventListener(
-        'click',
-        ((web.Event _) => onResetCategory?.call(category)).toJS,
+      final button = BrushComponents.button(
+        document,
+        BrushComponentContract(
+          id: 'settings.${page?.name ?? 'root'}.reset.${category.name}',
+          kind: BrushComponentKind.button,
+          label: 'reset ${category.name}',
+          description: 'restore ${category.name} settings to defaults',
+        ),
+        onPressed: () => onResetCategory?.call(category),
       );
       resets.appendChild(button);
     }
-    final resetAll =
-        buildElement(
-                document,
-                'button',
-                cls: 'door-continue',
-                text: 'reset all settings',
-              )
-              as web.HTMLButtonElement
-          ..setAttribute('type', 'button');
-    resetAll.addEventListener(
-      'click',
-      ((web.Event _) => onResetAll?.call()).toJS,
+    final resetAll = BrushComponents.button(
+      document,
+      BrushComponentContract(
+        id: 'settings.${page?.name ?? 'root'}.reset.all',
+        kind: BrushComponentKind.button,
+        label: 'reset all settings',
+        description: 'restore all settings to defaults',
+        state: BrushComponentState.destructive,
+      ),
+      onPressed: () => onResetAll?.call(),
     );
     resets.appendChild(resetAll);
     root.appendChild(resets);
 
-    final close =
-        buildElement(document, 'button', cls: 'door-continue', text: 'return')
-            as web.HTMLButtonElement;
-    close.setAttribute('type', 'button');
-    close.addEventListener(
-      'click',
-      ((web.Event _) {
+    final close = BrushComponents.button(
+      document,
+      BrushComponentContract(
+        id: 'settings.${page?.name ?? 'root'}.back',
+        kind: BrushComponentKind.button,
+        label: 'return',
+        description: 'return to settings categories',
+      ),
+      onPressed: () {
         final back = onBack;
         if (back != null) {
           back();
         } else {
           closePanel();
         }
-      }).toJS,
+      },
     );
     root.appendChild(close);
   }
@@ -195,10 +205,8 @@ class SettingsPanel extends Panel {
       'change',
       ((web.Event _) {
         _accessibilityProfile = _accessibilityProfile.copyWith(
-          screenReaderVerbosity:
-              AccessibilityScreenReaderVerbosity.values.firstWhere(
-            (value) => value.name == verbosity.value,
-          ),
+          screenReaderVerbosity: AccessibilityScreenReaderVerbosity.values
+              .firstWhere((value) => value.name == verbosity.value),
         );
         onAccessibilityProfile?.call(_accessibilityProfile);
       }).toJS,
@@ -207,17 +215,14 @@ class SettingsPanel extends Panel {
     grid.appendChild(verbosityRow);
     final reset =
         buildElement(
-            document,
-            'button',
-            cls: 'door-continue',
-            text: 'follow system accessibility defaults',
-          )
-          as web.HTMLButtonElement
-      ..setAttribute('type', 'button')
-      ..setAttribute(
-        'aria-label',
-        'follow system accessibility defaults',
-      );
+                document,
+                'button',
+                cls: 'door-continue',
+                text: 'follow system accessibility defaults',
+              )
+              as web.HTMLButtonElement
+          ..setAttribute('type', 'button')
+          ..setAttribute('aria-label', 'follow system accessibility defaults');
     reset.addEventListener(
       'click',
       ((web.Event _) => onResetAccessibilityProfile?.call()).toJS,
@@ -287,31 +292,52 @@ class SettingsPanel extends Panel {
   web.HTMLElement _buildGameplayOptions(web.Document document) {
     final grid = buildElement(document, 'div', cls: 'settings-grid');
     _addGameplaySelect(
-      document, grid, 'interactionMode', 'interaction mode',
+      document,
+      grid,
+      'interactionMode',
+      'interaction mode',
       GameplayInteractionMode.values,
     );
     _addGameplaySelect(
-      document, grid, 'promptDensity', 'prompt density',
+      document,
+      grid,
+      'promptDensity',
+      'prompt density',
       GameplayPromptDensity.values,
     );
     _addGameplaySelect(
-      document, grid, 'textPacing', 'dialogue text pacing',
+      document,
+      grid,
+      'textPacing',
+      'dialogue text pacing',
       GameplayTextPacing.values,
     );
     _addGameplaySelect(
-      document, grid, 'journalLayout', 'journal layout',
+      document,
+      grid,
+      'journalLayout',
+      'journal layout',
       GameplayJournalLayout.values,
     );
     _addGameplaySelect(
-      document, grid, 'confirmations', 'confirmations',
+      document,
+      grid,
+      'confirmations',
+      'confirmations',
       GameplayConfirmationLevel.values,
     );
     _addGameplaySelect(
-      document, grid, 'saveFeedback', 'save feedback',
+      document,
+      grid,
+      'saveFeedback',
+      'save feedback',
       GameplaySaveFeedback.values,
     );
     _addGameplaySelect(
-      document, grid, 'focusLossBehavior', 'when the window loses focus',
+      document,
+      grid,
+      'focusLossBehavior',
+      'when the window loses focus',
       GameplayFocusLossBehavior.values,
     );
     final row = buildElement(document, 'label', cls: 'setting-toggle');
@@ -329,7 +355,9 @@ class SettingsPanel extends Panel {
     );
     row
       ..appendChild(reminders)
-      ..appendChild(buildElement(document, 'span', text: 'contextual reminders'));
+      ..appendChild(
+        buildElement(document, 'span', text: 'contextual reminders'),
+      );
     grid.appendChild(row);
     _contextualReminders = reminders;
     return grid;

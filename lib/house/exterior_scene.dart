@@ -1,17 +1,18 @@
 import 'house.dart';
 import 'room.dart';
 import 'exterior_mesh.dart';
+import 'scale_profile.dart';
 
 /// Builds the first detailed exterior pass from the runtime-scaled house.
 /// The interior planes remain collision truth; this scene wraps them with the
 /// documented 0.63 m exterior wall thickness and keeps all exterior additions
 /// view-only.
 HouseExteriorMesh buildHouseExteriorMesh(House house) {
-  const width = 10.5 * houseSpatialScale;
-  const depth = 10.5 * houseSpatialScale;
-  const eaves = 8.03 * houseSpatialScale;
-  const ridge = 10.88 * houseSpatialScale;
-  const wall = 0.42 * houseSpatialScale;
+  final width = 10.5 * houseScaleProfile.exteriorScale;
+  final depth = 10.5 * houseScaleProfile.exteriorScale;
+  final eaves = 8.03 * houseScaleProfile.exteriorScale;
+  final ridge = 10.88 * houseScaleProfile.exteriorScale;
+  final wall = 0.42 * houseScaleProfile.exteriorScale;
   final builder = HouseExteriorMeshBuilder();
 
   for (final facing in Facing.values) {

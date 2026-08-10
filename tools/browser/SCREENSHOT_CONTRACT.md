@@ -68,6 +68,37 @@ The focused `pixeldart_instance_smoke.cjs` probe follows the same writer and
 defaults to `/tmp/browser-pixeldart-r09-instance-proof.png` for its verification
 capture.
 
+The package-level texture residency probe uses the same contract and captures
+both sides of a real material transition:
+
+```sh
+PIXELDART_RESIDENCY_BASE_URL='http://127.0.0.1:8092/tmp/r09-web/?r09-residency=1' \
+node tools/browser/pixeldart_residency_smoke.cjs
+```
+
+It requires a declared-but-pending handle to draw through the fallback, then
+the same slot+generation handle to draw after its pixels arrive. Firefox
+instrumentation must observe one additional `createTexture`, no delete, and
+continued draws; the pending/resident PNGs must not be byte-identical. This is
+package residency draw evidence, not an asset-streaming budget, eviction, or
+shadow-hardware claim.
+
+The standalone hardware shadow-pixel A/B probe uses a frozen scene and the
+same compiled fixture:
+
+```sh
+PIXELDART_SHADOW_BASE_URL='http://127.0.0.1:8092/tmp/r09-web/?r09-shadow-proof=1' \
+PIXELDART_SHADOW_ARTIFACT_DIR=tmp/r09-shadow \
+node tools/browser/pixeldart_shadow_smoke.cjs
+```
+
+The `-off` page changes only `castsShadow`; the fixture records direct
+`shadow-pass`/`zero-pass` telemetry and an in-loop 64×36 luma grid. The smoke
+classifies an adapter honestly as `unsupported`, `zero-pass`, or `observed`;
+`observed` requires non-zero caster work and changed presented pixels. This
+probe is standalone renderer evidence and must not be used to infer that the
+authored-house safe profile has hardware shadow draws.
+
 The authored-house PVS transition probe uses the same bundle format for its
 hall, kitchen, and living-room evidence. With a current game compile served from the
 repository, run:

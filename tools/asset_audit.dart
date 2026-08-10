@@ -431,7 +431,7 @@ Future<void> main(List<String> args) async {
         source['sha256'] is! String || (source['sha256'] as String).isEmpty,
   )) {
     findings.debt(
-      'source inventory has no pinned SHA-256 values; all 30 assets rely on local fetch state',
+      'source inventory has no pinned SHA-256 values; all ${inventory.length} assets rely on local fetch state',
     );
   }
   if (manifestPaths.length != inventoryPaths.length ||
@@ -452,6 +452,18 @@ Future<void> main(List<String> args) async {
       final path = entry.value['path'] as String;
       if (recorded is! String ||
           !RegExp(r'^[a-f0-9]{64}$').hasMatch(recorded)) {
+        // `.fetch_state.json` is an ignored accelerator, not provenance. A
+        // checkout may have no cache at all; the source inventory's
+        // checked-in payload hash is the authoritative fallback in that case.
+        final sourcePinned = entry.value['sha256'];
+        if (sourcePinned is String &&
+            RegExp(r'^[a-f0-9]{64}$').hasMatch(sourcePinned)) {
+          final actual = _sha256(_assetFile(path).readAsBytesSync());
+          if (actual != sourcePinned) {
+            findings.error('source-pinned sha256 mismatch for ${entry.key}');
+          }
+          continue;
+        }
         findings.debt('fetch state has no valid sha256 for ${entry.key}');
         continue;
       }

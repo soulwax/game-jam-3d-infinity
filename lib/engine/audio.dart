@@ -83,6 +83,10 @@ class Audio {
   bool _muted = false;
 
   int get activeSpatialSources => _filterChains.length;
+  double get maxActiveMuffle01 => _filterChains.values.fold(
+    0.0,
+    (maximum, chain) => math.max(maximum, chain.muffle01),
+  );
   bool get musicStarted => _musicStarted;
   String get roomIr => _roomIr ?? 'ir-fallback';
 
@@ -257,6 +261,7 @@ class Audio {
     String? sourceRoom,
     double? transmissionGainDb,
     double? transmissionCutoffHz,
+    double? transmissionMuffle01,
   }) {
     final buf = _buffers[name];
     if (buf == null) return;
@@ -267,6 +272,7 @@ class Audio {
     final filter = _createOcclusionFilter();
     final attenuationGain = _ctx.createGain()..gain.value = 1.0;
 
+    var muffle01 = transmissionMuffle01 ?? 0.0;
     if (transmissionGainDb != null && transmissionCutoffHz != null) {
       filter.frequency.value = transmissionCutoffHz;
       attenuationGain.gain.value = math
@@ -274,9 +280,10 @@ class Audio {
           .toDouble();
     } else if (sourceRoom != null && _listenerRoom != null && _house != null) {
       final path = _house.pathBetweenRooms(sourceRoom, _listenerRoom!);
-      final (gainDb, freqHz) = _computeOcclusion(path);
+      final (gainDb, freqHz, pathMuffle01) = _computeOcclusion(path);
       filter.frequency.value = freqHz;
       attenuationGain.gain.value = math.pow(10.0, gainDb / 20.0).toDouble();
+      muffle01 = pathMuffle01;
     }
     final chain = _SpatialChain(
       source: src,
@@ -285,6 +292,7 @@ class Audio {
       filter: filter,
       panner: p,
       sourceRoom: sourceRoom,
+      muffle01: muffle01.clamp(0.0, 1.0).toDouble(),
     );
     _filterChains[filter] = chain;
     src.onended = ((web.Event _) => _disposeSpatial(filter)).toJS;
@@ -306,6 +314,7 @@ class Audio {
       sourceRoom: plan.sourceRoom,
       transmissionGainDb: plan.gainDb,
       transmissionCutoffHz: plan.lowPassHz,
+      transmissionMuffle01: plan.muffle01,
     );
   }
 
@@ -320,18 +329,21 @@ class Audio {
     return f;
   }
 
-  (double, double) _computeOcclusion(List<Portal> path) {
+  (double, double, double) _computeOcclusion(List<Portal> path) {
     double totalGain = 0.0;
     double lowestFreq = 20000.0;
+    double muffle01 = 0.0;
 
     for (final portal in path) {
       final isOpen = _isDoorOpen(portal);
       if (isOpen) {
         totalGain += occlusionGainOpenDoor;
         lowestFreq = math.min(lowestFreq, occlusionFreqOpenDoor);
+        muffle01 = 1 - ((1 - muffle01) * (1 - 0.18));
       } else {
         totalGain += occlusionGainClosedDoor;
         lowestFreq = math.min(lowestFreq, occlusionFreqClosedDoor);
+        muffle01 = 1 - ((1 - muffle01) * (1 - 0.55));
       }
     }
 
@@ -340,7 +352,7 @@ class Audio {
       lowestFreq = 20000.0;
     }
 
-    return (totalGain, lowestFreq);
+    return (totalGain, lowestFreq, muffle01);
   }
 
   web.PannerNode _panner(Vec3 pos) {
@@ -519,10 +531,14 @@ class Audio {
         sourceRoom,
         listenerRoom,
       );
-      final (gainDb, freqHz) = transmission == null
+      final (gainDb, freqHz, muffle01) = transmission == null
           ? _computeOcclusion(house.pathBetweenRooms(sourceRoom, listenerRoom))
-          : (transmission.gainDb, transmission.lowPassHz);
-      _rampTransmission(chain, gainDb, freqHz);
+          : (
+              transmission.gainDb,
+              transmission.lowPassHz,
+              transmission.muffle01,
+            );
+      _rampTransmission(chain, gainDb, freqHz, muffle01);
     }
   }
 
@@ -530,6 +546,7 @@ class Audio {
     _SpatialChain chain,
     double gainDb,
     double frequencyHz,
+    double muffle01,
   ) {
     final now = _ctx.currentTime.toDouble();
     const seconds = 0.08;
@@ -543,6 +560,7 @@ class Audio {
       now,
     );
     chain.attenuationGain.gain.linearRampToValueAtTime(gain, now + seconds);
+    chain.muffle01 = muffle01.clamp(0.0, 1.0).toDouble();
   }
 
   void _disposeSpatial(web.BiquadFilterNode filter) {
@@ -562,6 +580,7 @@ final class _SpatialChain {
   final web.BiquadFilterNode filter;
   final web.PannerNode panner;
   final String? sourceRoom;
+  double muffle01;
 
   _SpatialChain({
     required this.source,
@@ -570,6 +589,7 @@ final class _SpatialChain {
     required this.filter,
     required this.panner,
     required this.sourceRoom,
+    required this.muffle01,
   });
 
   void dispose() {

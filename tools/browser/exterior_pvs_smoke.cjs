@@ -120,6 +120,27 @@ async function hold(page, key, milliseconds) {
   await page.waitForTimeout(180);
 }
 
+async function readRoomId(page) {
+  return page.locator('#game').evaluate((canvas) => {
+    const raw = canvas.getAttribute('data-automation-player');
+    return JSON.parse(raw || '{}').roomId;
+  });
+}
+
+async function driveUntilRoom(page, key, targetRoom, label, {
+  stepMs = 450,
+  maxSteps = 16,
+} = {}) {
+  const steps = [];
+  for (let i = 0; i < maxSteps; i++) {
+    const current = await readRoomId(page);
+    if (current === targetRoom) return steps;
+    await hold(page, key, stepMs);
+    steps.push({ key, stepMs, roomId: await readRoomId(page) });
+  }
+  throw new Error(`${label}: movement did not reach ${targetRoom}: ${JSON.stringify(steps)}`);
+}
+
 async function capture(page, state, name, notes) {
   const file = path.join(outputDir, `${name}.png`);
   return writeScreenshotBundle(page, {
@@ -196,20 +217,20 @@ async function run() {
 
     // At the authored yaw-zero start, W advances down the hall toward the
     // hall-kitchen portal; A then crosses its west-facing opening.
-    await hold(page, 'w', 3700);
+    // The runtime house now applies the 2.25x authored horizontal scale;
+    // derive enough forward travel to reach the hall-kitchen portal lane
+    // before the adaptive lateral crossing below.
+    await hold(page, 'w', 5600);
     const approach = await readState(page, 'hall approach');
     console.log(`quarantine-exterior-pvs-approach: ${JSON.stringify(approach)}`);
-    await hold(page, 'a', 1900);
-    const afterA = await readState(page, 'hall west approach');
-    console.log(`quarantine-exterior-pvs-west-approach: ${JSON.stringify(afterA)}`);
-    await hold(page, 'a', 1400);
-    const afterWest = await readState(page, 'hall west crossing');
-    console.log(`quarantine-exterior-pvs-west-crossing: ${JSON.stringify(afterWest)}`);
-    await page.waitForFunction(
-      () => JSON.parse(document.querySelector('#game')?.getAttribute('data-automation-player') || '{}').roomId === 'kitchen',
-      null,
-      { timeout: 5000, polling: 50 },
+    const hallToKitchenSteps = await driveUntilRoom(
+      page,
+      'a',
+      'kitchen',
+      'hall-kitchen route',
     );
+    const afterWest = await readState(page, 'hall west crossing');
+    console.log(`quarantine-exterior-pvs-west-crossing: ${JSON.stringify({ state: afterWest, steps: hallToKitchenSteps })}`);
     const after = await readState(page, 'kitchen');
     if (after.roomId !== 'kitchen') throw new Error(`portal transition did not enter kitchen: ${after.roomId}`);
     if (before.cells.join('|') === after.cells.join('|')) {
@@ -244,12 +265,12 @@ async function run() {
     // the hall opening, D reaches the portal lane, and S crosses physically;
     // this is a third room stop, not a teleport or room override.
     await hold(page, 's', 2500);
-    await hold(page, 'd', 2200);
-    await hold(page, 's', 2500);
-    await page.waitForFunction(
-      () => JSON.parse(document.querySelector('#game')?.getAttribute('data-automation-player') || '{}').roomId === 'living-room',
-      null,
-      { timeout: 5000, polling: 50 },
+    await hold(page, 'a', 2200);
+    const kitchenToLivingSteps = await driveUntilRoom(
+      page,
+      's',
+      'living-room',
+      'kitchen-living route',
     );
     const living = await readState(page, 'living-room');
     if (living.roomId !== 'living-room') {
@@ -280,6 +301,7 @@ async function run() {
       after,
       living,
       transition: 'hall→kitchen→living-room',
+      movementCalibration: { hallToKitchenSteps, kitchenToLivingSteps },
       transitions: [
         { from: before.roomId, to: after.roomId, cellsChanged: before.cells.join('|') !== after.cells.join('|') },
         { from: after.roomId, to: living.roomId, cellsChanged: after.cells.join('|') !== living.cells.join('|') },

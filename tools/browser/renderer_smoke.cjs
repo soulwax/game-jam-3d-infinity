@@ -29,6 +29,19 @@ const expectedHouseInventoryCount = (() => {
   }
   return decoded.assets.length;
 })();
+const expectedHouseSoundEmitterCount = (() => {
+  const file = pathModule.join(
+    process.cwd(),
+    'assets',
+    'house',
+    'soundscape.json',
+  );
+  const decoded = JSON.parse(fs.readFileSync(file, 'utf8'));
+  if (!Array.isArray(decoded.emitters) || decoded.emitters.length < 1) {
+    throw new Error(`authored soundscape has no emitters: ${file}`);
+  }
+  return decoded.emitters.length;
+})();
 
 const baseUrl = process.env.AUTOMATION_BASE_URL || 'http://127.0.0.1:8090';
 
@@ -451,6 +464,13 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
   const automationPlayer = result.automationPlayer
     ? decodeAutomationPlayerState(result.automationPlayer, 'capture automation player')
     : null;
+  if (captureSelection?.requiredMetadata?.includes('simulation')) {
+    if (!automationPlayer || result.rainWindowVisibility == null) {
+      throw new Error(
+        `capture ${captureSelection.captureId}: required simulation metadata was not published`,
+      );
+    }
+  }
   const state = `${automationArgs.scenario}-${routeName}${suffix ? `-${suffix}` : ''}`;
   const capture = await writeScreenshotBundle(page, {
     file,
@@ -692,7 +712,7 @@ async function dismissVisitorDialogs(page, label) {
           : undefined,
       );
       const failures = trackPageHealth(page);
-      if (visualCaptureSelection) {
+      if (visualCaptureSelection || name === 'pixeldart-next') {
         await page.addInitScript(() => {
           window.localStorage.removeItem('quarantine.save.active');
         });
@@ -731,6 +751,11 @@ async function dismissVisitorDialogs(page, label) {
       );
       await page.waitForTimeout(1000);
       await page.mouse.click(10, 10);
+      await page.waitForFunction(
+        () => document.querySelector('#game')?.getAttribute('data-audio-spatial-active') !== null,
+        null,
+        { timeout: 10000 },
+      );
       await page.waitForTimeout(100);
       await page.evaluate(() => {
         const choice = document.querySelector('.door.visible button');
@@ -914,7 +939,7 @@ async function dismissVisitorDialogs(page, label) {
       if (result.houseSoundscape !== 'validated' ||
           !['res/house/soundscape.json', '/res/house/soundscape.json'].includes(
             result.houseSoundscapeSource,
-          ) || Number(result.houseSoundEmitterCount) !== 4) {
+          ) || Number(result.houseSoundEmitterCount) !== expectedHouseSoundEmitterCount) {
         throw new Error(`${name}: authored house soundscape was not validated ${JSON.stringify(result)}`);
       }
       if (!visualCaptureSelection && (result.audioSpatialActive === null ||
@@ -1064,7 +1089,9 @@ async function dismissVisitorDialogs(page, label) {
         continue;
       }
       if (name === 'pixeldart-next') {
-        await page.keyboard.press('Escape');
+        await dismissVisitorDialogs(page, name);
+        await page.locator('#game').focus();
+        await page.locator('#game').press('Escape');
         await waitForPanelOpen(page, 'Pause menu', `${name}: pause open`);
         await page.locator('[id="pause.settings"]').click();
         await waitForPanelOpen(page, 'Settings categories', `${name}: settings index open`);
@@ -1111,9 +1138,8 @@ async function dismissVisitorDialogs(page, label) {
       }
       if (name === 'pixeldart-next') {
         // The canonical embodied slice starts from a clean gameplay state. The
-        // visitor modal is deliberately dismissed through its real button so
-        // movement is not a synthetic DOM mutation. Do this after the settings
-        // focus contract has been checked, since the modal owns focus on boot.
+        // visitor modal was dismissed through its real button before the pause
+        // focus contract, so movement is not a synthetic DOM mutation.
         await dismissVisitorDialogs(page, name);
         const inputTrace = [];
         const inputTraceStarted = Date.now();

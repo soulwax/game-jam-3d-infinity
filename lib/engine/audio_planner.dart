@@ -56,6 +56,9 @@ final class AcousticPortalProfile {
   final double openCutoffHz;
   final double closedCutoffHz;
   final double sealedCutoffHz;
+  final double openMuffle01;
+  final double closedMuffle01;
+  final double sealedMuffle01;
 
   const AcousticPortalProfile({
     this.openGainDb = -1.5,
@@ -64,6 +67,9 @@ final class AcousticPortalProfile {
     this.openCutoffHz = 20000.0,
     this.closedCutoffHz = 1100.0,
     this.sealedCutoffHz = 320.0,
+    this.openMuffle01 = 0.0,
+    this.closedMuffle01 = 0.55,
+    this.sealedMuffle01 = 1.0,
   });
 
   void validate() {
@@ -74,6 +80,9 @@ final class AcousticPortalProfile {
       openCutoffHz,
       closedCutoffHz,
       sealedCutoffHz,
+      openMuffle01,
+      closedMuffle01,
+      sealedMuffle01,
     ];
     if (values.any((value) => !value.isFinite)) {
       throw const FormatException('acoustic portal profile is not finite');
@@ -88,6 +97,15 @@ final class AcousticPortalProfile {
         sealedCutoffHz <= 0) {
       throw const FormatException('acoustic portal cutoff order is invalid');
     }
+    if ([
+          openMuffle01,
+          closedMuffle01,
+          sealedMuffle01,
+        ].any((value) => value < 0 || value > 1) ||
+        openMuffle01 > closedMuffle01 ||
+        closedMuffle01 > sealedMuffle01) {
+      throw const FormatException('acoustic portal muffle order is invalid');
+    }
   }
 
   (double, double) transmission(Portal portal) {
@@ -95,6 +113,13 @@ final class AcousticPortalProfile {
     if (portal.passable) return (openGainDb, openCutoffHz);
     if (portal.locked) return (sealedGainDb, sealedCutoffHz);
     return (closedGainDb, closedCutoffHz);
+  }
+
+  double muffle01(Portal portal) {
+    validate();
+    if (portal.passable) return openMuffle01;
+    if (portal.locked) return sealedMuffle01;
+    return closedMuffle01;
   }
 }
 
@@ -131,6 +156,7 @@ final class AudioPlan {
   final List<String> portalPath;
   final double gainDb;
   final double lowPassHz;
+  final double muffle01;
   final bool unreachable;
   final int priority;
 
@@ -143,6 +169,7 @@ final class AudioPlan {
     required List<String> portalPath,
     required this.gainDb,
     required this.lowPassHz,
+    required this.muffle01,
     required this.unreachable,
     required this.priority,
   }) : position = Vec3(position.x, position.y, position.z),
@@ -153,14 +180,20 @@ final class AudioTransmission {
   final List<String> portalPath;
   final double gainDb;
   final double lowPassHz;
+  final double muffle01;
   final bool reachable;
 
   AudioTransmission({
     required List<String> portalPath,
     required this.gainDb,
     required this.lowPassHz,
+    required this.muffle01,
     required this.reachable,
-  }) : portalPath = List.unmodifiable(portalPath);
+  }) : portalPath = List.unmodifiable(portalPath) {
+    if (!muffle01.isFinite || muffle01 < 0 || muffle01 > 1) {
+      throw const FormatException('audio transmission muffle is invalid');
+    }
+  }
 }
 
 final class AudioPlanner {
@@ -195,6 +228,7 @@ final class AudioPlanner {
       portalPath: transmission.portalPath,
       gainDb: transmission.gainDb,
       lowPassHz: transmission.lowPassHz,
+      muffle01: transmission.muffle01,
       unreachable:
           !transmission.reachable && event.sourceRoom != listener.roomId,
       priority: event.priority,
@@ -211,21 +245,28 @@ final class AudioPlanner {
     final route = _route(sourceRoom, listenerRoom);
     var gainDb = 0.0;
     var lowPassHz = 20000.0;
+    var muffle01 = 0.0;
     for (final portal in route.portals) {
       final profile =
           portalProfiles[portal.id] ?? const AcousticPortalProfile();
       final (edgeGain, edgeCutoff) = profile.transmission(portal);
       gainDb += edgeGain;
       if (edgeCutoff < lowPassHz) lowPassHz = edgeCutoff;
+      // Independent barriers combine monotonically but saturate at one; a
+      // second closed door still matters without allowing arbitrary path
+      // length to produce an invalid meter.
+      muffle01 = 1 - ((1 - muffle01) * (1 - profile.muffle01(portal)));
     }
     if (!route.reachable && sourceRoom != listenerRoom) {
       gainDb = -48.0;
       lowPassHz = 240.0;
+      muffle01 = 1.0;
     }
     return AudioTransmission(
       portalPath: [for (final portal in route.portals) portal.id],
       gainDb: gainDb.clamp(-60.0, 0.0),
       lowPassHz: lowPassHz.clamp(120.0, 20000.0),
+      muffle01: muffle01.clamp(0.0, 1.0),
       reachable: route.reachable || sourceRoom == listenerRoom,
     );
   }

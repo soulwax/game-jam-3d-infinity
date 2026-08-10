@@ -17,6 +17,18 @@ Vec3 _worldMoveDir(Vec3 moveDir, double yaw) {
 
 void main() {
   final camera = Camera();
+  if (camera.lens != CameraLens.standard) {
+    _fail('camera must default to the standard lens profile');
+  }
+  final wide = Camera(lens: CameraLens.wide);
+  if (wide.lens.fovYRadians <= camera.lens.fovYRadians ||
+      wide.lens.far != camera.lens.far) {
+    _fail('camera lens profiles must vary projection without changing reach');
+  }
+  final custom = CameraLens.standard.withFovDegrees(72);
+  if ((custom.fovYRadians - 72 * math.pi / 180).abs() > 1e-12) {
+    _fail('camera FOV degree override must be deterministic');
+  }
   final simulationEye = Vec3(5.5, 1.65, 3.5);
 
   for (final yaw in [0.0, 0.7, -1.3, math.pi / 2, math.pi, 2.4]) {

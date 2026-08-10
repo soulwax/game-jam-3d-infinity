@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:quarantine/house/authored_manifest.dart';
 import 'package:quarantine/house/house.dart';
+import 'package:quarantine/house/scale_profile.dart';
 
 Never fail(String message) => throw StateError('house manifest: $message');
 
@@ -47,7 +48,10 @@ void main() {
     'wrong canonical source',
   );
   final modelScale = (house['modelScale'] as num?)?.toDouble() ?? 1.0;
-  require(modelScale == 2.25, 'spacious model scale must be 2.25');
+  require(
+    modelScale == houseModelScale,
+    'model scale must match house profile',
+  );
   require(
     stringOf(house, 'inventoryPath') == 'assets/house/inventory.json',
     'house inventory path drifted',
@@ -55,6 +59,10 @@ void main() {
   require(
     stringOf(house, 'soundscapePath') == 'assets/house/soundscape.json',
     'house soundscape path drifted',
+  );
+  require(
+    stringOf(house, 'surfaceMaterialsPath') == 'assets/house/materials.json',
+    'house surface materials path drifted',
   );
 
   final rooms = listOf(house, 'rooms');

@@ -1,12 +1,11 @@
 import '../engine/math3.dart';
 import 'drift.dart';
 import 'room.dart';
+import 'scale_profile.dart';
 
 /// The authored blueprint is already represented at 1.5× in the runtime MVP.
 /// This second seam makes the house 50% larger relative to the unchanged
 /// player capsule, producing the spacious presentation profile.
-const double houseSpatialScale = 1.5;
-
 class House {
   final int seed;
   final List<Room> rooms = [];
@@ -24,14 +23,17 @@ class House {
     _validate();
   }
 
+  /// Spawn anchor derived from the same profile that scales the house.
+  Vec3 defaultPlayerEye(double eyeHeight) => houseScaleProfile.spawn(eyeHeight);
+
   /// The first authored-house MVP uses a 1.5x wider/deeper envelope. The
   /// spacious profile then scales all room axes by 1.5. Vertical
   /// room values are authored explicitly above; this pass keeps every x/z
   /// origin, opening, placement, and stair landmark proportional without
   /// duplicating a second hand-maintained house graph.
   void _applyMvpHorizontalScale() {
-    const scale = 1.5;
-    Vec3 xz(Vec3 value) => Vec3(value.x * scale, value.y, value.z * scale);
+    final scale = houseScaleProfile.authoredScale;
+    Vec3 xz(Vec3 value) => houseScaleProfile.scaleHorizontal(value, scale);
     final originalRooms = List<Room>.from(rooms);
     rooms
       ..clear()
@@ -120,7 +122,8 @@ class House {
   }
 
   void _applySpaciousScale() {
-    Vec3 all(Vec3 value) => value * houseSpatialScale;
+    Vec3 all(Vec3 value) =>
+        houseScaleProfile.scaleAll(value, houseSpatialScale);
     final originalRooms = List<Room>.from(rooms);
     rooms
       ..clear()

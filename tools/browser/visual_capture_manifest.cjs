@@ -169,6 +169,7 @@ function selectVisualCapture(manifest, captureId, request = {}) {
       fov: capture.camera.fov,
     },
     fixture: JSON.parse(JSON.stringify(capture.fixture)),
+    requiredMetadata: [...capture.requiredMetadata],
     profile: capture.profile,
     viewport: { ...capture.viewport },
     mismatches,

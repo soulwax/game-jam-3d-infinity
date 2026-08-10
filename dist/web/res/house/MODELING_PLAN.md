@@ -412,6 +412,22 @@ the content-addressed source cache.
 
 ### Shader and texture packing contract
 
+The current proxy house has a house-owned surface binding manifest at
+`assets/house/materials.json` (mirrored under `web/res/house/`). It is the
+interim bridge between canonical room surface IDs and the renderer's existing
+texture keys: every wall, floor, and ceiling variant records its texture key,
+display tint, roughness intent, and target UV repeat. `lib/house/geometry.dart`
+uses the tint and UV density immediately, while Pixeldart remains responsible
+for texture handles and future normal/ORM/source-map expansion. Do not add a
+second room-material mapping in the renderer or silently invent a texture key;
+promote a variant here first and validate it with `tools/test_house_materials.dart`.
+
+Spatial resizing follows the same rule: change the authored and presentation
+factors in `lib/house/scale_profile.dart`, update the manifest `modelScale`
+mirrors, and run the house contract suite. Spawn anchors, exterior dimensions,
+wall thickness, inventory scale validation, and room geometry consume that
+profile; do not hand-edit a second runtime scale constant.
+
 - Preserve linear data for roughness, metalness, AO, normal and height; colour
   textures use sRGB. Never gamma-correct packed data channels.
 - Prefer one consistent ORM packing once renderer/importer support is confirmed:

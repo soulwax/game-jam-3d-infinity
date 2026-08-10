@@ -20,7 +20,7 @@
         {
           "path": "licenses/NOTICE.txt",
           "reason": "authored attribution notice for bundled assets, not an asset itself",
-          "status": "unverified"
+          "status": "generated"
         },
         {
           "path": "vo/**",
