@@ -3554,12 +3554,27 @@ void _update(double dt) {
   final mouseDx = _input.mouseDx;
   final mouseDy = _input.mouseDy;
 
+  final sensX = mouseSensitivity *
+      _controlsSettings.horizontalSensitivity *
+      (_controlsSettings.invertX ? -1.0 : 1.0);
+  final sensY = mouseSensitivity *
+      _controlsSettings.verticalSensitivity *
+      (_controlsSettings.invertY ? -1.0 : 1.0);
+
   _simYaw +=
-      mouseDx * mouseSensitivity +
-      _input.gamepadLookX * gamepadLookRadiansPerSecond * dt;
+      mouseDx * sensX +
+      _input.gamepadLookX *
+          gamepadLookRadiansPerSecond *
+          _controlsSettings.horizontalSensitivity *
+          (_controlsSettings.invertX ? -1.0 : 1.0) *
+          dt;
   _simPitch -=
-      mouseDy * mouseSensitivity +
-      _input.gamepadLookY * gamepadLookRadiansPerSecond * dt;
+      mouseDy * sensY +
+      _input.gamepadLookY *
+          gamepadLookRadiansPerSecond *
+          _controlsSettings.verticalSensitivity *
+          (_controlsSettings.invertY ? -1.0 : 1.0) *
+          dt;
   _simPitch = _simPitch.clamp(-Camera.pitchLimit, Camera.pitchLimit);
 
   final desiredVelocity =
