@@ -1,4 +1,3 @@
-import 'package:quarantine/ui/visual_settings.dart';
 import 'package:quarantine/ui/visual_store_coordinator.dart';
 
 void check(bool condition, String message) {

@@ -1,4 +1,3 @@
-import 'package:quarantine/automation/automation_movement.dart';
 import 'package:quarantine/automation/automation_ui_driver.dart';
 
 void check(bool condition, String message) {

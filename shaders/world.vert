@@ -62,7 +62,7 @@ void main(){
     float distanceToLight=length(toLight);
     if(distanceToLight>0.0001&&distanceToLight<uPointLightRadius[i]){
       float pointNdl=max(0.0,dot(worldNormal,toLight/distanceToLight));
-      float falloff=1.0-distanceToLight/uPointLightRadius[i];
+      float falloff=smoothstep(uPointLightRadius[i],0.0,distanceToLight);
       vLight+=uPointLightColor[i]*(uPointLightIntensity[i]*pointNdl*falloff*falloff);
     }
   }

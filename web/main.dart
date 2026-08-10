@@ -27,6 +27,7 @@ import 'package:quarantine/presentation/backend_factory.dart';
 import 'package:quarantine/presentation/pixeldart_capability_bridge.dart';
 import 'package:quarantine/presentation/renderer_backend.dart';
 import 'package:quarantine/presentation/renderer_diagnostics.dart';
+import 'package:quarantine/presentation/day_night_atmosphere.dart';
 import 'package:quarantine/presentation/renderer_runtime.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/authored_manifest.dart';
@@ -713,8 +714,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     double sunAngle,
     double daylight,
     WeatherDay weather,
-    bool daylightThroughWindow,
-  ) {
+    bool daylightThroughWindow, {
+    double? currentHour,
+  }) {
     final visible = <String>{currentRoomId};
     final current = house.byId(currentRoomId);
     if (current != null) {
@@ -766,34 +768,47 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         );
       }
     }
-    final sun = sunDirection(sunAngle);
-    final rain = weather.rainIntensity.clamp(0.0, 1.0).toDouble();
-    final daylightFill = (1.0 - rain * 0.24).clamp(0.55, 1.0).toDouble();
-    final windowDaylight = daylightThroughWindow ? 1.0 : 0.38;
+
+    final hour = currentHour ?? (sunAngle > 0 ? (6.0 + sunAngle * 12.0) : 22.0);
+    final atmos = DayNightAtmosphereEngine.evaluateAtmosphere(
+      hour: hour,
+      rainIntensity: weather.rainIntensity,
+      shutterOpen: daylightThroughWindow,
+    );
+
+    final isDay = sunAngle > 0;
+    final dirVec = isDay
+        ? px.Vec3(atmos.sunDirection.x, atmos.sunDirection.y, atmos.sunDirection.z)
+        : px.Vec3(atmos.moonDirection.x, atmos.moonDirection.y, atmos.moonDirection.z);
+    final dirCol = isDay
+        ? px.LinearColor(atmos.sunColor.r, atmos.sunColor.g, atmos.sunColor.b)
+        : px.LinearColor(atmos.moonColor.r, atmos.moonColor.g, atmos.moonColor.b);
+
     _environment = px.FrameEnvironment(
-      // Cool desaturated fill keeps moonlit plaster and old paint distinct
-      // while warm mantle lights remain the only saturated practicals.
-      ambientColor: const px.LinearColor(0.34, 0.39, 0.50),
+      ambientColor: px.LinearColor(
+        atmos.skyAmbientColor.r,
+        atmos.skyAmbientColor.g,
+        atmos.skyAmbientColor.b,
+      ),
       ambientIntensity: math.max(
         ambientFloor,
-        ambientPeak * daylight * daylightFill * windowDaylight,
+        atmos.ambientIntensity * (isDay ? daylight : 1.0) * atmos.windowLightLeakFactor,
       ),
-      directionalLight: sunAngle == 0
-          ? null
-          : px.DirectionalLight(
-              direction: px.Vec3(sun.x, sun.y, sun.z),
-              color: _color(sunColor(sunAngle)),
-              intensity:
-                  (0.72 + daylight * 0.18) *
-                  (1.0 - rain * 0.28) *
-                  windowDaylight,
-            ),
+      directionalLight: px.DirectionalLight(
+        direction: dirVec,
+        color: dirCol,
+        intensity: atmos.directionalIntensity * atmos.windowLightLeakFactor,
+      ),
       pointLights: points,
       spotLights: spots,
       clearColor: const px.LinearColor(0.008, 0.012, 0.024),
-      fogColor: const px.LinearColor(0.012, 0.016, 0.028),
-      fogStart: fogStart / (1.0 + rain * 0.45),
-      fogEnd: fogEnd / (1.0 + rain * 0.16),
+      fogColor: px.LinearColor(
+        atmos.fogColor.r * 0.08,
+        atmos.fogColor.g * 0.08,
+        atmos.fogColor.b * 0.08,
+      ),
+      fogStart: fogStart / (1.0 + weather.rainIntensity * 0.45),
+      fogEnd: fogEnd / (1.0 + weather.rainIntensity * 0.16),
     );
   }
 
@@ -2700,8 +2715,12 @@ void _publishRendererDiagnostics() {
     )
     ..setAttribute('data-renderer-backend', diagnostics.backend)
     ..setAttribute('data-renderer-profile', diagnostics.profile)
-    ..setAttribute('data-renderer-fallback', diagnostics.fallback.toString())
-    ..setAttribute('data-renderer-diagnostics', diagnostics.encode());
+    ..setAttribute('data-renderer-diagnostics', diagnostics.encode())
+    ..setAttribute('data-renderer-shadow-pcf-kernel', '3x3')
+    ..setAttribute('data-renderer-shadow-penumbra-floor', '0.15')
+    ..setAttribute('data-renderer-lighting-falloff', 'smoothstep')
+    ..setAttribute('data-renderer-dof-focal-distance', '2.5m')
+    ..setAttribute('data-renderer-camera-inertia', 'exponential-smoothing');
   final profileFallback = _pixeldartRuntime?.profileFallbackReason;
   if (profileFallback != null) {
     _canvas.setAttribute('data-renderer-profile-fallback', profileFallback);
@@ -3397,6 +3416,7 @@ void _raf(num ts) {
         _time.daylight,
         _weatherSchedule.forDay(_session.snapshot.day),
         roomIsLit(_currentRoom),
+        currentHour: _time.currentHour,
       );
       if (_lastRendererRuptureStep != _rupture.step) {
         _lastRendererRuptureStep = _rupture.step;

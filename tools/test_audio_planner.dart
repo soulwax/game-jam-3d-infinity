@@ -125,6 +125,7 @@ void main() {
   } catch (_) {
     invalidMuffle = true;
   }
+  _expect(invalidMuffle, 'out-of-range muffle should have thrown');
   // PF-06: Continuous opening fraction transmission & muffle curve tests.
   final partialTransmission = planner.transmission(
     'hall',

@@ -14,6 +14,7 @@ void main() {
     position: Vec3(0, 1.65, 0),
     durationSec: 1.0,
   );
+  check(id1.isNotEmpty, 'spawn returns non-empty handle');
   check(queue.activeCount == 1, '1 active item');
   check(queue.activeItems.first.progress == 0.0, 'initial progress is 0');
   check(queue.activeItems.first.alpha == 1.0, 'initial alpha is 1');

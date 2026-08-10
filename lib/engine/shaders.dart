@@ -68,7 +68,7 @@ void main(){
     float distanceToLight=length(toLight);
     if(distanceToLight>0.0001&&distanceToLight<uPointLightRadius[i]){
       float pointNdl=max(0.0,dot(worldNormal,toLight/distanceToLight));
-      float falloff=1.0-distanceToLight/uPointLightRadius[i];
+      float falloff=smoothstep(uPointLightRadius[i],0.0,distanceToLight);
       vLight+=uPointLightColor[i]*(uPointLightIntensity[i]*pointNdl*falloff*falloff);
     }
   }
@@ -141,10 +141,17 @@ float sampleShadow(sampler2D shadowTex,vec4 shadowCoord,vec3 normal){
   vec3 projCoords=shadowCoord.xyz/shadowCoord.w;
   projCoords=projCoords*0.5+0.5;
   if(projCoords.z>1.0||projCoords.x<0.0||projCoords.x>1.0||projCoords.y<0.0||projCoords.y>1.0)return 1.0;
-  float closestDepth=texture(shadowTex,projCoords.xy).r;
   float currentDepth=projCoords.z;
-  float bias=uShadowBias.x+uShadowBias.y*abs(dFdy(currentDepth));
-  return currentDepth-bias>closestDepth?0.0:1.0;
+  float bias=max(uShadowBias.x, uShadowBias.y*abs(dFdy(currentDepth)));
+  vec2 texelSize=vec2(1.0/512.0);
+  float shadowSum=0.0;
+  for(int x=-1;x<=1;x++){
+    for(int y=-1;y<=1;y++){
+      float pcfDepth=texture(shadowTex,projCoords.xy+vec2(x,y)*texelSize).r;
+      shadowSum+=(currentDepth-bias>pcfDepth)?0.15:1.0;
+    }
+  }
+  return shadowSum/9.0;
 }
 void main(){
   vec3 uv=vUv/vW;

@@ -1,5 +1,4 @@
 import 'package:quarantine/ui/audio_settings.dart';
-import 'package:quarantine/ui/gameplay_presentation_policy.dart';
 import 'package:quarantine/ui/gameplay_settings.dart';
 import 'package:quarantine/ui/graphics_settings.dart';
 import 'package:quarantine/ui/settings_diagnostics.dart';
