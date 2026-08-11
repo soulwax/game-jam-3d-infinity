@@ -25,6 +25,11 @@ import 'package:quarantine/presentation/backend_bootstrap.dart';
 import 'package:quarantine/presentation/backend_selector.dart';
 import 'package:quarantine/presentation/backend_factory.dart';
 import 'package:quarantine/presentation/pixeldart_capability_bridge.dart';
+import 'package:quarantine/presentation/pixeldart_capability_matrix.dart';
+import 'package:quarantine/presentation/pixeldart_resource_governor.dart';
+import 'package:quarantine/presentation/pixeldart_shader_pipeline_exporter.dart';
+import 'package:quarantine/presentation/cinematic_immersion_director.dart';
+import 'package:quarantine/ui/accessibility_excellence_coordinator.dart';
 import 'package:quarantine/presentation/renderer_backend.dart';
 import 'package:quarantine/presentation/renderer_diagnostics.dart';
 import 'package:quarantine/presentation/day_night_atmosphere.dart';
@@ -161,6 +166,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   int _frameIndex = 0;
   int _textureResidencyRevision = 0;
   bool _initialized = false;
+  late PixeldartCapabilityMatrix capabilityMatrix;
+  late PixeldartResourceGovernor resourceGovernor;
+  late PixeldartShaderPipelineExporter shaderExporter;
 
   _PixeldartWebRuntime(this.context, this.width, this.height);
 
@@ -233,6 +241,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         ..initialize(px.RendererConfiguration.safe, surface);
     }
     _world = _renderer.createWorld();
+    capabilityMatrix = PixeldartCapabilityMatrix.negotiate(
+      isWebGL2Available: true,
+      float16Supported: true,
+      instancingSupported: true,
+    );
+    resourceGovernor = PixeldartResourceGovernor(matrix: capabilityMatrix);
+    shaderExporter = PixeldartShaderPipelineExporter(matrix: capabilityMatrix);
     _initialized = true;
   }
 
