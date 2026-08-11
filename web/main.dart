@@ -54,6 +54,7 @@ import 'package:quarantine/sim/weather.dart';
 import 'package:quarantine/story/schema.dart' show vocabularyFields;
 import 'package:quarantine/story/text.dart';
 import 'package:quarantine/story/unverifiable_notice.dart';
+import 'package:quarantine/story/physical_aftermath_manager.dart';
 import 'package:quarantine/ui/ambient_notice.dart';
 import 'package:quarantine/ui/accessibility_settings.dart';
 import 'package:quarantine/ui/accessibility_presentation.dart';
@@ -3627,12 +3628,15 @@ void _update(double dt) {
 
   _camera.lookFrom(_simEye, _simYaw, _simPitch);
 
+  final aftermathManager = PhysicalAftermathManager(state: _session.narrative);
+
   // UI prompt / watched-object focus (deterministic resolver)
   final focus = resolveFocus(
     camera: _camera,
     house: _house,
     currentRoom: _currentRoom,
     inventory: _houseInventory,
+    aftermathManager: aftermathManager,
   );
   _prompt.show(focus.prompt);
 
@@ -3662,6 +3666,7 @@ void _update(double dt) {
         currentRoom: _currentRoom,
       );
       break;
+    case FocusKind.aftermath:
     case FocusKind.none:
       break;
   }
@@ -3700,6 +3705,12 @@ void _update(double dt) {
       } else {
         window.shutterOpen = true;
         _ambientNotice.showCaption('shutter opens');
+      }
+    } else if (focus.kind == FocusKind.aftermath) {
+      final activeItems = aftermathManager.getActiveResidues();
+      final item = activeItems.where((i) => i.id == focus.id).firstOrNull ?? activeItems.firstOrNull;
+      if (item != null) {
+        _ambientNotice.show('noticed', item.description);
       }
     } else if (inventoryPlacement != null) {
       final event = _inventoryInspections.inspect(inventoryPlacement);

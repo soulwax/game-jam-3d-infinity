@@ -126,22 +126,101 @@ class DialogueTypewriterEngine {
   static String generateCss() {
     return '''
 .dialogue-container {
-  background: rgba(7, 7, 10, 0.75);
-  backdrop-filter: blur(4px);
-  border-top: 1px solid var(--iron);
-  padding: 16px;
+  position: absolute;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%) skewX(-2deg);
+  width: min(92vw, 44rem);
+  background:
+    repeating-linear-gradient(-45deg, rgba(0, 0, 0, 0.4) 0, rgba(0, 0, 0, 0.4) 2px, transparent 2px, transparent 6px),
+    rgba(10, 10, 14, 0.92);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  border: 1px solid var(--iron);
+  border-left: 5px solid var(--official-red);
+  border-right: 3px solid var(--brass);
+  box-shadow: 6px 6px 0px #000000, 0 16px 40px rgba(0, 0, 0, 0.85);
+  clip-path: polygon(0.6rem 0%, 100% 0%, calc(100% - 0.6rem) 100%, 0% 100%);
+  padding: 1.25rem 1.75rem;
+  z-index: 25;
+  transition: transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
+
 .dialogue-speaker {
-  font-family: 'Courier Prime', monospace;
-  color: var(--bone-dim);
-  font-weight: bold;
-  margin-bottom: 8px;
+  display: inline-block;
+  font-family: 'font-official', 'Courier Prime', monospace;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.12rem;
+  text-transform: uppercase;
+  color: #07070a;
+  background: var(--amber);
+  padding: 0.2rem 0.75rem;
+  margin-bottom: 0.75rem;
+  clip-path: polygon(0.35rem 0%, 100% 0%, calc(100% - 0.35rem) 100%, 0% 100%);
+  box-shadow: 3px 3px 0px #000000;
+  transform: skewX(-4deg);
 }
+
 .dialogue-body {
-  font-family: 'EB Garamond', serif;
+  font-family: 'EB Garamond', Georgia, serif;
   color: var(--bone);
-  font-size: 1.1rem;
-  line-height: 1.5;
+  font-size: 1.15rem;
+  line-height: 1.55;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  min-height: 2.4rem;
+}
+
+.dialogue-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px dashed rgba(183, 137, 76, 0.3);
+}
+
+.dialogue-choice-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: rgba(20, 22, 28, 0.85);
+  border: 1px solid var(--iron);
+  border-left: 3px solid var(--brass);
+  color: var(--bone);
+  padding: 0.5rem 1rem;
+  font-family: 'EB Garamond', Georgia, serif;
+  font-size: 1rem;
+  cursor: pointer;
+  clip-path: polygon(0.4rem 0%, 100% 0%, calc(100% - 0.4rem) 100%, 0% 100%);
+  box-shadow: 3px 3px 0px #000000;
+  transition: all 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.dialogue-choice-btn:hover {
+  background: rgba(183, 137, 76, 0.25);
+  border-color: var(--amber);
+  border-left-color: var(--official-red);
+  color: #ffffff;
+  transform: translateX(6px) scale(1.015);
+  box-shadow: 5px 5px 0px #000000, 0 0 12px rgba(255, 179, 71, 0.3);
+}
+
+.dialogue-choice-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+  transform: translateX(4px);
+}
+
+.choice-shortcut {
+  font-family: 'font-official', 'Courier Prime', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background: rgba(0, 0, 0, 0.6);
+  color: var(--amber);
+  padding: 0.15rem 0.45rem;
+  border: 1px solid rgba(183, 137, 76, 0.5);
+  border-radius: 2px;
 }
 ''';
   }

@@ -5,9 +5,17 @@ import '../engine/camera.dart';
 import '../engine/math3.dart';
 import 'inventory.dart';
 import 'house.dart';
-import 'interaction.dart' show raycastMantle, raycastPortal, raycastWindow;
+import 'interaction.dart'
+    show
+        raycastMantle,
+        raycastPortal,
+        raycastWindow,
+        hasLineOfSight,
+        effectiveRoomRaycastDistance;
 
-enum FocusKind { mantle, portal, window, inventory, none }
+import '../story/physical_aftermath_manager.dart';
+
+enum FocusKind { mantle, portal, window, inventory, aftermath, none }
 
 class FocusSnapshot {
   final FocusKind kind;
@@ -28,6 +36,7 @@ FocusSnapshot resolveFocus({
   required House house,
   required String currentRoom,
   HouseInventory? inventory,
+  PhysicalAftermathManager? aftermathManager,
 }) {
   final mantle = raycastMantle(camera, house, currentRoom);
   if (mantle != null && !mantle.broken) {
@@ -47,6 +56,21 @@ FocusSnapshot resolveFocus({
       kind: FocusKind.window,
       id: 'shutter',
       prompt: 'the shutter',
+    );
+  }
+
+  // Check physical aftermath residues in the current room
+  final aftermathItem = raycastAftermath(
+    camera: camera,
+    house: house,
+    aftermathManager: aftermathManager,
+    currentRoom: currentRoom,
+  );
+  if (aftermathItem != null) {
+    return FocusSnapshot(
+      kind: FocusKind.aftermath,
+      id: aftermathItem.id,
+      prompt: 'inspect the ${aftermathItem.name}',
     );
   }
 
@@ -82,6 +106,12 @@ InventoryPlacement? raycastInventory({
   final room = house.byId(currentRoom);
   if (room == null) return null;
 
+  final effectiveDist = effectiveRoomRaycastDistance(
+    house,
+    room,
+    maxDistance: distance,
+  );
+
   InventoryPlacement? nearest;
   var bestScore = double.infinity;
   for (final placement in inventory.placementsFor(currentRoom)) {
@@ -97,16 +127,58 @@ InventoryPlacement? raycastInventory({
     );
     final toTarget = center - camera.eye;
     final targetDistance = toTarget.length;
-    if (targetDistance < 0.01 || targetDistance > distance) continue;
+    if (targetDistance < 0.01 || targetDistance > effectiveDist) continue;
     final angle = math.acos(
       toTarget.normalized.dot(camera.fwd).clamp(-1.0, 1.0),
     );
     if (angle > coneAngle) continue;
-    final score = angle + (targetDistance / distance) * 0.2;
+    // Check line of sight against solid walls
+    if (!hasLineOfSight(house, currentRoom, camera.eye, center)) {
+      continue;
+    }
+    final score = angle + (targetDistance / effectiveDist) * 0.2;
     if (score < bestScore) {
       nearest = placement;
       bestScore = score;
     }
   }
   return nearest;
+}
+
+/// Raycasts against physical aftermath items located in [currentRoom].
+PhysicalAftermathItem? raycastAftermath({
+  required Camera camera,
+  required House house,
+  required PhysicalAftermathManager? aftermathManager,
+  required String currentRoom,
+  double distance = raycastDistance,
+  double coneAngle = raycastCone,
+}) {
+  if (aftermathManager == null) return null;
+  final room = house.byId(currentRoom);
+  if (room == null) return null;
+
+  final residues = aftermathManager.getResiduesForRoom(currentRoom);
+  if (residues.isEmpty) return null;
+
+  final size = house.effectiveSize(room);
+  final effectiveDist = effectiveRoomRaycastDistance(
+    house,
+    room,
+    maxDistance: distance,
+  );
+
+  for (final item in residues) {
+    // Placement near threshold/sideboard
+    final itemPos = room.origin + Vec3(size.x * 0.35, 0.6, size.z * 0.35);
+    final toTarget = itemPos - camera.eye;
+    final dist = toTarget.length;
+    if (dist < 0.01 || dist > effectiveDist) continue;
+    final norm = toTarget.normalized;
+    final angle = math.acos(norm.dot(camera.fwd).clamp(-1.0, 1.0));
+    if (angle <= coneAngle && hasLineOfSight(house, currentRoom, camera.eye, itemPos)) {
+      return item;
+    }
+  }
+  return null;
 }

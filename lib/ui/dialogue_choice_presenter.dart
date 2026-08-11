@@ -59,7 +59,7 @@ class DialogueChoicePresenter {
           index: displayIndex,
           label: option.text,
           isSilence: false,
-          shortcutKey: 'Digit\$displayIndex',
+          shortcutKey: 'Digit$displayIndex',
         ));
         displayIndex++;
       }
@@ -81,17 +81,19 @@ class DialogueChoicePresenter {
   /// Renders the options as inline HTML.
   static String renderOptionsHtml(List<FormattedDialogueOption> options, {String? selectedId}) {
     final buffer = StringBuffer();
-    buffer.writeln('<div class="dialogue-options">');
+    buffer.writeln('<div class="dialogue-options p5-staggered-options">');
 
     for (final option in options) {
       final isSelected = option.id == selectedId;
       final selectedAttr = isSelected ? ' data-selected="true"' : '';
       
-      buffer.writeln('  <button class="dialogue-choice-btn" data-id="${option.id}"$selectedAttr tabindex="0">');
+      buffer.writeln('  <button class="dialogue-choice-btn p5-choice-strip" data-id="${option.id}"$selectedAttr tabindex="0">');
       if (!option.isSilence) {
-        buffer.writeln('    <span class="choice-shortcut">[${option.index}]</span>');
+        buffer.writeln('    <span class="choice-shortcut p5-diamond-tag">[${option.index}]</span>');
+      } else {
+        buffer.writeln('    <span class="choice-shortcut p5-silence-tag">[SPACE]</span>');
       }
-      buffer.writeln('    <span class="choice-text">${option.label}</span>');
+      buffer.writeln('    <span class="choice-text p5-choice-label">${option.label}</span>');
       buffer.writeln('  </button>');
     }
 

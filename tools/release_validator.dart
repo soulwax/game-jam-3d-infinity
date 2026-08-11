@@ -16,6 +16,7 @@ import 'package:quarantine/presentation/parallax_occlusion_mapping.dart';
 import 'package:quarantine/presentation/contact_shadows_ssdo.dart';
 import 'package:quarantine/presentation/cascaded_shadow_maps.dart';
 import 'package:quarantine/presentation/procedural_surface_weathering.dart';
+import 'package:quarantine/presentation/pbr_material_shading_pipeline.dart';
 import 'package:quarantine/house/hall_furnishing_manifest.dart';
 import 'package:quarantine/house/kitchen_furnishing_manifest.dart';
 import 'package:quarantine/house/living_room_furnishing_manifest.dart';
@@ -32,8 +33,17 @@ import 'package:quarantine/engine/lod_mesh_pipeline.dart';
 import 'golden_scene_camera_registry.dart';
 import 'pbr_texture_validator.dart';
 
+import 'package:quarantine/story/narrative_encounter_director.dart';
+import 'package:quarantine/story/physical_aftermath_manager.dart';
+import 'package:quarantine/story/ending_texture_synthesizer.dart';
+import 'package:quarantine/story/narrative_state.dart';
+import 'package:quarantine/engine/master_acoustic_simulator.dart';
+
 void check(bool condition, String message) {
-  if (!condition) throw StateError('FAIL: $message');
+  if (!condition) {
+    print('RELEASE VALIDATION FAILED: $message');
+    throw StateError('Release gate check failed: $message');
+  }
 }
 
 void main() {
@@ -41,7 +51,7 @@ void main() {
   print(' THE QUARANTINE — MASTERPLAN RELEASE VALIDATION TOOL');
   print('=====================================================');
 
-  // 1. Evaluate Whole-Product Convergence Gate
+  // 1. Evaluate WholeProductConvergenceGate
   final gateReport = WholeProductConvergenceGate.evaluateConvergence(
     hasVisualEvidence: true,
     hasMenuEvidence: true,
@@ -67,7 +77,8 @@ void main() {
   check(SSDOEngine.validate(), 'SSDO contact shadows validation failed');
   check(CSMEngine.validate(), 'Cascaded shadow maps validation failed');
   check(ProceduralWeatheringEngine.validate(), 'Procedural surface weathering validation failed');
-  print('[✓] Rendering Fidelity: Volumetric Shafts, SSR, POM, SSDO, CSM & Weathering validated');
+  check(PBRMaterialShadingPipeline.validate(), 'PBR material shading pipeline validation failed');
+  print('[✓] Rendering Fidelity: Volumetric Shafts, SSR, POM, SSDO, CSM, Weathering & PBR Pipeline validated');
 
   // 4. Section 22 House Environment Revamp Track (HV)
   check(HallFurnishingManifest.validate(), 'Hall manifest validation failed');
@@ -93,5 +104,27 @@ void main() {
   check(GoldenSceneCameraRegistry.validateRegistry(), 'Golden camera registry validation failed');
   print('[✓] Asset Quality & Golden Pipeline: PBR Validator, LOD0-2 Pipeline & 32 Golden Poses validated');
 
-  print('\n=== RELEASE CERTIFICATION RESULT: READY FOR PRODUCTION SHIP ===\n');
+  // 7. Section 23 Complete 21-Day Narrative Matrix & Physical Aftermath (ENC)
+  final testState = NarrativeState();
+  final encounterDirector = NarrativeEncounterDirector(state: testState);
+  for (var day = 1; day <= 21; day++) {
+    final enc = encounterDirector.resolveEncounter(day);
+    check(enc != null, 'Missing encounter definition for day $day');
+    check(enc!.choices.length >= 2, 'Day $day must provide at least 2 branching choices');
+  }
+  final aftermathMgr = PhysicalAftermathManager(state: testState);
+  testState.flags['ashworth.compact'] = 'accepted';
+  check(aftermathMgr.getActiveResidues().isNotEmpty, 'Physical aftermath items must register from state flags');
+  final endingSynth = EndingTextureSynthesizer(state: testState);
+  check(endingSynth.synthesizeEnding().closingTextureText.isNotEmpty, 'Ending texture synthesis failed');
+  print('[✓] Complete 21-Day Narrative Matrix: All 21 Days Authored, Aftermath & Ending Synthesizer validated');
+
+  // 8. Section 25 Master Audio Mixdown & Acoustic Simulation Track (AU)
+  check(MasterAcousticSimulator.validate(), 'Master acoustic simulator validation failed');
+  for (final room in ['hall', 'living-room', 'kitchen', 'cellar', 'bedroom', 'scullery']) {
+    check(MasterAcousticSimulator.roomReverbProfiles.containsKey(room), 'Missing reverb profile for room: $room');
+  }
+  print('[✓] Master Audio Mixdown: Multi-Bus Routing, LPF Portal Occlusion & Reverb Profiles validated');
+
+  print('\n=== RELEASE CERTIFICATION RESULT: READY FOR PRODUCTION SHIP (ALL 8 GATES CERTIFIED) ===\n');
 }
