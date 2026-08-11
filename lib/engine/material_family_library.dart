@@ -38,25 +38,21 @@ class MaterialDescriptor {
   }) : assert(id.length > 0, 'Material id must be non-empty'),
        assert(textureKey.length > 0, 'textureKey must be non-empty'),
        assert(
-         tintR.isFinite && tintG.isFinite && tintB.isFinite,
-         'tint channels must be finite',
-       ),
-       assert(
          roughness >= 0.0 && roughness <= 1.0,
          'roughness must be in [0, 1]',
        ),
        assert(metallic >= 0.0 && metallic <= 1.0, 'metallic must be in [0, 1]'),
        assert(
-         emissive.isFinite && emissive >= 0.0,
-         'emissive must be finite and non-negative',
+         emissive >= 0.0,
+         'emissive must be non-negative',
        ),
        assert(
-         alpha.isFinite && alpha >= 0.0 && alpha <= 1.0,
+         alpha >= 0.0 && alpha <= 1.0,
          'alpha must be in [0, 1]',
        ),
        assert(
-         uvScale.isFinite && uvScale > 0.0,
-         'uvScale must be finite and positive',
+         uvScale > 0.0,
+         'uvScale must be positive',
        );
 
   bool get hasValidParameters =>

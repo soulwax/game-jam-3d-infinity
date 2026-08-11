@@ -30,8 +30,8 @@ class ModelPlacementBinding {
        assert(assetId.length > 0, 'assetId must be non-empty'),
        assert(roomId.length > 0, 'roomId must be non-empty'),
        assert(
-         scale.isFinite && scale > 0.0,
-         'scale must be finite and positive',
+         scale > 0.0,
+         'scale must be positive',
        );
 
   factory ModelPlacementBinding.fromJson(Map<String, dynamic> json) {
