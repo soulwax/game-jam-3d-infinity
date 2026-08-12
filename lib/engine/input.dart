@@ -228,7 +228,8 @@ class Input {
     _moveThisFrame = false;
   }
 
-  void _onKeyDown(web.KeyboardEvent e) {
+  void _onKeyDown(JSAny? evt) {
+    final e = evt as web.KeyboardEvent;
     if (e.repeat) return;
     if (!_gameplayEnabled) return;
     if (_held.add(e.code)) {
@@ -240,7 +241,8 @@ class Input {
     }
   }
 
-  void _onKeyUp(web.KeyboardEvent e) {
+  void _onKeyUp(JSAny? evt) {
+    final e = evt as web.KeyboardEvent;
     _held.remove(e.code);
     if (_bindings.codesFor('interact').contains(e.code) &&
         !_bindings.anyDown('interact', _held)) {
@@ -248,7 +250,8 @@ class Input {
     }
   }
 
-  void _onMouseDown(web.MouseEvent e) {
+  void _onMouseDown(JSAny? evt) {
+    final e = evt as web.MouseEvent;
     if (!_gameplayEnabled) return;
     final code = 'Mouse${e.button}';
     if (_held.add(code)) {
@@ -260,7 +263,8 @@ class Input {
     }
   }
 
-  void _onMouseUp(web.MouseEvent e) {
+  void _onMouseUp(JSAny? evt) {
+    final e = evt as web.MouseEvent;
     final code = 'Mouse${e.button}';
     _held.remove(code);
     if (_bindings.codesFor('interact').contains(code) &&
@@ -269,7 +273,8 @@ class Input {
     }
   }
 
-  void _onWheel(web.WheelEvent e) {
+  void _onWheel(JSAny? evt) {
+    final e = evt as web.WheelEvent;
     if (!_gameplayEnabled) return;
     // Inject a one-frame synthetic edge for wheel direction.
     final code = (e.deltaY < 0) ? 'WheelUp' : 'WheelDown';
@@ -277,13 +282,14 @@ class Input {
     _pressed.add(code);
   }
 
-  void _onMouseMove(web.MouseEvent e) {
+  void _onMouseMove(JSAny? evt) {
+    final e = evt as web.MouseEvent;
     if (!_locked || !_gameplayEnabled) return;
     _mouseDx += _movement(e, 'movementX');
     _mouseDy += _movement(e, 'movementY');
   }
 
-  void _onLockChange(web.Event _) {
+  void _onLockChange(JSAny? _) {
     _locked = _document.getProperty<JSAny?>('pointerLockElement'.toJS) != null;
     _mouseDx = 0;
     _mouseDy = 0;

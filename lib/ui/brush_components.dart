@@ -1,5 +1,6 @@
 import 'dart:js_interop';
 
+import 'package:web/web.dart' hide Float32List;
 import 'package:web/web.dart' as web;
 
 import 'brush_theme.dart';
@@ -11,14 +12,14 @@ final class BrushComponents {
   BrushComponents._();
 
   /// Decorative frame only; it carries no interaction semantics.
-  static web.HTMLElement frame(web.Document document, {String? id}) {
+  static HTMLElement frame(Document document, {String? id}) {
     final frame = buildElement(document, 'div', cls: 'brush-frame');
     if (id != null && id.isNotEmpty) frame.id = id;
     return frame;
   }
 
-  static web.HTMLElement heading(
-    web.Document document,
+  static HTMLElement heading(
+    Document document,
     BrushComponentContract contract, {
     int level = 2,
   }) {
@@ -36,8 +37,8 @@ final class BrushComponents {
     return heading;
   }
 
-  static web.HTMLButtonElement button(
-    web.Document document,
+  static HTMLButtonElement button(
+    Document document,
     BrushComponentContract contract, {
     void Function()? onPressed,
     String? text,
@@ -50,19 +51,19 @@ final class BrushComponents {
               cls: _classes('brush-button', contract),
               text: text ?? contract.label,
             )
-            as web.HTMLButtonElement;
+            as HTMLButtonElement;
     _decorate(button, contract);
     button
       ..type = 'button'
       ..disabled = !contract.focusable;
     if (onPressed != null) {
-      button.addEventListener('click', ((web.Event _) => onPressed()).toJS);
+      button.addEventListener('click', ((JSAny? _) => onPressed()).toJS);
     }
     return button;
   }
 
-  static web.HTMLButtonElement tab(
-    web.Document document,
+  static HTMLButtonElement tab(
+    Document document,
     BrushComponentContract contract, {
     required bool selected,
     void Function()? onPressed,
@@ -75,14 +76,14 @@ final class BrushComponents {
     return tab;
   }
 
-  static web.HTMLInputElement toggle(
-    web.Document document,
+  static HTMLInputElement toggle(
+    Document document,
     BrushComponentContract contract, {
     required bool checked,
     void Function(bool value)? onChanged,
   }) {
     contract.validate();
-    final input = document.createElement('input') as web.HTMLInputElement
+    final input = document.createElement('input') as HTMLInputElement
       ..type = 'checkbox'
       ..checked = checked
       ..className = _classes('brush-toggle', contract)
@@ -91,14 +92,14 @@ final class BrushComponents {
     if (onChanged != null) {
       input.addEventListener(
         'change',
-        ((web.Event _) => onChanged(input.checked)).toJS,
+        ((JSAny? _) => onChanged(input.checked)).toJS,
       );
     }
     return input;
   }
 
-  static web.HTMLInputElement slider(
-    web.Document document,
+  static HTMLInputElement slider(
+    Document document,
     BrushComponentContract contract, {
     required double value,
     required double min,
@@ -107,7 +108,7 @@ final class BrushComponents {
     void Function(double value)? onChanged,
   }) {
     contract.validate();
-    final input = document.createElement('input') as web.HTMLInputElement
+    final input = document.createElement('input') as HTMLInputElement
       ..type = 'range'
       ..min = '$min'
       ..max = '$max'
@@ -119,7 +120,7 @@ final class BrushComponents {
     if (onChanged != null) {
       input.addEventListener(
         'input',
-        ((web.Event _) {
+        ((JSAny? _) {
           final next = double.tryParse(input.value);
           if (next != null) onChanged(next);
         }).toJS,
@@ -128,8 +129,8 @@ final class BrushComponents {
     return input;
   }
 
-  static web.HTMLButtonElement keybind(
-    web.Document document,
+  static HTMLButtonElement keybind(
+    Document document,
     BrushComponentContract contract, {
     required String binding,
     void Function()? onPressed,

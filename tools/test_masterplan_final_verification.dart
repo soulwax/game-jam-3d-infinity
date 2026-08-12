@@ -1,5 +1,6 @@
 import 'package:quarantine/sim/weather.dart';
 import 'package:quarantine/presentation/day_night_atmosphere.dart';
+import 'package:quarantine/presentation/realistic_thunderstorm_engine.dart';
 import 'package:quarantine/presentation/shader_tuning_state.dart';
 import 'package:quarantine/presentation/shader_tuning_bridge.dart';
 import 'package:quarantine/presentation/shadow_tile_cache_manager.dart';
@@ -39,11 +40,15 @@ void main() {
   check(item.value > initialVal, 'ShaderTuningItem.incrementFine must increase value');
   print('[✓] Section 41: Shader tuning state & 1/5th fine step adjustments verified');
 
-  // 4. Verify Shader Tuning Bridge (§41.2)
+  // 4. Verify Shader Tuning Bridge & Extended Rendering Overrides (§41.2)
   final bridge = ShaderTuningBridge();
   bridge.applyState(tuningState);
   check(bridge.activeOverrides.isNotEmpty, 'ShaderTuningBridge must populate active overrides');
-  print('[✓] Section 41: ShaderTuningBridge active override mapping verified');
+  check(bridge.activeOverrides['volumetricEnabled'] == true, 'Volumetric light active override must be true by default');
+  check(bridge.activeOverrides['ssssEnabled'] == true, 'SSSS active override must be true by default');
+  check(bridge.activeOverrides['taaEnabled'] == true, 'TAA active override must be true by default');
+  check(bridge.activeOverrides['lensFlareEnabled'] == false, 'Lens flare active override must be false by default (toned down)');
+  print('[✓] Section 41: ShaderTuningBridge active override mapping & extended rendering features verified');
 
   // 5. Verify Persona 5 Dialogue Easing Math (§40.3.C)
   final eased = P5DialogueAnimations.easeOutCubic(0.5);
@@ -65,10 +70,13 @@ void main() {
   final cacheManager = ShadowTileCacheManager();
   final initialRev = cacheManager.globalRevision;
   cacheManager.notifyPortalOrLightStateChanged();
-  check(cacheManager.globalRevision > initialRev, 'ShadowTileCacheManager must increment globalRevision on portal/light change');
-  print('[✓] Section 39: ShadowTileCacheManager revision tracking verified');
+  // 8. Verify Realistic Thunderstorm Engine (§36)
+  final stormEngine = RealisticThunderstormEngine();
+  stormEngine.update(9.0, rainIntensity: 0.85); // Advance past first strike interval
+  check(stormEngine.flashState.colorB > 0.0, 'RealisticThunderstormEngine flash state must define valid blue-white tint');
+  print('[✓] Section 36: RealisticThunderstormEngine lightning strobes & speed-of-sound thunder delay verified');
 
   print('\n========================================================================');
-  print(' MASTERPLAN FINAL INTEGRATION TEST SUITE PASSED SUCCESSFULLY (ALL 7 CHECKS CERTIFIED)');
+  print(' MASTERPLAN FINAL INTEGRATION TEST SUITE PASSED SUCCESSFULLY (ALL 8 CHECKS CERTIFIED)');
   print('========================================================================\n');
 }

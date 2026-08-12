@@ -21,7 +21,7 @@ class EndingPanel extends Panel {
             )
             as web.HTMLButtonElement;
     close.setAttribute('type', 'button');
-    close.addEventListener('click', ((web.Event _) => closeRecord()).toJS);
+    close.addEventListener('click', ((JSAny? _) => closeRecord()).toJS);
     root.appendChild(close);
   }
 

@@ -24,6 +24,8 @@ enum LivingRoomProp {
   curtains,
   /// Photograph prop.
   photograph,
+  /// Porcelain mermaid statuette prop.
+  porcelainMermaidStatuette,
 }
 
 /// Class defining the living room furnishing manifest.
@@ -55,6 +57,19 @@ class LivingRoomFurnishingManifest {
       rotationYDegrees: 0.0,
       collisionRadiusM: 0.15,
       collisionHeightM: 0.25,
+      isInteractive: true,
+    ),
+    PropPlacement(
+      propId: 'living_room.porcelain-mermaid-statuette',
+      displayName: 'Porcelain Mermaid Statuette',
+      roomId: 'living_room',
+      materialFamily: 'mat-porcelain-glaze',
+      positionX: 0.45,
+      positionY: 1.35,
+      positionZ: -2.08,
+      rotationYDegrees: -15.0,
+      collisionRadiusM: 0.12,
+      collisionHeightM: 0.35,
       isInteractive: true,
     ),
     PropPlacement(

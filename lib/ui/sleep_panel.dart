@@ -33,7 +33,7 @@ class SleepPanel extends Panel {
         button.setAttribute('type', 'button');
         button.addEventListener(
           'click',
-          ((web.Event _) {
+          ((JSAny? _) {
             onSleep?.call(quality, location);
             close();
           }).toJS,

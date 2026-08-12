@@ -221,6 +221,18 @@ class MaterialFamilyLibrary {
     );
     _add(
       const MaterialDescriptor(
+        id: 'mat-porcelain-glaze',
+        family: MaterialFamily.ceramicConcrete,
+        textureKey: 'floor-linoleum',
+        tintR: 0.94,
+        tintG: 0.94,
+        tintB: 0.92,
+        roughness: 0.12,
+        metallic: 0.05,
+      ),
+    );
+    _add(
+      const MaterialDescriptor(
         id: 'mat-concrete-floor',
         family: MaterialFamily.ceramicConcrete,
         textureKey: 'grime',

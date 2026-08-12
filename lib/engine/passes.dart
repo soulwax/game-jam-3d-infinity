@@ -1,4 +1,5 @@
 import 'package:web/web.dart' hide Float32List;
+import 'package:web/web.dart' as web;
 import 'shadow.dart';
 import 'gl.dart';
 import 'shaders.dart' as shader_sources;
@@ -128,27 +129,27 @@ class RenderPasses {
     }
 
     ctx.useProgram(_ssaoProgram);
-    ctx.activeTexture(WebGL2RenderingContext.TEXTURE0);
-    ctx.bindTexture(WebGL2RenderingContext.TEXTURE_2D, worldTarget.depthTex!);
+    ctx.activeTexture(33984);
+    ctx.bindTexture(3553, worldTarget.depthTex!);
     ctx.uniform1i(_ssaoUDepth, 0);
     ctx.uniform2f(_ssaoUDepthSize, a.w.toDouble(), a.h.toDouble());
     ctx.uniform1f(_ssaoURadius, radius);
     ctx.uniform1f(_ssaoUBias, 0.0025);
     gl.bindTarget(a);
     ctx.bindVertexArray(_ssaoVao);
-    ctx.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, 3);
+    ctx.drawArrays(4, 0, 3);
 
     ctx.useProgram(_ssaoBlurProgram);
-    ctx.activeTexture(WebGL2RenderingContext.TEXTURE0);
+    ctx.activeTexture(33984);
     ctx.uniform1i(_blurUTex, 0);
     gl.bindTarget(c);
-    ctx.bindTexture(WebGL2RenderingContext.TEXTURE_2D, a.color);
+    ctx.bindTexture(3553, a.color);
     ctx.uniform2f(_blurUDir, 1.0 / a.w, 0.0);
-    ctx.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, 3);
+    ctx.drawArrays(4, 0, 3);
     gl.bindTarget(b);
-    ctx.bindTexture(WebGL2RenderingContext.TEXTURE_2D, c.color);
+    ctx.bindTexture(3553, c.color);
     ctx.uniform2f(_blurUDir, 0.0, 1.0 / a.h);
-    ctx.drawArrays(WebGL2RenderingContext.TRIANGLES, 0, 3);
+    ctx.drawArrays(4, 0, 3);
     return b.color;
   }
 

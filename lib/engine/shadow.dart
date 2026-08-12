@@ -2,6 +2,7 @@ import 'dart:js_interop';
 import 'dart:math' as math;
 
 import 'package:web/web.dart' hide Float32List;
+import 'package:web/web.dart' as web;
 
 import 'gl.dart';
 import 'math3.dart';
@@ -78,7 +79,7 @@ class ShadowMap {
     final t = _targets[idx];
     _gl.bindTarget(t);
     _ctx.clearColor(1, 1, 1, 1);
-    _ctx.clear(WebGL2RenderingContext.DEPTH_BUFFER_BIT);
+    _ctx.clear(256);
   }
 
   
@@ -94,17 +95,17 @@ class ShadowMap {
   
   void configureDepthOnlyState() {
     _ctx.colorMask(false, false, false, false);
-    _ctx.enable(WebGL2RenderingContext.CULL_FACE);
-    _ctx.cullFace(WebGL2RenderingContext.FRONT);
-    _ctx.enable(WebGL2RenderingContext.DEPTH_TEST);
+    _ctx.enable(2884);
+    _ctx.cullFace(1028);
+    _ctx.enable(2929);
     _ctx.depthMask(true);
   }
 
   
   void restoreColorState() {
     _ctx.colorMask(true, true, true, true);
-    _ctx.cullFace(WebGL2RenderingContext.BACK);
-    _ctx.disable(WebGL2RenderingContext.CULL_FACE);
+    _ctx.cullFace(1029);
+    _ctx.disable(2884);
   }
 
   

@@ -50,6 +50,7 @@
     {"id":"prop-hall-gloves","kind":"clothing","source":"assets-src/models/props/hall-gloves.glb","proxy":"room-fixture","pivot":"floor-center","bounds":{"min":[-0.20,0,-0.12],"max":[0.20,0.08,0.12]}},
     {"id":"prop-potato-sack","kind":"food","source":"assets-src/models/props/potato-sack.glb","proxy":"room-fixture","pivot":"floor-center","bounds":{"min":[-0.34,0,-0.30],"max":[0.34,0.58,0.30]}},
     {"id":"prop-kitchen-kettle","kind":"fixture","source":"assets-src/models/props/kitchen-kettle.glb","proxy":"room-fixture","pivot":"floor-center","bounds":{"min":[-0.24,0,-0.22],"max":[0.24,0.34,0.22]}},
+    {"id":"decor-porcelain-mermaid-statuette","kind":"decor","source":"assets/house/models/porcelain-mermaid-statuette/source/Retopo/Retopo.OBJ","proxy":"room-fixture","pivot":"floor-center","bounds":{"min":[-0.15,0,-0.15],"max":[0.15,0.45,0.15]}},
     {"id":"prop-cellar-coal-shovel","kind":"service","source":"assets-src/models/props/coal-shovel.glb","proxy":"room-fixture","pivot":"floor-center","bounds":{"min":[-0.08,0,-0.08],"max":[0.08,1.05,0.08]}},
     {"id":"prop-bedroom-blanket","kind":"textile","source":"assets-src/models/textiles/folded-blanket.glb","proxy":"room-fixture","pivot":"floor-center","bounds":{"min":[-0.42,0,-0.30],"max":[0.42,0.24,0.30]}},
     {"id":"prop-bathroom-soap","kind":"care","source":"assets-src/models/props/bathroom-soap-dish.glb","proxy":"room-fixture","pivot":"floor-center","bounds":{"min":[-0.18,0,-0.12],"max":[0.18,0.10,0.12]}},

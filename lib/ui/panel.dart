@@ -90,7 +90,8 @@ abstract class Panel {
 
   void onKeyDown(web.KeyboardEvent e) {}
 
-  void _onKeyDown(web.KeyboardEvent e) {
+  void _onKeyDown(JSAny? evt) {
+    final e = evt as web.KeyboardEvent;
     onKeyDown(e);
     if (e.defaultPrevented) return;
     if (e.code == 'Escape') {
@@ -110,11 +111,9 @@ abstract class Panel {
         e.preventDefault();
         f.last.focus();
       }
-    } else {
-      if (active == f.last || !f.contains(active)) {
-        e.preventDefault();
-        f.first.focus();
-      }
+    } else if (active == f.last || !f.contains(active)) {
+      e.preventDefault();
+      f.first.focus();
     }
   }
 }

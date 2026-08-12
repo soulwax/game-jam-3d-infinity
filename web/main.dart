@@ -31,8 +31,11 @@ import 'package:quarantine/presentation/pixeldart_resource_governor.dart';
 import 'package:quarantine/presentation/pixeldart_shader_pipeline_exporter.dart';
 import 'package:quarantine/presentation/renderer_backend.dart';
 import 'package:quarantine/presentation/day_night_atmosphere.dart';
+import 'package:quarantine/presentation/realistic_thunderstorm_engine.dart';
 import 'package:quarantine/presentation/shader_tuning_bridge.dart';
 import 'package:quarantine/presentation/renderer_runtime.dart';
+import 'package:quarantine/presentation/renderer_diagnostics.dart';
+import 'package:quarantine/ui/gui_flow_coordinator.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/authored_manifest.dart';
 import 'package:quarantine/house/emitter.dart';
@@ -804,20 +807,28 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         ? _shaderTuning.getValue('wetness_override')
         : atmos.windowSurfaceWetness;
 
-    _coreRenderer.rainIntensity = effectiveRain;
-    _coreRenderer.surfaceWetness = effectiveWetness;
-    _coreRenderer.windowWetness = effectiveWetness;
-    _coreRenderer.overrideFogColor = (atmos.fogColor.r, atmos.fogColor.g, atmos.fogColor.b);
-    _coreRenderer.fogDensity = _shaderTuning.getValue('fog_density');
-    _coreRenderer.fogHeightFalloff = _shaderTuning.getValue('fog_height_falloff');
+    _thunderstormEngine.update(0.0166, rainIntensity: effectiveRain);
+    final flash = _thunderstormEngine.flashState;
 
     final isDay = sunAngle > 0;
     final dirVec = isDay
         ? px.Vec3(atmos.sunDirection.x, atmos.sunDirection.y, atmos.sunDirection.z)
         : px.Vec3(atmos.moonDirection.x, atmos.moonDirection.y, atmos.moonDirection.z);
-    final dirCol = isDay
+    final baseDirCol = isDay
         ? px.LinearColor(atmos.sunColor.r, atmos.sunColor.g, atmos.sunColor.b)
         : px.LinearColor(atmos.moonColor.r, atmos.moonColor.g, atmos.moonColor.b);
+
+    final dirCol = flash.active
+        ? px.LinearColor(
+            baseDirCol.r + flash.colorR * flash.intensity * 2.0,
+            baseDirCol.g + flash.colorG * flash.intensity * 2.0,
+            baseDirCol.b + flash.colorB * flash.intensity * 2.5,
+          )
+        : baseDirCol;
+
+    final dirIntensity = flash.active
+        ? (atmos.directionalIntensity * atmos.windowLightLeakFactor + flash.intensity * 4.5)
+        : (atmos.directionalIntensity * atmos.windowLightLeakFactor);
 
     _environment = px.FrameEnvironment(
       ambientColor: px.LinearColor(
@@ -832,7 +843,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       directionalLight: px.DirectionalLight(
         direction: dirVec,
         color: dirCol,
-        intensity: atmos.directionalIntensity * atmos.windowLightLeakFactor,
+        intensity: dirIntensity,
       ),
       pointLights: points,
       spotLights: spots,
@@ -1729,6 +1740,8 @@ CanvasP5GuiEngine? _p5GuiEngine;
 final GameplayDialogueCoordinator _dialogueCoordinator = GameplayDialogueCoordinator();
 final ShaderTuningState _shaderTuning = ShaderTuningState();
 final ShaderTuningBridge _tuningBridge = ShaderTuningBridge();
+final RealisticThunderstormEngine _thunderstormEngine = RealisticThunderstormEngine();
+final GuiFlowCoordinator _guiFlowCoordinator = GuiFlowCoordinator();
 
 Panel? _activePanel;
 final PauseLedger _pauseLedger = PauseLedger();
@@ -2274,10 +2287,10 @@ void _installAccessibilityMediaListeners() {
     _applyAccessibilityProfile();
   }
 
-  reducedMotion.addEventListener('change', ((web.Event _) => refresh()).toJS);
+  reducedMotion.addEventListener('change', ((JSAny? _) => refresh()).toJS);
   photosensitivity.addEventListener(
     'change',
-    ((web.Event _) => refresh()).toJS,
+    ((JSAny? _) => refresh()).toJS,
   );
 }
 
@@ -2666,10 +2679,10 @@ Future<void> main() async {
     }
 
     _resize();
-    web.window.addEventListener('resize', ((web.Event _) => _resize()).toJS);
+    web.window.addEventListener('resize', ((JSAny? _) => _resize()).toJS);
     web.document.addEventListener(
       'visibilitychange',
-      ((web.Event _) {
+      ((JSAny? _) {
         if (web.document.visibilityState == 'hidden') {
           _onFocusLoss();
         }
@@ -2677,7 +2690,8 @@ Future<void> main() async {
     );
     web.window.addEventListener(
       'keydown',
-      ((web.KeyboardEvent e) {
+      ((JSAny? evt) {
+        final e = evt as web.KeyboardEvent;
         if (e.code == 'CapsLock' && !e.repeat) {
           e.preventDefault();
           _shaderTuning.toggle();
@@ -2796,7 +2810,8 @@ Future<void> main() async {
     );
     web.window.addEventListener(
       'keyup',
-      ((web.KeyboardEvent e) {
+      ((JSAny? evt) {
+        final e = evt as web.KeyboardEvent;
         if (_activePanel == null) {
           _presentationBackend.handleInput(
             RendererInputAction(id: e.code, value: 0),
@@ -2804,15 +2819,16 @@ Future<void> main() async {
         }
       }).toJS,
     );
-    web.window.addEventListener('keydown', ((web.Event _) => _armAudio()).toJS);
-    web.window.addEventListener('click', ((web.Event _) => _armAudio()).toJS);
+    web.window.addEventListener('keydown', ((JSAny? _) => _armAudio()).toJS);
+    web.window.addEventListener('click', ((JSAny? _) => _armAudio()).toJS);
     _canvas.addEventListener(
       'mousemove',
-      ((web.MouseEvent e) => _handleRenderedDialogueHover(e)).toJS,
+      ((JSAny? evt) => _handleRenderedDialogueHover(evt as web.MouseEvent)).toJS,
     );
     _canvas.addEventListener(
       'click',
-      ((web.MouseEvent e) {
+      ((JSAny? evt) {
+        final e = evt as web.MouseEvent;
         if (_door.visitorPresent) {
           e.preventDefault();
           _handleRenderedDialogueClick(e);
@@ -2871,14 +2887,16 @@ bool _handleRenderedDialogueClick(web.MouseEvent event) {
 void _installBootDiagnostics() {
   web.window.addEventListener(
     'error',
-    ((web.Event event) {
+    ((JSAny? evt) {
+      final event = evt as web.Event;
       final message = event is web.ErrorEvent ? event.message : event.type;
       _reportBootError(message);
     }).toJS,
   );
   web.window.addEventListener(
     'unhandledrejection',
-    ((web.Event event) {
+    ((JSAny? evt) {
+      final event = evt as web.Event;
       final reason = event is web.PromiseRejectionEvent ? event.reason : null;
       _reportBootError('unhandled rejection: ${reason ?? event.type}');
     }).toJS,
@@ -3979,7 +3997,20 @@ void _renderCanvasGui(double dt, FocusSnapshot focus) {
     objectiveText: textLibrary.getBroadcastPart(_session.snapshot.day, 'status'),
   );
 
-  // 4. CapsLock Special Shader Tuning Lab & Post-Processing Suite
+  // 4. Contextual UX Action Hints (Key Prompts & Dynamic Action Indicators)
+  _guiFlowCoordinator.update(dt);
+  final hints = _guiFlowCoordinator.getActiveActionHints(
+    isHoveringInteractable: focus.prompt != null,
+    interactableLabel: focus.prompt,
+    isVisitorPresent: _door.visitorPresent,
+  );
+  gui.drawContextualHUDActionPrompts(
+    screenWidth: screenW,
+    screenHeight: screenH,
+    hints: hints,
+  );
+
+  // 5. CapsLock Special Shader Tuning Lab & Post-Processing Suite
   _shaderTuning.update(dt);
   gui.drawShaderTuningMenu(
     screenWidth: screenW,

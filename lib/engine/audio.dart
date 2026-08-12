@@ -246,7 +246,7 @@ class Audio {
     final g = _ctx.createGain()..gain.value = gain;
     src.connect(g);
     g.connect(_slotForCue(name));
-    src.onended = ((web.Event _) {
+    src.onended = ((JSAny? _) {
       src.disconnect();
       g.disconnect();
     }).toJS;
@@ -295,7 +295,9 @@ class Audio {
       muffle01: muffle01.clamp(0.0, 1.0).toDouble(),
     );
     _filterChains[filter] = chain;
-    src.onended = ((web.Event _) => _disposeSpatial(filter)).toJS;
+    src.onended = ((JSAny? _) {
+      _disposeSpatial(filter);
+    }).toJS;
 
     src.connect(g);
     g.connect(attenuationGain);
@@ -407,7 +409,7 @@ class Audio {
     final g = _ctx.createGain()..gain.value = 0.6;
     src.connect(g);
     g.connect(_bed);
-    src.onended = ((web.Event _) {
+    src.onended = ((JSAny? _) {
       src.disconnect();
       g.disconnect();
       if (_musicSrc == src) {

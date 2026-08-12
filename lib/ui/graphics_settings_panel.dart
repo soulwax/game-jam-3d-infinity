@@ -62,7 +62,7 @@ class GraphicsSettingsPanel extends Panel {
     _dynamic!.type = 'checkbox';
     _dynamic!.addEventListener(
       'change',
-      ((web.Event _) {
+      ((JSAny? _) {
         _emit(_profile.copyWith(dynamicResolution: _dynamic!.checked));
       }).toJS,
     );
@@ -82,7 +82,7 @@ class GraphicsSettingsPanel extends Panel {
           ..setAttribute('aria-label', 'back to settings categories');
     back.addEventListener(
       'click',
-      ((web.Event _) {
+      ((JSAny? _) {
         final callback = onBack;
         if (callback != null) {
           callback();
@@ -113,7 +113,7 @@ class GraphicsSettingsPanel extends Panel {
     }
     select.addEventListener(
       'change',
-      ((web.Event _) {
+      ((JSAny? _) {
         final value = select.value;
         _emit(switch (key) {
           'preset' => _profile.copyWith(

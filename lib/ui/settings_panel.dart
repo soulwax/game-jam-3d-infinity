@@ -179,7 +179,7 @@ class SettingsPanel extends Panel {
       ..value = '1.0';
     scale.addEventListener(
       'input',
-      ((web.Event _) {
+      ((JSAny? _) {
         _accessibilityProfile = _accessibilityProfile.copyWith(
           uiScale: double.tryParse(scale.value) ?? 1.0,
         );
@@ -203,7 +203,7 @@ class SettingsPanel extends Panel {
     }
     verbosity.addEventListener(
       'change',
-      ((web.Event _) {
+      ((JSAny? _) {
         _accessibilityProfile = _accessibilityProfile.copyWith(
           screenReaderVerbosity: AccessibilityScreenReaderVerbosity.values
               .firstWhere((value) => value.name == verbosity.value),
@@ -225,7 +225,7 @@ class SettingsPanel extends Panel {
           ..setAttribute('aria-label', 'follow system accessibility defaults');
     reset.addEventListener(
       'click',
-      ((web.Event _) => onResetAccessibilityProfile?.call()).toJS,
+      ((JSAny? _) => onResetAccessibilityProfile?.call()).toJS,
     );
     grid.appendChild(reset);
     _accessibilityInputs.addAll({
@@ -249,7 +249,7 @@ class SettingsPanel extends Panel {
       ..type = 'checkbox';
     input.addEventListener(
       'change',
-      ((web.Event _) {
+      ((JSAny? _) {
         final value = input.checked;
         _accessibilityProfile = switch (key) {
           'reducedMotion' => _accessibilityProfile.copyWith(
@@ -258,7 +258,8 @@ class SettingsPanel extends Panel {
           'photosensitivitySafe' => _accessibilityProfile.copyWith(
             photosensitivitySafe: value,
           ),
-          _ => _accessibilityProfile.copyWith(captions: value),
+          'captions' => _accessibilityProfile.copyWith(captions: value),
+          _ => _accessibilityProfile,
         };
         onAccessibilityProfile?.call(_accessibilityProfile);
       }).toJS,
@@ -309,7 +310,7 @@ class SettingsPanel extends Panel {
       document,
       grid,
       'textPacing',
-      'dialogue text pacing',
+      'text pacing',
       GameplayTextPacing.values,
     );
     _addGameplaySelect(
@@ -346,7 +347,7 @@ class SettingsPanel extends Panel {
       ..checked = _gameplayOptions.contextualReminders;
     reminders.addEventListener(
       'change',
-      ((web.Event _) {
+      ((JSAny? _) {
         _gameplayOptions = _gameplayOptions.copyWith(
           contextualReminders: reminders.checked,
         );
@@ -383,7 +384,7 @@ class SettingsPanel extends Panel {
     }
     select.addEventListener(
       'change',
-      ((web.Event _) {
+      ((JSAny? _) {
         _gameplayOptions = switch (key) {
           'interactionMode' => _gameplayOptions.copyWith(
             interactionMode: GameplayInteractionMode.values.firstWhere(
@@ -482,7 +483,7 @@ class SettingsPanel extends Panel {
     }
     select.addEventListener(
       'change',
-      ((web.Event _) {
+      ((JSAny? _) {
         final current = _audioOptions;
         final next = switch (key) {
           'output' => current.copyWith(
@@ -575,7 +576,7 @@ class SettingsPanel extends Panel {
     }
     input.addEventListener(
       'change',
-      ((web.Event _) {
+      ((JSAny? _) {
         switch (definition.key) {
           case 'muted':
             onMute?.call(input.checked);
@@ -616,7 +617,7 @@ class SettingsPanel extends Panel {
     final value = buildElement(document, 'output', text: '100%');
     input.addEventListener(
       'input',
-      ((web.Event _) {
+      ((JSAny? _) {
         final level = double.tryParse(input.value) ?? 1.0;
         value.textContent = '${(level * 100).round()}%';
         // Display controls share the same range-row renderer as audio levels,

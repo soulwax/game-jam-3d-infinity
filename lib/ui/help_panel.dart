@@ -31,7 +31,7 @@ class HelpPanel extends Panel {
         buildElement(document, 'button', cls: 'door-continue', text: 'return')
             as web.HTMLButtonElement;
     close.setAttribute('type', 'button');
-    close.addEventListener('click', ((web.Event _) => this.close()).toJS);
+    close.addEventListener('click', ((JSAny? _) => this.close()).toJS);
     root.appendChild(close);
   }
 }

@@ -75,7 +75,7 @@ class JournalPanel extends Panel {
       text: '‹ earlier',
     );
     prev.setAttribute('type', 'button');
-    prev.addEventListener('click', ((web.Event _) => _turn(-1)).toJS);
+    prev.addEventListener('click', ((JSAny? _) => _turn(-1)).toJS);
     final next = buildElement(
       document,
       'button',
@@ -83,7 +83,7 @@ class JournalPanel extends Panel {
       text: 'later ›',
     );
     next.setAttribute('type', 'button');
-    next.addEventListener('click', ((web.Event _) => _turn(1)).toJS);
+    next.addEventListener('click', ((JSAny? _) => _turn(1)).toJS);
     _rightDayLabel = buildElement(document, 'span', cls: 'right-day-label');
     row.appendChild(prev);
     row.appendChild(_rightDayLabel);
@@ -143,7 +143,7 @@ class JournalPanel extends Panel {
       btn.setAttribute('type', 'button');
       btn.addEventListener(
         'click',
-        ((web.Event _) => _select(entry.ordinal, btn)).toJS,
+        ((JSAny? _) => _select(entry.ordinal, btn)).toJS,
       );
       _entryPicker.appendChild(btn);
     }

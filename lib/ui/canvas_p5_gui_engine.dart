@@ -585,6 +585,48 @@ class CanvasP5GuiEngine {
     }
   }
 
+  /// Renders contextual key hints and action prompts upholding UX best practices.
+  void drawContextualHUDActionPrompts({
+    required double screenWidth,
+    required double screenHeight,
+    required List<dynamic> hints,
+  }) {
+    if (hints.isEmpty) return;
+
+    final hintCount = hints.length;
+    final hintW = 140.0;
+    final totalW = hintCount * hintW + (hintCount - 1) * 12.0;
+    final startX = screenWidth * 0.5 - totalW * 0.5 + hintW * 0.5;
+    final hintY = screenHeight - 32.0;
+
+    for (int i = 0; i < hintCount; i++) {
+      final hint = hints[i];
+      final itemX = startX + i * (hintW + 12.0);
+      final isPrimary = hint.isPrimary == true;
+
+      drawBrushPanel(
+        x: itemX,
+        y: hintY,
+        width: hintW,
+        height: 28.0,
+        skewAngleRad: -0.04,
+        fillColor: isPrimary ? P5Palette.crimsonRed : P5Palette.inkBlackTranslucent,
+        borderColor: isPrimary ? P5Palette.boneWhite : P5Palette.amberGold,
+        borderWidth: 1.5,
+        cutCornerSize: 6.0,
+        shadow: isPrimary,
+      );
+
+      ctx.save();
+      ctx.fillStyle = (isPrimary ? P5Palette.boneWhite : P5Palette.amberGold).toJS;
+      ctx.font = 'bold 11px "Courier New", monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('[${hint.key}] ${hint.label}', itemX, hintY);
+      ctx.restore();
+    }
+  }
+
   // =========================================================================
   // 5. CAPSLOCK SHADER TUNING LAB & POST-PROCESSING MENU
   // =========================================================================

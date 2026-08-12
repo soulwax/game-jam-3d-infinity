@@ -38,7 +38,7 @@ class CreditsPanel extends Panel {
             as web.HTMLButtonElement;
     close.id = 'credits.close';
     close.setAttribute('type', 'button');
-    close.addEventListener('click', ((web.Event _) => this.close()).toJS);
+    close.addEventListener('click', ((JSAny? _) => this.close()).toJS);
     root.appendChild(close);
   }
 

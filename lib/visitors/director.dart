@@ -230,7 +230,7 @@ class VisitorDirector {
         choice: DoorChoice.ignore,
       ),
     );
-    narrative.setFlag('walkAwayPenalty_${state.arrival.visitor}', true);
+    narrative.flags['walkAwayPenalty_${state.arrival.visitor}'] = 'true';
     state.phase = VisitPhase.resolved;
     _resolve(state);
     return VisitProgress(state, resolved: true);
