@@ -66,12 +66,10 @@ class Camera {
     final cosP = math.cos(p);
     fwd = Vec3(math.sin(yaw) * cosP, math.sin(p), math.cos(yaw) * cosP);
 
-    // The renderer and shadow cameras use the canonical right-handed basis:
-    // forward × world-up is screen-right.  Using world-up × forward here
-    // mirrored the gameplay camera against Pixeldart at yaw 0, making A/D
-    // appear swapped even though the action bindings were correct.
-    right = fwd.cross(_worldUp).normalized;
-    up = right.cross(fwd).normalized;
+    // In right-handed forward-Z coordinate systems (+X right, +Y up, +Z forward):
+    // world-up × forward is screen-right (+X).
+    right = _worldUp.cross(fwd).normalized;
+    up = fwd.cross(right).normalized;
     eye = pos;
   }
 

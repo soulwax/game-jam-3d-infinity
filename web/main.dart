@@ -28,8 +28,6 @@ import 'package:quarantine/presentation/pixeldart_capability_bridge.dart';
 import 'package:quarantine/presentation/pixeldart_capability_matrix.dart';
 import 'package:quarantine/presentation/pixeldart_resource_governor.dart';
 import 'package:quarantine/presentation/pixeldart_shader_pipeline_exporter.dart';
-import 'package:quarantine/presentation/cinematic_immersion_director.dart';
-import 'package:quarantine/ui/accessibility_excellence_coordinator.dart';
 import 'package:quarantine/presentation/renderer_backend.dart';
 import 'package:quarantine/presentation/renderer_diagnostics.dart';
 import 'package:quarantine/presentation/day_night_atmosphere.dart';
@@ -3617,9 +3615,9 @@ void _update(double dt) {
 
   final desiredVelocity =
       Vec3(
-        -moveDir.x * math.cos(_simYaw) + moveDir.z * math.sin(_simYaw),
+        moveDir.x * math.cos(_simYaw) + moveDir.z * math.sin(_simYaw),
         0,
-        moveDir.x * math.sin(_simYaw) + moveDir.z * math.cos(_simYaw),
+        -moveDir.x * math.sin(_simYaw) + moveDir.z * math.cos(_simYaw),
       ).normalized *
       playerSpeed;
   final moveWorld = _motion.advance(

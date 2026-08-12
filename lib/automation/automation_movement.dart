@@ -241,10 +241,9 @@ final class AutomationMovementController {
       -1.0,
       1.0,
     );
-    // Match Camera.lookFrom/Pixeldart's right-handed basis. At yaw 0,
-    // screen-right is world -X; the previous formula used +X and drove
-    // authored browser routes in the opposite lateral direction.
-    final strafe = ((-dx * cosYaw + dz * sinYaw) / distanceSafe).clamp(
+    // Match Camera.lookFrom/Pixeldart's canonical right-handed basis where
+    // screen-right is world +X at yaw 0.
+    final strafe = ((dx * cosYaw - dz * sinYaw) / distanceSafe).clamp(
       -1.0,
       1.0,
     );

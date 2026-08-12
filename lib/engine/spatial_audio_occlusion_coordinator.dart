@@ -83,10 +83,8 @@ class SpatialAudioOcclusionCoordinator {
     // 2. Spatial stereo panning (-1.0 left, +1.0 right)
     final cosYaw = math.cos(listenerYaw);
     final sinYaw = math.sin(listenerYaw);
-    // Transform delta to listener relative coordinates
-    // Screen-right uses forward × up, the same handedness as Camera and
-    // Pixeldart. The former +X basis made left/right panning mirror the view.
-    final relX = -delta.x * cosYaw + delta.z * sinYaw;
+    // Transform delta to listener relative coordinates where screen-right is +X.
+    final relX = delta.x * cosYaw - delta.z * sinYaw;
     final relZ = delta.x * sinYaw + delta.z * cosYaw;
     final relAngle = math.atan2(relX, relZ);
     final pan = math.sin(relAngle).clamp(-1.0, 1.0);

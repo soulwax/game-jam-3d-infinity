@@ -3467,7 +3467,7 @@ q[10]=(b+d)*r
 q[11]=-1
 q[14]=2*b*d*r
 return new A.dn(q)},
-xR(a,b,c){var s=b.ga9(),r=s.bm(c).ga9(),q=r.bm(s),p=new Float32Array(16)
+xR(a,b,c){var s=b.ga9(),r=c.bm(s).ga9(),q=s.bm(r),p=new Float32Array(16)
 p[0]=r.a
 p[1]=q.a
 p[2]=-s.a
@@ -6979,7 +6979,7 @@ r=new A.ql(a,h,b,r,j,f,k,g,i,d,e,l==null?null:A.b2(l,s,t.X))
 r.kk(a,b,c,d,e,f,g,h,i,j,k,l)
 return r},
 qm(a,b,c,d,e){var s=A.m5("RENDERER_SHA"),r=A.m5("GAME_SHA"),q=A.m5("DART_SDK_VERSION")
-return A.y_(a,"9448f4b2b921-b95463f82d41-dirty",b,c,d,r,A.m5("LOCKFILE_SHA256"),e,A.m5("PROJECT_VERSION"),s,q,null)},
+return A.y_(a,"1795e34564fa-05ea6155c953-dirty",b,c,d,r,A.m5("LOCKFILE_SHA256"),e,A.m5("PROJECT_VERSION"),s,q,null)},
 m5(a){var s=B.iV.h(0,a)
 return s.length===0?null:s},
 ql:function ql(a,b,c,d,e,f,g,h,i,j,k,l){var _=this
@@ -9476,7 +9476,7 @@ $.ea=i
 $.ea=B.d.H(i,-1.5607963267948965,1.5607963267948965)
 i=o.a
 j=o.c
-f=new A.b(-i*Math.cos($.c7)+j*Math.sin($.c7),0,i*Math.sin($.c7)+j*Math.cos($.c7)).ga9().a3(0,2)
+f=new A.b(i*Math.cos($.c7)+j*Math.sin($.c7),0,-i*Math.sin($.c7)+j*Math.cos($.c7)).ga9().a3(0,2)
 j=$.mm()
 if(!isFinite(b1)||b1<0)A.j(A.an(b1,"dt","must be finite and non-negative"))
 e=f.a!==0||f.c!==0?14:10
@@ -15237,9 +15237,9 @@ else s=c>1.5607963267948965?1.5607963267948965:c
 r=Math.cos(s)
 q=new A.b(Math.sin(b)*r,Math.sin(s),Math.cos(b)*r)
 p.b=q
-q=q.bm($.Au()).ga9()
+q=$.Au().bm(q).ga9()
 p.d=q
-p.c=q.bm(p.b).ga9()
+p.c=p.b.bm(q).ga9()
 p.a=a}}
 A.nY.prototype={}
 A.kM.prototype={}
@@ -22777,7 +22777,7 @@ B.iT=new A.a4(B.cU,["Move forward","Move back","Move left","Move right","Interac
 B.jy={uScene:0,uHistory:1}
 B.iU=new A.a4(B.jy,[0,1],t.I)
 B.j7={RENDERER_SHA:0,GAME_SHA:1,DART_SDK_VERSION:2,LOCKFILE_SHA256:3,PROJECT_VERSION:4}
-B.iV=new A.a4(B.j7,["b95463f82d4116a129437eaed9ebe225e46cbffd","9448f4b2b9211a75f88f16d7d15f06629ac57c32","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29","0.1.2.0"],t.p)
+B.iV=new A.a4(B.j7,["05ea6155c95381b44c7d08b0a28761a76ef2b45a","1795e34564fa71ed38ba3fcc7c86a5057baeae34","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29","0.1.2.0"],t.p)
 B.jl={aPosition:0,aUvMat:1}
 B.cN=new A.a4(B.jl,[0,4],t.I)
 B.jz={uScene:0,uLut:1}
