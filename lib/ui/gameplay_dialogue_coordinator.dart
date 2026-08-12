@@ -59,10 +59,18 @@ class GameplayDialogueCoordinator {
     }
   }
 
-  /// Handles numeric key presses (Digit1..Digit9 or Numpad1..Numpad9).
+  /// Handles keyboard shortcuts (Digit1..Digit9, Numpad1..Numpad9, or Space for silence).
   /// Returns true if the key was consumed as a choice selection.
-  bool handleNumericKey(String code) {
+  bool handleKey(String code) {
     if (choices.isEmpty) return false;
+
+    if (code == 'Space') {
+      final silenceIndex = choices.indexWhere((c) => c.toLowerCase().contains('silent') || c.contains('...'));
+      if (silenceIndex != -1) {
+        selectChoice(silenceIndex);
+        return true;
+      }
+    }
 
     int? choiceIndex;
     if (code.startsWith('Digit')) {

@@ -33,6 +33,8 @@ class WorldProgramBindings {
   final List<WebGLUniformLocation?> _uPointLightRadius = [];
   final List<WebGLUniformLocation?> _uPointLightIntensity = [];
   late WebGLUniformLocation? _uFlicker, _uBloomThreshold, _uColorQuantize;
+  late WebGLUniformLocation? _uFogDensity, _uFogHeightFalloff, _uFogGroundHeight;
+  late WebGLUniformLocation? _uRainIntensity, _uSurfaceWetness, _uWindowWetness;
   late WebGLUniformLocation? _uWall,
       _uWallOn,
       _uWallMid,
@@ -111,6 +113,12 @@ class WorldProgramBindings {
     _uFlicker = _worldCtx.getUniformLocation(program, 'uFlicker');
     _uBloomThreshold = _worldCtx.getUniformLocation(program, 'uBloomThreshold');
     _uColorQuantize = _worldCtx.getUniformLocation(program, 'uColorQuantize');
+    _uFogDensity = _worldCtx.getUniformLocation(program, 'uFogDensity');
+    _uFogHeightFalloff = _worldCtx.getUniformLocation(program, 'uFogHeightFalloff');
+    _uFogGroundHeight = _worldCtx.getUniformLocation(program, 'uFogGroundHeight');
+    _uRainIntensity = _worldCtx.getUniformLocation(program, 'uRainIntensity');
+    _uSurfaceWetness = _worldCtx.getUniformLocation(program, 'uSurfaceWetness');
+    _uWindowWetness = _worldCtx.getUniformLocation(program, 'uWindowWetness');
     _uWall = _worldCtx.getUniformLocation(program, 'uWall');
     _uWallOn = _worldCtx.getUniformLocation(program, 'uWallOn');
     _uWallMid = _worldCtx.getUniformLocation(program, 'uWallMid');

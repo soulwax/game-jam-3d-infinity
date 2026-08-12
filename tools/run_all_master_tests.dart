@@ -35,6 +35,7 @@ void main() async {
     'tools/test_screen_space_subsurface_scattering.dart',
     'tools/test_motion_blur_velocity_field.dart',
     'tools/test_pixeldart_extended_rendering_passes.dart',
+    'tools/test_masterplan_final_verification.dart',
   ];
 
   var passedCount = 0;

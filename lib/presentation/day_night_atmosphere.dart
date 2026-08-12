@@ -93,39 +93,45 @@ class DayNightAtmosphereEngine {
     required double rainIntensity,
     required bool shutterOpen,
     double temperatureCelsius = 15.0,
+    double daylightHours = 12.0,
   }) {
     final normHour = ((hour % 24.0) + 24.0) % 24.0;
     final rain = rainIntensity.clamp(0.0, 1.0);
 
-    // 1. Determine Phase
+    // Calculate dynamic sunrise and sunset times based on seasonal daylightHours
+    final halfDaylight = (daylightHours.clamp(6.0, 16.0)) / 2.0;
+    final sunriseHour = 12.0 - halfDaylight;
+    final sunsetHour = 12.0 + halfDaylight;
+
+    // 1. Determine Phase based on dynamic sunrise/sunset
     TimeOfDayPhase phase;
-    if (normHour >= 5.0 && normHour < 7.0) {
+    if (normHour >= (sunriseHour - 1.0) && normHour < (sunriseHour + 1.0)) {
       phase = TimeOfDayPhase.dawn;
-    } else if (normHour >= 7.0 && normHour < 11.0) {
+    } else if (normHour >= (sunriseHour + 1.0) && normHour < 11.0) {
       phase = TimeOfDayPhase.morning;
-    } else if (normHour >= 11.0 && normHour < 15.0) {
+    } else if (normHour >= 11.0 && normHour < 14.0) {
       phase = TimeOfDayPhase.noon;
-    } else if (normHour >= 15.0 && normHour < 17.0) {
+    } else if (normHour >= 14.0 && normHour < (sunsetHour - 1.0)) {
       phase = TimeOfDayPhase.afternoon;
-    } else if (normHour >= 17.0 && normHour < 19.0) {
+    } else if (normHour >= (sunsetHour - 1.0) && normHour < (sunsetHour + 1.0)) {
       phase = TimeOfDayPhase.dusk;
-    } else if (normHour >= 19.0 && normHour < 21.0) {
+    } else if (normHour >= (sunsetHour + 1.0) && normHour < 21.0) {
       phase = TimeOfDayPhase.twilight;
     } else {
       phase = TimeOfDayPhase.night;
     }
 
     // 2. Calculate Sun Elevation and Azimuth
-    // Sun rises at 06:00 (el=0°), peaks at 12:00 (el=60°), sets at 18:00 (el=0°)
+    // Sun rises at sunriseHour (el=0°), peaks at 12:00 (el=65°), sets at sunsetHour (el=0°)
     double elevationDeg;
-    if (normHour >= 6.0 && normHour <= 18.0) {
-      final sunProgress = (normHour - 6.0) / 12.0; // 0..1
-      elevationDeg = math.sin(math.pi * sunProgress) * 60.0;
+    if (normHour >= sunriseHour && normHour <= sunsetHour) {
+      final sunProgress = (normHour - sunriseHour) / (sunsetHour - sunriseHour); // 0..1
+      elevationDeg = math.sin(math.pi * sunProgress) * 65.0;
     } else {
-      elevationDeg = -15.0; // Below horizon at night
+      elevationDeg = -18.0; // Below horizon at night
     }
 
-    // Azimuth sweeps from East (90°) at 06:00 to South (180°) at 12:00 to West (270°) at 18:00
+    // Azimuth sweeps from East (90°) at sunrise to South (180°) at 12:00 to West (270°) at sunset
     final azimuthDeg = 90.0 + (normHour / 24.0) * 360.0;
 
     final elRad = _degToRad(elevationDeg);

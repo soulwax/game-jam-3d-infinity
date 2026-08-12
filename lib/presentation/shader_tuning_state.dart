@@ -82,6 +82,22 @@ class ShaderTuningItem {
     }
   }
 
+  void incrementFine() {
+    if (isToggle) {
+      boolValue = !boolValue;
+    } else {
+      currentValue = (currentValue + step * 0.2).clamp(min, max);
+    }
+  }
+
+  void decrementFine() {
+    if (isToggle) {
+      boolValue = !boolValue;
+    } else {
+      currentValue = (currentValue - step * 0.2).clamp(min, max);
+    }
+  }
+
   void reset() {
     currentValue = defaultValue;
     if (isToggle) {
@@ -152,24 +168,24 @@ class ShaderTuningState {
         defaultValue: 1.0,
       ),
       ShaderTuningItem(
-        id: 'pbr_wrap_diffuse',
-        label: 'Wrap Lighting Subsurface',
-        description: 'Wrap lighting factor for soft skin/wax/candle bleed',
+        id: 'light_ambient_mult',
+        label: 'Ambient Light Scale',
+        description: 'Global ambient fill multiplier for sky and room environment',
         category: ShaderTuningCategory.pbrMaterial,
         min: 0.0,
-        max: 1.0,
-        step: 0.05,
-        defaultValue: 0.25,
+        max: 3.0,
+        step: 0.1,
+        defaultValue: 1.0,
       ),
       ShaderTuningItem(
-        id: 'pbr_fresnel_f0',
-        label: 'Dielectric Fresnel F0',
-        description: 'Base specular reflectance at normal incidence',
+        id: 'light_direct_mult',
+        label: 'Direct Light Scale',
+        description: 'Global directional key light and mantle intensity multiplier',
         category: ShaderTuningCategory.pbrMaterial,
-        min: 0.01,
-        max: 0.30,
-        step: 0.01,
-        defaultValue: 0.04,
+        min: 0.0,
+        max: 3.0,
+        step: 0.1,
+        defaultValue: 1.0,
       ),
 
       // 2. Shadows & Occlusion
@@ -211,6 +227,16 @@ class ShaderTuningState {
         step: 0.1,
         defaultValue: 1.0,
       ),
+      ShaderTuningItem(
+        id: 'shadow_bias',
+        label: 'Shadow Depth Bias',
+        description: 'Depth offset bias to eliminate shadow acne artifacts',
+        category: ShaderTuningCategory.shadowsAndOcclusion,
+        min: 0.0001,
+        max: 0.01,
+        step: 0.0005,
+        defaultValue: 0.003,
+      ),
 
       // 3. Surface Weathering & Normals
       ShaderTuningItem(
@@ -242,6 +268,16 @@ class ShaderTuningState {
         step: 0.05,
         defaultValue: 0.20,
       ),
+      ShaderTuningItem(
+        id: 'wetness_override',
+        label: 'Surface Wetness Lock',
+        description: 'Force surface wetness lock (-0.1 = simulation driven)',
+        category: ShaderTuningCategory.surfaceWeathering,
+        min: -0.1,
+        max: 1.0,
+        step: 0.05,
+        defaultValue: -0.1,
+      ),
 
       // 4. Atmosphere & Post-Processing
       ShaderTuningItem(
@@ -262,6 +298,36 @@ class ShaderTuningState {
         max: 0.15,
         step: 0.005,
         defaultValue: 0.035,
+      ),
+      ShaderTuningItem(
+        id: 'fog_height_falloff',
+        label: 'Fog Height Decay',
+        description: 'Exponential vertical falloff rate along Y axis',
+        category: ShaderTuningCategory.atmosphereAndPost,
+        min: 0.0,
+        max: 2.0,
+        step: 0.05,
+        defaultValue: 0.60,
+      ),
+      ShaderTuningItem(
+        id: 'time_override',
+        label: 'Time of Day Lock',
+        description: 'Override simulation time (-1.0 = normal clock)',
+        category: ShaderTuningCategory.atmosphereAndPost,
+        min: -1.0,
+        max: 24.0,
+        step: 0.25,
+        defaultValue: -1.0,
+      ),
+      ShaderTuningItem(
+        id: 'rain_override',
+        label: 'Rain Intensity Lock',
+        description: 'Override weather rain (-0.1 = schedule driven)',
+        category: ShaderTuningCategory.atmosphereAndPost,
+        min: -0.1,
+        max: 1.0,
+        step: 0.05,
+        defaultValue: -0.1,
       ),
       ShaderTuningItem(
         id: 'post_bloom',
@@ -310,6 +376,16 @@ class ShaderTuningState {
         category: ShaderTuningCategory.atmosphereAndPost,
         min: 0.2,
         max: 3.0,
+        step: 0.05,
+        defaultValue: 1.0,
+      ),
+      ShaderTuningItem(
+        id: 'post_saturation',
+        label: 'Colour Saturation',
+        description: 'Global chroma desaturation or saturation multiplier',
+        category: ShaderTuningCategory.atmosphereAndPost,
+        min: 0.0,
+        max: 2.0,
         step: 0.05,
         defaultValue: 1.0,
       ),

@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:web/web.dart' as web;
 
+import 'gui_design_tokens.dart';
 import 'p5_gui_models.dart';
 export 'p5_gui_models.dart';
 import '../presentation/shader_tuning_state.dart';
@@ -460,6 +461,35 @@ class CanvasP5GuiEngine {
     }
   }
 
+  /// Draws Persona 5 angular progress wipe ring for dialogue silence countdowns per MASTERPLAN §40.3.
+  void drawSilenceCountdownRing({
+    required double centerX,
+    required double centerY,
+    required double radius,
+    required double progress, // 0.0 to 1.0 over silence duration
+  }) {
+    if (progress <= 0.0) return;
+
+    final startAngle = -math.pi / 2;
+    final sweepAngle = 2 * math.pi * progress.clamp(0.0, 1.0);
+
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(centerX, centerY, radius, startAngle, startAngle + sweepAngle, false);
+
+    if (progress < 0.6) {
+      ctx.strokeStyle = P5Palette.amberGold.toJS;
+    } else if (progress < 0.85) {
+      ctx.strokeStyle = 'rgba(255, 140, 0, 1.0)'.toJS;
+    } else {
+      ctx.strokeStyle = P5Palette.crimsonRed.toJS;
+    }
+
+    ctx.lineWidth = 4.0;
+    ctx.stroke();
+    ctx.restore();
+  }
+
   // =========================================================================
   // 4. HUD ELEMENTS (CLOCK, OBJECTIVE TICKER, ROOM BADGE)
   // =========================================================================
@@ -793,6 +823,15 @@ class CanvasP5GuiEngine {
           ctx.fillStyle = P5Palette.boneWhite.toJS;
           ctx.fillRect(sliderX - sliderW * 0.5 + sliderW * frac - 3.0, itemY - 7.0, 6.0, 14.0);
 
+          // Min/Max range bounds text
+          ctx.fillStyle = P5Palette.mutedGrey.toJS;
+          ctx.font = '10px "Courier New", monospace';
+          ctx.textAlign = 'right';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('${item.min.toStringAsFixed(1)} ', sliderX - sliderW * 0.5 - 4.0, itemY);
+          ctx.textAlign = 'left';
+          ctx.fillText(' ${item.max.toStringAsFixed(1)}', sliderX + sliderW * 0.5 + 4.0, itemY);
+
           ctx.fillStyle = (isSelected ? P5Palette.brightAmber : P5Palette.boneWhite).toJS;
           ctx.font = 'bold 13px "Courier New", monospace';
           ctx.textAlign = 'right';
@@ -811,7 +850,7 @@ class CanvasP5GuiEngine {
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(
-      '[W / S / ↑ / ↓] Navigate  •  [A / D / ← / →] Adjust / Toggle  •  [1 - 5] Tabs  •  [R] Reset  •  [CAPS LOCK / ESC] Close',
+      '[W / S / ↑ / ↓] Navigate  •  [A / D / ← / →] Coarse  •  [Q / E] Fine (1/5)  •  [1 - 5] Tabs  •  [R / Shift+R] Reset  •  [CAPS LOCK / ESC] Close',
       curX,
       footerY,
     );

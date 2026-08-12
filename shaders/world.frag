@@ -16,6 +16,8 @@ uniform sampler2D uWall,uGlass,uSoft,uNoise;
 uniform sampler2DArray uMaterialAlbedo;
 uniform sampler2D uShadow0,uShadow1,uShadow2;
 uniform float uFogStart,uFogEnd,uFlicker,uBloomThreshold;
+uniform float uFogDensity,uFogHeightFalloff,uFogGroundHeight;
+uniform float uRainIntensity,uSurfaceWetness,uWindowWetness;
 uniform float uColorQuantize;
 uniform float uWallOn,uWallMid,uWallAmt,uWallScale,uGlassOn,uGlassGain,uGlassFog,uSoftOn,uNoiseOn;
 uniform float uShadowCasters;
@@ -107,13 +109,32 @@ void main(){
     c*=texture(uMaterialAlbedo,vec3(uv.xy*material.uvScale,float(material.layer))).rgb;
   }
   float a=vAlpha;
-  float fog=smoothstep(uFogStart,uFogEnd,vDepth);
+
+  // Surface wetness PBR modification
+  if (uSurfaceWetness > 0.001) {
+    c *= mix(1.0, 0.65, uSurfaceWetness * 0.85);
+  }
+
+  // Calculate exponential height fog if density > 0, otherwise fallback to linear range
+  float fog = 0.0;
+  if (uFogDensity > 0.0001) {
+    float heightDecay = exp(-uFogHeightFalloff * max(vWorldPos.y - uFogGroundHeight, 0.0));
+    fog = clamp(1.0 - exp(-uFogDensity * vDepth * heightDecay), 0.0, 1.0);
+  } else {
+    fog = smoothstep(uFogStart, uFogEnd, vDepth);
+  }
+
   if(uv.z>1.5){
     if(uGlassOn>0.0){
-      vec4 g=texture(uGlass,uv.xy);
+      vec2 glassUv = uv.xy;
+      if (uWindowWetness > 0.05 && uNoiseOn > 0.0) {
+        vec2 dropUv = uv.xy * 6.0 + vec2(0.0, -uv.y * 0.3);
+        glassUv += (texture(uNoise, dropUv).rg - 0.5) * 0.03 * uWindowWetness;
+      }
+      vec4 g=texture(uGlass,glassUv);
       c=vColor.rgb*g.rgb*uGlassGain;
       a*=g.a;
-      fog*=uGlassFog;
+      fog *= clamp(uGlassFog, 0.1, 1.0);
     }
   }else if(uv.z>0.5&&uWallOn>0.0){
     c*=1.0+(texture(uWall,uv.xy*uWallScale*material.uvScale).r-uWallMid)*uWallAmt;

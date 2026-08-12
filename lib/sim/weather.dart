@@ -79,15 +79,26 @@ class WeatherSchedule {
 List<WeatherDay> _generate(int seed) => [
   for (var day = 1; day <= WeatherSchedule.authoredDays; day++)
     () {
-      final value = _mix(seed, day);
-      final rain = value % 5 == 0 || value % 7 == 0;
-      final intensity = rain ? 0.35 + (value % 66) / 100.0 : 0.0;
-      final daylight = 12.0 - (day - 1) * (2.0 / 20.0);
+      // Narrative curve: Week 1 light drizzle, Week 2 mixed storm, Week 3 heavy climax storm
+      final isRainDay = (day == 2 || day == 5 || day == 8 || day == 11 || 
+                         day == 14 || day == 16 || day == 18 || day == 19 || day == 20);
+      
+      double intensity = 0.0;
+      if (isRainDay) {
+        final progress = day / 21.0;
+        final wave = math.pow(math.sin((day * math.pi) / 7.0), 2);
+        intensity = (0.25 + 0.65 * wave * (0.6 + 0.4 * progress)).clamp(0.2, 1.0);
+        if (day == 20) intensity = 0.98; // Day 20 peak climax storm
+      }
+
+      // Daylight hours decay linearly from 12.0h (Day 1) down to 9.8h (Day 21)
+      final daylight = 12.0 - (day - 1) * (2.2 / 20.0);
+
       return WeatherDay(
         day: day,
-        rain: rain,
-        rainIntensity: intensity,
-        daylightHours: daylight,
+        rain: isRainDay,
+        rainIntensity: double.parse(intensity.toStringAsFixed(2)),
+        daylightHours: double.parse(daylight.toStringAsFixed(2)),
       );
     }(),
 ];

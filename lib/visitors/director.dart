@@ -210,6 +210,32 @@ class VisitorDirector {
     return VisitChoiceResult(state, choice);
   }
 
+  /// Handles player physically walking away during dialogue per MASTERPLAN §40.2.D.
+  VisitorResult playerWalkAway() {
+    final state = _active;
+    if (state == null) {
+      return const VisitorUnavailable(
+        VisitorIssue(
+          VisitorIssueCode.noActiveVisit,
+          'There is no active visit.',
+        ),
+      );
+    }
+
+    _facts.add(
+      VisitorFact(
+        kind: VisitorFactKind.visitorIgnored,
+        visitor: state.arrival.visitor,
+        day: state.arrival.day,
+        choice: DoorChoice.ignore,
+      ),
+    );
+    narrative.setFlag('walkAwayPenalty_${state.arrival.visitor}', true);
+    state.phase = VisitPhase.resolved;
+    _resolve(state);
+    return VisitProgress(state, resolved: true);
+  }
+
   VisitorResult advanceLine() {
     final state = _active;
     if (state == null) {

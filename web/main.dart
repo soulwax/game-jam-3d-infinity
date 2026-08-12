@@ -30,8 +30,8 @@ import 'package:quarantine/presentation/pixeldart_capability_matrix.dart';
 import 'package:quarantine/presentation/pixeldart_resource_governor.dart';
 import 'package:quarantine/presentation/pixeldart_shader_pipeline_exporter.dart';
 import 'package:quarantine/presentation/renderer_backend.dart';
-import 'package:quarantine/presentation/renderer_diagnostics.dart';
 import 'package:quarantine/presentation/day_night_atmosphere.dart';
+import 'package:quarantine/presentation/shader_tuning_bridge.dart';
 import 'package:quarantine/presentation/renderer_runtime.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/authored_manifest.dart';
@@ -791,7 +791,25 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       hour: hour,
       rainIntensity: weather.rainIntensity,
       shutterOpen: daylightThroughWindow,
+      daylightHours: weather.daylightHours,
     );
+
+    // Wire atmosphere facts & CapsLock shader tuning overrides directly to renderer uniforms
+    _tuningBridge.applyState(_shaderTuning);
+
+    final effectiveRain = (_shaderTuning.getValue('rain_override') >= 0.0)
+        ? _shaderTuning.getValue('rain_override')
+        : weather.rainIntensity;
+    final effectiveWetness = (_shaderTuning.getValue('wetness_override') >= 0.0)
+        ? _shaderTuning.getValue('wetness_override')
+        : atmos.windowSurfaceWetness;
+
+    _coreRenderer.rainIntensity = effectiveRain;
+    _coreRenderer.surfaceWetness = effectiveWetness;
+    _coreRenderer.windowWetness = effectiveWetness;
+    _coreRenderer.overrideFogColor = (atmos.fogColor.r, atmos.fogColor.g, atmos.fogColor.b);
+    _coreRenderer.fogDensity = _shaderTuning.getValue('fog_density');
+    _coreRenderer.fogHeightFalloff = _shaderTuning.getValue('fog_height_falloff');
 
     final isDay = sunAngle > 0;
     final dirVec = isDay
@@ -824,8 +842,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         atmos.fogColor.g * 0.08,
         atmos.fogColor.b * 0.08,
       ),
-      fogStart: fogStart / (1.0 + weather.rainIntensity * 0.45),
-      fogEnd: fogEnd / (1.0 + weather.rainIntensity * 0.16),
+      fogStart: fogStart / (1.0 + effectiveRain * 0.45),
+      fogEnd: fogEnd / (1.0 + effectiveRain * 0.16),
+      fogHeightFalloff: _shaderTuning.getValue('fog_height_falloff'),
+      fogDensity: _shaderTuning.getValue('fog_density'),
     );
   }
 
@@ -1708,6 +1728,7 @@ double _smoothEyeY = playerEyeHeight;
 CanvasP5GuiEngine? _p5GuiEngine;
 final GameplayDialogueCoordinator _dialogueCoordinator = GameplayDialogueCoordinator();
 final ShaderTuningState _shaderTuning = ShaderTuningState();
+final ShaderTuningBridge _tuningBridge = ShaderTuningBridge();
 
 Panel? _activePanel;
 final PauseLedger _pauseLedger = PauseLedger();
@@ -2694,9 +2715,23 @@ Future<void> main() async {
             _shaderTuning.incrementCurrent();
             return;
           }
+          if (e.code == 'KeyQ') {
+            e.preventDefault();
+            _shaderTuning.currentSelectedItem?.decrementFine();
+            return;
+          }
+          if (e.code == 'KeyE') {
+            e.preventDefault();
+            _shaderTuning.currentSelectedItem?.incrementFine();
+            return;
+          }
           if (e.code == 'KeyR') {
             e.preventDefault();
-            _shaderTuning.resetCurrentCategory();
+            if (e.shiftKey) {
+              _shaderTuning.resetAll();
+            } else {
+              _shaderTuning.resetCurrentCategory();
+            }
             return;
           }
           if (e.code.startsWith('Digit') || e.code.startsWith('Numpad')) {
@@ -2711,7 +2746,7 @@ Future<void> main() async {
           return;
         }
         if (_door.visitorPresent && !e.repeat) {
-          if (_dialogueCoordinator.handleNumericKey(e.code)) {
+          if (_dialogueCoordinator.handleKey(e.code)) {
             e.preventDefault();
             return;
           }

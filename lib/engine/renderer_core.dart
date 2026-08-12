@@ -508,6 +508,14 @@ class RendererCore extends WorldProgramBindings {
 
   set ambient(double a) => _ambient = a < 0 ? 0 : a;
 
+  double fogDensity = 0.035;
+  double fogHeightFalloff = 0.6;
+  double fogGroundHeight = 0.0;
+  double rainIntensity = 0.0;
+  double surfaceWetness = 0.0;
+  double windowWetness = 0.0;
+  (double, double, double)? overrideFogColor;
+
   void setPointLights(List<PointLight> lights) {
     _pointLights = lights.length <= maxMantlePointLights
         ? List<PointLight>.unmodifiable(lights)
@@ -790,12 +798,16 @@ class RendererCore extends WorldProgramBindings {
     _ctx.uniform1f(_uDepthNear, glDepthNear);
     _ctx.uniform1f(_uDepthFar, glDepthFar);
     _ctx.uniform1f(_uAffineTexture, _affineTexture ? 1 : 0);
-    _ctx.uniform3f(
-      _uFog,
-      _bgR / 255 * fogDarkness,
-      _bgG / 255 * fogDarkness,
-      _bgB / 255 * fogDarkness,
-    );
+    final fogR = overrideFogColor != null ? overrideFogColor!.$1 : (_bgR / 255 * fogDarkness);
+    final fogG = overrideFogColor != null ? overrideFogColor!.$2 : (_bgG / 255 * fogDarkness);
+    final fogB = overrideFogColor != null ? overrideFogColor!.$3 : (_bgB / 255 * fogDarkness);
+    _ctx.uniform3f(_uFog, fogR, fogG, fogB);
+    _ctx.uniform1f(_uFogDensity, fogDensity);
+    _ctx.uniform1f(_uFogHeightFalloff, fogHeightFalloff);
+    _ctx.uniform1f(_uFogGroundHeight, fogGroundHeight);
+    _ctx.uniform1f(_uRainIntensity, rainIntensity);
+    _ctx.uniform1f(_uSurfaceWetness, surfaceWetness);
+    _ctx.uniform1f(_uWindowWetness, windowWetness);
     _ctx.uniform3f(_uLight, _lightDir.x, _lightDir.y, _lightDir.z);
     _ctx.uniform3f(_uLightColor, _lightR, _lightG, _lightB);
     _ctx.uniform1f(_uFogStart, fogStart);
