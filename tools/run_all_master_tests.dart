@@ -24,6 +24,17 @@ void main() async {
     'tools/test_lod_mesh_pipeline.dart',
     'tools/test_surface_detail_history_pass.dart',
     'tools/test_pixeldart_capabilities_and_governance.dart',
+    'tools/test_playability_and_fluidity.dart',
+    'tools/test_canvas_p5_gui.dart',
+    'tools/test_house_test_room_primitives.dart',
+    'tools/test_shader_tuning_menu.dart',
+    'tools/test_physical_sky_scattering.dart',
+    'tools/test_temporal_anti_aliasing_jitter.dart',
+    'tools/test_cinematic_lens_optics.dart',
+    'tools/test_volumetric_fog_inscattering.dart',
+    'tools/test_screen_space_subsurface_scattering.dart',
+    'tools/test_motion_blur_velocity_field.dart',
+    'tools/test_pixeldart_extended_rendering_passes.dart',
   ];
 
   var passedCount = 0;

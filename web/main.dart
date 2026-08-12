@@ -10,6 +10,7 @@ import 'package:quarantine/engine/audio.dart';
 import 'package:quarantine/engine/audio_planner.dart';
 import 'package:quarantine/engine/camera.dart';
 import 'package:quarantine/engine/fps_motion.dart';
+import 'package:quarantine/engine/locomotion_controller.dart';
 import 'package:quarantine/engine/hud.dart';
 import 'package:quarantine/engine/input.dart';
 import 'package:quarantine/engine/math3.dart';
@@ -84,6 +85,8 @@ import 'package:quarantine/ui/settings_panel.dart';
 import 'package:quarantine/ui/settings_index_panel.dart';
 import 'package:quarantine/ui/settings_registry.dart';
 import 'package:quarantine/ui/settings_store.dart';
+import 'package:quarantine/ui/canvas_p5_gui_engine.dart';
+import 'package:quarantine/ui/gameplay_dialogue_coordinator.dart';
 import 'package:quarantine/visitors/ambient.dart';
 import 'package:quarantine/visitors/director.dart';
 import 'package:quarantine/visitors/stand_ins.dart';
@@ -1700,6 +1703,11 @@ late RuptureState _rupture;
 RuptureStep? _lastRendererRuptureStep;
 int _rendererHistoryEpoch = 0;
 final FpsMotion _motion = FpsMotion();
+final LocomotionController _locomotionController = LocomotionController();
+double _smoothEyeY = playerEyeHeight;
+CanvasP5GuiEngine? _p5GuiEngine;
+final GameplayDialogueCoordinator _dialogueCoordinator = GameplayDialogueCoordinator();
+final ShaderTuningState _shaderTuning = ShaderTuningState();
 
 Panel? _activePanel;
 final PauseLedger _pauseLedger = PauseLedger();
@@ -2261,6 +2269,12 @@ Future<void> main() async {
   _installBootDiagnostics();
   _canvas.width = web.window.innerWidth > 0 ? web.window.innerWidth : 800;
   _canvas.height = web.window.innerHeight > 0 ? web.window.innerHeight : 600;
+  final uiCanvas = web.document.getElementById('ui-canvas') as web.HTMLCanvasElement?;
+  if (uiCanvas != null) {
+    uiCanvas.width = _canvas.width;
+    uiCanvas.height = _canvas.height;
+    _p5GuiEngine = CanvasP5GuiEngine(uiCanvas);
+  }
   final ctx = canvas.getContext('webgl2') as web.WebGL2RenderingContext?;
   if (ctx == null) {
     _backendSelection = _backendBootstrapPolicy.fallback(
@@ -2531,6 +2545,20 @@ Future<void> main() async {
       ..onContinue = _continueDoorConversation
       ..onCite = _citeDuringVisit
       ..onReaction = _chooseNarrativeReaction;
+    _dialogueCoordinator.onChoiceSelected = (int index, String choice) {
+      if (_door.visitorPresent) {
+        final reaction = _visitorDirector.currentReaction;
+        if (reaction != null) {
+          if (index >= 0 && index < reaction.options.length) {
+            _chooseNarrativeReaction(reaction.options[index].id);
+          }
+        } else {
+          if (index >= 0 && index < Door.choices.length) {
+            _chooseDoorResponse(Door.choices[index]);
+          }
+        }
+      }
+    };
     final savedVisitors = VisitorDirectorState.tryFromJson(
       saved.snapshot?.meta['visitors'],
     );
@@ -2631,7 +2659,65 @@ Future<void> main() async {
     web.window.addEventListener(
       'keydown',
       ((web.KeyboardEvent e) {
-        if (e.defaultPrevented) return;
+        if (e.code == 'CapsLock' && !e.repeat) {
+          e.preventDefault();
+          _shaderTuning.toggle();
+          if (_shaderTuning.isOpen) {
+            web.document.callMethod<JSAny?>('exitPointerLock'.toJS);
+          } else {
+            _input.requestPointerLock(_canvas);
+          }
+          return;
+        }
+        if (_shaderTuning.isOpen && !e.repeat) {
+          if (e.code == 'Escape') {
+            e.preventDefault();
+            _shaderTuning.isOpen = false;
+            _input.requestPointerLock(_canvas);
+            return;
+          }
+          if (e.code == 'ArrowUp' || e.code == 'KeyW') {
+            e.preventDefault();
+            _shaderTuning.previousItem();
+            return;
+          }
+          if (e.code == 'ArrowDown' || e.code == 'KeyS') {
+            e.preventDefault();
+            _shaderTuning.nextItem();
+            return;
+          }
+          if (e.code == 'ArrowLeft' || e.code == 'KeyA') {
+            e.preventDefault();
+            _shaderTuning.decrementCurrent();
+            return;
+          }
+          if (e.code == 'ArrowRight' || e.code == 'KeyD') {
+            e.preventDefault();
+            _shaderTuning.incrementCurrent();
+            return;
+          }
+          if (e.code == 'KeyR') {
+            e.preventDefault();
+            _shaderTuning.resetCurrentCategory();
+            return;
+          }
+          if (e.code.startsWith('Digit') || e.code.startsWith('Numpad')) {
+            final char = e.code.replaceAll('Digit', '').replaceAll('Numpad', '');
+            final num = int.tryParse(char);
+            if (num != null && num >= 1 && num <= 5) {
+              e.preventDefault();
+              _shaderTuning.selectCategory(num - 1);
+              return;
+            }
+          }
+          return;
+        }
+        if (_door.visitorPresent && !e.repeat) {
+          if (_dialogueCoordinator.handleNumericKey(e.code)) {
+            e.preventDefault();
+            return;
+          }
+        }
         if (e.code == 'Escape' && !e.repeat) {
           if (_activePanel == null) {
             _openPanel(_pauseRoot);
@@ -2640,7 +2726,7 @@ Future<void> main() async {
           }
           return;
         }
-        final gameplayShortcutsEnabled = _activePanel == null;
+        final gameplayShortcutsEnabled = _activePanel == null && !_shaderTuning.isOpen;
         if (!e.repeat && gameplayShortcutsEnabled) {
           _presentationBackend.handleInput(
             RendererInputAction(id: e.code, pressed: true, value: 1),
@@ -2655,7 +2741,10 @@ Future<void> main() async {
             _shadersLive) {
           _renderer?.reloadShadersLive();
         }
-        if (e.code == 'KeyJ' && !e.repeat && !_door.visitorPresent) {
+        if ((e.code == 'KeyJ' || e.code == 'Tab') &&
+            !e.repeat &&
+            !_door.visitorPresent) {
+          e.preventDefault();
           _togglePanel(_journal);
         }
         if (e.code == 'KeyL' && !e.repeat && !_door.visitorPresent) {
@@ -3639,7 +3728,19 @@ void _update(double dt) {
     _currentRoom = movement.roomId;
   }
 
-  _camera.lookFrom(_simEye, _simYaw, _simPitch);
+  final speedFraction = (_motion.velocity.length / playerSpeed).clamp(0.0, 1.0);
+  _smoothEyeY = _locomotionController.smoothStepHeight(_smoothEyeY, _simEye.y, dt);
+  final bobOffset = _locomotionController.advanceHeadBob(
+    moveSpeedFraction: speedFraction,
+    dt: dt,
+  );
+  final renderEye = Vec3(
+    _simEye.x + bobOffset.x,
+    _smoothEyeY + bobOffset.y,
+    _simEye.z + bobOffset.z,
+  );
+
+  _camera.lookFrom(renderEye, _simYaw, _simPitch);
 
   final aftermathManager = PhysicalAftermathManager(state: _session.narrative);
 
@@ -3652,6 +3753,11 @@ void _update(double dt) {
     aftermathManager: aftermathManager,
   );
   _prompt.show(focus.prompt);
+  final crosshairEl = web.document.getElementById('crosshair');
+  if (crosshairEl != null) {
+    crosshairEl.className =
+        focus.prompt != null ? 'crosshair-active' : 'crosshair-dot';
+  }
 
   // Interaction target selection is gated by the deterministic focus resolver.
   // This keeps interaction effects aligned with the same watched-object contract
@@ -3745,6 +3851,61 @@ void _update(double dt) {
       _examineState.breakExamine();
     }
   }
+
+  _renderCanvasGui(dt, focus);
+}
+
+void _renderCanvasGui(double dt, FocusSnapshot focus) {
+  final gui = _p5GuiEngine;
+  if (gui == null) return;
+
+  final screenW = _canvas.width.toDouble();
+  final screenH = _canvas.height.toDouble();
+
+  gui.beginFrame(dt, screenW, screenH);
+
+  // 1. In-Game Reticle & Bottom Prompt Banner (only when not in modal dialogue/panels)
+  if (!_door.visitorPresent && _activePanel == null) {
+    gui.drawReticle(
+      screenWidth: screenW,
+      screenHeight: screenH,
+      isHoveringInteractable: focus.prompt != null,
+    );
+    gui.drawPromptBanner(
+      screenWidth: screenW,
+      screenHeight: screenH,
+      promptText: focus.prompt,
+    );
+  }
+
+  // 2. Persona 5 Dialogue Box & 1..N Numbered Choice Badges
+  _dialogueCoordinator.update(dt);
+  gui.drawDialogueAndChoices(
+    screenWidth: screenW,
+    screenHeight: screenH,
+    state: _dialogueCoordinator.toRenderState(),
+  );
+
+  // 3. Gameplay HUD (Clock, Day, Current Room, and Daily Objective Ticker)
+  final room = _house.byId(_currentRoom);
+  gui.drawHUD(
+    screenWidth: screenW,
+    screenHeight: screenH,
+    currentDay: _session.snapshot.day,
+    currentHour: _time.currentHour.toInt(),
+    currentRoomName: room?.id ?? _currentRoom,
+    objectiveText: textLibrary.getBroadcastPart(_session.snapshot.day, 'status'),
+  );
+
+  // 4. CapsLock Special Shader Tuning Lab & Post-Processing Suite
+  _shaderTuning.update(dt);
+  gui.drawShaderTuningMenu(
+    screenWidth: screenW,
+    screenHeight: screenH,
+    state: _shaderTuning,
+  );
+
+  gui.endFrame();
 }
 
 String? _narrativeResidueFor(String focusId) {
@@ -3781,6 +3942,12 @@ void _updateVisitorSchedule() {
     web.document.callMethod<JSAny?>('exitPointerLock'.toJS);
     _motion.stop();
     _door.showArrival(arrival.visitor, line);
+    _dialogueCoordinator.setDialogue(
+      speaker: arrival.visitor,
+      text: line,
+      responseChoices: Door.choices,
+      isVisitor: true,
+    );
     _showStrangerCaseNote(arrival);
     return;
   }
@@ -3791,6 +3958,12 @@ void _restoreVisitorDoor() {
   final line = state?.currentLine;
   if (state == null || line == null) return;
   _door.showArrival(state.arrival.visitor, line);
+  _dialogueCoordinator.setDialogue(
+    speaker: state.arrival.visitor,
+    text: line,
+    responseChoices: Door.choices,
+    isVisitor: true,
+  );
   _showStrangerCaseNote(state.arrival);
   if (state.phase != VisitPhase.waiting) {
     _presentDoorLine();
@@ -3925,17 +4098,38 @@ void _presentDoorLine() {
   final reaction = _visitorDirector.currentReaction;
   if (reaction == null) {
     _door.showConversation(line);
+    _dialogueCoordinator.setDialogue(
+      speaker: state.arrival.visitor,
+      text: line,
+      responseChoices: const [],
+      isVisitor: true,
+    );
   } else {
     final selected = state.reactionChoiceId;
     _door.showConversation(line, requiresReaction: selected == null);
+    final reactionLabels = [for (final option in reaction.options) option.label];
     _door.showReactionChoices([
       for (final option in reaction.options) (option.id, option.label),
     ], selectedId: selected);
+    _dialogueCoordinator.setDialogue(
+      speaker: state.arrival.visitor,
+      text: line,
+      responseChoices: selected == null ? reactionLabels : const [],
+      isVisitor: true,
+    );
     if (selected != null) {
       final option = reaction.options
           .where((candidate) => candidate.id == selected)
           .firstOrNull;
-      if (option != null) _door.showReactionReply(line, option.reply);
+      if (option != null) {
+        _door.showReactionReply(line, option.reply);
+        _dialogueCoordinator.setDialogue(
+          speaker: state.arrival.visitor,
+          text: '$line\n\n${option.reply}',
+          responseChoices: const [],
+          isVisitor: true,
+        );
+      }
     }
   }
   _showDoorCitationOptions();
@@ -3945,13 +4139,22 @@ void _chooseNarrativeReaction(String optionId) {
   final result = _visitorDirector.chooseReaction(optionId);
   if (result is! VisitReactionResult) return;
   if (!_session.applyNarrativeReaction(result.reaction, result.option)) return;
-  _door.showReactionReply(result.state.currentLine ?? '', result.option.reply);
+  final replyText = result.option.reply;
+  _door.showReactionReply(result.state.currentLine ?? '', replyText);
+  final current = result.state.currentLine ?? '';
+  _dialogueCoordinator.setDialogue(
+    speaker: result.state.arrival.visitor,
+    text: '$current\n\n$replyText',
+    responseChoices: const [],
+    isVisitor: true,
+  );
   _showDoorCitationOptions();
   _saveSession('saved after visitor answer');
 }
 
 void _endVisitorDoor() {
   _door.hide();
+  _dialogueCoordinator.clear();
   _input.requestPointerLock(_canvas);
 }
 

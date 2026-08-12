@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:quarantine/presentation/day_night_atmosphere.dart';
 
 /// Parameters defining volumetric light shaft physical characteristics.
@@ -16,6 +18,10 @@ class VolumetricLightShaftParams {
   final String roomId;
   /// How open the window aperture is (0.0 to 1.0).
   final double windowApertureFactor;
+  /// Dust mote micro-particulate density factor.
+  final double dustMoteDensity;
+  /// Procedural convection updraft speed in m/s.
+  final double convectionSpeed;
 
   /// Creates a new [VolumetricLightShaftParams].
   const VolumetricLightShaftParams({
@@ -26,6 +32,8 @@ class VolumetricLightShaftParams {
     this.scatterAnisotropy = 0.7,
     required this.roomId,
     required this.windowApertureFactor,
+    this.dustMoteDensity = 0.40,
+    this.convectionSpeed = 0.15,
   });
 
   /// Serializes parameters to JSON.
@@ -37,6 +45,8 @@ class VolumetricLightShaftParams {
         'scatterAnisotropy': scatterAnisotropy,
         'roomId': roomId,
         'windowApertureFactor': windowApertureFactor,
+        'dustMoteDensity': dustMoteDensity,
+        'convectionSpeed': convectionSpeed,
       };
 }
 
@@ -55,6 +65,19 @@ class PerRoomFogManifest {
   };
 }
 
+/// Suspended dust particulate glint characteristics.
+class DustMoteGlintResult {
+  final double glintIntensity;
+  final double particleCount;
+  final double shimmerPhase;
+
+  const DustMoteGlintResult({
+    required this.glintIntensity,
+    required this.particleCount,
+    required this.shimmerPhase,
+  });
+}
+
 /// The computed result of a volumetric light shaft evaluation.
 class VolumetricLightShaftResult {
   /// The color of the light shaft.
@@ -67,6 +90,10 @@ class VolumetricLightShaftResult {
   final double fogOpacity;
   /// The number of raymarch samples actually used.
   final int activeSamples;
+  /// Dust mote micro-particulate glint intensity.
+  final double dustGlint;
+  /// Forward Mie scattering phase factor.
+  final double forwardPhase;
   /// Additional diagnostic data.
   final Map<String, dynamic> diagnostics;
 
@@ -77,12 +104,53 @@ class VolumetricLightShaftResult {
     required this.fogContribution,
     required this.fogOpacity,
     required this.activeSamples,
+    this.dustGlint = 0.0,
+    this.forwardPhase = 1.0,
     required this.diagnostics,
   });
 }
 
-/// Evaluates physical volumetric light shafts.
+/// Evaluates physical volumetric light shafts and participating atmospheric media.
 class VolumetricLightShaftEngine {
+  /// Henyey-Greenstein forward phase function for aerosol scattering.
+  static double henyeyGreenstein(double cosTheta, double g) {
+    final g2 = g * g;
+    final denom = math.pow(1.0 + g2 - 2.0 * g * cosTheta, 1.5);
+    if (denom <= 1e-7) return 0.0;
+    return (1.0 / (4.0 * math.pi)) * ((1.0 - g2) / denom);
+  }
+
+  /// Evaluates procedural suspended dust mote glints in the light cone.
+  static DustMoteGlintResult evaluateDustMotes({
+    required double timeSeconds,
+    required double shaftIntensity,
+    required double aperture,
+    double dustDensity = 0.40,
+  }) {
+    if (shaftIntensity <= 0.001 || aperture <= 0.05) {
+      return const DustMoteGlintResult(
+        glintIntensity: 0.0,
+        particleCount: 0.0,
+        shimmerPhase: 0.0,
+      );
+    }
+
+    final t = timeSeconds;
+    // Multi-frequency sinusoidal micro-particulate shimmering
+    final shimmer1 = math.sin(t * 1.7) * math.cos(t * 2.3);
+    final shimmer2 = math.sin(t * 3.1 + 1.2) * math.sin(t * 0.8);
+    final compositeShimmer = ((shimmer1 + shimmer2) * 0.5 + 0.5).clamp(0.0, 1.0);
+
+    final glintIntensity = shaftIntensity * dustDensity * (0.8 + 0.4 * compositeShimmer);
+    final particleCount = (dustDensity * aperture * 120.0).roundToDouble();
+
+    return DustMoteGlintResult(
+      glintIntensity: glintIntensity,
+      particleCount: particleCount,
+      shimmerPhase: compositeShimmer,
+    );
+  }
+
   /// Evaluates the volumetric light shaft state for a given room.
   static VolumetricLightShaftResult evaluateShaft({
     required DayNightAtmosphereParams atmosphere,
@@ -90,6 +158,8 @@ class VolumetricLightShaftEngine {
     required int qualitySamples,
     required bool reducedEffects,
     required bool shutterOpen,
+    double viewSunCosTheta = 0.65,
+    double timeSeconds = 0.0,
   }) {
     if (reducedEffects || qualitySamples <= 0) {
       return const VolumetricLightShaftResult(
@@ -98,6 +168,8 @@ class VolumetricLightShaftEngine {
         fogContribution: (r: 0.0, g: 0.0, b: 0.0),
         fogOpacity: 0.0,
         activeSamples: 0,
+        dustGlint: 0.0,
+        forwardPhase: 0.0,
         diagnostics: {'reason': 'disabled or zero samples'},
       );
     }
@@ -123,8 +195,19 @@ class VolumetricLightShaftEngine {
       b: fogColor.b * fogOpacity,
     );
 
+    // Forward scattering phase boost
+    final forwardPhase = henyeyGreenstein(viewSunCosTheta.clamp(-1.0, 1.0), anisotropy);
+
     final double calculatedIntensity =
         baseIntensity * atmosphere.directionalIntensity * aperture;
+
+    // Dust motes calculation
+    final dustMoteResult = evaluateDustMotes(
+      timeSeconds: timeSeconds,
+      shaftIntensity: calculatedIntensity,
+      aperture: aperture,
+      dustDensity: baseDensity * 40.0,
+    );
 
     return VolumetricLightShaftResult(
       shaftColor: shaftColor,
@@ -132,10 +215,13 @@ class VolumetricLightShaftEngine {
       fogContribution: fogContribution,
       fogOpacity: fogOpacity,
       activeSamples: qualitySamples,
+      dustGlint: dustMoteResult.glintIntensity,
+      forwardPhase: forwardPhase,
       diagnostics: {
         'roomId': roomId,
         'baseDensity': baseDensity,
         'aperture': aperture,
+        'dustParticles': dustMoteResult.particleCount,
       },
     );
   }

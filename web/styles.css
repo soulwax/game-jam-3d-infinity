@@ -137,6 +137,17 @@ canvas:focus-visible {
   box-shadow: 0 0 16px var(--glow-gold);
 }
 
+#ui-canvas {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 10;
+  image-rendering: auto;
+}
+
 button,
 input,
 select,
@@ -798,6 +809,35 @@ button:focus-visible,
   color: var(--focus);
   transform: translateX(-50%) skewX(var(--p5-skew, -3deg));
   transition: opacity 0.25s var(--p5-ease-spring), transform 0.25s var(--p5-ease-spring);
+}
+
+#crosshair {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+  transition: all 0.18s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.crosshair-dot {
+  width: 5px;
+  height: 5px;
+  background: var(--focus, #f0e6d2);
+  opacity: 0.6;
+  border-radius: 50%;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 2px var(--brass, #c49a45);
+}
+
+.crosshair-active {
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: 2px solid var(--brass, #c49a45);
+  transform: translate(-50%, -50%) rotate(45deg) scale(1.15);
+  opacity: 0.95;
+  box-shadow: 0 0 8px rgba(196, 154, 69, 0.6), inset 0 0 4px rgba(196, 154, 69, 0.4);
 }
 
 .broadcast {
