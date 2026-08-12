@@ -316,7 +316,7 @@ class CanvasP5GuiEngine {
   // 3. PERSONA 5 DIALOGUE & NUMBERED CHOICES (1-N)
   // =========================================================================
 
-  /// Draws full gameplay-based Persona 5 dialogue box and numbered choice buttons.
+  /// Draws full gameplay-based Persona 5 dialogue box and numbered choice strips.
   void drawDialogueAndChoices({
     required double screenWidth,
     required double screenHeight,
@@ -392,8 +392,8 @@ class CanvasP5GuiEngine {
     // 4. Numbered Choices [1]..[N] Rendered Above Dialogue Box
     if (state.choices.isNotEmpty) {
       final choiceCount = state.choices.length;
-      final choiceBtnW = math.min(screenWidth * 0.75, 480.0);
-      final choiceBtnH = 38.0;
+      final choiceStripW = math.min(screenWidth * 0.75, 480.0);
+      final choiceStripH = 38.0;
       final spacing = 46.0;
       final totalChoicesH = choiceCount * spacing;
       final choicesStartY = boxY - boxH * 0.5 - totalChoicesH - 12.0;
@@ -401,7 +401,7 @@ class CanvasP5GuiEngine {
       for (int i = 0; i < choiceCount; i++) {
         final choiceText = state.choices[i];
         final numKey = i + 1;
-        final choiceY = choicesStartY + i * spacing + choiceBtnH * 0.5;
+        final choiceY = choicesStartY + i * spacing + choiceStripH * 0.5;
         final isHovered = state.hoveredIndex == i;
         final isSelected = state.selectedIndex == i;
 
@@ -414,20 +414,20 @@ class CanvasP5GuiEngine {
           CanvasHitBox(
             id: 'choice-$numKey',
             index: i,
-            left: curX - choiceBtnW * 0.5,
-            top: choiceY - choiceBtnH * 0.5,
-            width: choiceBtnW,
-            height: choiceBtnH,
+            left: curX - choiceStripW * 0.5,
+            top: choiceY - choiceStripH * 0.5,
+            width: choiceStripW,
+            height: choiceStripH,
             text: choiceText,
           ),
         );
 
-        // Choice Banner Strip
+        // Choice strip
         drawBrushPanel(
           x: curX,
           y: choiceY,
-          width: choiceBtnW,
-          height: choiceBtnH,
+          width: choiceStripW,
+          height: choiceStripH,
           skewAngleRad: -0.06,
           fillColor: isSelected
               ? P5Palette.crimsonRed
@@ -439,7 +439,7 @@ class CanvasP5GuiEngine {
 
         // Number Badge [1]..[N]
         final badgeSize = 24.0;
-        final badgeX = curX - choiceBtnW * 0.5 + 24.0;
+        final badgeX = curX - choiceStripW * 0.5 + 24.0;
         drawNumberedBadge(
           number: numKey,
           x: badgeX,

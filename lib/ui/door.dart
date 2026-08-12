@@ -15,20 +15,23 @@ class Door {
     'ignore',
   ];
 
+  static const List<String> choiceLabels = [
+    'Open the door',
+    'Keep the chain on',
+    'Answer through the door',
+    'Use the letterbox',
+    'Ignore the knock',
+  ];
+
   final web.HTMLElement root;
-  final web.Document _document;
   late final web.HTMLElement _speaker;
   late final web.HTMLElement _line;
+  late final web.HTMLElement _choiceStatus;
   late final web.HTMLButtonElement _continueButton;
   late final web.HTMLElement _citeList;
   late final web.HTMLElement _citeResult;
-  final List<web.HTMLButtonElement> _choiceButtons = [];
-  final List<web.HTMLButtonElement> _reactionButtons = [];
-  JSFunction? _keyHandler;
-  void Function(String choice)? onChoice;
   void Function()? onContinue;
   void Function(int ordinal)? onCite;
-  void Function(String choiceId)? onReaction;
   bool visitorPresent = false;
   AccessibilityAnnouncementPolicy _announcementPolicy =
       const AccessibilityAnnouncementPolicy(
@@ -36,8 +39,7 @@ class Door {
       );
 
   Door(web.Document document)
-    : _document = document,
-      root = buildElement(document, 'div', cls: 'door') {
+    : root = buildElement(document, 'div', cls: 'door') {
     root
       ..setAttribute('role', 'dialog')
       ..setAttribute('aria-modal', 'true')
@@ -52,22 +54,16 @@ class Door {
       ..setAttribute('aria-atomic', 'true');
     root.appendChild(_speaker);
     root.appendChild(_line);
+    _choiceStatus = buildElement(document, 'div', cls: 'door-choice-status');
+    _choiceStatus
+      ..setAttribute('role', 'status')
+      ..setAttribute('aria-live', 'polite')
+      ..setAttribute('aria-atomic', 'true');
+    root.appendChild(_choiceStatus);
     _citeList = buildElement(document, 'div', cls: 'door-cite-list');
     _citeResult = buildElement(document, 'div', cls: 'door-cite-result');
     root.appendChild(_citeList);
     root.appendChild(_citeResult);
-    for (final choice in choices) {
-      final btn =
-          buildElement(document, 'button', cls: 'door-choice', text: choice)
-              as web.HTMLButtonElement;
-      btn.setAttribute('type', 'button');
-      btn.addEventListener(
-        'click',
-        ((web.Event _) => onChoice?.call(choice)).toJS,
-      );
-      root.appendChild(btn);
-      _choiceButtons.add(btn);
-    }
     _continueButton =
         buildElement(document, 'button', cls: 'door-continue', text: 'continue')
             as web.HTMLButtonElement;
@@ -80,10 +76,6 @@ class Door {
     final handler = ((web.KeyboardEvent event) {
       if (!visitorPresent || event.code != 'Tab') return;
       final focusable = <web.HTMLElement>[
-        for (final button in _choiceButtons)
-          if (button.style.display != 'none') button,
-        for (final button in _reactionButtons)
-          if (button.style.display != 'none') button,
         if (_continueButton.style.display != 'none') _continueButton,
       ];
       final citeButtons = _citeList.querySelectorAll('button');
@@ -103,7 +95,6 @@ class Door {
         focusable.first.focus();
       }
     }).toJS;
-    _keyHandler = handler;
     root.addEventListener('keydown', handler);
     document.body!.appendChild(root);
   }
@@ -123,15 +114,13 @@ class Door {
       text: line,
       essential: true,
     );
-    for (final button in _choiceButtons) {
-      button.style.display = '';
-    }
+    _choiceStatus.textContent = _choiceAnnouncement(choiceLabels);
     _continueButton.style.display = 'none';
     _citeList.textContent = '';
     _citeResult.textContent = '';
     root.className = 'door visible';
     root.removeAttribute('hidden');
-    _choiceButtons.first.focus();
+    root.focus();
   }
 
   void showConversation(String line, {bool requiresReaction = false}) {
@@ -140,12 +129,7 @@ class Door {
       text: line,
       essential: true,
     );
-    for (final button in _choiceButtons) {
-      button.style.display = 'none';
-    }
-    for (final button in _reactionButtons) {
-      button.style.display = 'none';
-    }
+    _choiceStatus.textContent = '';
     _continueButton.style.display = requiresReaction ? 'none' : '';
     _citeResult.textContent = '';
     if (!requiresReaction) _continueButton.focus();
@@ -155,30 +139,13 @@ class Door {
     List<(String id, String label)> choices, {
     String? selectedId,
   }) {
-    for (final button in _reactionButtons) {
-      button.remove();
-    }
-    _reactionButtons.clear();
     _continueButton.style.display = selectedId == null ? 'none' : '';
-    for (final (id, label) in choices) {
-      final button =
-          buildElement(_document, 'button', cls: 'door-reaction', text: label)
-              as web.HTMLButtonElement;
-      button.setAttribute('type', 'button');
-      button.addEventListener(
-        'click',
-        ((web.Event _) => onReaction?.call(id)).toJS,
-      );
-      if (selectedId != null) {
-        button.disabled = true;
-        if (id == selectedId) button.setAttribute('aria-pressed', 'true');
-      }
-      root.appendChild(button);
-      _reactionButtons.add(button);
-    }
-    if (_reactionButtons.isNotEmpty && selectedId == null) {
-      _reactionButtons.first.focus();
-    }
+    final labels = [
+      for (final (id, label) in choices)
+        selectedId == id ? '$label, selected' : label,
+    ];
+    _choiceStatus.textContent = _choiceAnnouncement(labels);
+    if (selectedId == null) root.focus();
   }
 
   void showReactionReply(String line, String reply) {
@@ -187,9 +154,7 @@ class Door {
       text: '$line\n\n$reply',
       essential: true,
     );
-    for (final button in _reactionButtons) {
-      button.disabled = true;
-    }
+    _choiceStatus.textContent = '';
     _continueButton.style.display = '';
     _continueButton.focus();
   }
@@ -219,18 +184,19 @@ class Door {
 
   void hide() {
     visitorPresent = false;
+    _choiceStatus.textContent = '';
     _citeList.textContent = '';
     _citeResult.textContent = '';
-    for (final button in _reactionButtons) {
-      button.remove();
-    }
-    _reactionButtons.clear();
     root.className = 'door';
     root.setAttribute('hidden', '');
-    final handler = _keyHandler;
-    if (handler != null) {
-      root.removeEventListener('keydown', handler);
-      _keyHandler = null;
-    }
+  }
+
+  static String _choiceAnnouncement(List<String> labels) {
+    if (labels.isEmpty) return '';
+    final entries = [
+      for (var i = 0; i < labels.length; i++) '${i + 1}: ${labels[i]}',
+    ].join('; ');
+    return 'Choices are rendered in the game view. Press number keys or click '
+        'the in-game choice: $entries.';
   }
 }

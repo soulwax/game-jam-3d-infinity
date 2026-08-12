@@ -2541,10 +2541,8 @@ Future<void> main() async {
     _ambientNotice = AmbientNotice(web.document);
     _ambientNoticeInitialized = true;
     _door = Door(web.document)
-      ..onChoice = _chooseDoorResponse
       ..onContinue = _continueDoorConversation
-      ..onCite = _citeDuringVisit
-      ..onReaction = _chooseNarrativeReaction;
+      ..onCite = _citeDuringVisit;
     _dialogueCoordinator.onChoiceSelected = (int index, String choice) {
       if (_door.visitorPresent) {
         final reaction = _visitorDirector.currentReaction;
@@ -2774,8 +2772,19 @@ Future<void> main() async {
     web.window.addEventListener('keydown', ((web.Event _) => _armAudio()).toJS);
     web.window.addEventListener('click', ((web.Event _) => _armAudio()).toJS);
     _canvas.addEventListener(
+      'mousemove',
+      ((web.MouseEvent e) => _handleRenderedDialogueHover(e)).toJS,
+    );
+    _canvas.addEventListener(
       'click',
-      ((web.Event _) => _input.requestPointerLock(_canvas)).toJS,
+      ((web.MouseEvent e) {
+        if (_door.visitorPresent) {
+          e.preventDefault();
+          _handleRenderedDialogueClick(e);
+          return;
+        }
+        _input.requestPointerLock(_canvas);
+      }).toJS,
     );
 
     _loadManifest();
@@ -2784,6 +2793,44 @@ Future<void> main() async {
   } catch (error, stack) {
     _reportBootError(error, stack);
   }
+}
+
+void _handleRenderedDialogueHover(web.MouseEvent event) {
+  final gui = _p5GuiEngine;
+  if (!_door.visitorPresent || gui == null) return;
+  final point = _canvasPoint(event);
+  if (point == null) return;
+  _dialogueCoordinator.handleMouseMove(
+    point.$1,
+    point.$2,
+    gui.currentChoiceHitBoxes,
+  );
+}
+
+bool _handleRenderedDialogueClick(web.MouseEvent event) {
+  final gui = _p5GuiEngine;
+  if (!_door.visitorPresent || gui == null) return false;
+  final point = _canvasPoint(event);
+  if (point == null) return false;
+  return _dialogueCoordinator.handleMouseClick(
+    point.$1,
+    point.$2,
+    gui.currentChoiceHitBoxes,
+  );
+}
+
+(double, double)? _canvasPoint(web.MouseEvent event) {
+  final rect = _canvas.getBoundingClientRect();
+  final rectW = rect.width.toDouble();
+  final rectH = rect.height.toDouble();
+  if (rectW <= 0 || rectH <= 0) return null;
+  final x =
+      (event.clientX.toDouble() - rect.left.toDouble()) *
+      (_canvas.width / rectW);
+  final y =
+      (event.clientY.toDouble() - rect.top.toDouble()) *
+      (_canvas.height / rectH);
+  return (x, y);
 }
 
 void _installBootDiagnostics() {
@@ -3945,7 +3992,7 @@ void _updateVisitorSchedule() {
     _dialogueCoordinator.setDialogue(
       speaker: arrival.visitor,
       text: line,
-      responseChoices: Door.choices,
+      responseChoices: Door.choiceLabels,
       isVisitor: true,
     );
     _showStrangerCaseNote(arrival);
@@ -3961,7 +4008,7 @@ void _restoreVisitorDoor() {
   _dialogueCoordinator.setDialogue(
     speaker: state.arrival.visitor,
     text: line,
-    responseChoices: Door.choices,
+    responseChoices: Door.choiceLabels,
     isVisitor: true,
   );
   _showStrangerCaseNote(state.arrival);
