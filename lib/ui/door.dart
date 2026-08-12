@@ -33,6 +33,18 @@ class Door {
   void Function()? onContinue;
   void Function(int ordinal)? onCite;
   bool visitorPresent = false;
+  
+  // Spring-damper rotational door physics simulation
+  double doorAngleRad = 0.0;
+  double targetDoorAngleRad = 0.0;
+  double angularVelocityRad = 0.0;
+  bool isChainEngaged = false;
+  
+  static const double maxUnchainedAngleRad = 1.309; // ~75 degrees
+  static const double maxChainedAngleRad = 0.209;   // ~12 degrees
+  static const double doorSpringStiffness = 32.0;
+  static const double doorDampingCoeff = 11.5;
+
   AccessibilityAnnouncementPolicy _announcementPolicy =
       const AccessibilityAnnouncementPolicy(
         AccessibilityScreenReaderVerbosity.standard,
@@ -104,6 +116,22 @@ class Door {
       profile.screenReaderVerbosity ??
           AccessibilityScreenReaderVerbosity.standard,
     );
+  }
+
+  void updatePhysics(double dt) {
+    if (dt <= 0) return;
+    final maxAngle = isChainEngaged ? maxChainedAngleRad : maxUnchainedAngleRad;
+    final clampedTarget = targetDoorAngleRad.clamp(0.0, maxAngle);
+    final accel = (clampedTarget - doorAngleRad) * doorSpringStiffness - angularVelocityRad * doorDampingCoeff;
+    angularVelocityRad += accel * dt;
+    doorAngleRad += angularVelocityRad * dt;
+    if (doorAngleRad < 0.0) {
+      doorAngleRad = 0.0;
+      angularVelocityRad = 0.0;
+    } else if (doorAngleRad > maxAngle) {
+      doorAngleRad = maxAngle;
+      angularVelocityRad = -angularVelocityRad * 0.35; // elastic chain/frame bounce
+    }
   }
 
   void showArrival(String visitor, String line) {

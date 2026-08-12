@@ -85,13 +85,9 @@ class Capsule {
     final steps = math.max(1, (distance / playerSweepStep).ceil());
     final step = delta * (1 / steps);
     for (var i = 0; i < steps; i++) {
-      final x = _tryAxis(house, roomId, position, Vec3(step.x, 0, 0));
-      blocked = blocked || x.blocked;
-      position = x.eye;
-      roomId = _crossPortal(house, roomId);
-      final z = _tryAxis(house, roomId, position, Vec3(0, 0, step.z));
-      blocked = blocked || z.blocked;
-      position = z.eye;
+      final stepRes = _tryStepWithStepUp(house, roomId, position, step);
+      blocked = blocked || stepRes.blocked;
+      position = stepRes.eye;
       roomId = _crossPortal(house, roomId);
     }
     _setEye(position);
@@ -99,11 +95,18 @@ class Capsule {
   }
 
   _ActiveStair? _enterStair(House house, String roomId, Vec3 eye, Vec3 delta) {
+    final speed = math.sqrt(delta.x * delta.x + delta.z * delta.z);
     for (final stair in house.stairs) {
+      final path = stair.upperEye - stair.lowerEye;
+      final dot = delta.x * path.x + delta.z * path.z;
       final ascending =
-          roomId == 'hall' && _near(eye, stair.lowerEye) && delta.z < 0;
+          roomId == 'hall' &&
+          _near(eye, stair.lowerEye) &&
+          (dot > 0 || speed < 0.001);
       final descending =
-          roomId == 'landing' && _near(eye, stair.upperEye) && delta.z > 0;
+          roomId == 'landing' &&
+          _near(eye, stair.upperEye) &&
+          (dot < 0 || speed < 0.001);
       if (ascending || descending) {
         return _ActiveStair(stair, ascending ? 0 : 1);
       }
@@ -148,7 +151,55 @@ class Capsule {
   bool _near(Vec3 a, Vec3 b) {
     final delta = a - b;
     return delta.x * delta.x + delta.y * delta.y + delta.z * delta.z <=
-        0.8 * 0.8;
+        1.25 * 1.25;
+  }
+
+  _AxisResult _tryStepWithStepUp(
+    House house,
+    String roomId,
+    Vec3 eye,
+    Vec3 delta,
+  ) {
+    if (delta.x == 0 && delta.z == 0) return _AxisResult(eye, false);
+
+    // 1. Direct step
+    final directX = _tryAxis(house, roomId, eye, Vec3(delta.x, 0, 0));
+    final directZ = _tryAxis(house, roomId, directX.eye, Vec3(0, 0, delta.z));
+    if (!directX.blocked && !directZ.blocked) {
+      return _AxisResult(directZ.eye, false);
+    }
+
+    // 2. Step-Up elevation (up to 0.35m stair riser step height)
+    const maxStepUp = 0.35;
+    final elevatedEye = eye + Vec3(0, maxStepUp, 0);
+    _setEye(elevatedEye);
+
+    if (!intersectsStaticGeometry(house, roomId)) {
+      final stepX = _tryAxis(house, roomId, elevatedEye, Vec3(delta.x, 0, 0));
+      final stepZ = _tryAxis(house, roomId, stepX.eye, Vec3(0, 0, delta.z));
+      if (!stepX.blocked || !stepZ.blocked) {
+        // Settle downwards onto the step
+        var settled = stepZ.eye;
+        for (var drop = 0.05; drop <= maxStepUp; drop += 0.05) {
+          final testEye = stepZ.eye - Vec3(0, drop, 0);
+          _setEye(testEye);
+          if (!intersectsStaticGeometry(house, roomId)) {
+            settled = testEye;
+          } else {
+            break;
+          }
+        }
+        _setEye(settled);
+        return _AxisResult(settled, false);
+      }
+    }
+
+    // 3. Sliding contact fallback along open axis
+    if (!directX.blocked) return _AxisResult(directX.eye, true);
+    if (!directZ.blocked) return _AxisResult(directZ.eye, true);
+
+    _setEye(eye);
+    return _AxisResult(eye, true);
   }
 
   _AxisResult _tryAxis(House house, String roomId, Vec3 eye, Vec3 delta) {

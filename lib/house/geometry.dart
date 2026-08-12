@@ -2419,7 +2419,29 @@ void _addDoorHardware(
   final handleU = u0 + portal.width * 0.72;
   final handleY = _min(size.y - 0.34, _min(portal.height, 1.02));
   final facing = portal.facingFor(room.id);
-  const iron = 0x403C37;
+  const iron = 0x3E3A35;
+  const brass = 0x8A7442;
+  const escutcheon = 0x6E5B32;
+  const keyholeColor = 0x1A1814;
+
+  // Bevelled Escutcheon Plate
+  _wallBox(
+    builder,
+    room,
+    size,
+    facing,
+    _max(0, handleU - 0.045),
+    _min(
+      facing == Facing.north || facing == Facing.south ? size.x : size.z,
+      handleU + 0.045,
+    ),
+    _max(0.12, handleY - 0.08),
+    _min(size.y - 0.05, handleY + 0.08),
+    0.165,
+    escutcheon,
+  );
+
+  // Door Handle / Lever Knob
   _wallBox(
     builder,
     room,
@@ -2432,9 +2454,46 @@ void _addDoorHardware(
     ),
     _max(0.12, handleY - 0.035),
     _min(size.y - 0.05, handleY + 0.035),
-    0.16,
-    iron,
+    0.18,
+    brass,
   );
+
+  // Keyhole Slot Detail
+  _wallBox(
+    builder,
+    room,
+    size,
+    facing,
+    _max(0, handleU - 0.01),
+    _min(
+      facing == Facing.north || facing == Facing.south ? size.x : size.z,
+      handleU + 0.01,
+    ),
+    _max(0.12, handleY - 0.065),
+    _min(size.y - 0.05, handleY - 0.045),
+    0.168,
+    keyholeColor,
+  );
+
+  // Security Chain Slider Rail for Front Door
+  if (portal.doorKit == 'kit-front-door-recessed') {
+    _wallBox(
+      builder,
+      room,
+      size,
+      facing,
+      _max(0, handleU - 0.22),
+      _min(
+        facing == Facing.north || facing == Facing.south ? size.x : size.z,
+        handleU + 0.02,
+      ),
+      _max(0.12, handleY + 0.25),
+      _min(size.y - 0.05, handleY + 0.29),
+      0.17,
+      brass,
+    );
+  }
+
   final hingeU = portal.hingeAtStart ? u0 + 0.11 : u1 - 0.11;
   final hingeHeight = _min(size.y - 0.20, _min(portal.height, size.y));
   for (final hingeY in [0.46, hingeHeight * 0.50, hingeHeight - 0.46]) {

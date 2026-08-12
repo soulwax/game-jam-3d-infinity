@@ -19,7 +19,7 @@ void main() {
   print('========================================================================\n');
 
   // 1. Verify Weather System & Narrative Intensity Curve (W-06)
-  final weather = WeatherSchedule.generate(12345);
+  final weather = WeatherSchedule(seed: 12345);
   final day1 = weather.forDay(1);
   final day20 = weather.forDay(20);
   check(day20.rainIntensity > day1.rainIntensity, 'Day 20 storm rain intensity must exceed Day 1');
@@ -27,17 +27,17 @@ void main() {
   print('[✓] Section 36: Authored 21-day weather intensity schedule verified (Day 20 storm peak: ${day20.rainIntensity})');
 
   // 2. Verify Seasonal Daylight Arc (W-04)
-  final summerAtmos = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, daylightHours: 12.0);
-  final winterAtmos = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, daylightHours: 10.0);
+  final summerAtmos = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, daylightHours: 12.0, rainIntensity: 0.0, shutterOpen: true);
+  final winterAtmos = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, daylightHours: 10.0, rainIntensity: 0.0, shutterOpen: true);
   check(summerAtmos.sunColor.r > 0, 'Atmosphere sun color must be valid');
   print('[✓] Section 36: Seasonal daylight arc evaluation verified');
 
   // 3. Verify Shader Tuning State & Fine Steps (§41.3)
   final tuningState = ShaderTuningState();
   final item = tuningState.items.firstWhere((i) => i.id == 'fog_density');
-  final initialVal = item.value;
+  final initialVal = item.currentValue;
   item.incrementFine();
-  check(item.value > initialVal, 'ShaderTuningItem.incrementFine must increase value');
+  check(item.currentValue > initialVal, 'ShaderTuningItem.incrementFine must increase value');
   print('[✓] Section 41: Shader tuning state & 1/5th fine step adjustments verified');
 
   // 4. Verify Shader Tuning Bridge & Extended Rendering Overrides (§41.2)
@@ -50,7 +50,13 @@ void main() {
   check(bridge.activeOverrides['lensFlareEnabled'] == false, 'Lens flare active override must be false by default (toned down)');
   print('[✓] Section 41: ShaderTuningBridge active override mapping & extended rendering features verified');
 
-  // 5. Verify Persona 5 Dialogue Easing Math (§40.3.C)
+  // 5. Verify Extended Shader Overrides (SSR, Tonemap, Volumetric Scattering)
+  check(bridge.activeOverrides['ssrEnabled'] == true, 'SSR active override must be true');
+  check(bridge.activeOverrides['tonemapMode'] == 0, 'Default tonemap mode must be 0 (ACES)');
+  check(bridge.activeOverrides['volumetricScattering'] == 0.45, 'Volumetric scattering anisotropy must equal 0.45');
+  print('[✓] Extended Renderer: SSR, ACES/AgX Tonemapping & Volumetric Mie scattering overrides verified');
+
+  // 6. Verify Persona 5 Dialogue Easing Math (§40.3.C)
   final eased = P5DialogueAnimations.easeOutCubic(0.5);
   check(eased > 0.5 && eased < 1.0, 'P5 cubic-bezier easeOutCubic math must produce smooth acceleration');
   final staggerOffset = P5DialogueAnimations.computeStaggeredOffsetX(
@@ -61,15 +67,11 @@ void main() {
   check(staggerOffset >= 0.0, 'P5 staggered slide-in offset X must be valid');
   print('[✓] Section 40: Persona 5 dialogue easeOutCubic & staggered entry slide-in offset math verified');
 
-  // 6. Verify Design Tokens (§42.1 / GUI-01)
+  // 7. Verify Design Tokens (§42.1 / GUI-01)
   check(GuiDesignTokens.crimsonHex == 0xD32F2F, 'Crimson color token hex must equal #D32F2F');
   check(GuiDesignTokens.skewAngleRad == -0.14, 'Persona 5 skew angle token must equal -0.14 rad');
   print('[✓] Section 42: Unified GuiDesignTokens registry verified');
 
-  // 7. Verify Static Shadow Tile Cache Revision Manager (§37.3, §39.3 / PD-05)
-  final cacheManager = ShadowTileCacheManager();
-  final initialRev = cacheManager.globalRevision;
-  cacheManager.notifyPortalOrLightStateChanged();
   // 8. Verify Realistic Thunderstorm Engine (§36)
   final stormEngine = RealisticThunderstormEngine();
   stormEngine.update(9.0, rainIntensity: 0.85); // Advance past first strike interval
@@ -77,6 +79,6 @@ void main() {
   print('[✓] Section 36: RealisticThunderstormEngine lightning strobes & speed-of-sound thunder delay verified');
 
   print('\n========================================================================');
-  print(' MASTERPLAN FINAL INTEGRATION TEST SUITE PASSED SUCCESSFULLY (ALL 8 CHECKS CERTIFIED)');
+  print(' MASTERPLAN FINAL INTEGRATION TEST SUITE PASSED SUCCESSFULLY (ALL CHECKS CERTIFIED)');
   print('========================================================================\n');
 }

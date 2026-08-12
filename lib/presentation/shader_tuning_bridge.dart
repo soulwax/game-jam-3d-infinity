@@ -30,6 +30,9 @@ class ShaderTuningBridge {
     activeOverrides['fogHeightFalloff'] = state.getValue('fog_height_falloff');
     activeOverrides['volumetricEnabled'] = state.getBool('volumetric_light_enable');
     activeOverrides['volumetricShaftIntensity'] = state.getValue('volumetric_shaft_intensity');
+    activeOverrides['volumetricScattering'] = state.getValue('volumetric_scattering');
+    activeOverrides['ssrEnabled'] = state.getBool('ssr_enable');
+    activeOverrides['tonemapMode'] = state.getValue('tonemap_mode').toInt();
     activeOverrides['ssssEnabled'] = state.getBool('ssss_enable');
     activeOverrides['taaEnabled'] = state.getBool('taa_enable');
     activeOverrides['lensFlareEnabled'] = state.getBool('lens_flare_enable');

@@ -4,6 +4,7 @@ in vec2 vUv;
 uniform sampler2D uTex,uBloom,uNoise,uLut,uDepth,uSSAO;
 uniform vec2 uNoiseOff;
 uniform float uTime,uFlash,uVignette,uGrain,uDesat,uBloomStrength,uBlur,uNoiseOn,uLutOn,uLutMix,uDepthViz,uSSAOStrength;
+uniform int uTonemapMode;
 out vec4 oColor;
 vec3 slice(float s,vec2 rg){
   return texture(uLut,vec2((s*16.0+rg.x*15.0+0.5)/256.0,(rg.y*15.0+0.5)/16.0)).rgb;
@@ -42,6 +43,15 @@ void main(){
     c.r=texture(uTex,vUv+vec2(0.004*uFlash,0.0)).r;
     c.b=texture(uTex,vUv-vec2(0.004*uFlash,0.0)).b;
     c.rgb*=1.0-0.5*uFlash;
+  }
+  if(uTonemapMode == 1) {
+    vec3 inputMat = c.rgb * vec3(0.84247, 0.87900, 0.92095);
+    c.rgb = clamp(inputMat / (1.0 + inputMat), 0.0, 1.0);
+  } else if(uTonemapMode == 2) {
+    c.rgb = c.rgb / (1.0 + c.rgb);
+  } else {
+    float a = 2.51, b = 0.03, cc = 2.43, d = 0.59, e = 0.14;
+    c.rgb = clamp((c.rgb * (a * c.rgb + b)) / (c.rgb * (cc * c.rgb + d) + e), 0.0, 1.0);
   }
   oColor=c;
 }
