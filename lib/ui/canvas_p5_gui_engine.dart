@@ -17,7 +17,8 @@ class CanvasP5GuiEngine {
   double _animationTime = 0.0;
   final List<CanvasHitBox> _currentChoiceHitBoxes = [];
 
-  List<CanvasHitBox> get currentChoiceHitBoxes => List.unmodifiable(_currentChoiceHitBoxes);
+  List<CanvasHitBox> get currentChoiceHitBoxes =>
+      List.unmodifiable(_currentChoiceHitBoxes);
 
   CanvasP5GuiEngine(this.canvas) {
     final context = canvas.getContext('2d');
@@ -125,7 +126,10 @@ class CanvasP5GuiEngine {
 
     final random = math.Random(42);
     for (int i = 0; i < lineCount; i++) {
-      final ly = -height * 0.5 + (height / lineCount) * i + (random.nextDouble() - 0.5) * 8.0;
+      final ly =
+          -height * 0.5 +
+          (height / lineCount) * i +
+          (random.nextDouble() - 0.5) * 8.0;
       final lx1 = -width * 0.5 + (random.nextDouble() * 30.0);
       final lx2 = width * 0.5 - (random.nextDouble() * 30.0);
       ctx.beginPath();
@@ -178,12 +182,14 @@ class CanvasP5GuiEngine {
     ctx.fill();
 
     // Background
-    ctx.fillStyle = (isSelected ? P5Palette.crimsonRed : P5Palette.inkBlack).toJS;
+    ctx.fillStyle =
+        (isSelected ? P5Palette.crimsonRed : P5Palette.inkBlack).toJS;
     _drawDiamondPath(0, 0, size);
     ctx.fill();
 
     // Border
-    ctx.strokeStyle = (isSelected ? P5Palette.boneWhite : P5Palette.amberGold).toJS;
+    ctx.strokeStyle =
+        (isSelected ? P5Palette.boneWhite : P5Palette.amberGold).toJS;
     ctx.lineWidth = isSelected ? 2.5 : 1.5;
     ctx.stroke();
 
@@ -271,7 +277,10 @@ class CanvasP5GuiEngine {
 
     // Measure text
     ctx.font = 'bold 15px "Cinzel", serif';
-    final textWidth = ctx.measureText(promptText.toUpperCase()).width.toDouble();
+    final textWidth = ctx
+        .measureText(promptText.toUpperCase())
+        .width
+        .toDouble();
     final panelW = math.max(220.0, textWidth + 70.0);
     final panelH = 38.0;
 
@@ -323,14 +332,17 @@ class CanvasP5GuiEngine {
     required double screenHeight,
     required P5DialogueState state,
   }) {
-    if (!state.isVisitorPresent && state.fullText.isEmpty && state.choices.isEmpty) {
+    if (!state.isVisitorPresent &&
+        state.fullText.isEmpty &&
+        state.choices.isEmpty) {
       return;
     }
 
-    final boxW = math.min(screenWidth * 0.85, 780.0);
-    final boxH = 140.0;
+    final compact = screenWidth < 640 || screenHeight < 540;
+    final boxW = math.min(screenWidth * (compact ? 0.92 : 0.85), 780.0);
+    final boxH = compact ? 126.0 : 140.0;
     final boxX = screenWidth * 0.5;
-    final boxY = screenHeight * 0.72;
+    final boxY = math.min(screenHeight * 0.74, screenHeight - boxH * 0.58);
 
     // 1. Draw Main Speech Bubble / Dialogue Container
     drawBrushPanel(
@@ -347,6 +359,7 @@ class CanvasP5GuiEngine {
 
     // 2. Speaker Nameplate (Tilted Red Badge)
     final speaker = state.speakerName ?? 'VISITOR';
+    final speakerLabel = '${speaker.toUpperCase()} / YOU';
     final speakerBadgeW = 180.0;
     final speakerBadgeH = 34.0;
     final speakerX = boxX - boxW * 0.5 + speakerBadgeW * 0.45;
@@ -372,7 +385,8 @@ class CanvasP5GuiEngine {
     ctx.textBaseline = 'middle';
     ctx.shadowColor = P5Palette.shadowBlack;
     ctx.shadowBlur = 4.0;
-    ctx.fillText(speaker.toUpperCase(), speakerX, speakerY);
+    ctx.font = 'bold ${compact ? 11 : 13}px "Cinzel", serif';
+    ctx.fillText(speakerLabel, speakerX, speakerY);
     ctx.restore();
 
     // 3. Dialogue Text Body (Typewriter text)
@@ -390,14 +404,20 @@ class CanvasP5GuiEngine {
     _wrapText(ctx, revealed, textMarginLeft, textMarginTop, maxLineWidth, 24.0);
     ctx.restore();
 
-    // 4. Numbered Choices [1]..[N] Rendered Above Dialogue Box
+    // 4. Compact, independent choice buttons rendered above the dialogue.
     if (state.choices.isNotEmpty) {
       final choiceCount = state.choices.length;
-      final choiceStripW = math.min(screenWidth * 0.75, 480.0);
-      final choiceStripH = 38.0;
-      final spacing = 46.0;
+      final choiceStripW = math.min(
+        screenWidth * (compact ? 0.86 : 0.68),
+        420.0,
+      );
+      final choiceStripH = compact ? 31.0 : 34.0;
+      final spacing = compact ? 35.0 : 39.0;
       final totalChoicesH = choiceCount * spacing;
-      final choicesStartY = boxY - boxH * 0.5 - totalChoicesH - 12.0;
+      final choicesStartY = math.max(
+        12.0 + totalChoicesH * 0.5,
+        boxY - boxH * 0.5 - totalChoicesH - 12.0,
+      );
 
       for (int i = 0; i < choiceCount; i++) {
         final choiceText = state.choices[i];
@@ -432,8 +452,12 @@ class CanvasP5GuiEngine {
           skewAngleRad: -0.06,
           fillColor: isSelected
               ? P5Palette.crimsonRed
-              : (isHovered ? P5Palette.charcoalDark : P5Palette.inkBlackTranslucent),
-          borderColor: (isHovered || isSelected) ? P5Palette.amberGold : P5Palette.boneWhite,
+              : (isHovered
+                    ? P5Palette.charcoalDark
+                    : P5Palette.inkBlackTranslucent),
+          borderColor: (isHovered || isSelected)
+              ? P5Palette.amberGold
+              : P5Palette.boneWhite,
           borderWidth: (isHovered || isSelected) ? 2.5 : 1.5,
           cutCornerSize: 8.0,
         );
@@ -451,13 +475,52 @@ class CanvasP5GuiEngine {
 
         // Choice text
         ctx.save();
-        ctx.fillStyle = ((isSelected || isHovered) ? P5Palette.brightAmber : P5Palette.boneWhite).toJS;
-        ctx.font = 'bold 15px "Cinzel", serif';
+        ctx.fillStyle =
+            ((isSelected || isHovered)
+                    ? P5Palette.brightAmber
+                    : P5Palette.boneWhite)
+                .toJS;
+        ctx.font = 'bold ${compact ? 12 : 13}px "Cinzel", serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText(choiceText, badgeX + 22.0, choiceY);
         ctx.restore();
       }
+    } else if (state.isVisitorPresent && state.fullText.isNotEmpty) {
+      // Continue is part of the renderer GUI, never a second modal surface.
+      final continueW = compact ? 104.0 : 118.0;
+      final continueH = compact ? 28.0 : 30.0;
+      final continueX = boxX + boxW * 0.5 - continueW * 0.62;
+      final continueY = boxY + boxH * 0.5 - continueH * 0.72;
+      _currentChoiceHitBoxes.add(
+        CanvasHitBox(
+          id: 'dialogue-continue',
+          index: -1,
+          left: continueX - continueW * 0.5,
+          top: continueY - continueH * 0.5,
+          width: continueW,
+          height: continueH,
+          text: 'continue',
+        ),
+      );
+      drawBrushPanel(
+        x: continueX,
+        y: continueY,
+        width: continueW,
+        height: continueH,
+        skewAngleRad: -0.04,
+        fillColor: P5Palette.charcoalDark,
+        borderColor: P5Palette.amberGold,
+        borderWidth: 1.5,
+        cutCornerSize: 5.0,
+      );
+      ctx.save();
+      ctx.fillStyle = P5Palette.brightAmber.toJS;
+      ctx.font = 'bold ${compact ? 11 : 12}px "Cinzel", serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('CONTINUE', continueX, continueY);
+      ctx.restore();
     }
   }
 
@@ -475,7 +538,14 @@ class CanvasP5GuiEngine {
 
     ctx.save();
     ctx.beginPath();
-    ctx.arc(centerX, centerY, radius, startAngle, startAngle + sweepAngle, false);
+    ctx.arc(
+      centerX,
+      centerY,
+      radius,
+      startAngle,
+      startAngle + sweepAngle,
+      false,
+    );
 
     if (progress < 0.6) {
       ctx.strokeStyle = P5Palette.amberGold.toJS;
@@ -526,7 +596,8 @@ class CanvasP5GuiEngine {
     ctx.font = 'bold 14px "Cinzel", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    final timeStr = 'DAY $currentDay  •  ${currentHour.toString().padLeft(2, '0')}:00';
+    final timeStr =
+        'DAY $currentDay  •  ${currentHour.toString().padLeft(2, '0')}:00';
     ctx.fillText(timeStr, clockX, clockY);
     ctx.restore();
 
@@ -610,7 +681,9 @@ class CanvasP5GuiEngine {
         width: hintW,
         height: 28.0,
         skewAngleRad: -0.04,
-        fillColor: isPrimary ? P5Palette.crimsonRed : P5Palette.inkBlackTranslucent,
+        fillColor: isPrimary
+            ? P5Palette.crimsonRed
+            : P5Palette.inkBlackTranslucent,
         borderColor: isPrimary ? P5Palette.boneWhite : P5Palette.amberGold,
         borderWidth: 1.5,
         cutCornerSize: 6.0,
@@ -618,7 +691,8 @@ class CanvasP5GuiEngine {
       );
 
       ctx.save();
-      ctx.fillStyle = (isPrimary ? P5Palette.boneWhite : P5Palette.amberGold).toJS;
+      ctx.fillStyle =
+          (isPrimary ? P5Palette.boneWhite : P5Palette.amberGold).toJS;
       ctx.font = 'bold 11px "Courier New", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -739,7 +813,8 @@ class CanvasP5GuiEngine {
       };
 
       ctx.save();
-      ctx.fillStyle = (isSelected ? P5Palette.inkBlack : P5Palette.boneWhite).toJS;
+      ctx.fillStyle =
+          (isSelected ? P5Palette.inkBlack : P5Palette.boneWhite).toJS;
       ctx.font = 'bold 12px "Cinzel", sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -772,18 +847,30 @@ class CanvasP5GuiEngine {
       ctx.font = 'bold 14px "Cinzel", serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('ACTIVE DIAGNOSTIC PASS (USE [A / D] OR [← / →] TO CYCLE):', curX, diagCardY - 35.0);
+      ctx.fillText(
+        'ACTIVE DIAGNOSTIC PASS (USE [A / D] OR [← / →] TO CYCLE):',
+        curX,
+        diagCardY - 35.0,
+      );
 
       ctx.fillStyle = P5Palette.boneWhite.toJS;
       ctx.font = 'bold 22px "Cinzel", serif';
       ctx.shadowColor = P5Palette.shadowBlack;
       ctx.shadowBlur = 6.0;
-      ctx.fillText(state.debugMode.displayName.toUpperCase(), curX, diagCardY + 5.0);
+      ctx.fillText(
+        state.debugMode.displayName.toUpperCase(),
+        curX,
+        diagCardY + 5.0,
+      );
 
       ctx.fillStyle = P5Palette.brightAmber.toJS;
       ctx.font = '13px "Georgia", serif';
       ctx.shadowBlur = 0.0;
-      ctx.fillText('Press [A / ←] Prev Pass  •  [D / →] Next Pass  •  [R] Disable Diagnostics', curX, diagCardY + 42.0);
+      ctx.fillText(
+        'Press [A / ←] Prev Pass  •  [D / →] Next Pass  •  [R] Disable Diagnostics',
+        curX,
+        diagCardY + 42.0,
+      );
       ctx.restore();
     } else {
       final items = state.itemsInCurrentCategory;
@@ -803,7 +890,9 @@ class CanvasP5GuiEngine {
           width: itemW,
           height: itemH,
           skewAngleRad: -0.02,
-          fillColor: isSelected ? P5Palette.charcoalDark : P5Palette.inkBlackTranslucent,
+          fillColor: isSelected
+              ? P5Palette.charcoalDark
+              : P5Palette.inkBlackTranslucent,
           borderColor: isSelected ? P5Palette.amberGold : P5Palette.mutedGrey,
           borderWidth: isSelected ? 2.2 : 1.0,
           cutCornerSize: 6.0,
@@ -821,12 +910,17 @@ class CanvasP5GuiEngine {
         }
 
         ctx.save();
-        ctx.fillStyle = (isSelected ? P5Palette.brightAmber : P5Palette.boneWhite).toJS;
+        ctx.fillStyle =
+            (isSelected ? P5Palette.brightAmber : P5Palette.boneWhite).toJS;
         ctx.font = 'bold 14px "Cinzel", serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         final labelOffset = isSelected ? 38.0 : 18.0;
-        ctx.fillText(item.label.toUpperCase(), itemX - itemW * 0.5 + labelOffset, itemY);
+        ctx.fillText(
+          item.label.toUpperCase(),
+          itemX - itemW * 0.5 + labelOffset,
+          itemY,
+        );
 
         final controlRightX = itemX + itemW * 0.5 - 20.0;
         if (item.isToggle) {
@@ -840,7 +934,9 @@ class CanvasP5GuiEngine {
             height: badgeH,
             skewAngleRad: -0.04,
             fillColor: isToggledOn ? P5Palette.crimsonRed : P5Palette.inkBlack,
-            borderColor: isToggledOn ? P5Palette.boneWhite : P5Palette.mutedGrey,
+            borderColor: isToggledOn
+                ? P5Palette.boneWhite
+                : P5Palette.mutedGrey,
             borderWidth: 1.5,
             shadow: false,
           );
@@ -849,32 +945,62 @@ class CanvasP5GuiEngine {
           ctx.font = 'bold 12px "Cinzel", sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText(item.formattedValue, controlRightX - badgeW * 0.5, itemY);
+          ctx.fillText(
+            item.formattedValue,
+            controlRightX - badgeW * 0.5,
+            itemY,
+          );
         } else {
           final sliderW = 160.0;
           final sliderH = 8.0;
           final sliderX = controlRightX - 80.0 - sliderW * 0.5;
 
           ctx.fillStyle = P5Palette.inkBlack.toJS;
-          ctx.fillRect(sliderX - sliderW * 0.5, itemY - sliderH * 0.5, sliderW, sliderH);
+          ctx.fillRect(
+            sliderX - sliderW * 0.5,
+            itemY - sliderH * 0.5,
+            sliderW,
+            sliderH,
+          );
 
-          final frac = ((item.currentValue - item.min) / (item.max - item.min)).clamp(0.0, 1.0);
-          ctx.fillStyle = (isSelected ? P5Palette.amberGold : P5Palette.crimsonRed).toJS;
-          ctx.fillRect(sliderX - sliderW * 0.5, itemY - sliderH * 0.5, sliderW * frac, sliderH);
+          final frac = ((item.currentValue - item.min) / (item.max - item.min))
+              .clamp(0.0, 1.0);
+          ctx.fillStyle =
+              (isSelected ? P5Palette.amberGold : P5Palette.crimsonRed).toJS;
+          ctx.fillRect(
+            sliderX - sliderW * 0.5,
+            itemY - sliderH * 0.5,
+            sliderW * frac,
+            sliderH,
+          );
 
           ctx.fillStyle = P5Palette.boneWhite.toJS;
-          ctx.fillRect(sliderX - sliderW * 0.5 + sliderW * frac - 3.0, itemY - 7.0, 6.0, 14.0);
+          ctx.fillRect(
+            sliderX - sliderW * 0.5 + sliderW * frac - 3.0,
+            itemY - 7.0,
+            6.0,
+            14.0,
+          );
 
           // Min/Max range bounds text
           ctx.fillStyle = P5Palette.mutedGrey.toJS;
           ctx.font = '10px "Courier New", monospace';
           ctx.textAlign = 'right';
           ctx.textBaseline = 'middle';
-          ctx.fillText('${item.min.toStringAsFixed(1)} ', sliderX - sliderW * 0.5 - 4.0, itemY);
+          ctx.fillText(
+            '${item.min.toStringAsFixed(1)} ',
+            sliderX - sliderW * 0.5 - 4.0,
+            itemY,
+          );
           ctx.textAlign = 'left';
-          ctx.fillText(' ${item.max.toStringAsFixed(1)}', sliderX + sliderW * 0.5 + 4.0, itemY);
+          ctx.fillText(
+            ' ${item.max.toStringAsFixed(1)}',
+            sliderX + sliderW * 0.5 + 4.0,
+            itemY,
+          );
 
-          ctx.fillStyle = (isSelected ? P5Palette.brightAmber : P5Palette.boneWhite).toJS;
+          ctx.fillStyle =
+              (isSelected ? P5Palette.brightAmber : P5Palette.boneWhite).toJS;
           ctx.font = 'bold 13px "Courier New", monospace';
           ctx.textAlign = 'right';
           ctx.textBaseline = 'middle';

@@ -16,7 +16,22 @@ class CandidateLight {
     required this.color,
     required this.intensity,
     required this.radius,
-  });
+  }) {
+    if (id < 0) throw ArgumentError.value(id, 'id', 'must be non-negative');
+    if (type != 'point' && type != 'spot') {
+      throw ArgumentError.value(type, 'type', 'must be point or spot');
+    }
+    if (!intensity.isFinite || intensity < 0) {
+      throw ArgumentError.value(
+        intensity,
+        'intensity',
+        'must be finite and >= 0',
+      );
+    }
+    if (!radius.isFinite || radius <= 0) {
+      throw ArgumentError.value(radius, 'radius', 'must be finite and > 0');
+    }
+  }
 
   /// Calculates distance-attenuated importance score relative to [cameraPos].
   double calculateImportanceScore(Vec3 cameraPos) {
@@ -58,14 +73,30 @@ class LightRankingController {
   LightRankingController({
     this.maxPointLights = 4,
     this.maxSpotLights = 2,
-    this.hysteresisThreshold = 0.15, // 15% hysteresis advantage required to evict
-  });
+    this.hysteresisThreshold =
+        0.15, // 15% hysteresis advantage required to evict
+  }) {
+    if (maxPointLights < 0 || maxSpotLights < 0) {
+      throw ArgumentError('light capacities must be >= 0');
+    }
+    if (!hysteresisThreshold.isFinite || hysteresisThreshold < 0) {
+      throw ArgumentError('hysteresisThreshold must be finite and >= 0');
+    }
+  }
 
   LightRankingResult rankLights({
     required Vec3 cameraPosition,
     required List<CandidateLight> points,
     required List<CandidateLight> spots,
   }) {
+    final ids = <int>{};
+    for (final candidate in [...points, ...spots]) {
+      if (!ids.add(candidate.id)) {
+        throw ArgumentError(
+          'light IDs must be unique per ranking pass: ${candidate.id}',
+        );
+      }
+    }
     final acceptedP = <CandidateLight>[];
     final rejectedP = <CandidateLight>[];
     final acceptedS = <CandidateLight>[];
@@ -116,11 +147,16 @@ class LightRankingController {
       final score = light.calculateImportanceScore(cameraPosition);
       final wasActive = activeIds.contains(light.id);
       // Hysteresis boost for currently active lights
-      final effectiveScore = wasActive ? score * (1.0 + hysteresisThreshold) : score;
+      final effectiveScore = wasActive
+          ? score * (1.0 + hysteresisThreshold)
+          : score;
       return (light: light, score: score, effectiveScore: effectiveScore);
     }).toList();
 
-    scored.sort((a, b) => b.effectiveScore.compareTo(a.effectiveScore));
+    scored.sort((a, b) {
+      final score = b.effectiveScore.compareTo(a.effectiveScore);
+      return score == 0 ? a.light.id.compareTo(b.light.id) : score;
+    });
 
     final nextActive = <int>{};
     for (var i = 0; i < scored.length; i++) {

@@ -34,7 +34,7 @@ void main() {
   );
 
   _expect(session.snapshot.day == 1, 'starts on requested day');
-  _expect(session.snapshot.hour == 6.0, 'starts at sunrise');
+  _expect(session.snapshot.hour == 7.0, 'starts at sunrise');
   _expect(session.house.seed == 17, 'owns deterministic house seed');
 
   session.advance(1000.0);
@@ -96,7 +96,7 @@ void main() {
     afterSleep.day == beforeSleep.day + 1,
     'sleep advances exactly one day',
   );
-  _expect(afterSleep.hour == 6.0, 'sleep resets to sunrise');
+  _expect(afterSleep.hour == 7.0, 'sleep resets to sunrise');
   _expect(
     session.drainEvents().single.type == GameSessionEventType.slept,
     'sleep emits one explicit event',

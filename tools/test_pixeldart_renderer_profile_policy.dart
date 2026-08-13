@@ -18,6 +18,9 @@ void main() {
   check(high.shadowMapSize == 1024, 'high shadow map size');
   check(high.materialTableCapacity == 64, 'high material capacity');
   check(high.lightTableCapacity == 8, 'high light capacity');
+  final highMap = high.toMap();
+  check(highMap['internalWidth'] == 960, 'configuration map width');
+  check(highMap['shadowMapCount'] == 3, 'configuration map shadow count');
 
   final standard = policy.configuration(
     profile: pixeldart.QualityProfile.minimal,

@@ -13,6 +13,7 @@ import 'package:quarantine/engine/fps_motion.dart';
 import 'package:quarantine/engine/locomotion_controller.dart';
 import 'package:quarantine/engine/hud.dart';
 import 'package:quarantine/engine/input.dart';
+import 'package:quarantine/engine/light_ranking_controller.dart';
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/engine/renderer.dart';
 import 'package:quarantine/engine/vertex_format.dart';
@@ -153,6 +154,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   final Map<String, String> _exteriorShellCells = {};
   final Map<int, px.MaterialHandle> _exteriorMaterials = {};
   final Map<String, _PixeldartPortalLeaf> _portalLeaves = {};
+  late LightRankingController _lightRanking;
+  int _lightSelectionRevision = 0;
   final List<_PixeldartDecoration> _decorations = [];
   List<InventoryPlacement> _inventoryPlacements = const [];
   final Map<String, px.TextureHandle> _textures = {};
@@ -229,6 +232,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
 
   String? get profileFallbackReason => _profileFallbackReason;
 
+  Map<String, Object> get effectiveConfiguration =>
+      _renderer.configuration.toMap();
+
   @override
   void initialize() {
     _device = pxgl.WebGl2Device(context);
@@ -257,6 +263,18 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _world = _renderer.createWorld();
     _configuredWidth = width;
     _configuredHeight = height;
+    _lightRanking = LightRankingController(
+      maxPointLights: switch (_profile.kind) {
+        px.QualityProfileKind.high => 7,
+        px.QualityProfileKind.standard => 3,
+        _ => 0,
+      },
+      maxSpotLights: switch (_profile.kind) {
+        px.QualityProfileKind.high => 2,
+        px.QualityProfileKind.standard => 1,
+        _ => 0,
+      },
+    );
     capabilityMatrix = PixeldartCapabilityMatrix.negotiate(
       isWebGL2Available: true,
       float16Supported: true,
@@ -309,6 +327,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         _configuredHeight = targetHeight;
         _failedSurfaceWidth = null;
         _failedSurfaceHeight = null;
+        _publishRendererDiagnostics();
       }
     } catch (error) {
       // SceneRendererImpl keeps the previous valid graph when configure fails.
@@ -785,7 +804,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     String currentRoomId,
     Vec3 eye,
     double sunAngle,
-    double daylight,
+    double _daylight,
     WeatherDay weather,
     bool daylightThroughWindow, {
     double? currentHour,
@@ -805,44 +824,40 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final mantleLights = house_lighting.HouseLighting(
       house,
     ).visibleMantles(visible, eye);
-    final points = <px.PointLight>[];
-    final spots = <px.SpotLight>[];
+    final pointCandidates = <CandidateLight>[];
+    final spotCandidates = <CandidateLight>[];
     for (var i = 0; i < mantleLights.length; i++) {
       final light = mantleLights[i];
-      final color = _color(light.color);
-      final position = px.Vec3(
-        light.position.x,
-        light.position.y,
-        light.position.z,
+      final candidate = CandidateLight(
+        id: i,
+        type: i == 0 ? 'spot' : 'point',
+        position: light.position,
+        color: _lightColorVector(light.color),
+        intensity: light.intensity,
+        radius: light.radius,
       );
-      if (i == 0) {
-        spots.add(
-          px.SpotLight(
-            id: i,
-            position: position,
-            direction: const px.Vec3(0, -1, 0),
-            color: color,
-            intensity: light.intensity,
-            range: light.radius,
-            innerConeRadians: 1.05,
-            outerConeRadians: 1.40,
-            castsShadow: true,
-          ),
-        );
-      } else {
-        points.add(
-          px.PointLight(
-            id: i,
-            position: position,
-            color: color,
-            intensity: light.intensity,
-            radius: light.radius,
-          ),
-        );
-      }
+      (i == 0 ? spotCandidates : pointCandidates).add(candidate);
     }
+    final ranked = _lightRanking.rankLights(
+      cameraPosition: eye,
+      points: pointCandidates,
+      spots: spotCandidates,
+    );
+    final mantleById = <int, house_lighting.PointLight>{
+      for (var i = 0; i < mantleLights.length; i++) i: mantleLights[i],
+    };
+    final points = [
+      for (final candidate in ranked.acceptedPoints)
+        _pointLightFromMantle(candidate, mantleById[candidate.id]!),
+    ];
+    final spots = [
+      for (final candidate in ranked.acceptedSpots)
+        _spotLightFromMantle(candidate, mantleById[candidate.id]!),
+    ];
+    _lightSelectionRevision++;
+    _canvasLightDiagnostics(ranked, revision: _lightSelectionRevision);
 
-    final hour = currentHour ?? (sunAngle > 0 ? (6.0 + sunAngle * 12.0) : 22.0);
+    final hour = currentHour ?? (sunAngle > 0 ? (7.0 + sunAngle * 12.0) : 22.0);
     final atmos = DayNightAtmosphereEngine.evaluateAtmosphere(
       hour: hour,
       rainIntensity: weather.rainIntensity,
@@ -863,13 +878,30 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _thunderstormEngine.update(0.0166, rainIntensity: effectiveRain);
     final flash = _thunderstormEngine.flashState;
 
-    final isDay = sunAngle > 0;
+    final solarDaylight =
+        (math.sin(math.max(0.0, atmos.sunElevationDegrees) * math.pi / 180.0) /
+                math.sin(65.0 * math.pi / 180.0))
+            .clamp(0.0, 1.0)
+            .toDouble();
+    final isDay = solarDaylight > 0.001;
     final dirVec = isDay
-        ? px.Vec3(atmos.sunDirection.x, atmos.sunDirection.y, atmos.sunDirection.z)
-        : px.Vec3(atmos.moonDirection.x, atmos.moonDirection.y, atmos.moonDirection.z);
+        ? px.Vec3(
+            atmos.sunDirection.x,
+            atmos.sunDirection.y,
+            atmos.sunDirection.z,
+          )
+        : px.Vec3(
+            atmos.moonDirection.x,
+            atmos.moonDirection.y,
+            atmos.moonDirection.z,
+          );
     final baseDirCol = isDay
         ? px.LinearColor(atmos.sunColor.r, atmos.sunColor.g, atmos.sunColor.b)
-        : px.LinearColor(atmos.moonColor.r, atmos.moonColor.g, atmos.moonColor.b);
+        : px.LinearColor(
+            atmos.moonColor.r,
+            atmos.moonColor.g,
+            atmos.moonColor.b,
+          );
 
     final dirCol = flash.active
         ? px.LinearColor(
@@ -880,7 +912,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         : baseDirCol;
 
     final dirIntensity = flash.active
-        ? (atmos.directionalIntensity * atmos.windowLightLeakFactor + flash.intensity * 4.5)
+        ? (atmos.directionalIntensity * atmos.windowLightLeakFactor +
+              flash.intensity * 4.5)
         : (atmos.directionalIntensity * atmos.windowLightLeakFactor);
 
     _environment = px.FrameEnvironment(
@@ -891,7 +924,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       ),
       ambientIntensity: math.max(
         ambientFloor,
-        atmos.ambientIntensity * (isDay ? daylight : 1.0) * atmos.windowLightLeakFactor,
+        atmos.ambientIntensity *
+            (isDay ? solarDaylight : 1.0) *
+            atmos.windowLightLeakFactor,
       ),
       directionalLight: px.DirectionalLight(
         direction: dirVec,
@@ -1472,6 +1507,65 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     );
   }
 
+  Vec3 _lightColorVector(int rgb) => Vec3(
+    ((rgb >> 16) & 0xff) / 255,
+    ((rgb >> 8) & 0xff) / 255,
+    (rgb & 0xff) / 255,
+  );
+
+  px.PointLight _pointLightFromMantle(
+    CandidateLight candidate,
+    house_lighting.PointLight source,
+  ) => px.PointLight(
+    id: candidate.id,
+    position: px.Vec3(source.position.x, source.position.y, source.position.z),
+    color: px.LinearColor(
+      candidate.color.x,
+      candidate.color.y,
+      candidate.color.z,
+    ),
+    intensity: candidate.intensity,
+    radius: candidate.radius,
+  );
+
+  px.SpotLight _spotLightFromMantle(
+    CandidateLight candidate,
+    house_lighting.PointLight source,
+  ) => px.SpotLight(
+    id: candidate.id,
+    position: px.Vec3(source.position.x, source.position.y, source.position.z),
+    direction: const px.Vec3(0, -1, 0),
+    color: px.LinearColor(
+      candidate.color.x,
+      candidate.color.y,
+      candidate.color.z,
+    ),
+    intensity: candidate.intensity,
+    range: candidate.radius,
+    innerConeRadians: 1.05,
+    outerConeRadians: 1.40,
+    castsShadow: true,
+  );
+
+  void _canvasLightDiagnostics(
+    LightRankingResult result, {
+    required int revision,
+  }) {
+    final rejected = result.rejectionReasons.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+    _canvas
+      ..setAttribute(
+        'data-renderer-light-selection',
+        'points=${result.acceptedPoints.map((light) => light.id).join(':')};'
+            'spots=${result.acceptedSpots.map((light) => light.id).join(':')}',
+      )
+      ..setAttribute(
+        'data-renderer-light-rejections',
+        rejected.map((entry) => '${entry.key}=${entry.value}').join('|'),
+      )
+      ..setAttribute('data-renderer-light-selection-revision', '$revision');
+  }
+
   px.LinearColor _color(int rgb) => px.LinearColor(
     ((rgb >> 16) & 0xff) / 255,
     ((rgb >> 8) & 0xff) / 255,
@@ -1790,10 +1884,12 @@ final FpsMotion _motion = FpsMotion();
 final LocomotionController _locomotionController = LocomotionController();
 double _smoothEyeY = playerEyeHeight;
 CanvasP5GuiEngine? _p5GuiEngine;
-final GameplayDialogueCoordinator _dialogueCoordinator = GameplayDialogueCoordinator();
+final GameplayDialogueCoordinator _dialogueCoordinator =
+    GameplayDialogueCoordinator();
 final ShaderTuningState _shaderTuning = ShaderTuningState();
 final ShaderTuningBridge _tuningBridge = ShaderTuningBridge();
-final RealisticThunderstormEngine _thunderstormEngine = RealisticThunderstormEngine();
+final RealisticThunderstormEngine _thunderstormEngine =
+    RealisticThunderstormEngine();
 final GuiFlowCoordinator _guiFlowCoordinator = GuiFlowCoordinator();
 
 Panel? _activePanel;
@@ -2226,10 +2322,7 @@ void _applyGameplayOptions() {
       'data-gameplay-save-feedback',
       policy.detailedSaveFeedback ? 'detailed' : 'toast',
     )
-    ..setAttribute(
-      'data-gameplay-focus-loss',
-      policy.focusLossBehavior.name,
-    )
+    ..setAttribute('data-gameplay-focus-loss', policy.focusLossBehavior.name)
     ..setAttribute(
       'data-gameplay-reminders',
       policy.contextualReminders ? '1' : '0',
@@ -2341,10 +2434,7 @@ void _installAccessibilityMediaListeners() {
   }
 
   reducedMotion.addEventListener('change', ((JSAny? _) => refresh()).toJS);
-  photosensitivity.addEventListener(
-    'change',
-    ((JSAny? _) => refresh()).toJS,
-  );
+  photosensitivity.addEventListener('change', ((JSAny? _) => refresh()).toJS);
 }
 
 Future<void> main() async {
@@ -2356,7 +2446,8 @@ Future<void> main() async {
   _installBootDiagnostics();
   _canvas.width = web.window.innerWidth > 0 ? web.window.innerWidth : 800;
   _canvas.height = web.window.innerHeight > 0 ? web.window.innerHeight : 600;
-  final uiCanvas = web.document.getElementById('ui-canvas') as web.HTMLCanvasElement?;
+  final uiCanvas =
+      web.document.getElementById('ui-canvas') as web.HTMLCanvasElement?;
   if (uiCanvas != null) {
     uiCanvas.width = _canvas.width;
     uiCanvas.height = _canvas.height;
@@ -2644,6 +2735,7 @@ Future<void> main() async {
         }
       }
     };
+    _dialogueCoordinator.onDialogueAdvanced = _continueDoorConversation;
     final savedVisitors = VisitorDirectorState.tryFromJson(
       saved.snapshot?.meta['visitors'],
     );
@@ -2802,7 +2894,9 @@ Future<void> main() async {
             return;
           }
           if (e.code.startsWith('Digit') || e.code.startsWith('Numpad')) {
-            final char = e.code.replaceAll('Digit', '').replaceAll('Numpad', '');
+            final char = e.code
+                .replaceAll('Digit', '')
+                .replaceAll('Numpad', '');
             final num = int.tryParse(char);
             if (num != null && num >= 1 && num <= 5) {
               e.preventDefault();
@@ -2826,7 +2920,8 @@ Future<void> main() async {
           }
           return;
         }
-        final gameplayShortcutsEnabled = _activePanel == null && !_shaderTuning.isOpen;
+        final gameplayShortcutsEnabled =
+            _activePanel == null && !_shaderTuning.isOpen;
         if (!e.repeat && gameplayShortcutsEnabled) {
           _presentationBackend.handleInput(
             RendererInputAction(id: e.code, pressed: true, value: 1),
@@ -2876,7 +2971,9 @@ Future<void> main() async {
     web.window.addEventListener('click', ((JSAny? _) => _armAudio()).toJS);
     _canvas.addEventListener(
       'mousemove',
-      ((JSAny? evt) => _handleRenderedDialogueHover(evt as web.MouseEvent)).toJS,
+      ((JSAny? evt) => _handleRenderedDialogueHover(
+        evt as web.MouseEvent,
+      )).toJS,
     );
     _canvas.addEventListener(
       'click',
@@ -2972,6 +3069,12 @@ void _publishRendererDiagnostics() {
     ..setAttribute('data-renderer-backend', diagnostics.backend)
     ..setAttribute('data-renderer-profile', diagnostics.profile)
     ..setAttribute('data-renderer-diagnostics', diagnostics.encode())
+    ..setAttribute(
+      'data-renderer-configuration',
+      _pixeldartRuntime == null
+          ? '{}'
+          : jsonEncode(_pixeldartRuntime!.effectiveConfiguration),
+    )
     ..setAttribute('data-renderer-shadow-pcf-kernel', '3x3')
     ..setAttribute('data-renderer-shadow-penumbra-floor', '0.15')
     ..setAttribute('data-renderer-lighting-falloff', 'smoothstep')
@@ -3018,7 +3121,8 @@ void _publishAutomationPlayerState() {
       'eye': {'x': _simEye.x, 'y': _simEye.y, 'z': _simEye.z},
       'yaw': _simYaw,
       'pitch': _simPitch,
-      'modal': _activePanel != null || _door.visitorPresent,
+      'modal': _activePanel != null,
+      'dialogueOverlay': _door.visitorPresent,
       'inputEnabled': _input.gameplayEnabled,
       'day': _session.snapshot.day,
       'hour': _session.snapshot.hour,
@@ -3092,8 +3196,9 @@ void _saveSession(String status) {
 }
 
 void _onFocusLoss() {
-  final attr = web.document.documentElement
-      ?.getAttribute('data-gameplay-focus-loss');
+  final attr = web.document.documentElement?.getAttribute(
+    'data-gameplay-focus-loss',
+  );
   final behavior = GameplayFocusLossBehavior.values
       .where((e) => e.name == attr)
       .firstOrNull;
@@ -3111,8 +3216,10 @@ void _onFocusLoss() {
 void _showSaveStatus(String message) {
   final status = web.document.getElementById('save-status');
   if (status == null) return;
-  final detailed = web.document.documentElement
-          ?.getAttribute('data-gameplay-save-feedback') ==
+  final detailed =
+      web.document.documentElement?.getAttribute(
+        'data-gameplay-save-feedback',
+      ) ==
       'detailed';
   status.textContent = message;
   status.className = detailed ? 'visible detailed' : 'visible';
@@ -3552,7 +3659,9 @@ void _movePanelFocus(Panel panel, int direction) {
   ];
   if (focusable.isEmpty) return;
   final active = web.document.activeElement;
-  final index = focusable.indexOf(active is web.HTMLElement ? active : panel.root);
+  final index = focusable.indexOf(
+    active is web.HTMLElement ? active : panel.root,
+  );
   final next = index < 0
       ? (direction < 0 ? focusable.length - 1 : 0)
       : (index + direction + focusable.length) % focusable.length;
@@ -3822,7 +3931,9 @@ void _updateFps(double frameTime) {
 }
 
 void _update(double dt) {
-  if (_runEnded || _activePanel != null || _door.visitorPresent) {
+  // Visitor dialogue is a non-blocking renderer overlay. World simulation,
+  // lighting and ambience continue while the player considers a reply.
+  if (_runEnded || _activePanel != null) {
     _motion.stop();
     return;
   }
@@ -3832,10 +3943,12 @@ void _update(double dt) {
   final mouseDx = _input.mouseDx;
   final mouseDy = _input.mouseDy;
 
-  final sensX = mouseSensitivity *
+  final sensX =
+      mouseSensitivity *
       _controlsSettings.horizontalSensitivity *
       (_controlsSettings.invertX ? -1.0 : 1.0);
-  final sensY = mouseSensitivity *
+  final sensY =
+      mouseSensitivity *
       _controlsSettings.verticalSensitivity *
       (_controlsSettings.invertY ? -1.0 : 1.0);
 
@@ -3882,7 +3995,11 @@ void _update(double dt) {
   }
 
   final speedFraction = (_motion.velocity.length / playerSpeed).clamp(0.0, 1.0);
-  _smoothEyeY = _locomotionController.smoothStepHeight(_smoothEyeY, _simEye.y, dt);
+  _smoothEyeY = _locomotionController.smoothStepHeight(
+    _smoothEyeY,
+    _simEye.y,
+    dt,
+  );
   final bobOffset = _locomotionController.advanceHeadBob(
     moveSpeedFraction: speedFraction,
     dt: dt,
@@ -3908,8 +4025,9 @@ void _update(double dt) {
   _prompt.show(focus.prompt);
   final crosshairEl = web.document.getElementById('crosshair');
   if (crosshairEl != null) {
-    crosshairEl.className =
-        focus.prompt != null ? 'crosshair-active' : 'crosshair-dot';
+    crosshairEl.className = focus.prompt != null
+        ? 'crosshair-active'
+        : 'crosshair-dot';
   }
 
   // Interaction target selection is gated by the deterministic focus resolver.
@@ -3980,7 +4098,9 @@ void _update(double dt) {
       }
     } else if (focus.kind == FocusKind.aftermath) {
       final activeItems = aftermathManager.getActiveResidues();
-      final item = activeItems.where((i) => i.id == focus.id).firstOrNull ?? activeItems.firstOrNull;
+      final item =
+          activeItems.where((i) => i.id == focus.id).firstOrNull ??
+          activeItems.firstOrNull;
       if (item != null) {
         _ambientNotice.show('noticed', item.description);
       }
@@ -4047,7 +4167,10 @@ void _renderCanvasGui(double dt, FocusSnapshot focus) {
     currentDay: _session.snapshot.day,
     currentHour: _time.currentHour.toInt(),
     currentRoomName: room?.id ?? _currentRoom,
-    objectiveText: textLibrary.getBroadcastPart(_session.snapshot.day, 'status'),
+    objectiveText: textLibrary.getBroadcastPart(
+      _session.snapshot.day,
+      'status',
+    ),
   );
 
   // 4. Contextual UX Action Hints (Key Prompts & Dynamic Action Indicators)
@@ -4273,7 +4396,9 @@ void _presentDoorLine() {
   } else {
     final selected = state.reactionChoiceId;
     _door.showConversation(line, requiresReaction: selected == null);
-    final reactionLabels = [for (final option in reaction.options) option.label];
+    final reactionLabels = [
+      for (final option in reaction.options) option.label,
+    ];
     _door.showReactionChoices([
       for (final option in reaction.options) (option.id, option.label),
     ], selectedId: selected);

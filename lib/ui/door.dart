@@ -16,11 +16,11 @@ class Door {
   ];
 
   static const List<String> choiceLabels = [
-    'Open the door',
-    'Keep the chain on',
-    'Answer through the door',
-    'Use the letterbox',
-    'Ignore the knock',
+    'Open the front door and let them in',
+    'Keep the chain on and speak through the gap',
+    'Answer them without opening the door',
+    'Pass a message through the letterbox',
+    'Do not answer; let the knock fade',
   ];
 
   final web.HTMLElement root;
@@ -33,15 +33,15 @@ class Door {
   void Function()? onContinue;
   void Function(int ordinal)? onCite;
   bool visitorPresent = false;
-  
+
   // Spring-damper rotational door physics simulation
   double doorAngleRad = 0.0;
   double targetDoorAngleRad = 0.0;
   double angularVelocityRad = 0.0;
   bool isChainEngaged = false;
-  
+
   static const double maxUnchainedAngleRad = 1.309; // ~75 degrees
-  static const double maxChainedAngleRad = 0.209;   // ~12 degrees
+  static const double maxChainedAngleRad = 0.209; // ~12 degrees
   static const double doorSpringStiffness = 32.0;
   static const double doorDampingCoeff = 11.5;
 
@@ -54,7 +54,7 @@ class Door {
     : root = buildElement(document, 'div', cls: 'door') {
     root
       ..setAttribute('role', 'dialog')
-      ..setAttribute('aria-modal', 'true')
+      ..setAttribute('aria-modal', 'false')
       ..setAttribute('aria-label', 'Front door visitor')
       ..setAttribute('tabindex', '-1')
       ..setAttribute('hidden', '');
@@ -122,7 +122,9 @@ class Door {
     if (dt <= 0) return;
     final maxAngle = isChainEngaged ? maxChainedAngleRad : maxUnchainedAngleRad;
     final clampedTarget = targetDoorAngleRad.clamp(0.0, maxAngle);
-    final accel = (clampedTarget - doorAngleRad) * doorSpringStiffness - angularVelocityRad * doorDampingCoeff;
+    final accel =
+        (clampedTarget - doorAngleRad) * doorSpringStiffness -
+        angularVelocityRad * doorDampingCoeff;
     angularVelocityRad += accel * dt;
     doorAngleRad += angularVelocityRad * dt;
     if (doorAngleRad < 0.0) {
@@ -130,7 +132,8 @@ class Door {
       angularVelocityRad = 0.0;
     } else if (doorAngleRad > maxAngle) {
       doorAngleRad = maxAngle;
-      angularVelocityRad = -angularVelocityRad * 0.35; // elastic chain/frame bounce
+      angularVelocityRad =
+          -angularVelocityRad * 0.35; // elastic chain/frame bounce
     }
   }
 
@@ -148,7 +151,7 @@ class Door {
     _citeResult.textContent = '';
     root.className = 'door visible';
     root.removeAttribute('hidden');
-    root.focus();
+    // The renderer canvas owns focus and pointer interaction.
   }
 
   void showConversation(String line, {bool requiresReaction = false}) {
@@ -160,7 +163,7 @@ class Door {
     _choiceStatus.textContent = '';
     _continueButton.style.display = requiresReaction ? 'none' : '';
     _citeResult.textContent = '';
-    if (!requiresReaction) _continueButton.focus();
+    // Continue is rendered by CanvasP5GuiEngine.
   }
 
   void showReactionChoices(
@@ -173,7 +176,7 @@ class Door {
         selectedId == id ? '$label, selected' : label,
     ];
     _choiceStatus.textContent = _choiceAnnouncement(labels);
-    if (selectedId == null) root.focus();
+    // Choice focus remains on the game canvas.
   }
 
   void showReactionReply(String line, String reply) {
@@ -184,7 +187,7 @@ class Door {
     );
     _choiceStatus.textContent = '';
     _continueButton.style.display = '';
-    _continueButton.focus();
+    // The visible continue control is renderer-owned.
   }
 
   void showCitableEntries(web.Document document, List<(int, String)> entries) {

@@ -19,39 +19,110 @@ void main() {
   check(continuous, '24-hour evaluation continuity must pass');
 
   // 2. Check Phase Progression
-  final dawn = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 6.0, rainIntensity: 0.0, shutterOpen: true);
-  final noon = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, rainIntensity: 0.0, shutterOpen: true);
-  final dusk = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 18.0, rainIntensity: 0.0, shutterOpen: true);
-  final night = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 23.0, rainIntensity: 0.0, shutterOpen: true);
+  final dawn = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 6.0,
+    rainIntensity: 0.0,
+    shutterOpen: true,
+  );
+  final noon = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 12.0,
+    rainIntensity: 0.0,
+    shutterOpen: true,
+  );
+  final dusk = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 18.0,
+    rainIntensity: 0.0,
+    shutterOpen: true,
+  );
+  final night = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 23.0,
+    rainIntensity: 0.0,
+    shutterOpen: true,
+  );
 
   check(dawn.phase == TimeOfDayPhase.dawn, '06:00 is dawn');
+  check(
+    DayNightAtmosphereEngine.evaluateAtmosphere(
+          hour: 7.0,
+          rainIntensity: 0.0,
+          shutterOpen: true,
+        ).sunElevationDegrees ==
+        0.0,
+    '07:00 is the authored sunrise horizon',
+  );
   check(noon.phase == TimeOfDayPhase.noon, '12:00 is noon');
   check(dusk.phase == TimeOfDayPhase.dusk, '18:00 is dusk');
+  check(
+    DayNightAtmosphereEngine.evaluateAtmosphere(
+          hour: 19.0,
+          rainIntensity: 0.0,
+          shutterOpen: true,
+        ).sunElevationDegrees ==
+        0.0,
+    '19:00 is the authored sunset horizon',
+  );
   check(night.phase == TimeOfDayPhase.night, '23:00 is night');
 
   // 3. Sun Elevation and Directional Intensity
   check(noon.sunElevationDegrees > 55.0, 'Noon sun elevation > 55°');
-  check(night.sunElevationDegrees < 0.0, 'Night sun elevation < 0° (below horizon)');
-  check(noon.directionalIntensity > night.directionalIntensity, 'Noon directional intensity > Night');
+  check(
+    night.sunElevationDegrees < 0.0,
+    'Night sun elevation < 0° (below horizon)',
+  );
+  check(
+    noon.directionalIntensity > night.directionalIntensity,
+    'Noon directional intensity > Night',
+  );
 
   // 4. Shutter Window Light Leakage
-  final openShutter = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, rainIntensity: 0.0, shutterOpen: true);
-  final closedShutter = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, rainIntensity: 0.0, shutterOpen: false);
+  final openShutter = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 12.0,
+    rainIntensity: 0.0,
+    shutterOpen: true,
+  );
+  final closedShutter = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 12.0,
+    rainIntensity: 0.0,
+    shutterOpen: false,
+  );
 
-  check(openShutter.windowLightLeakFactor == 1.0, 'Open shutter has 1.0 light leak factor');
-  check(closedShutter.windowLightLeakFactor == 0.15, 'Closed shutter has 0.15 light leak factor (15% leakage)');
+  check(
+    openShutter.windowLightLeakFactor == 1.0,
+    'Open shutter has 1.0 light leak factor',
+  );
+  check(
+    closedShutter.windowLightLeakFactor == 0.15,
+    'Closed shutter has 0.15 light leak factor (15% leakage)',
+  );
 
   // 5. Rain Attenuation & Wetness Mask
-  final dryNoon = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, rainIntensity: 0.0, shutterOpen: true);
-  final rainyNoon = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, rainIntensity: 0.8, shutterOpen: true);
+  final dryNoon = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 12.0,
+    rainIntensity: 0.0,
+    shutterOpen: true,
+  );
+  final rainyNoon = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 12.0,
+    rainIntensity: 0.8,
+    shutterOpen: true,
+  );
 
-  check(rainyNoon.directionalIntensity < dryNoon.directionalIntensity, 'Rain attenuates directional light intensity');
-  check(rainyNoon.windowSurfaceWetness > dryNoon.windowSurfaceWetness, 'Rain increases window surface wetness mask');
+  check(
+    rainyNoon.directionalIntensity < dryNoon.directionalIntensity,
+    'Rain attenuates directional light intensity',
+  );
+  check(
+    rainyNoon.windowSurfaceWetness > dryNoon.windowSurfaceWetness,
+    'Rain increases window surface wetness mask',
+  );
 
   // 6. Test JSON export
   final json = noon.toJson();
   check(json['phase'] == 'noon', 'JSON phase matches');
-  check((json['sunDirection'] as List).length == 3, 'JSON sunDirection has 3 elements');
+  check(
+    (json['sunDirection'] as List).length == 3,
+    'JSON sunDirection has 3 elements',
+  );
 
   print('Day/Night Cycle & Atmospheric Renderer test passed cleanly!');
 }

@@ -21,12 +21,47 @@ void main() {
 
   final camPos = Vec3(0, 0, 0);
 
-  final p1 = CandidateLight(id: 1, type: 'point', position: Vec3(1, 0, 0), color: Vec3(1, 1, 1), intensity: 1.0, radius: 5.0);
-  final p2 = CandidateLight(id: 2, type: 'point', position: Vec3(2, 0, 0), color: Vec3(1, 1, 1), intensity: 1.0, radius: 5.0);
-  final p3 = CandidateLight(id: 3, type: 'point', position: Vec3(10, 0, 0), color: Vec3(1, 1, 1), intensity: 1.0, radius: 5.0);
+  final p1 = CandidateLight(
+    id: 1,
+    type: 'point',
+    position: Vec3(1, 0, 0),
+    color: Vec3(1, 1, 1),
+    intensity: 1.0,
+    radius: 5.0,
+  );
+  final p2 = CandidateLight(
+    id: 2,
+    type: 'point',
+    position: Vec3(2, 0, 0),
+    color: Vec3(1, 1, 1),
+    intensity: 1.0,
+    radius: 5.0,
+  );
+  final p3 = CandidateLight(
+    id: 3,
+    type: 'point',
+    position: Vec3(10, 0, 0),
+    color: Vec3(1, 1, 1),
+    intensity: 1.0,
+    radius: 5.0,
+  );
 
-  final s1 = CandidateLight(id: 10, type: 'spot', position: Vec3(0.5, 0, 0), color: Vec3(1, 1, 1), intensity: 1.0, radius: 5.0);
-  final s2 = CandidateLight(id: 11, type: 'spot', position: Vec3(5.0, 0, 0), color: Vec3(1, 1, 1), intensity: 1.0, radius: 5.0);
+  final s1 = CandidateLight(
+    id: 10,
+    type: 'spot',
+    position: Vec3(0.5, 0, 0),
+    color: Vec3(1, 1, 1),
+    intensity: 1.0,
+    radius: 5.0,
+  );
+  final s2 = CandidateLight(
+    id: 11,
+    type: 'spot',
+    position: Vec3(5.0, 0, 0),
+    color: Vec3(1, 1, 1),
+    intensity: 1.0,
+    radius: 5.0,
+  );
 
   // 1. Initial Ranking
   final res1 = controller.rankLights(
@@ -45,17 +80,59 @@ void main() {
   check(res1.rejectedSpots.contains(s2), 's2 rejected');
 
   check(res1.rejectionReasons.containsKey(3), 'p3 carries rejection reason');
-  check(res1.rejectionReasons[3]!.contains('Exceeded maximum capacity'), 'p3 capacity rejection message');
+  check(
+    res1.rejectionReasons[3]!.contains('Exceeded maximum capacity'),
+    'p3 capacity rejection message',
+  );
 
   // 2. Test Hysteresis (p1 stays active even if a slightly closer new candidate appears, unless +15% score exceeded)
-  final pNew = CandidateLight(id: 4, type: 'point', position: Vec3(1.8, 0, 0), color: Vec3(1, 1, 1), intensity: 1.05, radius: 5.0);
+  final pNew = CandidateLight(
+    id: 4,
+    type: 'point',
+    position: Vec3(1.8, 0, 0),
+    color: Vec3(1, 1, 1),
+    intensity: 1.05,
+    radius: 5.0,
+  );
   final res2 = controller.rankLights(
     cameraPosition: camPos,
     points: [p1, p2, pNew],
     spots: [s1, s2],
   );
 
-  check(res2.acceptedPoints.contains(p1), 'p1 remains active due to 15% hysteresis');
+  check(
+    res2.acceptedPoints.contains(p1),
+    'p1 remains active due to 15% hysteresis',
+  );
+
+  // Equal-score candidates use stable authored IDs, never input-list order.
+  final ties = LightRankingController(maxPointLights: 1, maxSpotLights: 0);
+  final tieResult = ties.rankLights(
+    cameraPosition: camPos,
+    points: [
+      CandidateLight(
+        id: 8,
+        type: 'point',
+        position: Vec3(1, 0, 0),
+        color: Vec3(1, 1, 1),
+        intensity: 1,
+        radius: 1,
+      ),
+      CandidateLight(
+        id: 7,
+        type: 'point',
+        position: Vec3(-1, 0, 0),
+        color: Vec3(1, 1, 1),
+        intensity: 1,
+        radius: 1,
+      ),
+    ],
+    spots: const [],
+  );
+  check(
+    tieResult.acceptedPoints.single.id == 7,
+    'equal-score tie uses stable ID',
+  );
 
   print('R-00: Light ranking controller test passed cleanly!');
 }

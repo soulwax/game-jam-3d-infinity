@@ -55,17 +55,28 @@ class GameplayDialogueCoordinator {
     if (fullText.isNotEmpty && textRevealProgress < 1.0) {
       final totalChars = fullText.length;
       final addedChars = charsPerSecond * dt;
-      textRevealProgress = math.min(1.0, textRevealProgress + (addedChars / totalChars));
+      textRevealProgress = math.min(
+        1.0,
+        textRevealProgress + (addedChars / totalChars),
+      );
     }
   }
 
   /// Handles keyboard shortcuts (Digit1..Digit9, Numpad1..Numpad9, or Space for silence).
   /// Returns true if the key was consumed as a choice selection.
   bool handleKey(String code) {
-    if (choices.isEmpty) return false;
+    if (choices.isEmpty) {
+      if (code == 'Enter' || code == 'NumpadEnter' || code == 'Space') {
+        advanceDialogue();
+        return true;
+      }
+      return false;
+    }
 
     if (code == 'Space') {
-      final silenceIndex = choices.indexWhere((c) => c.toLowerCase().contains('silent') || c.contains('...'));
+      final silenceIndex = choices.indexWhere(
+        (c) => c.toLowerCase().contains('silent') || c.contains('...'),
+      );
       if (silenceIndex != -1) {
         selectChoice(silenceIndex);
         return true;
@@ -99,8 +110,23 @@ class GameplayDialogueCoordinator {
     onChoiceSelected?.call(index, choices[index]);
   }
 
+  /// Advances a non-choice line without coupling input to the DOM mirror.
+  /// The first activation completes the typewriter; the next advances the
+  /// visitor director to its next authored line.
+  void advanceDialogue() {
+    if (textRevealProgress < 1.0) {
+      textRevealProgress = 1.0;
+      return;
+    }
+    onDialogueAdvanced?.call();
+  }
+
   /// Tests mouse position against choice hit boxes on the canvas.
-  void handleMouseMove(double mouseX, double mouseY, List<CanvasHitBox> hitBoxes) {
+  void handleMouseMove(
+    double mouseX,
+    double mouseY,
+    List<CanvasHitBox> hitBoxes,
+  ) {
     hoveredIndex = null;
     for (final box in hitBoxes) {
       if (box.contains(mouseX, mouseY)) {
@@ -111,9 +137,17 @@ class GameplayDialogueCoordinator {
   }
 
   /// Handles canvas click on choice hit boxes.
-  bool handleMouseClick(double mouseX, double mouseY, List<CanvasHitBox> hitBoxes) {
+  bool handleMouseClick(
+    double mouseX,
+    double mouseY,
+    List<CanvasHitBox> hitBoxes,
+  ) {
     for (final box in hitBoxes) {
       if (box.contains(mouseX, mouseY)) {
+        if (box.id == 'dialogue-continue') {
+          advanceDialogue();
+          return true;
+        }
         selectChoice(box.index);
         return true;
       }

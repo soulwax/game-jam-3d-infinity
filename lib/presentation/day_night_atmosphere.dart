@@ -2,13 +2,13 @@ import 'dart:math' as math;
 
 /// Time of day phase classification for rendering and visual presentation.
 enum TimeOfDayPhase {
-  dawn,       // 05:00 - 07:00 (Warm golden/rose horizon, cool zenith)
-  morning,    // 07:00 - 11:00 (Warming daylight)
-  noon,       // 11:00 - 15:00 (Max daylight height, neutral white)
-  afternoon,  // 15:00 - 17:00 (Softening daylight)
-  dusk,       // 17:00 - 19:00 (Crimson/amber horizon, long warm shadows)
-  twilight,   // 19:00 - 21:00 (Deep violet/indigo transition)
-  night,      // 21:00 - 05:00 (Cool moonlight, practical gas mantles dominate)
+  dawn, // civil twilight around 05:30 - 08:00
+  morning, // warming daylight after the 07:00 horizon
+  noon, // broad solar-noon plateau around 13:00
+  afternoon, // softening daylight before the low sun
+  dusk, // 18:00 - 20:30, warm horizon and long shadows
+  twilight, // 20:30 - 22:00, deep violet/indigo transition
+  night, // cool moonlight; practical gas mantles dominate
 }
 
 /// Linear RGB color triple (components in [0, 1]).
@@ -54,22 +54,26 @@ class DayNightAtmosphereParams {
   });
 
   Map<String, dynamic> toJson() => {
-        'phase': phase.name,
-        'hour': hour,
-        'sunElevationDegrees': sunElevationDegrees,
-        'sunAzimuthDegrees': sunAzimuthDegrees,
-        'sunDirection': [sunDirection.x, sunDirection.y, sunDirection.z],
-        'moonDirection': [moonDirection.x, moonDirection.y, moonDirection.z],
-        'sunColor': [sunColor.r, sunColor.g, sunColor.b],
-        'moonColor': [moonColor.r, moonColor.g, moonColor.b],
-        'skyAmbientColor': [skyAmbientColor.r, skyAmbientColor.g, skyAmbientColor.b],
-        'horizonColor': [horizonColor.r, horizonColor.g, horizonColor.b],
-        'fogColor': [fogColor.r, fogColor.g, fogColor.b],
-        'directionalIntensity': directionalIntensity,
-        'ambientIntensity': ambientIntensity,
-        'windowLightLeakFactor': windowLightLeakFactor,
-        'windowSurfaceWetness': windowSurfaceWetness,
-      };
+    'phase': phase.name,
+    'hour': hour,
+    'sunElevationDegrees': sunElevationDegrees,
+    'sunAzimuthDegrees': sunAzimuthDegrees,
+    'sunDirection': [sunDirection.x, sunDirection.y, sunDirection.z],
+    'moonDirection': [moonDirection.x, moonDirection.y, moonDirection.z],
+    'sunColor': [sunColor.r, sunColor.g, sunColor.b],
+    'moonColor': [moonColor.r, moonColor.g, moonColor.b],
+    'skyAmbientColor': [
+      skyAmbientColor.r,
+      skyAmbientColor.g,
+      skyAmbientColor.b,
+    ],
+    'horizonColor': [horizonColor.r, horizonColor.g, horizonColor.b],
+    'fogColor': [fogColor.r, fogColor.g, fogColor.b],
+    'directionalIntensity': directionalIntensity,
+    'ambientIntensity': ambientIntensity,
+    'windowLightLeakFactor': windowLightLeakFactor,
+    'windowSurfaceWetness': windowSurfaceWetness,
+  };
 }
 
 /// Day/Night & Atmosphere Rendering Engine.
@@ -99,23 +103,31 @@ class DayNightAtmosphereEngine {
     final rain = rainIntensity.clamp(0.0, 1.0);
 
     // Calculate dynamic sunrise and sunset times based on seasonal daylightHours
-    final halfDaylight = (daylightHours.clamp(6.0, 16.0)) / 2.0;
-    final sunriseHour = 12.0 - halfDaylight;
-    final sunsetHour = 12.0 + halfDaylight;
+    // Keep solar noon after the player's 07:00 start. Shorter authored days
+    // move sunrise later and sunset earlier around the same local noon.
+    const solarNoonHour = 13.0;
+    final halfDaylight = daylightHours.clamp(6.0, 16.0) / 2.0;
+    final sunriseHour = solarNoonHour - halfDaylight;
+    final sunsetHour = solarNoonHour + halfDaylight;
 
     // 1. Determine Phase based on dynamic sunrise/sunset
     TimeOfDayPhase phase;
-    if (normHour >= (sunriseHour - 1.0) && normHour < (sunriseHour + 1.0)) {
+    if (normHour >= (sunriseHour - 1.5) && normHour < (sunriseHour + 1.0)) {
       phase = TimeOfDayPhase.dawn;
-    } else if (normHour >= (sunriseHour + 1.0) && normHour < 11.0) {
+    } else if (normHour >= (sunriseHour + 1.0) &&
+        normHour < solarNoonHour - 1.0) {
       phase = TimeOfDayPhase.morning;
-    } else if (normHour >= 11.0 && normHour < 14.0) {
+    } else if (normHour >= solarNoonHour - 1.0 &&
+        normHour < solarNoonHour + 1.0) {
       phase = TimeOfDayPhase.noon;
-    } else if (normHour >= 14.0 && normHour < (sunsetHour - 1.0)) {
+    } else if (normHour >= solarNoonHour + 1.0 &&
+        normHour < (sunsetHour - 1.0)) {
       phase = TimeOfDayPhase.afternoon;
-    } else if (normHour >= (sunsetHour - 1.0) && normHour < (sunsetHour + 1.0)) {
+    } else if (normHour >= (sunsetHour - 1.0) &&
+        normHour < (sunsetHour + 1.5)) {
       phase = TimeOfDayPhase.dusk;
-    } else if (normHour >= (sunsetHour + 1.0) && normHour < 21.0) {
+    } else if (normHour >= (sunsetHour + 1.5) &&
+        normHour < (sunsetHour + 3.0)) {
       phase = TimeOfDayPhase.twilight;
     } else {
       phase = TimeOfDayPhase.night;
@@ -125,7 +137,8 @@ class DayNightAtmosphereEngine {
     // Sun rises at sunriseHour (el=0°), peaks at 12:00 (el=65°), sets at sunsetHour (el=0°)
     double elevationDeg;
     if (normHour >= sunriseHour && normHour <= sunsetHour) {
-      final sunProgress = (normHour - sunriseHour) / (sunsetHour - sunriseHour); // 0..1
+      final sunProgress =
+          (normHour - sunriseHour) / (sunsetHour - sunriseHour); // 0..1
       elevationDeg = math.sin(math.pi * sunProgress) * 65.0;
     } else {
       elevationDeg = -18.0; // Below horizon at night
@@ -172,33 +185,42 @@ class DayNightAtmosphereEngine {
     double dirIntensity;
     double ambIntensity;
 
-    if (normHour >= 5.0 && normHour < 7.0) {
-      final t = (normHour - 5.0) / 2.0;
+    if (normHour >= sunriseHour - 1.5 && normHour < sunriseHour) {
+      final t = (normHour - (sunriseHour - 1.5)) / 1.5;
       sunColor = _lerpColor(dawnSun, daySun, t);
       skyAmbient = _lerpColor(dawnSky, daySky, t);
       horizon = _lerpColor(dawnHorizon, dayHorizon, t);
       dirIntensity = 0.3 + 0.5 * t;
       ambIntensity = 0.25 + 0.2 * t;
-    } else if (normHour >= 7.0 && normHour < 17.0) {
+    } else if (normHour >= sunriseHour && normHour < solarNoonHour + 1.0) {
       sunColor = daySun;
       skyAmbient = daySky;
       horizon = dayHorizon;
       dirIntensity = 0.85;
       ambIntensity = 0.45;
-    } else if (normHour >= 17.0 && normHour < 19.0) {
-      final t = (normHour - 17.0) / 2.0;
+    } else if (normHour >= solarNoonHour + 1.0 && normHour < sunsetHour) {
+      final t =
+          (normHour - (solarNoonHour + 1.0)) /
+          (sunsetHour - (solarNoonHour + 1.0));
       sunColor = _lerpColor(daySun, duskSun, t);
       skyAmbient = _lerpColor(daySky, duskSky, t);
       horizon = _lerpColor(dayHorizon, duskHorizon, t);
-      dirIntensity = 0.85 * (1.0 - t * 0.6);
-      ambIntensity = 0.45 * (1.0 - t * 0.5);
-    } else if (normHour >= 19.0 && normHour < 21.0) {
-      final t = (normHour - 19.0) / 2.0;
+      dirIntensity = 0.85 * (1.0 - t * 0.35);
+      ambIntensity = 0.45 * (1.0 - t * 0.25);
+    } else if (normHour >= sunsetHour && normHour < sunsetHour + 1.5) {
+      final t = (normHour - sunsetHour) / 1.5;
       sunColor = _lerpColor(duskSun, nightMoon, t);
       skyAmbient = _lerpColor(duskSky, nightSky, t);
       horizon = _lerpColor(duskHorizon, nightHorizon, t);
-      dirIntensity = 0.34 * (1.0 - t * 0.6);
-      ambIntensity = 0.22 * (1.0 - t * 0.4);
+      dirIntensity = 0.55 * (1.0 - t * 0.8);
+      ambIntensity = 0.34 * (1.0 - t * 0.65);
+    } else if (normHour >= sunsetHour + 1.5 && normHour < sunsetHour + 3.0) {
+      final t = (normHour - (sunsetHour + 1.5)) / 1.5;
+      sunColor = _lerpColor(nightMoon, nightMoon, t);
+      skyAmbient = _lerpColor(nightSky, nightSky, t);
+      horizon = _lerpColor(nightHorizon, nightHorizon, t);
+      dirIntensity = 0.11 * (1.0 - t * 0.25);
+      ambIntensity = 0.16 * (1.0 - t * 0.15);
     } else {
       sunColor = nightMoon;
       skyAmbient = nightSky;

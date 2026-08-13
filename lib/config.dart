@@ -116,14 +116,18 @@ const double depthOfFieldStrength = 1.0;
 const bool enableFrustumCull = false;
 const bool enableDrawSorting = true;
 
-const double dayLengthSeconds = 480.0;
-const int sunriseHour = 6;
-const int sunsetHour = 18;
-const int mantelLightHour = 18;
-const int mantelExtinguishHour = 6;
+// One real minute advances exactly fifteen in-game minutes. A full in-game
+// day therefore takes 96 real minutes, leaving enough room for slow domestic
+// actions without making the clock feel frozen.
+const double gameMinutesPerRealMinute = 15.0;
+const double dayLengthSeconds = (24.0 * 60.0 / gameMinutesPerRealMinute) * 60.0;
+const int sunriseHour = 7;
+const int sunsetHour = 19;
+const int mantelLightHour = 19;
+const int mantelExtinguishHour = 7;
 
 const int dailyHourBudget = 16;
-const int initialDayHour = 10;
+const int initialDayHour = 7;
 const int dailyGasAllowance = 6;
 const int startingRationCoupons = 6;
 const List<int> rationRunDays = [2, 5, 9, 12, 16, 19];

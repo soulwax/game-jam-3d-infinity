@@ -712,14 +712,14 @@ button:focus-visible,
 
 .prompt,
 .broadcast {
+  /* Screen-reader mirrors; the visible prompt/broadcast are renderer-owned. */
   position: absolute;
-  left: 50%;
-  transform: translateX(-50%);
-  opacity: 0;
-  transition-property: opacity;
-  transition-timing-function: ease;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
   pointer-events: none;
-  z-index: 10;
 }
 
 .ambient-notice {
@@ -812,6 +812,7 @@ button:focus-visible,
 }
 
 #crosshair {
+  display: none;
   position: absolute;
   top: 50%;
   left: 50%;
@@ -855,26 +856,18 @@ button:focus-visible,
 }
 
 .door {
-  display: none;
+  display: block;
   position: absolute;
-  left: 50%;
-  bottom: 20%;
-  transform: translateX(-50%);
-  flex-direction: column;
-  gap: 0.5rem;
-  background:
-    linear-gradient(180deg, rgba(28, 24, 20, 0.96), rgba(14, 12, 10, 0.98));
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--brass);
-  border-radius: 6px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7), inset 0 1px 0 rgba(255, 224, 161, 0.15), 0 0 24px rgba(183, 137, 76, 0.15);
-  padding: 1.25rem 1.5rem;
-  z-index: 15;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  pointer-events: none;
 }
 
 .door.visible {
-  display: flex;
+  display: block;
 }
 
 .door-speaker {
