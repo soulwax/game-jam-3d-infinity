@@ -113,6 +113,7 @@ late BackendSelection _backendSelection;
 late RendererBackend _presentationBackend;
 _PixeldartWebRuntime? _pixeldartRuntime;
 late WeatherSchedule _weatherSchedule;
+Future<void>? _graphicsProfileTransaction;
 
 final class _RoomSurfaceSpec {
   final String surface;
@@ -258,18 +259,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _world = _renderer.createWorld();
     _configuredWidth = width;
     _configuredHeight = height;
-    _lightRanking = LightRankingController(
-      maxPointLights: switch (_profile.kind) {
-        px.QualityProfileKind.high => 7,
-        px.QualityProfileKind.standard => 3,
-        _ => 0,
-      },
-      maxSpotLights: switch (_profile.kind) {
-        px.QualityProfileKind.high => 2,
-        px.QualityProfileKind.standard => 1,
-        _ => 0,
-      },
-    );
+    _configureLightRanking();
     capabilityMatrix = PixeldartCapabilityMatrix.negotiate(
       isWebGL2Available: true,
       float16Supported: true,
@@ -346,12 +336,64 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   px.RendererConfiguration _configurationForProfile(
     px.QualityProfile profile,
     int surfaceWidth,
-    int surfaceHeight,
-  ) => _profilePolicy.configuration(
+    int surfaceHeight, {
+    String renderScale = 'auto',
+  }) => _profilePolicy.configuration(
     profile: profile,
     surfaceWidth: surfaceWidth,
     surfaceHeight: surfaceHeight,
+    renderScale: renderScale,
   );
+
+  void _configureLightRanking() {
+    _lightRanking = LightRankingController(
+      maxPointLights: switch (_profile.kind) {
+        px.QualityProfileKind.high => 7,
+        px.QualityProfileKind.standard => 3,
+        _ => 0,
+      },
+      maxSpotLights: switch (_profile.kind) {
+        px.QualityProfileKind.high => 2,
+        px.QualityProfileKind.standard => 1,
+        _ => 0,
+      },
+    );
+  }
+
+  /// Applies a graphics profile as one renderer-owned configuration
+  /// transaction. Pixeldart keeps the previous valid graph if allocation or
+  /// shader preparation fails, so settings never leave a half-configured world.
+  Future<void> applyGraphicsProfile(GraphicsSettingsProfile settings) async {
+    if (!_initialized) return;
+    final requestedProfile = switch (settings.preset) {
+      GraphicsPreset.high => px.QualityProfile.clean,
+      GraphicsPreset.safe => px.QualityProfile.safe,
+      GraphicsPreset.standard => px.QualityProfile.minimal,
+      GraphicsPreset.custom => _profile,
+    };
+    final previousProfile = _profile;
+    final configuration = _configurationForProfile(
+      requestedProfile,
+      width,
+      height,
+      renderScale: settings.renderScale,
+    );
+    try {
+      await _renderer.configure(configuration);
+      _profile = requestedProfile;
+      _configureLightRanking();
+      _configuredWidth = width;
+      _configuredHeight = height;
+      _profileFallbackReason = null;
+      _publishRendererDiagnostics();
+    } catch (error) {
+      _profile = previousProfile;
+      _profileFallbackReason =
+          'graphics transaction rejected; previous graph retained: $error';
+      _publishRendererDiagnostics();
+      rethrow;
+    }
+  }
 
   /// Installs the retained room shells once. Simulation-owned room facts are
   /// read here, while the Pixeldart world owns only renderer handles.
@@ -453,6 +495,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     );
     for (final room in house.rooms) {
       for (final window in room.windows) {
+        if (sparseTestChambers) continue;
         _addDecoration(
           room.id,
           _windowMesh(room, window),
@@ -546,6 +589,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _inventoryDescriptors.clear();
     _inventoryMeshes.clear();
     for (final placement in _inventoryPlacements) {
+      final assetKey = placement.assetId.toLowerCase();
+      if (sparseTestChambers && assetKey.contains('stair')) {
+        continue;
+      }
+      if (sparseTestChambers &&
+          placement.visibilityLayer != 'story' &&
+          placement.visibilityLayer != 'architecture') {
+        continue;
+      }
       final room = _houseForInventory?.byId(placement.roomId);
       if (room == null) continue;
       final asset = inventory.assetFor(placement.assetId);
@@ -2028,17 +2080,21 @@ void _configureGraphicsSettingsPanel() {
       final negotiation = negotiateGraphics(requested, _graphicsCapabilities());
       _graphicsSettingsStore = GraphicsSettingsStore(
         requested: requested,
-        effective: negotiation.effective,
+        effective: _graphicsSettingsStore.effective,
       );
-      _persistGraphicsSettings();
       _graphicsSettingsPanel.setState(
         requested,
-        negotiation.effective,
+        _graphicsSettingsStore.effective,
         downgradeReasons: negotiation.downgradeReasons,
       );
       _canvas.setAttribute(
         'data-graphics-fallback',
         negotiation.downgradeReasons.join('|'),
+      );
+      _graphicsProfileTransaction = _commitGraphicsProfile(
+        requested,
+        negotiation,
+        _graphicsProfileTransaction,
       );
     }
     ..onBack = () {
@@ -2047,6 +2103,42 @@ void _configureGraphicsSettingsPanel() {
     ..onClose = () {
       _returnFromPausePage(_graphicsSettingsPanel);
     };
+}
+
+Future<void> _commitGraphicsProfile(
+  GraphicsSettingsProfile requested,
+  GraphicsNegotiation negotiation,
+  Future<void>? previous,
+) async {
+  if (previous != null) await previous.catchError((_) {});
+  final previousEffective = _graphicsSettingsStore.effective;
+  final runtime = _pixeldartRuntime;
+  try {
+    if (runtime != null) {
+      await runtime.applyGraphicsProfile(negotiation.effective);
+    }
+    _graphicsSettingsStore = GraphicsSettingsStore(
+      requested: requested,
+      effective: negotiation.effective,
+    );
+    _graphicsSettingsPanel.setState(
+      requested,
+      negotiation.effective,
+      downgradeReasons: negotiation.downgradeReasons,
+    );
+    _persistGraphicsSettings();
+  } catch (error) {
+    _graphicsSettingsStore = GraphicsSettingsStore(
+      requested: previousEffective,
+      effective: previousEffective,
+    );
+    _graphicsSettingsPanel.setState(
+      previousEffective,
+      previousEffective,
+      downgradeReasons: ['renderer transaction rejected: $error'],
+    );
+    _persistGraphicsSettings();
+  }
 }
 
 void _loadGraphicsSettings() {
@@ -2894,12 +2986,8 @@ bool _handleRenderedDialogueClick(web.MouseEvent event) {
   final rectW = rect.width.toDouble();
   final rectH = rect.height.toDouble();
   if (rectW <= 0 || rectH <= 0) return null;
-  final x =
-      (event.clientX.toDouble() - rect.left.toDouble()) *
-      (_canvas.width / rectW);
-  final y =
-      (event.clientY.toDouble() - rect.top.toDouble()) *
-      (_canvas.height / rectH);
+  final x = event.clientX.toDouble() - rect.left.toDouble();
+  final y = event.clientY.toDouble() - rect.top.toDouble();
   return (x, y);
 }
 
@@ -3986,8 +4074,10 @@ void _renderCanvasGui(double dt, FocusSnapshot focus) {
   final gui = _rendererGui;
   if (gui == null) return;
 
-  final screenW = _canvas.width.toDouble();
-  final screenH = _canvas.height.toDouble();
+  final canvasRect = _canvas.getBoundingClientRect();
+  final screenW = canvasRect.width.toDouble();
+  final screenH = canvasRect.height.toDouble();
+  if (screenW <= 0 || screenH <= 0) return;
   _dialogueCoordinator.update(dt);
   _guiFlowCoordinator.update(dt);
   final hints = _guiFlowCoordinator.getActiveActionHints(

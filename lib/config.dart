@@ -120,6 +120,10 @@ const bool enableDrawSorting = true;
 // day therefore takes 96 real minutes, leaving enough room for slow domestic
 // actions without making the clock feel frozen.
 const double gameMinutesPerRealMinute = 15.0;
+
+/// Sparse test-chamber presentation: retain architecture and authored story
+/// anchors while suppressing decorative room dressing in the renderer.
+const bool sparseTestChambers = true;
 const double dayLengthSeconds = (24.0 * 60.0 / gameMinutesPerRealMinute) * 60.0;
 const int sunriseHour = 7;
 const int sunsetHour = 19;

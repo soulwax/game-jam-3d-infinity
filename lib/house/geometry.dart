@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:typed_data';
 
+import '../config.dart';
 import '../engine/math3.dart';
 import '../engine/mesh.dart';
 import 'house.dart';
@@ -50,7 +51,7 @@ RoomGeometry buildRoomGeometry(House house, Room room) {
     uScale: s.x / floorMaterial.uvMetres,
     vScale: s.z / floorMaterial.uvMetres,
   );
-  _addFloorFinish(floor, room, s);
+  if (!sparseTestChambers) _addFloorFinish(floor, room, s);
   ceiling.quad(
     Vec3(o.x, o.y + s.y, o.z),
     Vec3(o.x + s.x, o.y + s.y, o.z),
@@ -60,7 +61,7 @@ RoomGeometry buildRoomGeometry(House house, Room room) {
     uScale: s.x / ceilingMaterial.uvMetres,
     vScale: s.z / ceilingMaterial.uvMetres,
   );
-  _addCeilingDetails(ceiling, room, s);
+  if (!sparseTestChambers) _addCeilingDetails(ceiling, room, s);
   for (final facing in Facing.values) {
     _addWall(walls, house, room, s, facing);
   }
@@ -68,8 +69,10 @@ RoomGeometry buildRoomGeometry(House house, Room room) {
     if (portal.doorKit == null || portal.stair) continue;
     _addDoorFrame(doors, room, s, portal);
   }
-  _addCeilingOrnament(walls, room, s);
-  _addRoomFixtures(walls, house, room, s);
+  if (!sparseTestChambers) {
+    _addCeilingOrnament(walls, room, s);
+    _addRoomFixtures(walls, house, room, s);
+  }
   return RoomGeometry(
     floor: floor.build(),
     ceiling: ceiling.build(),
@@ -754,29 +757,88 @@ void _addTestRoomPrimitives(
       // Rail 1: Dielectric rough-to-smooth spheres
       for (var i = 0; i < 5; i++) {
         final rx = railStartX + i * 0.45;
-        _cylinder(builder, Vec3(rx, y, railZ1), 0.08, 0.45, darkCharcoal, segments: 8);
+        _cylinder(
+          builder,
+          Vec3(rx, y, railZ1),
+          0.08,
+          0.45,
+          darkCharcoal,
+          segments: 8,
+        );
         final tintShade = 0x50 + (i * 45);
         final col = (tintShade << 16) | (tintShade << 8) | tintShade;
-        _sphere(builder, Vec3(rx, y + 0.60, railZ1), 0.12, col, latBands: 6, longBands: 10);
+        _sphere(
+          builder,
+          Vec3(rx, y + 0.60, railZ1),
+          0.12,
+          col,
+          latBands: 6,
+          longBands: 10,
+        );
       }
       // Rail 2: Conductor metallic spheres (Gold to Copper to Chrome)
       final metalColors = [0xFFD700, 0xE6A15C, 0xC0C0C0, 0x90CAF9, 0xE0E0EE];
       for (var i = 0; i < 5; i++) {
         final rx = railStartX + i * 0.45;
-        _cylinder(builder, Vec3(rx, y, railZ2), 0.08, 0.45, mediumSlate, segments: 8);
-        _sphere(builder, Vec3(rx, y + 0.60, railZ2), 0.12, metalColors[i], latBands: 6, longBands: 10);
+        _cylinder(
+          builder,
+          Vec3(rx, y, railZ2),
+          0.08,
+          0.45,
+          mediumSlate,
+          segments: 8,
+        );
+        _sphere(
+          builder,
+          Vec3(rx, y + 0.60, railZ2),
+          0.12,
+          metalColors[i],
+          latBands: 6,
+          longBands: 10,
+        );
       }
 
       // 3. Shadow Penumbra Gnomons & Contact Ground Markers
       final gnomonX = x + size.x * 0.72;
       final gnomonZ = z + size.z * 0.22;
       // Checker contact pad
-      _box(builder, Vec3(gnomonX - 0.6, y, gnomonZ - 0.6), Vec3(gnomonX + 0.6, y + 0.02, gnomonZ + 0.6), 0x37474F);
-      _box(builder, Vec3(gnomonX - 0.4, y + 0.02, gnomonZ - 0.4), Vec3(gnomonX + 0.4, y + 0.03, gnomonZ + 0.4), 0xB0BEC5);
+      _box(
+        builder,
+        Vec3(gnomonX - 0.6, y, gnomonZ - 0.6),
+        Vec3(gnomonX + 0.6, y + 0.02, gnomonZ + 0.6),
+        0x37474F,
+      );
+      _box(
+        builder,
+        Vec3(gnomonX - 0.4, y + 0.02, gnomonZ - 0.4),
+        Vec3(gnomonX + 0.4, y + 0.03, gnomonZ + 0.4),
+        0xB0BEC5,
+      );
       // Three shadow-casting rods of varying thicknesses (thin 2cm, med 6cm, thick 12cm)
-      _cylinder(builder, Vec3(gnomonX - 0.3, y, gnomonZ), 0.02, 1.2, darkCharcoal, segments: 6);
-      _cylinder(builder, Vec3(gnomonX, y, gnomonZ), 0.05, 1.2, mediumSlate, segments: 8);
-      _cylinder(builder, Vec3(gnomonX + 0.3, y, gnomonZ), 0.10, 1.2, darkCharcoal, segments: 10);
+      _cylinder(
+        builder,
+        Vec3(gnomonX - 0.3, y, gnomonZ),
+        0.02,
+        1.2,
+        darkCharcoal,
+        segments: 6,
+      );
+      _cylinder(
+        builder,
+        Vec3(gnomonX, y, gnomonZ),
+        0.05,
+        1.2,
+        mediumSlate,
+        segments: 8,
+      );
+      _cylinder(
+        builder,
+        Vec3(gnomonX + 0.3, y, gnomonZ),
+        0.10,
+        1.2,
+        darkCharcoal,
+        segments: 10,
+      );
 
       // 4. Step Climbing Obstacle Gauge (5 risers: 5cm, 10cm, 15cm, 20cm, 30cm)
       final stepGaugeX = x + size.x - 1.8;
@@ -797,14 +859,44 @@ void _addTestRoomPrimitives(
       final archX = x + size.x * 0.5;
       final archZ = z + size.z - 1.2;
       // Left/Right vertical posts
-      _box(builder, Vec3(archX - 0.8, y, archZ - 0.1), Vec3(archX - 0.65, y + 2.5, archZ + 0.1), darkCharcoal);
-      _box(builder, Vec3(archX + 0.65, y, archZ - 0.1), Vec3(archX + 0.8, y + 2.5, archZ + 0.1), darkCharcoal);
+      _box(
+        builder,
+        Vec3(archX - 0.8, y, archZ - 0.1),
+        Vec3(archX - 0.65, y + 2.5, archZ + 0.1),
+        darkCharcoal,
+      );
+      _box(
+        builder,
+        Vec3(archX + 0.65, y, archZ - 0.1),
+        Vec3(archX + 0.8, y + 2.5, archZ + 0.1),
+        darkCharcoal,
+      );
       // Top lintel
-      _box(builder, Vec3(archX - 0.85, y + 2.4, archZ - 0.12), Vec3(archX + 0.85, y + 2.55, archZ + 0.12), crimsonColor);
+      _box(
+        builder,
+        Vec3(archX - 0.85, y + 2.4, archZ - 0.12),
+        Vec3(archX + 0.85, y + 2.55, archZ + 0.12),
+        crimsonColor,
+      );
       // Height marker bands (1.0m, 1.7m eye-level, 2.0m)
-      _box(builder, Vec3(archX - 0.82, y + 1.0, archZ - 0.11), Vec3(archX - 0.63, y + 1.04, archZ + 0.11), goldColor);
-      _box(builder, Vec3(archX - 0.82, y + 1.68, archZ - 0.11), Vec3(archX - 0.63, y + 1.72, archZ + 0.11), emeraldColor);
-      _box(builder, Vec3(archX - 0.82, y + 2.0, archZ - 0.11), Vec3(archX - 0.63, y + 2.04, archZ + 0.11), goldColor);
+      _box(
+        builder,
+        Vec3(archX - 0.82, y + 1.0, archZ - 0.11),
+        Vec3(archX - 0.63, y + 1.04, archZ + 0.11),
+        goldColor,
+      );
+      _box(
+        builder,
+        Vec3(archX - 0.82, y + 1.68, archZ - 0.11),
+        Vec3(archX - 0.63, y + 1.72, archZ + 0.11),
+        emeraldColor,
+      );
+      _box(
+        builder,
+        Vec3(archX - 0.82, y + 2.0, archZ - 0.11),
+        Vec3(archX - 0.63, y + 2.04, archZ + 0.11),
+        goldColor,
+      );
 
       // 6. Chamfered Normal Map Test Cube & Slope Ramps
       final stackX = x + 1.2;
@@ -883,8 +975,21 @@ void _addTestRoomPrimitives(
         glow: true,
       );
       // Lighting calibration stand
-      _cylinder(builder, Vec3(x + 0.8, y, z + 2.4), 0.15, 0.9, darkCharcoal, segments: 8);
-      _sphere(builder, Vec3(x + 0.8, y + 1.05, z + 2.4), 0.15, amberColor, glow: true);
+      _cylinder(
+        builder,
+        Vec3(x + 0.8, y, z + 2.4),
+        0.15,
+        0.9,
+        darkCharcoal,
+        segments: 8,
+      );
+      _sphere(
+        builder,
+        Vec3(x + 0.8, y + 1.05, z + 2.4),
+        0.15,
+        amberColor,
+        glow: true,
+      );
 
     case 'kitchen':
       // Secondary proving bench with dual test spheres (Cobalt & Emerald)
@@ -1968,10 +2073,26 @@ void _cylinder(
     final cos1 = math.cos(a1);
     final sin1 = math.sin(a1);
 
-    final b0 = Vec3(baseCenter.x + cos0 * radius, baseCenter.y, baseCenter.z + sin0 * radius);
-    final b1 = Vec3(baseCenter.x + cos1 * radius, baseCenter.y, baseCenter.z + sin1 * radius);
-    final t0 = Vec3(topCenter.x + cos0 * radius, topCenter.y, topCenter.z + sin0 * radius);
-    final t1 = Vec3(topCenter.x + cos1 * radius, topCenter.y, topCenter.z + sin1 * radius);
+    final b0 = Vec3(
+      baseCenter.x + cos0 * radius,
+      baseCenter.y,
+      baseCenter.z + sin0 * radius,
+    );
+    final b1 = Vec3(
+      baseCenter.x + cos1 * radius,
+      baseCenter.y,
+      baseCenter.z + sin1 * radius,
+    );
+    final t0 = Vec3(
+      topCenter.x + cos0 * radius,
+      topCenter.y,
+      topCenter.z + sin0 * radius,
+    );
+    final t1 = Vec3(
+      topCenter.x + cos1 * radius,
+      topCenter.y,
+      topCenter.z + sin1 * radius,
+    );
 
     // Wall quad
     builder.quad(b0, b1, t1, t0, color, glow: glow);

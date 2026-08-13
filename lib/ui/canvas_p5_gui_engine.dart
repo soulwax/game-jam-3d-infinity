@@ -494,7 +494,9 @@ class CanvasP5GuiEngine {
       for (int i = _choiceScrollOffset; i < visibleEnd; i++) {
         final choiceText = state.choices[i];
         final numKey = i + 1;
-        final choiceY = choicesStartY + i * spacing + choiceStripH * 0.5;
+        final visibleIndex = i - _choiceScrollOffset;
+        final choiceY =
+            choicesStartY + visibleIndex * spacing + choiceStripH * 0.5;
         final isHovered = state.hoveredIndex == i;
         final isSelected = state.selectedIndex == i;
 
@@ -508,9 +510,9 @@ class CanvasP5GuiEngine {
             id: 'choice-$numKey',
             index: i,
             left: curX - choiceStripW * 0.5,
-            top: choiceY - choiceStripH * 0.5,
+            top: choiceY - math.max(choiceStripH, 40.0) * 0.5,
             width: choiceStripW,
-            height: choiceStripH,
+            height: math.max(choiceStripH, 40.0),
             text: choiceText,
           ),
         );
@@ -555,7 +557,11 @@ class CanvasP5GuiEngine {
         ctx.font = 'bold ${compact ? 12 : 13}px "Cinzel", serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
-        ctx.fillText(choiceText, badgeX + 22.0, choiceY);
+        ctx.fillText(
+          _fitText(choiceText, choiceStripW - 72.0),
+          badgeX + 22.0,
+          choiceY,
+        );
         ctx.restore();
       }
       ctx.restore();
@@ -726,7 +732,11 @@ class CanvasP5GuiEngine {
     ctx.font = 'bold 13px "Cinzel", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText(currentRoomName.toUpperCase(), roomX, roomY);
+    ctx.fillText(
+      _fitText(currentRoomName.toUpperCase(), roomW - 28.0),
+      roomX,
+      roomY,
+    );
     ctx.restore();
 
     // 3. Objective Banner if present
@@ -753,7 +763,7 @@ class CanvasP5GuiEngine {
       ctx.font = '13px "Cinzel", serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(objectiveText, objX, objY);
+      ctx.fillText(_fitText(objectiveText, objW - 28.0), objX, objY);
       ctx.restore();
     }
   }
@@ -798,7 +808,11 @@ class CanvasP5GuiEngine {
       ctx.font = 'bold 11px "Courier New", monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('[${hint.key}] ${hint.label}', itemX, hintY);
+      ctx.fillText(
+        _fitText('[${hint.key}] ${hint.label}', hintW - 18.0),
+        itemX,
+        hintY,
+      );
       ctx.restore();
     }
   }
@@ -1003,7 +1017,8 @@ class CanvasP5GuiEngine {
       for (int i = _shaderScrollOffset; i < visibleEnd; i++) {
         final item = items[i];
         final isSelected = state.selectedItemIndex == i;
-        final itemY = contentTopY + i * spacing + itemH * 0.5;
+        final visibleIndex = i - _shaderScrollOffset;
+        final itemY = contentTopY + visibleIndex * spacing + itemH * 0.5;
         final itemW = boxW - 80.0;
 
         final itemX = curX + (isSelected ? 12.0 : 0.0);
@@ -1040,7 +1055,10 @@ class CanvasP5GuiEngine {
         ctx.textBaseline = 'middle';
         final labelOffset = isSelected ? 38.0 : 18.0;
         ctx.fillText(
-          item.label.toUpperCase(),
+          _fitText(
+            item.label.toUpperCase(),
+            itemW - (item.isToggle ? 122.0 : 250.0),
+          ),
           itemX - itemW * 0.5 + labelOffset,
           itemY,
         );
@@ -1223,5 +1241,18 @@ class CanvasP5GuiEngine {
       }
     }
     context.fillText(line, x, currentY);
+  }
+
+  String _fitText(String text, double maxWidth) {
+    if (maxWidth <= 12.0 || ctx.measureText(text).width <= maxWidth) {
+      return text;
+    }
+    const suffix = '...';
+    var fitted = text;
+    while (fitted.isNotEmpty &&
+        ctx.measureText('$fitted$suffix').width > maxWidth) {
+      fitted = fitted.substring(0, fitted.length - 1);
+    }
+    return fitted.isEmpty ? suffix : '$fitted$suffix';
   }
 }

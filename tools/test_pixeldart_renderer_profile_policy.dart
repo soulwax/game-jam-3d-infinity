@@ -48,7 +48,25 @@ void main() {
   );
   check(small.internalWidth == 640, 'small surface width is capped');
   check(small.internalHeight == 360, 'small surface height is capped');
-  print(
-    'Pixeldart renderer profile policy: high/standard/safe allocation pass',
+
+  final scaled = policy.configuration(
+    profile: pixeldart.QualityProfile.clean,
+    surfaceWidth: 1920,
+    surfaceHeight: 1080,
+    renderScale: '0.75',
   );
+  check(scaled.internalWidth == 720, 'scaled high internal width');
+  check(scaled.internalHeight == 405, 'scaled high internal height');
+  var rejected = false;
+  try {
+    policy.configuration(
+      profile: pixeldart.QualityProfile.clean,
+      surfaceWidth: 0,
+      surfaceHeight: 1080,
+    );
+  } on ArgumentError {
+    rejected = true;
+  }
+  check(rejected, 'invalid surface dimensions are rejected');
+  print('Pixeldart renderer profile policy: allocation/scale/validation pass');
 }

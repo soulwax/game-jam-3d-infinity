@@ -9,6 +9,7 @@ final class PixeldartRendererProfilePolicy {
     required pixeldart.QualityProfile profile,
     required int surfaceWidth,
     required int surfaceHeight,
+    String renderScale = 'auto',
   }) {
     if (surfaceWidth <= 0 || surfaceHeight <= 0) {
       throw ArgumentError('surface dimensions must be positive');
@@ -18,9 +19,16 @@ final class PixeldartRendererProfilePolicy {
       pixeldart.QualityProfileKind.standard => (width: 640, height: 360),
       _ => (width: 384, height: 216),
     };
+    final scale = switch (renderScale) {
+      '0.50' => 0.50,
+      '0.67' => 0.67,
+      '0.75' => 0.75,
+      '0.85' => 0.85,
+      '1.00' || 'auto' || _ => 1.0,
+    };
     final extent = _fitInside(
-      target.width,
-      target.height,
+      (target.width * scale).round(),
+      (target.height * scale).round(),
       surfaceWidth,
       surfaceHeight,
     );

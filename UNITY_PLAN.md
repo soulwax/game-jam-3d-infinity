@@ -1542,3 +1542,27 @@ These discoveries are binding for the Unity implementation:
 6. **Minute precision belongs at the presentation boundary.** Keep fractional
    simulation hours authoritative for saves, schedules, and lighting. Format
    `HH:MM` (or optional 12-hour time) only in the renderer/UI layer.
+7. **Quality changes are renderer transactions.** A graphics setting request
+   must negotiate against capabilities, allocate the new profile, warm its
+   graph, swap it atomically, and publish the effective internal extent,
+   shadow-map budget, light capacity, and downgrade reason. If allocation fails,
+   retain the last valid graph and return the settings UI to the last effective
+   profile; never leave simulation state coupled to a partially configured
+   renderer.
+8. **GUI uses one logical viewport.** Layout, clipping, animation, diagnostics,
+   and pointer hit testing all use CSS/logical pixels; the renderer alone maps
+   that viewport to the device-pixel backing store. Never mix canvas backing
+   dimensions into hit testing. Keep a 4% safe-area margin, clamp panels to the
+   viewport, and preserve minimum touch targets even when the visual treatment
+   is compact.
+9. **Scrolling changes placement, not only visibility.** A clipped list must
+   position each visible row from `visibleIndex = absoluteIndex - scrollOffset`,
+   keep keyboard focus in view, and expose an explicit overflow cue. Measure
+   labels before allocating control columns; ellipsize or wrap text rather than
+   letting it collide with sliders, badges, or neighboring panels.
+10. **Persona energy must not reduce comprehension.** Use skew, crimson/amber
+    focus states, staggered motion, and asymmetric badges only around a stable
+    information hierarchy: speaker/source first, content second, action third.
+    Keep choice hit regions at least 40 px high, retain visible keyboard order,
+    and ensure selected/hovered states remain distinct in reduced-motion and
+    high-contrast modes.
