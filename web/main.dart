@@ -852,7 +852,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _lightSelectionRevision++;
     _canvasLightDiagnostics(ranked, revision: _lightSelectionRevision);
 
-    final hour = currentHour ?? (sunAngle > 0 ? (7.0 + sunAngle * 12.0) : 22.0);
+    final requestedHour = _shaderTuning.getValue('time_override');
+    final hour = requestedHour >= 0.0
+        ? requestedHour.clamp(0.0, 23.999)
+        : (currentHour ?? (sunAngle > 0 ? (7.0 + sunAngle * 12.0) : 22.0));
     final atmos = DayNightAtmosphereEngine.evaluateAtmosphere(
       hour: hour,
       rainIntensity: weather.rainIntensity,
@@ -862,6 +865,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
 
     // Wire atmosphere facts & CapsLock shader tuning overrides directly to renderer uniforms
     _tuningBridge.applyState(_shaderTuning);
+    _canvas.setAttribute(
+      'data-renderer-shader-overrides',
+      jsonEncode(_tuningBridge.activeOverrides),
+    );
 
     final effectiveRain = (_shaderTuning.getValue('rain_override') >= 0.0)
         ? _shaderTuning.getValue('rain_override')
@@ -985,12 +992,21 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final afterSnap = step.index >= RuptureStep.vertexSnap.index;
     final tape = step == RuptureStep.tapeGiveup;
     final lightsOut = step == RuptureStep.lightsOut;
+    final tuningExposure = _shaderTuning.getValue('post_exposure');
+    final tuningBloom = _shaderTuning.getValue('post_bloom');
+    final tuningVignette = _shaderTuning.getValue('post_vignette');
+    final tuningGrain = _shaderTuning.getValue('post_film_grain');
+    final tuningDither = _shaderTuning.getValue('post_dither');
+    final tuningSsao = _shaderTuning.getValue('shadow_ao_intensity');
     _post = px.PostProcessState(
-      exposure: lightsOut ? 0.45 : 1.0,
-      bloomStrength: bloomStrength,
-      ssaoStrength: ssaoStrength,
-      vignette: postVignette,
-      grain: postGrain,
+      exposure: lightsOut ? 0.45 : tuningExposure,
+      bloomStrength: tuningBloom,
+      ssaoStrength: _shaderTuning.getBool('shadow_ssdo_enable')
+          ? tuningSsao
+          : 0.0,
+      vignette: tuningVignette,
+      grain: tuningGrain,
+      ditherStrength: tuningDither,
       rainIntensity: rainIntensity,
       rainWindowVisibility: rainWindowVisibility,
       colorGradeStrength: afterGrade
@@ -1660,7 +1676,6 @@ final bool _debugPauseEnabled = Uri.base.queryParameters['debugPause'] == '1';
 bool _haveLastTime = false;
 double _lastTime = 0;
 double _accumulator = 0;
-bool _shadersLive = false;
 String _bootPhase = 'booting';
 final bool _automationDiagnosticsEnabled =
     Uri.base.queryParameters['automation'] == '1';
@@ -2785,10 +2800,6 @@ Future<void> main() async {
         if (e.code == 'KeyP' && !e.repeat && _debugPauseEnabled) {
           _paused = !_paused;
         }
-        if (e.code == 'KeyR' &&
-            !e.repeat &&
-            gameplayShortcutsEnabled &&
-            _shadersLive) {}
         if ((e.code == 'KeyJ' || e.code == 'Tab') &&
             !e.repeat &&
             !_door.visitorPresent) {
