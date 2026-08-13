@@ -26,6 +26,7 @@ import 'package:quarantine/presentation/backend_bootstrap.dart';
 import 'package:quarantine/presentation/backend_selector.dart';
 import 'package:quarantine/presentation/backend_factory.dart';
 import 'package:quarantine/presentation/pixeldart_capability_bridge.dart';
+import 'package:quarantine/presentation/pixeldart_renderer_profile_policy.dart';
 import 'package:quarantine/presentation/pixeldart_capability_matrix.dart';
 import 'package:quarantine/presentation/pixeldart_resource_governor.dart';
 import 'package:quarantine/presentation/pixeldart_shader_pipeline_exporter.dart';
@@ -126,6 +127,7 @@ final class _RoomSurfaceSpec {
 
 final class _PixeldartWebRuntime implements RendererRuntime {
   static const _capabilityBridge = PixeldartCapabilityBridge();
+  static const _profilePolicy = PixeldartRendererProfilePolicy();
   final web.WebGL2RenderingContext context;
   int width;
   int height;
@@ -170,6 +172,11 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   int _frameIndex = 0;
   int _textureResidencyRevision = 0;
   bool _initialized = false;
+  Future<void>? _surfaceReconfigure;
+  int _configuredWidth = 0;
+  int _configuredHeight = 0;
+  int? _failedSurfaceWidth;
+  int? _failedSurfaceHeight;
   late PixeldartCapabilityMatrix capabilityMatrix;
   late PixeldartResourceGovernor resourceGovernor;
   late PixeldartShaderPipelineExporter shaderExporter;
@@ -235,7 +242,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     );
     _renderer = px.SceneRendererImpl(_device);
     try {
-      _renderer.initialize(_configurationForProfile(_profile), surface);
+      _renderer.initialize(
+        _configurationForProfile(_profile, width, height),
+        surface,
+      );
     } catch (error) {
       if (_profile == px.QualityProfile.safe) rethrow;
       _profileFallbackReason =
@@ -245,6 +255,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         ..initialize(px.RendererConfiguration.safe, surface);
     }
     _world = _renderer.createWorld();
+    _configuredWidth = width;
+    _configuredHeight = height;
     capabilityMatrix = PixeldartCapabilityMatrix.negotiate(
       isWebGL2Available: true,
       float16Supported: true,
@@ -265,6 +277,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       height = nextHeight;
       return;
     }
+    width = nextWidth;
+    height = nextHeight;
+    if (_failedSurfaceWidth != nextWidth ||
+        _failedSurfaceHeight != nextHeight) {
+      _failedSurfaceWidth = null;
+      _failedSurfaceHeight = null;
+    }
     _renderer.resize(
       px.SurfaceMetrics(
         cssWidth: nextWidth,
@@ -273,17 +292,51 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         pixelHeight: nextHeight,
       ),
     );
-    width = nextWidth;
-    height = nextHeight;
+    if (_surfaceReconfigure == null) {
+      _surfaceReconfigure = _drainSurfaceReconfigure();
+    }
+  }
+
+  Future<void> _drainSurfaceReconfigure() async {
+    try {
+      while (_configuredWidth != width || _configuredHeight != height) {
+        final targetWidth = width;
+        final targetHeight = height;
+        await _renderer.configure(
+          _configurationForProfile(_profile, targetWidth, targetHeight),
+        );
+        _configuredWidth = targetWidth;
+        _configuredHeight = targetHeight;
+        _failedSurfaceWidth = null;
+        _failedSurfaceHeight = null;
+      }
+    } catch (error) {
+      // SceneRendererImpl keeps the previous valid graph when configure fails.
+      // Preserve that graph and expose the reason instead of leaving a future
+      // resize with an unhandled asynchronous error.
+      _profileFallbackReason =
+          '${_profile.kind.name} surface reconfigure failed: $error';
+      _failedSurfaceWidth = width;
+      _failedSurfaceHeight = height;
+    } finally {
+      _surfaceReconfigure = null;
+      final failedCurrentSurface =
+          _failedSurfaceWidth == width && _failedSurfaceHeight == height;
+      if (!failedCurrentSurface &&
+          (_configuredWidth != width || _configuredHeight != height)) {
+        _surfaceReconfigure = _drainSurfaceReconfigure();
+      }
+    }
   }
 
   px.RendererConfiguration _configurationForProfile(
     px.QualityProfile profile,
-  ) => px.RendererConfiguration(
+    int surfaceWidth,
+    int surfaceHeight,
+  ) => _profilePolicy.configuration(
     profile: profile,
-    internalWidth: 384,
-    internalHeight: 216,
-    shadowMapCount: profile.installs(px.PipelineFeatures.shadows) ? 1 : 0,
+    surfaceWidth: surfaceWidth,
+    surfaceHeight: surfaceHeight,
   );
 
   /// Installs the retained room shells once. Simulation-owned room facts are
