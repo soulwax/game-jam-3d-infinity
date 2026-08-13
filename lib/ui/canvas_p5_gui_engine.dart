@@ -359,8 +359,12 @@ class CanvasP5GuiEngine {
 
     // 2. Speaker Nameplate (Tilted Red Badge)
     final speaker = state.speakerName ?? 'VISITOR';
-    final speakerLabel = '${speaker.toUpperCase()} / YOU';
-    final speakerBadgeW = 180.0;
+    final speakerLabel = '${speaker.toUpperCase()} TO YOU';
+    ctx.font = 'bold ${compact ? 11 : 13}px "Cinzel", serif';
+    final speakerBadgeW = math.min(
+      boxW - 28.0,
+      math.max(180.0, ctx.measureText(speakerLabel).width.toDouble() + 34.0),
+    );
     final speakerBadgeH = 34.0;
     final speakerX = boxX - boxW * 0.5 + speakerBadgeW * 0.45;
     final speakerY = boxY - boxH * 0.5 - 6.0;
@@ -380,12 +384,11 @@ class CanvasP5GuiEngine {
 
     ctx.save();
     ctx.fillStyle = P5Palette.boneWhite.toJS;
-    ctx.font = 'bold 15px "Cinzel", serif';
+    ctx.font = 'bold ${compact ? 11 : 13}px "Cinzel", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.shadowColor = P5Palette.shadowBlack;
     ctx.shadowBlur = 4.0;
-    ctx.font = 'bold ${compact ? 11 : 13}px "Cinzel", serif';
     ctx.fillText(speakerLabel, speakerX, speakerY);
     ctx.restore();
 
@@ -418,6 +421,14 @@ class CanvasP5GuiEngine {
         12.0 + totalChoicesH * 0.5,
         boxY - boxH * 0.5 - totalChoicesH - 12.0,
       );
+
+      ctx.save();
+      ctx.fillStyle = P5Palette.brightAmber.toJS;
+      ctx.font = 'bold 10px "Cinzel", serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'bottom';
+      ctx.fillText('YOUR RESPONSE', boxX, choicesStartY - 4.0);
+      ctx.restore();
 
       for (int i = 0; i < choiceCount; i++) {
         final choiceText = state.choices[i];

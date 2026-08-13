@@ -53,7 +53,7 @@ class Door {
   Door(web.Document document)
     : root = buildElement(document, 'div', cls: 'door') {
     root
-      ..setAttribute('role', 'dialog')
+      ..setAttribute('role', 'region')
       ..setAttribute('aria-modal', 'false')
       ..setAttribute('aria-label', 'Front door visitor')
       ..setAttribute('tabindex', '-1')

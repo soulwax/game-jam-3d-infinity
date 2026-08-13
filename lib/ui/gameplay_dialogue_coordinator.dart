@@ -83,6 +83,23 @@ class GameplayDialogueCoordinator {
       }
     }
 
+    if (code == 'ArrowDown' || code == 'ArrowRight') {
+      hoveredIndex = ((hoveredIndex ?? -1) + 1) % choices.length;
+      return true;
+    }
+    if (code == 'ArrowUp' || code == 'ArrowLeft') {
+      hoveredIndex =
+          ((hoveredIndex ?? 0) - 1 + choices.length) % choices.length;
+      return true;
+    }
+    if (code == 'Enter' || code == 'NumpadEnter') {
+      final index = hoveredIndex ?? selectedIndex;
+      if (index != null) {
+        selectChoice(index);
+        return true;
+      }
+    }
+
     int? choiceIndex;
     if (code.startsWith('Digit')) {
       final num = int.tryParse(code.substring(5));
