@@ -68,7 +68,10 @@ class BackendSelector {
         automatic: true,
       );
     }
-    if (value == 'pixeldart' || value == 'next' || value == 'auto') {
+    if (value == 'pixeldart' ||
+        value == 'next' ||
+        value == 'auto' ||
+        value == 'legacy') {
       return BackendSelection(
         RendererBackendKind.pixeldart,
         explicit: value == 'pixeldart' || value == 'next',
@@ -79,14 +82,11 @@ class BackendSelector {
             : null,
       );
     }
-    final unknown = value != 'legacy';
     return BackendSelection(
-      RendererBackendKind.legacy,
+      RendererBackendKind.pixeldart,
       explicit: false,
-      fallback: unknown,
-      fallbackReason: unknown ? 'unknown renderer query' : null,
-      rejected: unknown,
-      rejectionReason: unknown ? 'unsupported renderer query "$value"' : null,
+      rejected: true,
+      rejectionReason: 'unsupported renderer query "$value"; use pixeldart',
     );
   }
 }

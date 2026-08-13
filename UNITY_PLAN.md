@@ -1515,3 +1515,30 @@ and a fixture test that proves it. Keep voice disabled in this milestone; the
 text path must be complete before any TTS batch is generated. Once that works,
 every later task is a bounded replacement or extension rather than a second
 game.
+
+## Renderer Epiphanies (2026-08)
+
+These discoveries are binding for the Unity implementation:
+
+1. **GUI meaning and GUI rendering stay separate.** Gameplay publishes a plain
+   `GuiFrame`; a renderer-owned surface owns composition, clipping, scaling,
+   draw order, hit regions, and resize behavior.
+2. **The renderer resolves geometry before gameplay applies meaning.** Return a
+   single semantic `GuiHit` from the UI surface. Story/session code decides what
+   that hit does, so layout changes never leak into narrative logic.
+3. **Every bounded surface needs overflow policy.** Dialogue choices and Shader
+   Lab settings use clipped viewports, wheel/drag scroll, keyboard/controller
+   auto-scroll, and explicit overflow cues. Labels are measured before panel
+   width is chosen and width is clamped to safe-area margins.
+4. **Pixeldart is the sole canonical runtime renderer.** Do not create or
+   maintain a second visual implementation. The current web legacy adapter has
+   been removed from startup; Unity should have one render-feature stack and
+   diagnostic profiles, with initialization failures visible rather than hidden
+   behind fallback rendering.
+5. **Debug controls map to real renderer state.** Stable IDs, ranges, defaults,
+   reset behavior, and serialized override snapshots are required. Useful
+   controls include fog, exposure, bloom threshold, dither, contact light,
+   TAA/SSR/shadows, and time/rain locks; unknown controls must fail visibly.
+6. **Minute precision belongs at the presentation boundary.** Keep fractional
+   simulation hours authoritative for saves, schedules, and lighting. Format
+   `HH:MM` (or optional 12-hour time) only in the renderer/UI layer.

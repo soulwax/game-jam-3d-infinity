@@ -16,7 +16,8 @@ final class RendererGuiFrame {
   final String? prompt;
   final P5DialogueState dialogue;
   final int day;
-  final int hour;
+  final double hour;
+  final bool twelveHourClock;
   final String roomName;
   final String? objective;
   final List<ContextualPromptHint> hints;
@@ -32,6 +33,7 @@ final class RendererGuiFrame {
     required this.dialogue,
     required this.day,
     required this.hour,
+    this.twelveHourClock = false,
     required this.roomName,
     required this.objective,
     required this.hints,
@@ -47,11 +49,32 @@ final class RendererGuiFrame {
 final class RendererGuiSurface {
   final CanvasP5GuiEngine _engine;
   int _frameNumber = 0;
+  int _surfaceWidth = 0;
+  int _surfaceHeight = 0;
 
   RendererGuiSurface(web.HTMLCanvasElement canvas)
     : _engine = CanvasP5GuiEngine(canvas);
 
   List<CanvasHitBox> get hitBoxes => _engine.currentChoiceHitBoxes;
+
+  void resize(int width, int height) {
+    if (width <= 0 || height <= 0) {
+      throw ArgumentError('GUI surface dimensions must be positive');
+    }
+    _surfaceWidth = width;
+    _surfaceHeight = height;
+  }
+
+  void scrollShaderMenu(int delta, int itemCount) {
+    _engine.scrollShaderMenu(delta, itemCount);
+  }
+
+  CanvasHitBox? hitTest(double x, double y) {
+    for (final hitBox in hitBoxes.reversed) {
+      if (hitBox.contains(x, y)) return hitBox;
+    }
+    return null;
+  }
 
   void render(RendererGuiFrame frame) {
     _engine.beginFrame(frame.dt, frame.width, frame.height);
@@ -77,6 +100,7 @@ final class RendererGuiSurface {
       screenHeight: frame.height,
       currentDay: frame.day,
       currentHour: frame.hour,
+      twelveHourClock: frame.twelveHourClock,
       currentRoomName: frame.roomName,
       objectiveText: frame.objective,
     );
@@ -100,5 +124,9 @@ final class RendererGuiSurface {
     target.setAttribute('data-renderer-gui-frame', '$_frameNumber');
     target.setAttribute('data-renderer-gui-hitboxes', '${hitBoxes.length}');
     target.setAttribute('data-renderer-gui-owner', 'renderer');
+    target.setAttribute(
+      'data-renderer-gui-surface',
+      '${_surfaceWidth}x$_surfaceHeight',
+    );
   }
 }

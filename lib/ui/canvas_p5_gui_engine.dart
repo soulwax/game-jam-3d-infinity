@@ -16,9 +16,43 @@ class CanvasP5GuiEngine {
 
   double _animationTime = 0.0;
   final List<CanvasHitBox> _currentChoiceHitBoxes = [];
+  int _choiceScrollOffset = 0;
+  int _shaderScrollOffset = 0;
 
   List<CanvasHitBox> get currentChoiceHitBoxes =>
       List.unmodifiable(_currentChoiceHitBoxes);
+
+  void scrollChoices(int delta, int choiceCount) {
+    if (choiceCount <= 0) {
+      _choiceScrollOffset = 0;
+      return;
+    }
+    _choiceScrollOffset = (_choiceScrollOffset + delta).clamp(
+      0,
+      choiceCount - 1,
+    );
+  }
+
+  void ensureChoiceVisible(int index, int choiceCount, int visibleCount) {
+    if (choiceCount <= 0 || visibleCount <= 0) return;
+    final maxOffset = math.max(0, choiceCount - visibleCount);
+    if (index < _choiceScrollOffset) _choiceScrollOffset = index;
+    if (index >= _choiceScrollOffset + visibleCount) {
+      _choiceScrollOffset = index - visibleCount + 1;
+    }
+    _choiceScrollOffset = _choiceScrollOffset.clamp(0, maxOffset);
+  }
+
+  void scrollShaderMenu(int delta, int itemCount) {
+    if (itemCount <= 0) {
+      _shaderScrollOffset = 0;
+      return;
+    }
+    _shaderScrollOffset = (_shaderScrollOffset + delta).clamp(
+      0,
+      math.max(0, itemCount - 1),
+    );
+  }
 
   CanvasP5GuiEngine(this.canvas) {
     final context = canvas.getContext('2d');
@@ -410,17 +444,44 @@ class CanvasP5GuiEngine {
     // 4. Compact, independent choice buttons rendered above the dialogue.
     if (state.choices.isNotEmpty) {
       final choiceCount = state.choices.length;
+      ctx.font = 'bold ${compact ? 12 : 13}px "Cinzel", serif';
+      final longestChoice = state.choices.fold<double>(
+        0,
+        (width, choice) =>
+            math.max(width, ctx.measureText(choice).width.toDouble()),
+      );
+      final maxChoiceWidth = math.max(220.0, screenWidth - 24.0);
       final choiceStripW = math.min(
-        screenWidth * (compact ? 0.86 : 0.68),
-        420.0,
+        maxChoiceWidth,
+        math.max(compact ? 260.0 : 320.0, longestChoice + 78.0),
       );
       final choiceStripH = compact ? 31.0 : 34.0;
       final spacing = compact ? 35.0 : 39.0;
-      final totalChoicesH = choiceCount * spacing;
-      final choicesStartY = math.max(
-        12.0 + totalChoicesH * 0.5,
-        boxY - boxH * 0.5 - totalChoicesH - 12.0,
+      final viewportTop = 34.0;
+      final viewportBottom = boxY - boxH * 0.5 - 18.0;
+      final viewportHeight = math.max(0.0, viewportBottom - viewportTop);
+      final visibleCount = math.max(
+        1,
+        ((viewportHeight + spacing - choiceStripH) / spacing).floor(),
       );
+      ensureChoiceVisible(state.hoveredIndex ?? 0, choiceCount, visibleCount);
+      final maxOffset = math.max(0, choiceCount - visibleCount);
+      _choiceScrollOffset = _choiceScrollOffset.clamp(0, maxOffset);
+      final visibleEnd = math.min(
+        choiceCount,
+        _choiceScrollOffset + visibleCount,
+      );
+      final choicesStartY = viewportTop;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(
+        boxX - choiceStripW * 0.5 - 12.0,
+        viewportTop - 16.0,
+        choiceStripW + 24.0,
+        math.max(1.0, viewportHeight + 20.0),
+      );
+      ctx.clip();
 
       ctx.save();
       ctx.fillStyle = P5Palette.brightAmber.toJS;
@@ -430,7 +491,7 @@ class CanvasP5GuiEngine {
       ctx.fillText('YOUR RESPONSE', boxX, choicesStartY - 4.0);
       ctx.restore();
 
-      for (int i = 0; i < choiceCount; i++) {
+      for (int i = _choiceScrollOffset; i < visibleEnd; i++) {
         final choiceText = state.choices[i];
         final numKey = i + 1;
         final choiceY = choicesStartY + i * spacing + choiceStripH * 0.5;
@@ -495,6 +556,30 @@ class CanvasP5GuiEngine {
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillText(choiceText, badgeX + 22.0, choiceY);
+        ctx.restore();
+      }
+      ctx.restore();
+
+      if (maxOffset > 0) {
+        ctx.save();
+        ctx.fillStyle = P5Palette.brightAmber.toJS;
+        ctx.font = 'bold 10px "Cinzel", serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        if (_choiceScrollOffset > 0) {
+          ctx.fillText(
+            '▲ MORE',
+            boxX + choiceStripW * 0.5 - 28.0,
+            viewportTop - 8.0,
+          );
+        }
+        if (_choiceScrollOffset < maxOffset) {
+          ctx.fillText(
+            '▼ MORE',
+            boxX + choiceStripW * 0.5 - 28.0,
+            viewportBottom + 8.0,
+          );
+        }
         ctx.restore();
       }
     } else if (state.isVisitorPresent && state.fullText.isNotEmpty) {
@@ -580,7 +665,8 @@ class CanvasP5GuiEngine {
     required double screenWidth,
     required double screenHeight,
     required int currentDay,
-    required int currentHour,
+    required double currentHour,
+    bool twelveHourClock = false,
     required String currentRoomName,
     required String? objectiveText,
   }) {
@@ -607,8 +693,13 @@ class CanvasP5GuiEngine {
     ctx.font = 'bold 14px "Cinzel", serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    final totalMinutes = (currentHour * 60.0).floor().clamp(0, 1439);
+    final hour = totalMinutes ~/ 60;
+    final minute = totalMinutes % 60;
+    final displayHour = twelveHourClock ? ((hour + 11) % 12) + 1 : hour;
+    final suffix = twelveHourClock ? (hour < 12 ? ' AM' : ' PM') : '';
     final timeStr =
-        'DAY $currentDay  •  ${currentHour.toString().padLeft(2, '0')}:00';
+        'DAY $currentDay  •  ${displayHour.toString().padLeft(2, '0')}:${minute.toString().padLeft(2, '0')}$suffix';
     ctx.fillText(timeStr, clockX, clockY);
     ctx.restore();
 
@@ -887,8 +978,29 @@ class CanvasP5GuiEngine {
       final items = state.itemsInCurrentCategory;
       final itemH = 44.0;
       final spacing = 52.0;
+      final contentBottomY = curY + boxH * 0.5 - 52.0;
+      final contentHeight = math.max(1.0, contentBottomY - contentTopY);
+      final visibleCount = math.max(
+        1,
+        ((contentHeight + spacing - itemH) / spacing).floor(),
+      );
+      final maxOffset = math.max(0, items.length - visibleCount);
+      _shaderScrollOffset = _shaderScrollOffset.clamp(0, maxOffset);
+      final visibleEnd = math.min(
+        items.length,
+        _shaderScrollOffset + visibleCount,
+      );
 
-      for (int i = 0; i < items.length; i++) {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(
+        curX - boxW * 0.5 + 24.0,
+        contentTopY,
+        boxW - 48.0,
+        contentHeight,
+      );
+      ctx.clip();
+      for (int i = _shaderScrollOffset; i < visibleEnd; i++) {
         final item = items[i];
         final isSelected = state.selectedItemIndex == i;
         final itemY = contentTopY + i * spacing + itemH * 0.5;
@@ -1016,6 +1128,30 @@ class CanvasP5GuiEngine {
           ctx.textAlign = 'right';
           ctx.textBaseline = 'middle';
           ctx.fillText(item.formattedValue, controlRightX, itemY);
+        }
+        ctx.restore();
+      }
+      ctx.restore();
+
+      if (maxOffset > 0) {
+        ctx.save();
+        ctx.fillStyle = P5Palette.brightAmber.toJS;
+        ctx.font = 'bold 10px "Cinzel", serif';
+        ctx.textAlign = 'right';
+        ctx.textBaseline = 'middle';
+        if (_shaderScrollOffset > 0) {
+          ctx.fillText(
+            '▲ SCROLL UP',
+            curX + boxW * 0.5 - 28.0,
+            contentTopY - 8.0,
+          );
+        }
+        if (_shaderScrollOffset < maxOffset) {
+          ctx.fillText(
+            '▼ SCROLL DOWN',
+            curX + boxW * 0.5 - 28.0,
+            contentBottomY + 8.0,
+          );
         }
         ctx.restore();
       }

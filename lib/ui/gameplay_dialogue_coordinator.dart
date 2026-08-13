@@ -153,6 +153,10 @@ class GameplayDialogueCoordinator {
     }
   }
 
+  void handleMouseMoveHit(CanvasHitBox? hit) {
+    hoveredIndex = hit?.index;
+  }
+
   /// Handles canvas click on choice hit boxes.
   bool handleMouseClick(
     double mouseX,
@@ -170,6 +174,16 @@ class GameplayDialogueCoordinator {
       }
     }
     return false;
+  }
+
+  bool handleMouseClickHit(CanvasHitBox? hit) {
+    if (hit == null) return false;
+    if (hit.id == 'dialogue-continue') {
+      advanceDialogue();
+      return true;
+    }
+    selectChoice(hit.index);
+    return true;
   }
 
   /// Produces the snapshot for Persona 5 Canvas rendering.

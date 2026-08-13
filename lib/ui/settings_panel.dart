@@ -35,6 +35,7 @@ class SettingsPanel extends Panel {
   web.HTMLInputElement? _strongHighlights;
   final Map<String, web.HTMLSelectElement> _gameplaySelects = {};
   web.HTMLInputElement? _contextualReminders;
+  web.HTMLInputElement? _showObjective;
   GameplaySettingsProfile _gameplayOptions = GameplaySettingsProfile.firstRun;
 
   SettingsPanel(web.Document document, {this.page}) : super(document) {
@@ -341,6 +342,13 @@ class SettingsPanel extends Panel {
       'when the window loses focus',
       GameplayFocusLossBehavior.values,
     );
+    _addGameplaySelect(
+      document,
+      grid,
+      'clockFormat',
+      'clock format',
+      GameplayClockFormat.values,
+    );
     final row = buildElement(document, 'label', cls: 'setting-toggle');
     final reminders = document.createElement('input') as web.HTMLInputElement
       ..type = 'checkbox'
@@ -361,6 +369,27 @@ class SettingsPanel extends Panel {
       );
     grid.appendChild(row);
     _contextualReminders = reminders;
+    final objective = buildElement(document, 'label', cls: 'setting-toggle');
+    final objectiveInput =
+        document.createElement('input') as web.HTMLInputElement
+          ..type = 'checkbox'
+          ..checked = _gameplayOptions.showObjective;
+    objectiveInput.addEventListener(
+      'change',
+      ((JSAny? _) {
+        _gameplayOptions = _gameplayOptions.copyWith(
+          showObjective: objectiveInput.checked,
+        );
+        onGameplayOptions?.call(_gameplayOptions);
+      }).toJS,
+    );
+    objective
+      ..appendChild(objectiveInput)
+      ..appendChild(
+        buildElement(document, 'span', text: 'show daily objective'),
+      );
+    grid.appendChild(objective);
+    _showObjective = objectiveInput;
     return grid;
   }
 
@@ -416,6 +445,11 @@ class SettingsPanel extends Panel {
               (value) => value.name == select.value,
             ),
           ),
+          'clockFormat' => _gameplayOptions.copyWith(
+            clockFormat: GameplayClockFormat.values.firstWhere(
+              (value) => value.name == select.value,
+            ),
+          ),
           _ => _gameplayOptions.copyWith(
             focusLossBehavior: GameplayFocusLossBehavior.values.firstWhere(
               (value) => value.name == select.value,
@@ -440,10 +474,12 @@ class SettingsPanel extends Panel {
         'journalLayout' => profile.journalLayout.name,
         'confirmations' => profile.confirmations.name,
         'saveFeedback' => profile.saveFeedback.name,
-        _ => profile.focusLossBehavior.name,
+        'focusLossBehavior' => profile.focusLossBehavior.name,
+        _ => profile.clockFormat.name,
       };
     }
     _contextualReminders?.checked = profile.contextualReminders;
+    _showObjective?.checked = profile.showObjective;
   }
 
   web.HTMLElement _buildAudioOptions(web.Document document) {

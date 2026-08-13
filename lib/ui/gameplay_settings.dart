@@ -16,6 +16,8 @@ enum GameplaySaveFeedback { toast, detailed }
 
 enum GameplayFocusLossBehavior { pauseAndMute, pauseOnly, continuePlayback }
 
+enum GameplayClockFormat { twentyFourHour, twelveHour }
+
 final class GameplaySettingsProfile {
   static const int schemaVersion = 1;
 
@@ -28,6 +30,8 @@ final class GameplaySettingsProfile {
   final GameplaySaveFeedback saveFeedback;
   final GameplayFocusLossBehavior focusLossBehavior;
   final bool contextualReminders;
+  final GameplayClockFormat clockFormat;
+  final bool showObjective;
 
   GameplaySettingsProfile({
     this.version = schemaVersion,
@@ -39,6 +43,8 @@ final class GameplaySettingsProfile {
     this.saveFeedback = GameplaySaveFeedback.toast,
     this.focusLossBehavior = GameplayFocusLossBehavior.pauseAndMute,
     this.contextualReminders = true,
+    this.clockFormat = GameplayClockFormat.twentyFourHour,
+    this.showObjective = true,
   }) {
     if (version != schemaVersion) {
       throw ArgumentError('unsupported gameplay settings version $version');
@@ -56,6 +62,8 @@ final class GameplaySettingsProfile {
     GameplaySaveFeedback? saveFeedback,
     GameplayFocusLossBehavior? focusLossBehavior,
     bool? contextualReminders,
+    GameplayClockFormat? clockFormat,
+    bool? showObjective,
   }) => GameplaySettingsProfile(
     interactionMode: interactionMode ?? this.interactionMode,
     promptDensity: promptDensity ?? this.promptDensity,
@@ -65,6 +73,8 @@ final class GameplaySettingsProfile {
     saveFeedback: saveFeedback ?? this.saveFeedback,
     focusLossBehavior: focusLossBehavior ?? this.focusLossBehavior,
     contextualReminders: contextualReminders ?? this.contextualReminders,
+    clockFormat: clockFormat ?? this.clockFormat,
+    showObjective: showObjective ?? this.showObjective,
   );
 
   Map<String, Object> toJson() => {
@@ -77,6 +87,8 @@ final class GameplaySettingsProfile {
     'saveFeedback': saveFeedback.name,
     'focusLossBehavior': focusLossBehavior.name,
     'contextualReminders': contextualReminders,
+    'clockFormat': clockFormat.name,
+    'showObjective': showObjective,
   };
 
   factory GameplaySettingsProfile.fromJson(Object? raw) {
@@ -96,8 +108,13 @@ final class GameplaySettingsProfile {
 
     final reminders = raw['contextualReminders'];
     if (reminders is! bool) {
-      throw const FormatException('invalid gameplay setting: contextualReminders');
+      throw const FormatException(
+        'invalid gameplay setting: contextualReminders',
+      );
     }
+    final showObjective = raw['showObjective'] is bool
+        ? raw['showObjective'] as bool
+        : true;
     return GameplaySettingsProfile(
       interactionMode: enumValue(
         'interactionMode',
@@ -116,6 +133,10 @@ final class GameplaySettingsProfile {
         GameplayFocusLossBehavior.values,
       ),
       contextualReminders: reminders,
+      clockFormat: raw['clockFormat'] is String
+          ? enumValue('clockFormat', GameplayClockFormat.values)
+          : GameplayClockFormat.twentyFourHour,
+      showObjective: showObjective,
     );
   }
 }
@@ -153,7 +174,8 @@ final class GameplaySettingsStore {
   };
 
   factory GameplaySettingsStore.fromJson(Object? raw) {
-    if (raw is! Map || raw['version'] != GameplaySettingsProfile.schemaVersion) {
+    if (raw is! Map ||
+        raw['version'] != GameplaySettingsProfile.schemaVersion) {
       throw const FormatException('unsupported gameplay settings store');
     }
     return GameplaySettingsStore(

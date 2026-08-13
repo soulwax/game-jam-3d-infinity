@@ -63,8 +63,8 @@ class ShaderTuningItem {
     this.step = 0.05,
     required this.defaultValue,
     bool defaultBool = true,
-  })  : currentValue = defaultValue,
-        boolValue = defaultBool;
+  }) : currentValue = defaultValue,
+       boolValue = defaultBool;
 
   void increment() {
     if (isToggle) {
@@ -140,7 +140,8 @@ class ShaderTuningState {
       ShaderTuningItem(
         id: 'pbr_roughness',
         label: 'Roughness Scale',
-        description: 'Microfacet distribution alpha scaling (0=Mirror, 1=Matte)',
+        description:
+            'Microfacet distribution alpha scaling (0=Mirror, 1=Matte)',
         category: ShaderTuningCategory.pbrMaterial,
         min: 0.0,
         max: 2.0,
@@ -170,7 +171,8 @@ class ShaderTuningState {
       ShaderTuningItem(
         id: 'light_ambient_mult',
         label: 'Ambient Light Scale',
-        description: 'Global ambient fill multiplier for sky and room environment',
+        description:
+            'Global ambient fill multiplier for sky and room environment',
         category: ShaderTuningCategory.pbrMaterial,
         min: 0.0,
         max: 3.0,
@@ -180,7 +182,8 @@ class ShaderTuningState {
       ShaderTuningItem(
         id: 'light_direct_mult',
         label: 'Direct Light Scale',
-        description: 'Global directional key light and mantle intensity multiplier',
+        description:
+            'Global directional key light and mantle intensity multiplier',
         category: ShaderTuningCategory.pbrMaterial,
         min: 0.0,
         max: 3.0,
@@ -192,7 +195,8 @@ class ShaderTuningState {
       ShaderTuningItem(
         id: 'shadow_ssdo_enable',
         label: 'SSDO Ambient Occlusion',
-        description: 'Enable directional contact shadows and SSDO occlusion pass',
+        description:
+            'Enable directional contact shadows and SSDO occlusion pass',
         category: ShaderTuningCategory.shadowsAndOcclusion,
         isToggle: true,
         defaultValue: 1.0,
@@ -380,7 +384,8 @@ class ShaderTuningState {
       ShaderTuningItem(
         id: 'tonemap_mode',
         label: 'Tone-Mapping Curve',
-        description: 'Luminance compression operator (0=ACES Filmic, 1=AgX, 2=Reinhard)',
+        description:
+            'Luminance compression operator (0=ACES Filmic, 1=AgX, 2=Reinhard)',
         category: ShaderTuningCategory.atmosphereAndPost,
         min: 0.0,
         max: 2.0,
@@ -418,7 +423,8 @@ class ShaderTuningState {
       ShaderTuningItem(
         id: 'lens_flare_enable',
         label: 'Anamorphic Lens Flare',
-        description: 'Horizontal optical streak and anamorphic glare reflections',
+        description:
+            'Horizontal optical streak and anamorphic glare reflections',
         category: ShaderTuningCategory.atmosphereAndPost,
         isToggle: true,
         defaultValue: 0.0,
@@ -464,6 +470,36 @@ class ShaderTuningState {
         step: 0.05,
         defaultValue: 1.0,
       ),
+      ShaderTuningItem(
+        id: 'post_bloom_threshold',
+        label: 'Bloom Threshold',
+        description: 'Luminance threshold at which warm highlights bloom',
+        category: ShaderTuningCategory.atmosphereAndPost,
+        min: 0.0,
+        max: 4.0,
+        step: 0.1,
+        defaultValue: 1.0,
+      ),
+      ShaderTuningItem(
+        id: 'post_dither',
+        label: 'Film Dither',
+        description: 'Subtle ordered dither to prevent low-light banding',
+        category: ShaderTuningCategory.atmosphereAndPost,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05,
+        defaultValue: 0.0,
+      ),
+      ShaderTuningItem(
+        id: 'light_contact_boost',
+        label: 'Contact Light Lift',
+        description: 'Raises the readable edge light around nearby objects',
+        category: ShaderTuningCategory.pbrMaterial,
+        min: 0.0,
+        max: 2.0,
+        step: 0.05,
+        defaultValue: 0.0,
+      ),
     ];
   }
 
@@ -501,12 +537,14 @@ class ShaderTuningState {
   }
 
   void nextCategory() {
-    selectedCategoryIndex = (selectedCategoryIndex + 1) % ShaderTuningCategory.values.length;
+    selectedCategoryIndex =
+        (selectedCategoryIndex + 1) % ShaderTuningCategory.values.length;
     selectedItemIndex = 0;
   }
 
   void previousCategory() {
-    selectedCategoryIndex = (selectedCategoryIndex - 1 + ShaderTuningCategory.values.length) %
+    selectedCategoryIndex =
+        (selectedCategoryIndex - 1 + ShaderTuningCategory.values.length) %
         ShaderTuningCategory.values.length;
     selectedItemIndex = 0;
   }
@@ -536,7 +574,8 @@ class ShaderTuningState {
 
   void decrementCurrent() {
     if (selectedCategoryIndex == ShaderTuningCategory.debugView.index) {
-      final prevIdx = (debugMode.index - 1 + ShaderDebugMode.values.length) %
+      final prevIdx =
+          (debugMode.index - 1 + ShaderDebugMode.values.length) %
           ShaderDebugMode.values.length;
       debugMode = ShaderDebugMode.values[prevIdx];
     } else {

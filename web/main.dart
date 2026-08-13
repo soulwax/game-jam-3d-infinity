@@ -11,11 +11,10 @@ import 'package:quarantine/engine/audio_planner.dart';
 import 'package:quarantine/engine/camera.dart';
 import 'package:quarantine/engine/fps_motion.dart';
 import 'package:quarantine/engine/locomotion_controller.dart';
-import 'package:quarantine/engine/hud.dart';
 import 'package:quarantine/engine/input.dart';
 import 'package:quarantine/engine/light_ranking_controller.dart';
 import 'package:quarantine/engine/math3.dart';
-import 'package:quarantine/engine/renderer.dart';
+import 'package:quarantine/engine/mesh.dart';
 import 'package:quarantine/engine/vertex_format.dart';
 import 'package:quarantine/game/ambient_audio.dart';
 import 'package:quarantine/game/browser_save_store.dart';
@@ -23,7 +22,6 @@ import 'package:quarantine/game/ending.dart';
 import 'package:quarantine/game/player_state.dart';
 import 'package:quarantine/game/rupture_gate.dart';
 import 'package:quarantine/game/session.dart';
-import 'package:quarantine/presentation/backend_bootstrap.dart';
 import 'package:quarantine/presentation/backend_selector.dart';
 import 'package:quarantine/presentation/backend_factory.dart';
 import 'package:quarantine/presentation/pixeldart_capability_bridge.dart';
@@ -42,7 +40,6 @@ import 'package:quarantine/presentation/renderer_gui_surface.dart';
 import 'package:quarantine/ui/gui_flow_coordinator.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/authored_manifest.dart';
-import 'package:quarantine/house/emitter.dart';
 import 'package:quarantine/house/focus.dart';
 import 'package:quarantine/house/geometry.dart';
 import 'package:quarantine/house/house.dart';
@@ -111,13 +108,10 @@ const double _maxFrameTime = 0.25;
 
 const double _bgHue = 0.0;
 
-bool get _legacyRenderProfile => Uri.base.queryParameters['render'] == 'legacy';
 final BackendSelector _backendSelector = BackendSelector();
-const BackendBootstrapPolicy _backendBootstrapPolicy = BackendBootstrapPolicy();
 late BackendSelection _backendSelection;
 late RendererBackend _presentationBackend;
 _PixeldartWebRuntime? _pixeldartRuntime;
-_LegacyWebRuntime? _legacyRuntime;
 late WeatherSchedule _weatherSchedule;
 
 final class _RoomSurfaceSpec {
@@ -1574,97 +1568,6 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   );
 }
 
-/// Browser-owned legacy runtime. The legacy engine remains unchanged, but its
-/// concrete draw is now entered through the same neutral backend lifecycle as
-/// Pixeldart. Renderer and DOM handles never leave this web-only runtime.
-final class _LegacyWebRuntime implements RendererRuntime {
-  final web.WebGL2RenderingContext context;
-  int width;
-  int height;
-  final bool imageEffects;
-  final bool fallback;
-  final String? fallbackReason;
-  late final Renderer renderer;
-  bool _initialized = false;
-  bool _contextLost = false;
-  int _submittedFrames = 0;
-
-  int get submittedFrames => _submittedFrames;
-
-  _LegacyWebRuntime(
-    this.context,
-    this.width,
-    this.height, {
-    required this.imageEffects,
-    this.fallback = false,
-    this.fallbackReason,
-  });
-
-  @override
-  RendererDiagnostics get diagnostics => RendererDiagnostics.fromEnvironment(
-    backend: 'legacy',
-    profile: 'legacy',
-    capabilities: const [],
-    fallback: fallback,
-    fallbackReason: fallbackReason,
-  );
-
-  @override
-  bool get contextLost => _contextLost;
-
-  @override
-  void initialize() {
-    if (_initialized) return;
-    renderer = Renderer(context, width, height);
-    renderer.configureImageEffects(
-      affineTexture: imageEffects,
-      vertexSnapping: imageEffects,
-      colorQuantize: imageEffects,
-    );
-    _initialized = true;
-  }
-
-  @override
-  void resize(int nextWidth, int nextHeight) {
-    if (nextWidth <= 0 || nextHeight <= 0) {
-      throw ArgumentError('legacy surface size must be positive');
-    }
-    width = nextWidth;
-    height = nextHeight;
-    if (_initialized) renderer.resize(nextWidth, nextHeight);
-  }
-
-  @override
-  void submit(RendererFrame frame) {
-    if (!_initialized) {
-      throw StateError('legacy runtime is not initialized');
-    }
-    if (_contextLost || _emitter == null) return;
-    _submittedFrames++;
-    _canvas.setAttribute('data-renderer-frame-submits', '$_submittedFrames');
-    _render(renderer, _legacyFrameTime, _rupture);
-  }
-
-  @override
-  void handleInput(RendererInputAction action) {}
-
-  @override
-  void loseContext() {
-    _contextLost = true;
-  }
-
-  @override
-  void recover() {
-    _contextLost = false;
-  }
-
-  @override
-  void dispose() {
-    _initialized = false;
-    _contextLost = false;
-  }
-}
-
 final class _PixeldartDecoration {
   final String roomId;
   final px.InstanceId item;
@@ -1715,10 +1618,7 @@ int _mintRunSeed() => 1 + math.Random().nextInt(0x7FFFFFFF);
 late web.HTMLCanvasElement _canvas;
 late Camera _camera;
 late Input _input;
-late Hud<Object> _hud;
-Renderer? _renderer;
 late House _house;
-RoomEmitter? _emitter;
 late GameTime _time;
 late GameSession _session;
 late BrowserSaveStore _saveStore;
@@ -1759,7 +1659,6 @@ bool _paused = false;
 final bool _debugPauseEnabled = Uri.base.queryParameters['debugPause'] == '1';
 bool _haveLastTime = false;
 double _lastTime = 0;
-double _legacyFrameTime = 0;
 double _accumulator = 0;
 bool _shadersLive = false;
 String _bootPhase = 'booting';
@@ -2453,59 +2352,23 @@ Future<void> main() async {
     uiCanvas.width = _canvas.width;
     uiCanvas.height = _canvas.height;
     _rendererGui = RendererGuiSurface(uiCanvas);
+    _rendererGui!.resize(_canvas.width, _canvas.height);
   }
   final ctx = canvas.getContext('webgl2') as web.WebGL2RenderingContext?;
-  if (ctx == null) {
-    _backendSelection = _backendBootstrapPolicy.fallback(
-      _backendSelection,
-      BackendFallbackReason.webglUnavailable,
-    );
-    _presentationBackend = const BackendFactory().create(_backendSelection)
-      ..initialize();
-    _publishRendererDiagnostics();
-    _setBootPhase('no-webgl2');
-    web.document.getElementById('credits')?.textContent =
-        'this browser has no webgl2.';
-    return;
-  }
+  if (ctx == null) throw StateError('Pixeldart requires WebGL2');
   try {
-    final runtime = _backendSelection.kind == RendererBackendKind.pixeldart
-        ? _PixeldartWebRuntime(ctx, _canvas.width, _canvas.height)
-        : _LegacyWebRuntime(
-            ctx,
-            _canvas.width,
-            _canvas.height,
-            imageEffects: _legacyRenderProfile,
-            fallback: _backendSelection.fallback,
-            fallbackReason: _backendSelection.fallbackReason,
-          );
-    _pixeldartRuntime = runtime is _PixeldartWebRuntime ? runtime : null;
-    _legacyRuntime = runtime is _LegacyWebRuntime ? runtime : null;
+    final runtime = _PixeldartWebRuntime(ctx, _canvas.width, _canvas.height);
+    _pixeldartRuntime = runtime;
     _presentationBackend = const BackendFactory().create(
       _backendSelection,
       runtime: runtime,
     )..initialize();
   } catch (error, stack) {
-    _backendSelection = _backendBootstrapPolicy.fallback(
-      _backendSelection,
-      BackendFallbackReason.pixeldartInitializationFailed,
-    );
-    _legacyRuntime = _LegacyWebRuntime(
-      ctx,
-      _canvas.width,
-      _canvas.height,
-      imageEffects: _legacyRenderProfile,
-      fallback: true,
-      fallbackReason: _backendSelection.fallbackReason,
-    );
-    _presentationBackend = const BackendFactory().create(
-      _backendSelection,
-      runtime: _legacyRuntime,
-    )..initialize();
     _canvas.setAttribute('data-renderer-error', '$error');
     if (_automationDiagnosticsEnabled) {
       _canvas.setAttribute('data-renderer-error-stack', '$stack');
     }
+    rethrow;
   }
   _publishRendererDiagnostics();
   try {
@@ -2520,17 +2383,10 @@ Future<void> main() async {
     _reducedMotion = _systemReducedMotion;
     _camera.breathScale = _reducedMotion ? 0.5 : 1.0;
     _input = Input(web.window);
-    _hud = Hud<Object>();
 
     _canvas.width = web.window.innerWidth > 0 ? web.window.innerWidth : 800;
     _canvas.height = web.window.innerHeight > 0 ? web.window.innerHeight : 600;
     _setBootPhase('renderer');
-    if (_backendSelection.kind == RendererBackendKind.legacy) {
-      _renderer = _legacyRuntime?.renderer;
-      if (_renderer == null) {
-        throw StateError('legacy runtime did not initialize its renderer');
-      }
-    }
 
     _setBootPhase('text');
     await textLibrary.load();
@@ -2761,7 +2617,6 @@ Future<void> main() async {
         final driftedAfter = _house.drift.landedCount;
         for (var i = driftedBefore; i < driftedAfter; i++) {
           final roomId = _house.drift.schedule[i].roomId;
-          _emitter?.rebuildRoom(roomId);
           _pixeldartRuntime?.refreshRoomGeometry(_house, roomId);
         }
         _saveSession('saved after sleep');
@@ -2813,16 +2668,7 @@ Future<void> main() async {
     final savedEnding = EndingState.tryFromJson(saved.snapshot?.meta['ending']);
     if (savedEnding != null) _presentEnding(savedEnding);
 
-    final renderer = _renderer;
-    if (renderer != null) {
-      _setBootPhase('world');
-      _emitter = RoomEmitter(_house, renderer);
-    }
-
-    _shadersLive = web.window.location.search.contains('shaders=live');
-    if (_shadersLive) {
-      _renderer?.reloadShadersLive();
-    }
+    _setBootPhase('world');
 
     _resize();
     web.window.addEventListener('resize', ((JSAny? _) => _resize()).toJS);
@@ -2858,11 +2704,19 @@ Future<void> main() async {
           if (e.code == 'ArrowUp' || e.code == 'KeyW') {
             e.preventDefault();
             _shaderTuning.previousItem();
+            _rendererGui?.scrollShaderMenu(
+              -1,
+              _shaderTuning.itemsInCurrentCategory.length,
+            );
             return;
           }
           if (e.code == 'ArrowDown' || e.code == 'KeyS') {
             e.preventDefault();
             _shaderTuning.nextItem();
+            _rendererGui?.scrollShaderMenu(
+              1,
+              _shaderTuning.itemsInCurrentCategory.length,
+            );
             return;
           }
           if (e.code == 'ArrowLeft' || e.code == 'KeyA') {
@@ -2934,9 +2788,7 @@ Future<void> main() async {
         if (e.code == 'KeyR' &&
             !e.repeat &&
             gameplayShortcutsEnabled &&
-            _shadersLive) {
-          _renderer?.reloadShadersLive();
-        }
+            _shadersLive) {}
         if ((e.code == 'KeyJ' || e.code == 'Tab') &&
             !e.repeat &&
             !_door.visitorPresent) {
@@ -2988,6 +2840,17 @@ Future<void> main() async {
         _input.requestPointerLock(_canvas);
       }).toJS,
     );
+    _canvas.addEventListener(
+      'wheel',
+      ((JSAny? evt) {
+        final e = evt as web.WheelEvent;
+        if (!_shaderTuning.isOpen || _rendererGui == null) return;
+        e.preventDefault();
+        final items = _shaderTuning.itemsInCurrentCategory;
+        final delta = e.deltaY > 0 ? 1 : -1;
+        _rendererGui!.scrollShaderMenu(delta, items.length);
+      }).toJS,
+    );
 
     _loadManifest();
     _setBootPhase('raf');
@@ -3002,7 +2865,7 @@ void _handleRenderedDialogueHover(web.MouseEvent event) {
   if (!_door.visitorPresent || gui == null) return;
   final point = _canvasPoint(event);
   if (point == null) return;
-  _dialogueCoordinator.handleMouseMove(point.$1, point.$2, gui.hitBoxes);
+  _dialogueCoordinator.handleMouseMoveHit(gui.hitTest(point.$1, point.$2));
 }
 
 bool _handleRenderedDialogueClick(web.MouseEvent event) {
@@ -3010,10 +2873,8 @@ bool _handleRenderedDialogueClick(web.MouseEvent event) {
   if (!_door.visitorPresent || gui == null) return false;
   final point = _canvasPoint(event);
   if (point == null) return false;
-  return _dialogueCoordinator.handleMouseClick(
-    point.$1,
-    point.$2,
-    gui.hitBoxes,
+  return _dialogueCoordinator.handleMouseClickHit(
+    gui.hitTest(point.$1, point.$2),
   );
 }
 
@@ -3080,10 +2941,6 @@ void _publishRendererDiagnostics() {
   final profileFallback = _pixeldartRuntime?.profileFallbackReason;
   if (profileFallback != null) {
     _canvas.setAttribute('data-renderer-profile-fallback', profileFallback);
-  }
-  final legacyFrames = _legacyRuntime?.submittedFrames;
-  if (legacyFrames != null) {
-    _canvas.setAttribute('data-renderer-frame-submits', '$legacyFrames');
   }
 }
 
@@ -3569,7 +3426,6 @@ Future<void> _loadTextures(JSObject? data) async {
   final urls = <String, String>{};
   _collectUrls(data?['tex'] as JSObject?, urls);
   await Future.wait([
-    _renderer?.loadTextures(urls) ?? Future<void>.value(),
     _pixeldartRuntime?.loadTextures(urls) ?? Future<void>.value(),
   ]);
 }
@@ -3588,7 +3444,7 @@ void _resize() {
   final h = web.window.innerHeight;
   _canvas.width = w > 0 ? w : 800;
   _canvas.height = h > 0 ? h : 600;
-  _renderer?.resize(_canvas.width, _canvas.height);
+  _rendererGui?.resize(_canvas.width, _canvas.height);
   _presentationBackend.resize(_canvas.width, _canvas.height);
   final surface = _pixeldartRuntime?.surfaceLabel;
   if (surface != null) _canvas.setAttribute('data-renderer-surface', surface);
@@ -3758,17 +3614,7 @@ void _raf(num ts) {
       }
     }
 
-    final renderer = _renderer;
-    if (renderer != null) {
-      _camera.lookFrom(_viewEye, _simYaw, _simPitch);
-      renderer.depthOfFieldStrength = _activePanel == _journal
-          ? depthOfFieldStrength
-          : 0;
-      _legacyFrameTime = frameTime;
-      _presentationBackend.submit(
-        RendererFrame(snapshot: _session.presentationSnapshot),
-      );
-    } else if (_backendSelection.kind == RendererBackendKind.pixeldart) {
+    {
       _camera.lookFrom(_viewEye, _simYaw, _simPitch);
       _pixeldartRuntime?.setCamera(_camera);
       _pixeldartRuntime?.setVisibleRooms(_house, _currentRoom);
@@ -4080,7 +3926,7 @@ void _update(double dt) {
     } else if (portal != null && !portal.sticks && !portal.locked) {
       portal.open = !portal.open;
       _ambientNotice.showCaption(portal.open ? 'door opens' : 'door closes');
-      _emitter?.rebuildRoom(portal.a);
+      _pixeldartRuntime?.refreshRoomGeometry(_house, portal.a);
       _pixeldartRuntime?.refreshPortalGeometry(_house, portal.id);
       _audio?.onDoorStateChanged();
     } else if (window != null) {
@@ -4150,9 +3996,13 @@ void _renderCanvasGui(double dt, FocusSnapshot focus) {
       prompt: focus.prompt,
       dialogue: _dialogueCoordinator.toRenderState(),
       day: _session.snapshot.day,
-      hour: _time.currentHour.toInt(),
+      hour: _time.currentHour,
+      twelveHourClock:
+          _gameplayOptions.clockFormat == GameplayClockFormat.twelveHour,
       roomName: room?.id ?? _currentRoom,
-      objective: textLibrary.getBroadcastPart(_session.snapshot.day, 'status'),
+      objective: _gameplayOptions.showObjective
+          ? textLibrary.getBroadcastPart(_session.snapshot.day, 'status')
+          : null,
       hints: hints,
       shaderTuning: _shaderTuning,
     ),
@@ -4309,7 +4159,7 @@ void _chooseDoorResponse(String rawChoice) {
     final portal = _house.portalById('front-door');
     if (portal != null) {
       portal.open = true;
-      _emitter?.rebuildRoom(portal.a);
+      _pixeldartRuntime?.refreshRoomGeometry(_house, portal.a);
       _pixeldartRuntime?.refreshPortalGeometry(_house, portal.id);
       _audio?.onDoorStateChanged();
     }
@@ -4433,7 +4283,7 @@ void _closeFrontDoorIfOpen() {
   final portal = _house.portalById('front-door');
   if (portal != null && portal.open) {
     portal.open = false;
-    _emitter?.rebuildRoom(portal.a);
+    _pixeldartRuntime?.refreshRoomGeometry(_house, portal.a);
     _pixeldartRuntime?.refreshPortalGeometry(_house, portal.id);
     _audio?.onDoorStateChanged();
   }
@@ -4489,24 +4339,4 @@ double _rainWindowVisibility(String roomId) {
   if (windows.isEmpty) return 0.12;
   final open = windows.where((window) => window.shutterOpen).length;
   return (open / windows.length).clamp(0.12, 1.0).toDouble();
-}
-
-void _updateLighting(Renderer renderer) {
-  renderer.lightDir = sunDirection(_time.sunAngle);
-  renderer.lightColor = sunColor(_time.sunAngle);
-  renderer.ambient = math.max(ambientFloor, ambientPeak * _time.daylight);
-}
-
-void _render(Renderer renderer, double dt, RuptureState rupture) {
-  _updateLighting(renderer);
-  _camera.breathe(dt);
-  renderer.begin(_camera, _bgHue);
-
-  final emitter = _emitter;
-  if (emitter != null) {
-    emitter.draw(_currentRoom, _viewEye);
-  }
-
-  renderer.flush(dt, rupture);
-  _hud.update(const Object(), dt);
 }
