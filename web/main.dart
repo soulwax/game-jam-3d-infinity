@@ -35,8 +35,10 @@ import 'package:quarantine/presentation/renderer_backend.dart';
 import 'package:quarantine/presentation/day_night_atmosphere.dart';
 import 'package:quarantine/presentation/realistic_thunderstorm_engine.dart';
 import 'package:quarantine/presentation/shader_tuning_bridge.dart';
+import 'package:quarantine/presentation/shader_tuning_state.dart';
 import 'package:quarantine/presentation/renderer_runtime.dart';
 import 'package:quarantine/presentation/renderer_diagnostics.dart';
+import 'package:quarantine/presentation/renderer_gui_surface.dart';
 import 'package:quarantine/ui/gui_flow_coordinator.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/authored_manifest.dart';
@@ -90,7 +92,6 @@ import 'package:quarantine/ui/settings_panel.dart';
 import 'package:quarantine/ui/settings_index_panel.dart';
 import 'package:quarantine/ui/settings_registry.dart';
 import 'package:quarantine/ui/settings_store.dart';
-import 'package:quarantine/ui/canvas_p5_gui_engine.dart';
 import 'package:quarantine/ui/gameplay_dialogue_coordinator.dart';
 import 'package:quarantine/visitors/ambient.dart';
 import 'package:quarantine/visitors/director.dart';
@@ -1883,7 +1884,7 @@ int _rendererHistoryEpoch = 0;
 final FpsMotion _motion = FpsMotion();
 final LocomotionController _locomotionController = LocomotionController();
 double _smoothEyeY = playerEyeHeight;
-CanvasP5GuiEngine? _p5GuiEngine;
+RendererGuiSurface? _rendererGui;
 final GameplayDialogueCoordinator _dialogueCoordinator =
     GameplayDialogueCoordinator();
 final ShaderTuningState _shaderTuning = ShaderTuningState();
@@ -2451,7 +2452,7 @@ Future<void> main() async {
   if (uiCanvas != null) {
     uiCanvas.width = _canvas.width;
     uiCanvas.height = _canvas.height;
-    _p5GuiEngine = CanvasP5GuiEngine(uiCanvas);
+    _rendererGui = RendererGuiSurface(uiCanvas);
   }
   final ctx = canvas.getContext('webgl2') as web.WebGL2RenderingContext?;
   if (ctx == null) {
@@ -2997,26 +2998,22 @@ Future<void> main() async {
 }
 
 void _handleRenderedDialogueHover(web.MouseEvent event) {
-  final gui = _p5GuiEngine;
+  final gui = _rendererGui;
   if (!_door.visitorPresent || gui == null) return;
   final point = _canvasPoint(event);
   if (point == null) return;
-  _dialogueCoordinator.handleMouseMove(
-    point.$1,
-    point.$2,
-    gui.currentChoiceHitBoxes,
-  );
+  _dialogueCoordinator.handleMouseMove(point.$1, point.$2, gui.hitBoxes);
 }
 
 bool _handleRenderedDialogueClick(web.MouseEvent event) {
-  final gui = _p5GuiEngine;
+  final gui = _rendererGui;
   if (!_door.visitorPresent || gui == null) return false;
   final point = _canvasPoint(event);
   if (point == null) return false;
   return _dialogueCoordinator.handleMouseClick(
     point.$1,
     point.$2,
-    gui.currentChoiceHitBoxes,
+    gui.hitBoxes,
   );
 }
 
@@ -4129,72 +4126,38 @@ void _update(double dt) {
 }
 
 void _renderCanvasGui(double dt, FocusSnapshot focus) {
-  final gui = _p5GuiEngine;
+  final gui = _rendererGui;
   if (gui == null) return;
 
   final screenW = _canvas.width.toDouble();
   final screenH = _canvas.height.toDouble();
-
-  gui.beginFrame(dt, screenW, screenH);
-
-  // 1. In-Game Reticle & Bottom Prompt Banner (only when not in modal dialogue/panels)
-  if (!_door.visitorPresent && _activePanel == null) {
-    gui.drawReticle(
-      screenWidth: screenW,
-      screenHeight: screenH,
-      isHoveringInteractable: focus.prompt != null,
-    );
-    gui.drawPromptBanner(
-      screenWidth: screenW,
-      screenHeight: screenH,
-      promptText: focus.prompt,
-    );
-  }
-
-  // 2. Persona 5 Dialogue Box & 1..N Numbered Choice Badges
   _dialogueCoordinator.update(dt);
-  gui.drawDialogueAndChoices(
-    screenWidth: screenW,
-    screenHeight: screenH,
-    state: _dialogueCoordinator.toRenderState(),
-  );
-
-  // 3. Gameplay HUD (Clock, Day, Current Room, and Daily Objective Ticker)
-  final room = _house.byId(_currentRoom);
-  gui.drawHUD(
-    screenWidth: screenW,
-    screenHeight: screenH,
-    currentDay: _session.snapshot.day,
-    currentHour: _time.currentHour.toInt(),
-    currentRoomName: room?.id ?? _currentRoom,
-    objectiveText: textLibrary.getBroadcastPart(
-      _session.snapshot.day,
-      'status',
-    ),
-  );
-
-  // 4. Contextual UX Action Hints (Key Prompts & Dynamic Action Indicators)
   _guiFlowCoordinator.update(dt);
   final hints = _guiFlowCoordinator.getActiveActionHints(
     isHoveringInteractable: focus.prompt != null,
     interactableLabel: focus.prompt,
     isVisitorPresent: _door.visitorPresent,
   );
-  gui.drawContextualHUDActionPrompts(
-    screenWidth: screenW,
-    screenHeight: screenH,
-    hints: hints,
-  );
-
-  // 5. CapsLock Special Shader Tuning Lab & Post-Processing Suite
   _shaderTuning.update(dt);
-  gui.drawShaderTuningMenu(
-    screenWidth: screenW,
-    screenHeight: screenH,
-    state: _shaderTuning,
+  final room = _house.byId(_currentRoom);
+  gui.render(
+    RendererGuiFrame(
+      dt: dt,
+      width: screenW,
+      height: screenH,
+      showGameplayReticle: !_door.visitorPresent && _activePanel == null,
+      interactable: focus.prompt != null,
+      prompt: focus.prompt,
+      dialogue: _dialogueCoordinator.toRenderState(),
+      day: _session.snapshot.day,
+      hour: _time.currentHour.toInt(),
+      roomName: room?.id ?? _currentRoom,
+      objective: textLibrary.getBroadcastPart(_session.snapshot.day, 'status'),
+      hints: hints,
+      shaderTuning: _shaderTuning,
+    ),
   );
-
-  gui.endFrame();
+  gui.publishDiagnostics(_canvas);
 }
 
 String? _narrativeResidueFor(String focusId) {
