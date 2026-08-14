@@ -23,6 +23,7 @@
       "sha256": "b44f90f9a9e4f59d75ac4c5d5028e3b24390a7acda40b2cabaa2c380d4406b1e",
       "width": 8192,
       "height": 8192,
+      "expectedMipLevels": 14,
       "colorSpace": "srgb"
     },
     "normal": {
@@ -30,6 +31,7 @@
       "sha256": "f8f83a845a38174be12e4a1a78e0175cd60a97ad66cc9db6aa323471a38696af",
       "width": 8192,
       "height": 8192,
+      "expectedMipLevels": 14,
       "colorSpace": "linear"
     }
   },
@@ -37,6 +39,8 @@
     "format": "glTF-2.0-or-qmsh-v2",
     "path": null,
     "packageSha256": null,
+    "maxTextureDimension": 4096,
+    "expectedRuntimeMipLevels": 13,
     "lods": null,
     "note": "Do not submit the raw OBJ or 8192px maps to the browser. Generate and validate the runtime package offline first."
   },

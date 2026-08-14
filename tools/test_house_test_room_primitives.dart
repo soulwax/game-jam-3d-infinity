@@ -6,13 +6,17 @@ import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/interaction.dart';
 
 void main() {
-  print('========================================================================');
+  print(
+    '========================================================================',
+  );
   print(' THE QUARANTINE — TEST ROOM & PRIMITIVE OBJECT GEOMETRY SUITE');
-  print('========================================================================');
+  print(
+    '========================================================================',
+  );
 
   final house = House(42);
 
-  // 1. Verify all rooms produce valid RoomGeometry containing primitive objects
+  // 1. Verify all rooms produce valid structural shell geometry.
   print('Testing RoomGeometry generation across all house rooms...');
   for (final room in house.rooms) {
     final geom = buildRoomGeometry(house, room);
@@ -29,17 +33,19 @@ void main() {
       throw StateError('Combined geometry empty for room ${room.id}');
     }
   }
-  print('✓ All ${house.rooms.length} rooms generated complete geometric meshes with primitive dressing');
+  print('✓ All ${house.rooms.length} rooms generated clean structural shells');
 
-  // 2. Verify Living Room Test Chamber specific primitive volume
+  // 2. Sparse chambers intentionally omit the old primitive volume.
   final living = house.byId('living-room')!;
   final livingGeom = buildRoomGeometry(house, living);
-  if (livingGeom.walls.length < 5000) {
+  if (livingGeom.walls.length > 10000) {
     throw StateError(
-      'Living room walls geometry expected rich primitive dataset, got ${livingGeom.walls.length} floats',
+      'Living room walls still contain decorative artifacts: ${livingGeom.walls.length} floats',
     );
   }
-  print('✓ Living room test chamber contains ${livingGeom.walls.length} vertex floats of primitive geometries');
+  print(
+    '✓ Living room shell remains sparse (${livingGeom.walls.length} floats)',
+  );
 
   // 3. Verify StaticMeshBuilder primitive emission
   print('Testing Primitive Geometric Builders...');
@@ -54,12 +60,15 @@ void main() {
     0xFF0000,
   );
   final quadFloats = builder.build();
-  if (quadFloats.length != 6 * 14) { // 6 vertices per quad * 14 floats per vertex
+  if (quadFloats.length != 6 * 14) {
+    // 6 vertices per quad * 14 floats per vertex
     throw StateError('Expected 84 floats for 1 quad, got ${quadFloats.length}');
   }
 
   // 4. Verify Raycasting & Line of Sight in Test Room Environment
-  print('Testing Interaction Raycasting & Line-of-Sight in Test Room Environment...');
+  print(
+    'Testing Interaction Raycasting & Line-of-Sight in Test Room Environment...',
+  );
   final eye = Vec3(2.0, 1.65, 2.0);
   final target = Vec3(3.0, 1.65, 2.0);
 
@@ -71,9 +80,15 @@ void main() {
 
   final camera = Camera()..lookFrom(eye, 0.0, 0.0);
   final mantleHit = raycastMantle(camera, house, 'living-room');
-  print('✓ Raycast and line-of-sight evaluated deterministically in test room (mantleHit: $mantleHit)');
+  print(
+    '✓ Raycast and line-of-sight evaluated deterministically in test room (mantleHit: $mantleHit)',
+  );
 
-  print('========================================================================');
+  print(
+    '========================================================================',
+  );
   print('✓ TEST ROOM & PRIMITIVE OBJECT GEOMETRY CERTIFIED (4/4 SUB-SYSTEMS)');
-  print('========================================================================');
+  print(
+    '========================================================================',
+  );
 }

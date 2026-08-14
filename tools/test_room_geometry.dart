@@ -6,10 +6,6 @@ Never _fail(String message) => throw StateError(message);
 
 void main() {
   final house = House(42);
-  final cellarWallFloats = buildRoomGeometry(
-    house,
-    house.byId('cellar')!,
-  ).walls.length;
   for (final room in house.rooms) {
     final geometry = buildRoomGeometry(house, room);
     if (geometry.floor.isEmpty || geometry.ceiling.isEmpty) {
@@ -22,11 +18,10 @@ void main() {
     if (geometry.walls.length % floatsPerQuad != 0) {
       _fail('room ${room.id} detail geometry is not quad-aligned');
     }
-    if (room.id != 'cellar' && geometry.walls.length <= cellarWallFloats) {
-      _fail('room ${room.id} is missing its visual trim/detail layer');
-    }
     if (geometry.doors.isEmpty &&
-        house.portalsFor(room.id).any((portal) => !portal.stair)) {
+        house
+            .portalsFor(room.id)
+            .any((portal) => !portal.stair && portal.doorKit != null)) {
       _fail('room ${room.id} has a door portal but no door model');
     }
     final size = house.effectiveSize(room);

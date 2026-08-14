@@ -34,6 +34,7 @@ void main() {
       map['width'] == 8192 && map['height'] == 8192,
       '$key dimensions are pinned',
     );
+    check(map['expectedMipLevels'] == 14, '$key source mip plan is complete');
     check((map['sha256'] as String).length == 64, '$key hash is present');
   }
   check((source['albedo'] as Map)['colorSpace'] == 'srgb', 'albedo is sRGB');
@@ -47,6 +48,14 @@ void main() {
   check(
     runtime['packageSha256'] == null,
     'runtime hash stays unset until conversion',
+  );
+  check(
+    runtime['maxTextureDimension'] == 4096,
+    'runtime texture cap is pinned',
+  );
+  check(
+    runtime['expectedRuntimeMipLevels'] == 13,
+    'runtime mip plan is pinned',
   );
   check(
     (root['material'] as Map)['clearcoatStrength'] == 0.72,

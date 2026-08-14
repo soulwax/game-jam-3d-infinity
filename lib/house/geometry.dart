@@ -1548,6 +1548,10 @@ void _addWallDetails(
   double width,
   List<_Opening> openings,
 ) {
+  // Sparse test chambers are a renderer laboratory, not a furnished period
+  // house. Keep the structural wall/opening mesh above, but omit trim, sash,
+  // rails, and dressing so unfinished proxy detail cannot dominate captures.
+  if (sparseTestChambers) return;
   if (room.id == 'cellar') return;
 
   final publicRoom = room.id == 'living-room' || room.id == 'hall';
