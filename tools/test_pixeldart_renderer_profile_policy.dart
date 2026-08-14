@@ -12,14 +12,21 @@ void main() {
     surfaceWidth: 1920,
     surfaceHeight: 1080,
   );
-  check(high.internalWidth == 960, 'high internal width');
-  check(high.internalHeight == 540, 'high internal height');
+  check(high.internalWidth == 1920, 'high internal width');
+  check(high.internalHeight == 1080, 'high internal height');
   check(high.shadowMapCount == 3, 'high shadow maps');
   check(high.shadowMapSize == 1024, 'high shadow map size');
+  final highMsaa4 = policy.configuration(
+    profile: pixeldart.QualityProfile.clean,
+    surfaceWidth: 1920,
+    surfaceHeight: 1080,
+    antialiasing: 'msaa4',
+  );
+  check(highMsaa4.sampleCount == 4, 'high MSAA 4x allocation');
   check(high.materialTableCapacity == 64, 'high material capacity');
   check(high.lightTableCapacity == 8, 'high light capacity');
   final highMap = high.toMap();
-  check(highMap['internalWidth'] == 960, 'configuration map width');
+  check(highMap['internalWidth'] == 1920, 'configuration map width');
   check(highMap['shadowMapCount'] == 3, 'configuration map shadow count');
 
   final standard = policy.configuration(
@@ -27,8 +34,8 @@ void main() {
     surfaceWidth: 1280,
     surfaceHeight: 720,
   );
-  check(standard.internalWidth == 640, 'standard internal width');
-  check(standard.internalHeight == 360, 'standard internal height');
+  check(standard.internalWidth == 1280, 'standard internal width');
+  check(standard.internalHeight == 720, 'standard internal height');
   check(standard.shadowMapCount == 2, 'standard shadow maps');
 
   final safe = policy.configuration(
@@ -36,8 +43,8 @@ void main() {
     surfaceWidth: 800,
     surfaceHeight: 600,
   );
-  check(safe.internalWidth == 384, 'safe internal width');
-  check(safe.internalHeight == 216, 'safe internal height');
+  check(safe.internalWidth == 800, 'safe internal width');
+  check(safe.internalHeight == 450, 'safe internal height');
   check(safe.shadowMapCount == 0, 'safe has no shadows');
   check(safe.lightTableCapacity == 1, 'safe light capacity');
 
@@ -55,8 +62,8 @@ void main() {
     surfaceHeight: 1080,
     renderScale: '0.75',
   );
-  check(scaled.internalWidth == 720, 'scaled high internal width');
-  check(scaled.internalHeight == 405, 'scaled high internal height');
+  check(scaled.internalWidth == 1440, 'scaled high internal width');
+  check(scaled.internalHeight == 810, 'scaled high internal height');
   var rejected = false;
   try {
     policy.configuration(

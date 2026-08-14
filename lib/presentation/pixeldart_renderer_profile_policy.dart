@@ -10,14 +10,15 @@ final class PixeldartRendererProfilePolicy {
     required int surfaceWidth,
     required int surfaceHeight,
     String renderScale = 'auto',
+    String antialiasing = 'auto',
   }) {
     if (surfaceWidth <= 0 || surfaceHeight <= 0) {
       throw ArgumentError('surface dimensions must be positive');
     }
     final target = switch (profile.kind) {
-      pixeldart.QualityProfileKind.high => (width: 960, height: 540),
-      pixeldart.QualityProfileKind.standard => (width: 640, height: 360),
-      _ => (width: 384, height: 216),
+      pixeldart.QualityProfileKind.high => (width: 1920, height: 1080),
+      pixeldart.QualityProfileKind.standard => (width: 1280, height: 720),
+      _ => (width: 960, height: 540),
     };
     final scale = switch (renderScale) {
       '0.50' => 0.50,
@@ -35,11 +36,19 @@ final class PixeldartRendererProfilePolicy {
     final isHigh = profile.kind == pixeldart.QualityProfileKind.high;
     final isStandard = profile.kind == pixeldart.QualityProfileKind.standard;
     final shadows = profile.installs(pixeldart.PipelineFeatures.shadows);
+    // MSAA is a target allocation choice, not a post feature toggle. The
+    // safe graph can still resolve a requested sample count when hardware
+    // negotiation permits it.
+    final sampleCount = switch (antialiasing) {
+      'msaa4' => 4,
+      'msaa2' || 'auto' => 2,
+      _ => 1,
+    };
     return pixeldart.RendererConfiguration(
       profile: profile,
       internalWidth: extent.width,
       internalHeight: extent.height,
-      sampleCount: profile.installs(pixeldart.PipelineFeatures.msaa) ? 2 : 1,
+      sampleCount: sampleCount,
       shadowMapCount: shadows ? (isHigh ? 3 : (isStandard ? 2 : 1)) : 0,
       shadowMapSize: isHigh ? 1024 : (isStandard ? 768 : 512),
       materialTableCapacity: isHigh ? 64 : (isStandard ? 32 : 16),
@@ -55,6 +64,9 @@ final class PixeldartRendererProfilePolicy {
     int maxWidth,
     int maxHeight,
   ) {
+    // The viewport height is the authoritative presentation dimension. Width
+    // only caps the result on narrow or rotated surfaces, preserving the
+    // reference aspect ratio instead of stretching the renderer.
     final widthScale = (maxWidth / targetWidth).clamp(0.0, 1.0).toDouble();
     final heightScale = (maxHeight / targetHeight).clamp(0.0, 1.0).toDouble();
     final scale = widthScale < heightScale ? widthScale : heightScale;

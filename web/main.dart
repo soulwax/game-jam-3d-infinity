@@ -159,6 +159,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   final Map<String, px.MaterialHandle> _roomMaterials = {};
   final Map<String, Map<String, px.MaterialHandle>> _roomSurfaceMaterials = {};
   final Map<String, px.MaterialHandle> _inventoryMaterials = {};
+  final Map<String, px.MaterialDefinition> _materialDefinitions = {};
   px.MaterialHandle? _sceneMaterial;
   px.CameraView? _cameraView;
   px.FrameEnvironment _environment = const px.FrameEnvironment();
@@ -336,11 +337,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     int surfaceWidth,
     int surfaceHeight, {
     String renderScale = 'auto',
+    String antialiasing = 'auto',
   }) => _profilePolicy.configuration(
     profile: profile,
     surfaceWidth: surfaceWidth,
     surfaceHeight: surfaceHeight,
     renderScale: renderScale,
+    antialiasing: antialiasing,
   );
 
   void _configureLightRanking() {
@@ -375,6 +378,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       width,
       height,
       renderScale: settings.renderScale,
+      antialiasing: settings.antialiasing,
     );
     try {
       await _renderer.configure(configuration);
@@ -401,11 +405,17 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _textures['wall-plaster'] = _renderer.resources.registerTexture(
       width: 256,
       height: 256,
+      hasMips: true,
+      minFilter: pxdevice.GpuTextureFilter.linearMipmapLinear,
+      anisotropy: 8,
       debugLabel: 'texture:wall-plaster',
     );
     _textures['grime'] = _renderer.resources.registerTexture(
       width: 512,
       height: 512,
+      hasMips: true,
+      minFilter: pxdevice.GpuTextureFilter.linearMipmapLinear,
+      anisotropy: 8,
       debugLabel: 'texture:grime',
     );
     // Keep the authored texture keys resident even when an optional image is
@@ -415,11 +425,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _textures[key] = _renderer.resources.registerTexture(
         width: 256,
         height: 256,
+        hasMips: true,
+        minFilter: pxdevice.GpuTextureFilter.linearMipmapLinear,
+        anisotropy: 8,
         debugLabel: 'texture:$key',
       );
     }
     _publishTextureResidency();
-    _sceneMaterial = _renderer.resources.registerMaterial(
+    _publishMaterialResidency();
+    _sceneMaterial = _registerMaterial(
       px.MaterialDefinition(
         key: 'quarantine-house-safe',
         albedoTexture: _textures['wall-plaster'],
@@ -439,7 +453,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       }.entries) {
         final authored = HouseSurfaceMaterials.forId(entry.value);
         final tint = _surfaceTint(authored.tint);
-        final material = _renderer.resources.registerMaterial(
+        final material = _registerMaterial(
           px.MaterialDefinition(
             key: 'quarantine-house-${room.id}-${entry.key}-${authored.id}',
             albedoTexture: _textures[authored.textureKey],
@@ -470,7 +484,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'micro',
     ]) {
       final isService = kind == 'service';
-      _inventoryMaterials[kind] = _renderer.resources.registerMaterial(
+      _inventoryMaterials[kind] = _registerMaterial(
         px.MaterialDefinition(
           key: 'quarantine-inventory-$kind',
           albedoTexture: isService
@@ -483,6 +497,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         ),
       );
     }
+    _publishMaterialResidency();
     for (final room in house.rooms) {
       _installRoomSurfaces(house, room);
     }
@@ -538,17 +553,16 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final exteriorMesh = buildHouseExteriorMesh(house);
     for (final part in toPixeldartCellMeshParts(exteriorMesh)) {
       final textureKey = part.material == 4 ? 'grime' : 'wall-plaster';
-      final material = _exteriorMaterials[part.material] ??= _renderer.resources
-          .registerMaterial(
-            px.MaterialDefinition(
-              key: 'quarantine-house-exterior-slot-${part.material}',
-              albedoTexture: _textures[textureKey],
-              tintR: _exteriorTint(part.material).$1,
-              tintG: _exteriorTint(part.material).$2,
-              tintB: _exteriorTint(part.material).$3,
-              doubleSided: true,
-            ),
-          );
+      final material = _exteriorMaterials[part.material] ??= _registerMaterial(
+        px.MaterialDefinition(
+          key: 'quarantine-house-exterior-slot-${part.material}',
+          albedoTexture: _textures[textureKey],
+          tintR: _exteriorTint(part.material).$1,
+          tintG: _exteriorTint(part.material).$2,
+          tintB: _exteriorTint(part.material).$3,
+          doubleSided: true,
+        ),
+      );
       final exteriorHandle = _renderer.resources.registerMesh(
         part.mesh,
         debugLabel: 'exterior:${part.cellId}:slot-${part.material}',
@@ -1406,11 +1420,14 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         handle,
         Uint8List.fromList(pixels),
       );
+      _renderer.resources.finalizeTextureMips(handle);
       _canvas.setAttribute('data-renderer-texture-$key', 'loaded');
       _publishTextureResidency();
+      _publishMaterialResidency();
     } catch (error) {
       _canvas.setAttribute('data-renderer-texture-$key', 'fallback');
       _publishTextureResidency();
+      _publishMaterialResidency();
       web.console.warn('Pixeldart texture $key unavailable: $error'.toJS);
     }
   }
@@ -1460,6 +1477,31 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     if (!_canvas.hasAttribute('data-renderer-texture-residency-initial')) {
       _canvas.setAttribute('data-renderer-texture-residency-initial', states);
     }
+  }
+
+  void _publishMaterialResidency() {
+    if (!_initialized || _materialDefinitions.isEmpty) return;
+    final requests = [
+      for (final entry in _materialDefinitions.entries)
+        px.MaterialResidencyRequest(
+          key: entry.key,
+          material: entry.value,
+          priority: entry.key.contains('wall') ? 2 : 1,
+        ),
+    ];
+    final report = _renderer.resources.materialResidency.prewarm(requests);
+    final ordered = report.results.toList()
+      ..sort((a, b) => a.request.key.compareTo(b.request.key));
+    final states = ordered
+        .map((result) => '${result.request.key}=${result.status.name}')
+        .join(',');
+    _canvas
+      ..setAttribute('data-renderer-material-residency', states)
+      ..setAttribute(
+        'data-renderer-material-residency-counts',
+        'resident=${report.residentCount};pending=${report.pendingCount};'
+            'missing=${report.missingCount};evicted=${report.evictedCount}',
+      );
   }
 
   px.RetainedItemDescriptor _withVisibility(
@@ -1629,6 +1671,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         rejected.map((entry) => '${entry.key}=${entry.value}').join('|'),
       )
       ..setAttribute('data-renderer-light-selection-revision', '$revision');
+  }
+
+  px.MaterialHandle _registerMaterial(px.MaterialDefinition definition) {
+    final handle = _renderer.resources.registerMaterial(definition);
+    _materialDefinitions[definition.key] = definition;
+    return handle;
   }
 
   px.LinearColor _color(int rgb) => px.LinearColor(

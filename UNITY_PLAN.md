@@ -1575,3 +1575,23 @@ These discoveries are binding for the Unity implementation:
     serialize enums and records to stable string/number IDs before crossing a
     DOM or automation boundary. A debug-only metadata failure must never abort
     the first frame or leave the player with a blank/error canvas.
+13. **Residency is reported at material granularity.** Unity’s streaming and
+    renderer diagnostics should aggregate base colour, normal, ORM, emissive,
+    and lightmap slots into one stable material status per visible surface.
+    Texture handles alone cannot explain why a wall, prop, or practical is
+    visually incomplete.
+14. **Graphics controls must change real allocations.** If the UI exposes MSAA,
+    render scale, texture quality, or dynamic resolution, the effective profile
+    must alter render targets, sampling, residency, or frame pacing and publish
+    the result. A control that only changes a preference record is misleading
+    and should not ship.
+15. **Minification is a first-class material requirement.** Every tiled or
+    distant surface must ship with a complete mip chain, trilinear minification,
+    and negotiated anisotropic filtering. Never sample a full-resolution texture
+    with a non-mip sampler at oblique or sub-pixel footprints: that is the root
+    cause of the moire interference seen in the prototype. Unity material import
+    settings must preserve mipmaps, streaming must keep the needed levels
+    resident, and renderer diagnostics should report the effective filter and
+    mip residency per material. Use a 1920x1080 high-profile reference target,
+    aspect-preserving and fit from viewport height (width is only a narrow-screen
+    cap), then dynamically scale down through the negotiated profile.

@@ -411,6 +411,7 @@ class CompiledApp {
       _401: (x0,x1,x2,x3) => x0.texParameterf(x1,x2,x3),
       _402: (x0,x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11) => x0.texSubImage3D(x1,x2,x3,x4,x5,x6,x7,x8,x9,x10,x11),
       _403: (x0,x1,x2,x3,x4,x5,x6,x7,x8,x9) => x0.texSubImage2D(x1,x2,x3,x4,x5,x6,x7,x8,x9),
+      _404: (x0,x1) => x0.generateMipmap(x1),
       _405: (x0,x1) => x0.deleteTexture(x1),
       _406: x0 => x0.createFramebuffer(),
       _407: x0 => x0.createRenderbuffer(),
