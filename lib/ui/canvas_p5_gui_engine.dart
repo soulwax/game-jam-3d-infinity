@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:web/web.dart' as web;
 
-import 'gui_design_tokens.dart';
 import 'p5_gui_models.dart';
 export 'p5_gui_models.dart';
 import '../presentation/shader_tuning_state.dart';
@@ -457,7 +456,9 @@ class CanvasP5GuiEngine {
       );
       final choiceStripH = compact ? 31.0 : 34.0;
       final spacing = compact ? 35.0 : 39.0;
-      final viewportTop = 34.0;
+      // Reserve the secondary HUD lane so the first response never hides
+      // beneath the room/objective/clock chrome on compact screens.
+      final viewportTop = compact ? 104.0 : 92.0;
       final viewportBottom = boxY - boxH * 0.5 - 18.0;
       final viewportHeight = math.max(0.0, viewportBottom - viewportTop);
       final visibleCount = math.max(
@@ -744,7 +745,10 @@ class CanvasP5GuiEngine {
       final objW = math.min(screenWidth * 0.6, 420.0);
       final objH = 32.0;
       final objX = screenWidth * 0.5;
-      final objY = objH * 0.5 + 20.0;
+      // Keep the objective on a second HUD lane instead of sharing the top row
+      // with the room and clock badges on compact views.
+      final objectiveCompact = screenWidth < 640 || screenHeight < 540;
+      final objY = objectiveCompact ? 78.0 : 76.0;
 
       drawBrushPanel(
         x: objX,

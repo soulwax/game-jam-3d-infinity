@@ -62,6 +62,8 @@ class ShaderTuningBridge {
       'light_contact_boost',
     );
 
-    activeOverrides['debugViewMode'] = state.debugMode;
+    // DOM diagnostics must remain JSON-safe; never expose the Dart enum
+    // instance itself through the renderer metadata channel.
+    activeOverrides['debugViewMode'] = state.debugMode.name;
   }
 }

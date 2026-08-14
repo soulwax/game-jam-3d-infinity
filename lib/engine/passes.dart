@@ -1,5 +1,4 @@
 import 'package:web/web.dart' hide Float32List;
-import 'package:web/web.dart' as web;
 import 'shadow.dart';
 import 'gl.dart';
 import 'shaders.dart' as shader_sources;

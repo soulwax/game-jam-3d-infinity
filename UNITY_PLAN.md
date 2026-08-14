@@ -1566,3 +1566,12 @@ These discoveries are binding for the Unity implementation:
     Keep choice hit regions at least 40 px high, retain visible keyboard order,
     and ensure selected/hovered states remain distinct in reduced-motion and
     high-contrast modes.
+11. **Practical lights carry authored direction.** A mantle or fixture must
+    provide a stable socket direction (or a deterministic room-centre target)
+    for its spot lobe. Unity should never replace fixture orientation with a
+    global downward vector; selection, emissive state, fill, lobe, and shadow
+    must all consume the same authored light record.
+12. **Diagnostic metadata is part of the frame contract.** Renderer probes must
+    serialize enums and records to stable string/number IDs before crossing a
+    DOM or automation boundary. A debug-only metadata failure must never abort
+    the first frame or leave the player with a blank/error canvas.

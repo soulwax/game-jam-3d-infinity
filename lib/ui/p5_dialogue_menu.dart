@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'canvas_p5_gui_engine.dart';
-import 'p5_dialogue_animations.dart';
 
 /// Standalone Persona 5 Dialogue Choice Menu Manager (§40.3).
 class P5DialogueMenu {

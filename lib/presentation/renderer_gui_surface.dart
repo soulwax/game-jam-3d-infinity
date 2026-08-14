@@ -1,9 +1,7 @@
 import 'package:web/web.dart' as web;
 
-import 'shader_tuning_state.dart';
 import '../ui/canvas_p5_gui_engine.dart';
 import '../ui/gui_flow_coordinator.dart';
-import '../ui/p5_gui_models.dart';
 
 /// Renderer-facing GUI frame. Gameplay supplies meaning; this layer owns
 /// composition, draw order, hit regions, and the display surface contract.

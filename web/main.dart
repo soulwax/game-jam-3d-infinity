@@ -295,9 +295,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         pixelHeight: nextHeight,
       ),
     );
-    if (_surfaceReconfigure == null) {
-      _surfaceReconfigure = _drainSurfaceReconfigure();
-    }
+    _surfaceReconfigure ??= _drainSurfaceReconfigure();
   }
 
   Future<void> _drainSurfaceReconfigure() async {
@@ -851,7 +849,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     String currentRoomId,
     Vec3 eye,
     double sunAngle,
-    double _daylight,
+    double daylight,
     WeatherDay weather,
     bool daylightThroughWindow, {
     double? currentHour,
@@ -1597,7 +1595,11 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   ) => px.SpotLight(
     id: candidate.id,
     position: px.Vec3(source.position.x, source.position.y, source.position.z),
-    direction: const px.Vec3(0, -1, 0),
+    direction: px.Vec3(
+      (source.direction ?? Vec3(0, -1, 0)).x,
+      (source.direction ?? Vec3(0, -1, 0)).y,
+      (source.direction ?? Vec3(0, -1, 0)).z,
+    ),
     color: px.LinearColor(
       candidate.color.x,
       candidate.color.y,

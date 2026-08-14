@@ -2,7 +2,6 @@ import 'dart:js_interop';
 import 'dart:math' as math;
 
 import 'package:web/web.dart' hide Float32List;
-import 'package:web/web.dart' as web;
 
 import 'gl.dart';
 import 'math3.dart';
@@ -31,8 +30,8 @@ class ShadowMap {
     _uModel = _ctx.getUniformLocation(_shadowProgram, 'uModel');
   }
 
-  
-  
+
+
   int addCaster(Vec3 pos) {
     final idx = _activeCasters < maxShadowCasters ? _activeCasters++ : 0;
     _ensureCapacity(idx + 1);
@@ -42,7 +41,7 @@ class ShadowMap {
     return idx;
   }
 
-  
+
   void disableCaster(int idx) {
     if (idx >= 0 && idx < _enabled.length) {
       _enabled[idx] = false;
@@ -50,7 +49,7 @@ class ShadowMap {
     }
   }
 
-  
+
   void updateCasterPosition(int idx, Vec3 pos) {
     if (idx >= 0 && idx < _lightPos.length) {
       _lightPos[idx] = pos;
@@ -58,10 +57,10 @@ class ShadowMap {
     }
   }
 
-  
+
   Mat4? getProjection(int idx) => idx >= 0 && idx < _lightProj.length ? _lightProj[idx] : null;
 
-  
+
   WebGLTexture? getShadowTexture(int idx) {
     if (idx >= 0 && idx < _targets.length) {
       return _targets[idx].depthTex;
@@ -69,11 +68,11 @@ class ShadowMap {
     return null;
   }
 
-  
+
   int get activeCasterCount => _activeCasters;
 
-  
-  
+
+
   void beginShadowPass(int idx) {
     if (idx < 0 || idx >= _targets.length) return;
     final t = _targets[idx];
@@ -82,17 +81,17 @@ class ShadowMap {
     _ctx.clear(256);
   }
 
-  
+
   void endShadowPass() {
     _gl.bindTarget(null);
   }
 
-  
+
   void bindShadowProgram() {
     _ctx.useProgram(_shadowProgram);
   }
 
-  
+
   void configureDepthOnlyState() {
     _ctx.colorMask(false, false, false, false);
     _ctx.enable(2884);
@@ -101,22 +100,22 @@ class ShadowMap {
     _ctx.depthMask(true);
   }
 
-  
+
   void restoreColorState() {
     _ctx.colorMask(true, true, true, true);
     _ctx.cullFace(1029);
     _ctx.disable(2884);
   }
 
-  
-  
+
+
   void setShadowUniforms(int casterIdx) {
     if (casterIdx >= 0 && casterIdx < _lightProj.length && _uLightProj != null) {
       _ctx.uniformMatrix4fv(_uLightProj, false, _lightProj[casterIdx].m.toJS);
     }
   }
 
-  
+
   void setModelUniform(Mat4 m) {
     if (_uModel != null) {
       _ctx.uniformMatrix4fv(_uModel, false, m.m.toJS);
@@ -142,24 +141,24 @@ class ShadowMap {
     if (idx >= _lightProj.length) return;
     final pos = _lightPos[idx];
 
-    
-    
+
+
     const fovRad = shadowFov * math.pi / 180.0;
     const near = shadowNear;
     const far = shadowFar;
 
-    
+
     final f = 1.0 / math.tan(fovRad / 2.0);
     final range = far - near;
 
     final proj = Mat4();
-    proj.m[0] = f;      
-    proj.m[5] = f;      
-    proj.m[10] = (far + near) / -range;  
-    proj.m[11] = -1;    
-    proj.m[14] = (2 * far * near) / -range;  
+    proj.m[0] = f;
+    proj.m[5] = f;
+    proj.m[10] = (far + near) / -range;
+    proj.m[11] = -1;
+    proj.m[14] = (2 * far * near) / -range;
 
-    
+
     final up = Vec3(0, 1, 0);
     final target = Vec3(0, 0, 0);
     final fwd = (target - pos).normalized;

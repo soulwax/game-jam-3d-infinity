@@ -1,5 +1,4 @@
 import 'dart:math' as math;
-import 'gui_design_tokens.dart';
 
 /// Active UI panel state enumeration.
 enum ActiveGuiPanel {
@@ -30,10 +29,10 @@ class ContextualPromptHint {
 class GuiFlowCoordinator {
   ActiveGuiPanel _currentPanel = ActiveGuiPanel.none;
   ActiveGuiPanel _previousPanel = ActiveGuiPanel.none;
-  
+
   double _transitionProgress = 0.0; // 0.0 = closed/hidden, 1.0 = fully open
-  double _transitionSpeed = 6.0;    // Smooth 160ms ease-out slide
-  
+  final double _transitionSpeed = 6.0;    // Smooth 160ms ease-out slide
+
   ActiveGuiPanel get currentPanel => _currentPanel;
   bool get isPanelActive => _currentPanel != ActiveGuiPanel.none;
   double get transitionProgress => _transitionProgress;

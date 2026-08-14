@@ -4,6 +4,10 @@ import 'house.dart';
 
 class PointLight {
   final Vec3 position;
+
+  /// Authored fixture direction. Mantles aim toward the room's visual centre
+  /// instead of every spotlight sharing a global down vector.
+  final Vec3? direction;
   final int color;
   final double radius;
   final double intensity;
@@ -11,6 +15,7 @@ class PointLight {
 
   const PointLight({
     required this.position,
+    this.direction,
     required this.color,
     required this.radius,
     required this.intensity,
@@ -30,9 +35,21 @@ class HouseLighting {
       for (final mantle in room.mantles) {
         if (!mantle.lit || mantle.broken) continue;
         final position = room.toWorld(mantle.localAt);
+        final size = house.effectiveSize(room);
+        final target = Vec3(
+          room.origin.x + size.x * 0.5,
+          room.origin.y + size.y * 0.55,
+          room.origin.z + size.z * 0.5,
+        );
+        final delta = target - position;
+        final length = delta.length;
+        final direction = length > 0.0001
+            ? delta * (1.0 / length)
+            : Vec3(0, -1, 0);
         lights.add(
           PointLight(
             position: position,
+            direction: direction,
             color: mantleLightColor,
             radius: mantleLightRadius,
             intensity: mantleLightIntensity * _roomGain(room.id),
