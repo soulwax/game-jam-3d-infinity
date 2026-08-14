@@ -4,13 +4,13 @@ import 'dart:io';
 void fail(String message) => throw StateError('asset provenance: $message');
 
 void main() {
-  final manifest = jsonDecode(
-    File('web/res/manifest.json').readAsStringSync(),
-  ) as Map<String, dynamic>;
+  final manifest =
+      jsonDecode(File('web/res/manifest.json').readAsStringSync())
+          as Map<String, dynamic>;
   final sfx = (manifest['sfx'] as Map).cast<String, dynamic>();
-  final soundscape = jsonDecode(
-    File('assets/house/soundscape.json').readAsStringSync(),
-  ) as Map<String, dynamic>;
+  final soundscape =
+      jsonDecode(File('assets/house/soundscape.json').readAsStringSync())
+          as Map<String, dynamic>;
   final emitters = soundscape['emitters'] as List<dynamic>;
   final cueIds = <String>{};
   for (final rawEmitter in emitters) {
@@ -34,13 +34,14 @@ void main() {
 
   final inventory = Process.runSync(
     Platform.resolvedExecutable,
-    ['run', 'tmp/tools/fetch_assets.dart'],
+    ['run', 'tools/fetch_assets.dart'],
     environment: {...Platform.environment, 'MANYFOLD_ASSET_INVENTORY': '1'},
   );
   if (inventory.exitCode != 0) {
     fail('source inventory command failed: ${inventory.stderr}');
   }
-  final decoded = jsonDecode(inventory.stdout as String) as Map<String, dynamic>;
+  final decoded =
+      jsonDecode(inventory.stdout as String) as Map<String, dynamic>;
   final paths = {
     for (final raw in (decoded['assets'] as List<dynamic>))
       (raw as Map).cast<String, dynamic>()['path'] as String,
@@ -72,10 +73,11 @@ void main() {
       fail('declared ${entry.key} licence text is missing');
     }
   }
-  final strict = Process.runSync(
-    Platform.resolvedExecutable,
-    ['run', 'tools/asset_audit.dart', '--strict'],
-  );
+  final strict = Process.runSync(Platform.resolvedExecutable, [
+    'run',
+    'tools/asset_audit.dart',
+    '--strict',
+  ]);
   final strictOutput = '${strict.stdout}\n${strict.stderr}';
   if (strict.exitCode != 1 ||
       strictOutput.contains('source inventory has no pinned SHA-256') ||

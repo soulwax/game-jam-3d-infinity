@@ -294,7 +294,7 @@ Map<String, dynamic>? _readJsonObject(File file, String label, Findings f) {
 Future<List<Map<String, dynamic>>?> _loadInventory(Findings f) async {
   final result = await Process.run(
     Platform.resolvedExecutable,
-    ['run', 'tmp/tools/fetch_assets.dart'],
+    ['run', 'tools/fetch_assets.dart'],
     environment: {...Platform.environment, 'MANYFOLD_ASSET_INVENTORY': '1'},
   );
   if (result.exitCode != 0) {

@@ -3119,9 +3119,12 @@ void _publishRendererDiagnostics() {
           ? '{}'
           : jsonEncode(_pixeldartRuntime!.effectiveConfiguration),
     )
-    ..setAttribute('data-renderer-shadow-pcf-kernel', '3x3')
+    ..setAttribute('data-renderer-shadow-pcf-kernel', 'low-discrepancy-9tap')
     ..setAttribute('data-renderer-shadow-penumbra-floor', '0.15')
-    ..setAttribute('data-renderer-lighting-falloff', 'smoothstep')
+    ..setAttribute(
+      'data-renderer-lighting-falloff',
+      'inverse-square-smooth-cutoff',
+    )
     ..setAttribute('data-renderer-dof-focal-distance', '2.5m')
     ..setAttribute('data-renderer-camera-inertia', 'exponential-smoothing');
   final profileFallback = _pixeldartRuntime?.profileFallbackReason;

@@ -140,7 +140,6 @@ remains inspectable.
     │   └── StreamingAssets/Quarantine/ # generated runtime JSON/audio index only
     ├── Packages/
     └── ProjectSettings/
-└── UNITY_PLAN.md
 ```
 
 Use `.asmdef` files from the first commit:
@@ -1638,9 +1637,14 @@ These discoveries are binding for the Unity implementation:
     unneeded furniture or domestic decoration.
 21. **Stable lighting beats decorative noise.** Use a small physically legible
     light rig per chamber: one sun/sky key, authored practicals, bounded fill,
-    and contact occlusion. Prefer slope-scaled receiver bias plus bounded 3x3
-    PCF (or PCSS when the target budget allows it) over large constant bias and
-    shimmering four-tap corners. Keep grain, VHS noise, flicker, and animated
-    texture perturbation disabled in the clean profile; expose them only as
-    explicit lenses. Unity shadow diagnostics must report kernel, bias,
+    and contact occlusion. Prefer slope-scaled receiver bias plus a fixed
+    low-discrepancy nine-tap PCF (or PCSS when the target budget allows it)
+    over large constant bias and shimmering regular-grid taps. Keep grain,
+    VHS noise, flicker, and animated texture perturbation disabled in the clean
+    profile; expose them only as explicit lenses. Unity shadow diagnostics must report kernel, bias,
     cascade/tile allocation, caster count, and rejected-light reasons.
+22. **Build tooling must survive cleanup.** Asset provenance generation belongs
+    in a tracked `tools/` command, derived from the checked-in manifest and
+    payload hashes. Unity’s equivalent importer should emit the same stable
+    inventory and fail on missing files or duplicate paths, without relying on
+    ignored temp folders or editor-machine state.

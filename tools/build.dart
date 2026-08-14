@@ -246,7 +246,7 @@ Future<void> main(List<String> arguments) async {
     await run('dart', ['pub', 'get']);
   }
 
-  final fetcher = File('tmp/tools/fetch_assets.dart');
+  final fetcher = File('tools/fetch_assets.dart');
   if (File('web/res/manifest.json').existsSync()) {
     stdout.writeln('web/res already populated, skipping asset fetch');
   } else if (fetcher.existsSync()) {
