@@ -71,6 +71,8 @@ class HouseLighting {
     'bedroom' => 0.55,
     'hall' => 0.5,
     'landing' => 0.35,
-    _ => 0,
+    // Showcase chambers are intentionally unnamed by the old domestic gain
+    // table; they still need a neutral practical response for light tests.
+    _ => 0.65,
   };
 }

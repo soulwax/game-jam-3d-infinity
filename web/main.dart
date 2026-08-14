@@ -338,12 +338,18 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     int surfaceHeight, {
     String renderScale = 'auto',
     String antialiasing = 'auto',
+    String outputEncoding = 'srgb',
+    String diagnosticLevel = 'full',
+    String shadowQuality = 'profile',
   }) => _profilePolicy.configuration(
     profile: profile,
     surfaceWidth: surfaceWidth,
     surfaceHeight: surfaceHeight,
     renderScale: renderScale,
     antialiasing: antialiasing,
+    outputEncoding: outputEncoding,
+    diagnosticLevel: diagnosticLevel,
+    shadowQuality: shadowQuality,
   );
 
   void _configureLightRanking() {
@@ -379,6 +385,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       height,
       renderScale: settings.renderScale,
       antialiasing: settings.antialiasing,
+      outputEncoding: settings.outputEncoding,
+      diagnosticLevel: settings.diagnosticLevel,
+      shadowQuality: settings.shadowQuality,
     );
     try {
       await _renderer.configure(configuration);
@@ -1061,6 +1070,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final tuningVignette = _shaderTuning.getValue('post_vignette');
     final tuningGrain = _shaderTuning.getValue('post_film_grain');
     final tuningDither = _shaderTuning.getValue('post_dither');
+    final tuningDof = _shaderTuning.getValue('post_depth_of_field');
+    final tuningGrade = _shaderTuning.getValue('post_color_grade');
+    final tuningWarp = _shaderTuning.getValue('post_affine_warp');
+    final tuningSnap = _shaderTuning.getValue('post_vertex_snap');
+    final tuningQuantization = _shaderTuning
+        .getValue('post_quantization_bits')
+        .round();
+    final tuningVhsChroma = _shaderTuning.getValue('post_vhs_chroma');
+    final tuningVhsNoise = _shaderTuning.getValue('post_vhs_noise');
     final tuningSsao = _shaderTuning.getValue('shadow_ao_intensity');
     _post = px.PostProcessState(
       exposure: lightsOut ? 0.45 : tuningExposure,
@@ -1068,22 +1086,25 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       ssaoStrength: _shaderTuning.getBool('shadow_ssdo_enable')
           ? tuningSsao
           : 0.0,
+      depthOfFieldStrength: tuningDof,
       vignette: tuningVignette,
       grain: tuningGrain,
       ditherStrength: tuningDither,
       rainIntensity: rainIntensity,
       rainWindowVisibility: rainWindowVisibility,
-      colorGradeStrength: afterGrade
-          ? (step == RuptureStep.gradeLUT ? progress : 1.0)
-          : 0.0,
-      affineWarpStrength: afterWarp
-          ? (step == RuptureStep.affineWarp ? progress : 1.0)
-          : 0.0,
-      vertexSnapGrid: afterSnap ? 320.0 : 0.0,
-      quantizationBits: afterSnap ? 5 : 8,
-      vhsChromaWeight: tape ? 1.0 : 0.0,
+      colorGradeStrength: math.max(
+        tuningGrade,
+        afterGrade ? (step == RuptureStep.gradeLUT ? progress : 1.0) : 0.0,
+      ),
+      affineWarpStrength: math.max(
+        tuningWarp,
+        afterWarp ? (step == RuptureStep.affineWarp ? progress : 1.0) : 0.0,
+      ),
+      vertexSnapGrid: math.max(tuningSnap, afterSnap ? 320.0 : 0.0),
+      quantizationBits: afterSnap ? 5 : tuningQuantization,
+      vhsChromaWeight: math.max(tuningVhsChroma, tape ? 1.0 : 0.0),
       vhsTrackingWeight: tape ? progress : 0.0,
-      vhsNoiseWeight: tape ? progress : 0.0,
+      vhsNoiseWeight: math.max(tuningVhsNoise, tape ? progress : 0.0),
       vhsHeadSwitchWeight: tape ? progress : 0.0,
       vhsDropoutWeight: tape ? progress : 0.0,
       vhsGhostWeight: tape ? progress : 0.0,
@@ -2102,7 +2123,16 @@ void _configureSettingsPanel(SettingsPanel panel, {bool nested = false}) {
   }
   if (panel.page == PauseSettingsCategory.gameplay) {
     panel.onGameplayOptions = (profile) {
+      final storyWasEnabled = _gameplayOptions.storyMode;
       _gameplayOptions = profile;
+      if (!storyWasEnabled && profile.storyMode) {
+        // Story Mode is a clean narrative start, never a continuation of a
+        // renderer showcase clock or a partially observed visitor schedule.
+        _time.dayNumber = 1;
+        _time.restoreHour(sunriseHour.toDouble());
+        _door.hide();
+        _dialogueCoordinator.clear();
+      }
       _persistGameplayOptions();
       _applyGameplayOptions();
     };
@@ -2384,6 +2414,11 @@ void _applyGameplayOptions() {
       'data-gameplay-reminders',
       policy.contextualReminders ? '1' : '0',
     );
+  root.setAttribute('data-story-mode', _gameplayOptions.storyMode ? '1' : '0');
+  root.setAttribute(
+    'data-simulation-speed',
+    _gameplayOptions.storyMode ? '1x' : '20x',
+  );
 }
 
 void _loadAccessibilityProfile() {
@@ -2753,7 +2788,9 @@ Future<void> main() async {
     final savedVisitors = VisitorDirectorState.tryFromJson(
       saved.snapshot?.meta['visitors'],
     );
-    if (savedVisitors != null && _visitorDirector.restore(savedVisitors)) {
+    if (_gameplayOptions.storyMode &&
+        savedVisitors != null &&
+        _visitorDirector.restore(savedVisitors)) {
       _restoreVisitorDoor();
     }
     _ambientDirector.restoreDelivered(saved.snapshot?.meta['ambient']);
@@ -3266,6 +3303,16 @@ void _loadManifest() async {
 }
 
 Future<void> _loadAuthoredHouseManifest() async {
+  if (_house.isRendererShowcase) {
+    _canvas.setAttribute('data-house-manifest', 'renderer-showcase');
+    _canvas.setAttribute('data-house-manifest-source', 'runtime-showcase');
+    // The former domestic manifest is intentionally stale after the house
+    // replacement. Chamber geometry is now authored by House itself until a
+    // matching showcase manifest is produced.
+    await _loadAuthoredHouseInventory();
+    await _loadAuthoredHouseSoundscape();
+    return;
+  }
   const urls = ['res/house/house.json', 'assets/house/house.json'];
   Object? lastError;
   var validated = false;
@@ -3702,7 +3749,9 @@ void _raf(num ts) {
       while (_accumulator >= _fixedDt && steps < _maxSteps) {
         _prevEye = _simEye;
         if (!_automationCaptureClockFrozen) {
-          _session.advance(_fixedDt);
+          _session.advance(
+            _fixedDt * (_gameplayOptions.storyMode ? 1.0 : 20.0),
+          );
           for (final event in _houseClock.advance(
             day: _session.snapshot.day,
             hour: _session.snapshot.hour,
@@ -4178,6 +4227,7 @@ void _syncDifficultySeam() {
 }
 
 void _updateVisitorSchedule() {
+  if (!_gameplayOptions.storyMode) return;
   if (_door.visitorPresent ||
       _activePanel != null ||
       _visitorDirector.active != null) {
@@ -4233,6 +4283,7 @@ void _showStrangerCaseNote(VisitArrival arrival) {
 }
 
 void _updateAmbientEvents() {
+  if (!_gameplayOptions.storyMode) return;
   final snapshot = _session.snapshot;
   final due = _ambientDirector.due(snapshot.day, snapshot.hour);
   if (due.isEmpty) return;

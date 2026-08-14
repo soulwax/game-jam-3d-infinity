@@ -9,6 +9,9 @@ class GraphicsSettingsProfile {
   final String frameTarget;
   final String antialiasing;
   final String textureQuality;
+  final String outputEncoding;
+  final String diagnosticLevel;
+  final String shadowQuality;
 
   const GraphicsSettingsProfile({
     this.version = 1,
@@ -18,6 +21,9 @@ class GraphicsSettingsProfile {
     this.frameTarget = 'display',
     this.antialiasing = 'off',
     this.textureQuality = 'high',
+    this.outputEncoding = 'srgb',
+    this.diagnosticLevel = 'full',
+    this.shadowQuality = 'profile',
   });
 
   GraphicsSettingsProfile copyWith({
@@ -27,6 +33,9 @@ class GraphicsSettingsProfile {
     String? frameTarget,
     String? antialiasing,
     String? textureQuality,
+    String? outputEncoding,
+    String? diagnosticLevel,
+    String? shadowQuality,
   }) => GraphicsSettingsProfile(
     version: version,
     preset: preset ?? this.preset,
@@ -35,37 +44,50 @@ class GraphicsSettingsProfile {
     frameTarget: frameTarget ?? this.frameTarget,
     antialiasing: antialiasing ?? this.antialiasing,
     textureQuality: textureQuality ?? this.textureQuality,
+    outputEncoding: outputEncoding ?? this.outputEncoding,
+    diagnosticLevel: diagnosticLevel ?? this.diagnosticLevel,
+    shadowQuality: shadowQuality ?? this.shadowQuality,
   );
 
-  static GraphicsSettingsProfile forPreset(GraphicsPreset preset) => switch (preset) {
-    GraphicsPreset.high => const GraphicsSettingsProfile(
-      preset: GraphicsPreset.high,
-      renderScale: '1.00',
-      dynamicResolution: false,
-      frameTarget: 'display',
-      antialiasing: 'msaa4',
-      textureQuality: 'high',
-    ),
-    GraphicsPreset.standard => const GraphicsSettingsProfile(
-      preset: GraphicsPreset.standard,
-      renderScale: '1.00',
-      dynamicResolution: false,
-      frameTarget: 'display',
-      antialiasing: 'fxaa',
-      textureQuality: 'high',
-    ),
-    GraphicsPreset.safe => const GraphicsSettingsProfile(
-      preset: GraphicsPreset.safe,
-      renderScale: '0.75',
-      dynamicResolution: false,
-      frameTarget: '60',
-      antialiasing: 'off',
-      textureQuality: 'medium',
-    ),
-    GraphicsPreset.custom => const GraphicsSettingsProfile(
-      preset: GraphicsPreset.custom,
-    ),
-  };
+  static GraphicsSettingsProfile forPreset(GraphicsPreset preset) =>
+      switch (preset) {
+        GraphicsPreset.high => const GraphicsSettingsProfile(
+          preset: GraphicsPreset.high,
+          renderScale: '1.00',
+          dynamicResolution: false,
+          frameTarget: 'display',
+          antialiasing: 'msaa4',
+          textureQuality: 'high',
+          outputEncoding: 'srgb',
+          diagnosticLevel: 'errors',
+          shadowQuality: 'profile',
+        ),
+        GraphicsPreset.standard => const GraphicsSettingsProfile(
+          preset: GraphicsPreset.standard,
+          renderScale: '1.00',
+          dynamicResolution: false,
+          frameTarget: 'display',
+          antialiasing: 'fxaa',
+          textureQuality: 'high',
+          outputEncoding: 'srgb',
+          diagnosticLevel: 'errors',
+          shadowQuality: 'standard',
+        ),
+        GraphicsPreset.safe => const GraphicsSettingsProfile(
+          preset: GraphicsPreset.safe,
+          renderScale: '0.75',
+          dynamicResolution: false,
+          frameTarget: '60',
+          antialiasing: 'off',
+          textureQuality: 'medium',
+          outputEncoding: 'srgb',
+          diagnosticLevel: 'off',
+          shadowQuality: 'off',
+        ),
+        GraphicsPreset.custom => const GraphicsSettingsProfile(
+          preset: GraphicsPreset.custom,
+        ),
+      };
 
   GraphicsSettingsProfile copyWithOption({
     String? renderScale,
@@ -73,6 +95,9 @@ class GraphicsSettingsProfile {
     String? frameTarget,
     String? antialiasing,
     String? textureQuality,
+    String? outputEncoding,
+    String? diagnosticLevel,
+    String? shadowQuality,
   }) {
     final updated = copyWith(
       renderScale: renderScale,
@@ -80,6 +105,9 @@ class GraphicsSettingsProfile {
       frameTarget: frameTarget,
       antialiasing: antialiasing,
       textureQuality: textureQuality,
+      outputEncoding: outputEncoding,
+      diagnosticLevel: diagnosticLevel,
+      shadowQuality: shadowQuality,
     );
     for (final candidate in [
       GraphicsPreset.high,
@@ -91,7 +119,10 @@ class GraphicsSettingsProfile {
           p.dynamicResolution == updated.dynamicResolution &&
           p.frameTarget == updated.frameTarget &&
           p.antialiasing == updated.antialiasing &&
-          p.textureQuality == updated.textureQuality) {
+          p.textureQuality == updated.textureQuality &&
+          p.outputEncoding == updated.outputEncoding &&
+          p.diagnosticLevel == updated.diagnosticLevel &&
+          p.shadowQuality == updated.shadowQuality) {
         return updated.copyWith(preset: candidate);
       }
     }
@@ -120,6 +151,21 @@ class GraphicsSettingsProfile {
         'unsupported graphics texture quality: $textureQuality',
       );
     }
+    if (!const ['srgb', 'linear'].contains(outputEncoding)) {
+      throw FormatException(
+        'unsupported graphics output encoding: $outputEncoding',
+      );
+    }
+    if (!const ['off', 'errors', 'full'].contains(diagnosticLevel)) {
+      throw FormatException(
+        'unsupported graphics diagnostic level: $diagnosticLevel',
+      );
+    }
+    if (!const ['off', 'profile', 'standard', 'high'].contains(shadowQuality)) {
+      throw FormatException(
+        'unsupported graphics shadow quality: $shadowQuality',
+      );
+    }
   }
 
   Map<String, Object> toJson() => {
@@ -130,6 +176,9 @@ class GraphicsSettingsProfile {
     'frameTarget': frameTarget,
     'antialiasing': antialiasing,
     'textureQuality': textureQuality,
+    'outputEncoding': outputEncoding,
+    'diagnosticLevel': diagnosticLevel,
+    'shadowQuality': shadowQuality,
   };
 
   factory GraphicsSettingsProfile.fromJson(Object? raw) {
@@ -147,6 +196,9 @@ class GraphicsSettingsProfile {
       frameTarget: raw['frameTarget'] as String,
       antialiasing: raw['antialiasing'] as String,
       textureQuality: raw['textureQuality'] as String,
+      outputEncoding: raw['outputEncoding'] as String? ?? 'srgb',
+      diagnosticLevel: raw['diagnosticLevel'] as String? ?? 'full',
+      shadowQuality: raw['shadowQuality'] as String? ?? 'profile',
     );
     profile.validate();
     return profile;

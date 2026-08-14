@@ -748,7 +748,10 @@ class CanvasP5GuiEngine {
       // Keep the objective on a second HUD lane instead of sharing the top row
       // with the room and clock badges on compact views.
       final objectiveCompact = screenWidth < 640 || screenHeight < 540;
-      final objY = objectiveCompact ? 78.0 : 76.0;
+      // Keep the broadcast/objective lane clear of the response viewport. The
+      // first choice begins at y=92 on normal surfaces, so the banner's lower
+      // edge stays above it with a deliberate 8 px breathing gap.
+      final objY = objectiveCompact ? 68.0 : 68.0;
 
       drawBrushPanel(
         x: objX,

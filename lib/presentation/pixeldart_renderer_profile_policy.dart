@@ -11,6 +11,9 @@ final class PixeldartRendererProfilePolicy {
     required int surfaceHeight,
     String renderScale = 'auto',
     String antialiasing = 'auto',
+    String outputEncoding = 'srgb',
+    String diagnosticLevel = 'full',
+    String shadowQuality = 'profile',
   }) {
     if (surfaceWidth <= 0 || surfaceHeight <= 0) {
       throw ArgumentError('surface dimensions must be positive');
@@ -35,7 +38,20 @@ final class PixeldartRendererProfilePolicy {
     );
     final isHigh = profile.kind == pixeldart.QualityProfileKind.high;
     final isStandard = profile.kind == pixeldart.QualityProfileKind.standard;
-    final shadows = profile.installs(pixeldart.PipelineFeatures.shadows);
+    final shadows =
+        profile.installs(pixeldart.PipelineFeatures.shadows) &&
+        shadowQuality != 'off';
+    final shadowCount = switch (shadowQuality) {
+      'high' => shadows ? 3 : 0,
+      'standard' => shadows ? 2 : 0,
+      'off' => 0,
+      _ => shadows ? (isHigh ? 3 : (isStandard ? 2 : 1)) : 0,
+    };
+    final shadowSize = switch (shadowQuality) {
+      'high' => 1024,
+      'standard' => 768,
+      _ => isHigh ? 1024 : (isStandard ? 768 : 512),
+    };
     // MSAA is a target allocation choice, not a post feature toggle. The
     // safe graph can still resolve a requested sample count when hardware
     // negotiation permits it.
@@ -49,12 +65,19 @@ final class PixeldartRendererProfilePolicy {
       internalWidth: extent.width,
       internalHeight: extent.height,
       sampleCount: sampleCount,
-      shadowMapCount: shadows ? (isHigh ? 3 : (isStandard ? 2 : 1)) : 0,
-      shadowMapSize: isHigh ? 1024 : (isStandard ? 768 : 512),
+      outputEncoding: outputEncoding == 'linear'
+          ? pixeldart.ColorEncoding.linear
+          : pixeldart.ColorEncoding.srgb,
+      shadowMapCount: shadowCount,
+      shadowMapSize: shadowSize,
       materialTableCapacity: isHigh ? 64 : (isStandard ? 32 : 16),
       lightTableCapacity: isHigh ? 8 : (isStandard ? 4 : 1),
       textureArrayLayerCapacity: isHigh ? 8 : (isStandard ? 4 : 1),
-      diagnosticLevel: pixeldart.DiagnosticLevel.full,
+      diagnosticLevel: switch (diagnosticLevel) {
+        'off' => pixeldart.DiagnosticLevel.off,
+        'errors' => pixeldart.DiagnosticLevel.errorsOnly,
+        _ => pixeldart.DiagnosticLevel.full,
+      },
     );
   }
 

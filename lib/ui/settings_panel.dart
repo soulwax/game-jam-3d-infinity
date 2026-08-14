@@ -36,6 +36,7 @@ class SettingsPanel extends Panel {
   final Map<String, web.HTMLSelectElement> _gameplaySelects = {};
   web.HTMLInputElement? _contextualReminders;
   web.HTMLInputElement? _showObjective;
+  web.HTMLInputElement? _storyMode;
   GameplaySettingsProfile _gameplayOptions = GameplaySettingsProfile.firstRun;
 
   SettingsPanel(web.Document document, {this.page}) : super(document) {
@@ -390,6 +391,30 @@ class SettingsPanel extends Panel {
       );
     grid.appendChild(objective);
     _showObjective = objectiveInput;
+    final story = buildElement(document, 'label', cls: 'setting-toggle');
+    final storyInput = document.createElement('input') as web.HTMLInputElement
+      ..type = 'checkbox'
+      ..checked = _gameplayOptions.storyMode;
+    storyInput.addEventListener(
+      'change',
+      ((JSAny? _) {
+        _gameplayOptions = _gameplayOptions.copyWith(
+          storyMode: storyInput.checked,
+        );
+        onGameplayOptions?.call(_gameplayOptions);
+      }).toJS,
+    );
+    story
+      ..appendChild(storyInput)
+      ..appendChild(
+        buildElement(
+          document,
+          'span',
+          text: 'story mode (visitors and narrative time)',
+        ),
+      );
+    grid.appendChild(story);
+    _storyMode = storyInput;
     return grid;
   }
 
@@ -480,6 +505,7 @@ class SettingsPanel extends Panel {
     }
     _contextualReminders?.checked = profile.contextualReminders;
     _showObjective?.checked = profile.showObjective;
+    _storyMode?.checked = profile.storyMode;
   }
 
   web.HTMLElement _buildAudioOptions(web.Document document) {

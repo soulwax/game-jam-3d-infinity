@@ -1595,3 +1595,52 @@ These discoveries are binding for the Unity implementation:
     mip residency per material. Use a 1920x1080 high-profile reference target,
     aspect-preserving and fit from viewport height (width is only a narrow-screen
     cap), then dynamically scale down through the negotiated profile.
+16. **Expose the renderer as an instrument panel.** Graphics settings should
+    include output encoding, diagnostic verbosity, shadow allocation, MSAA,
+    render scale, and dynamic resolution, with each control changing a real
+    target, pass, or telemetry contract. The shader lab should expose every
+    live post-process lens already supported by the frame contract: depth of
+    field, colour grade, affine warp, vertex snap, colour quantization, VHS
+    chroma/noise, bloom, vignette, grain, dither, rain, SSAO, and volumetrics.
+    Keep these as renderer-owned debug overrides layered over authored game
+    effects, resettable per category, and serialize their effective values for
+    visual regression captures.
+17. **Reserve GUI lanes before drawing content.** Treat the top broadcast,
+    room/clock badges, response choices, dialogue body, and bottom action hints
+    as non-overlapping renderer lanes with measured bounds. In Unity UI Toolkit
+    or uGUI, calculate the safe rectangle first, then place each lane inside it;
+    never fix an overlap by nudging one text element after the fact. A lane must
+    expose its occupied rect to hit testing, scroll calculations, and screenshot
+    diagnostics, with at least 8 px separation between adjacent interactive or
+    semantic regions.
+18. **Keep renderer experiments reversible and content-neutral.** Shader Lab
+    overrides are a presentation-layer stack over authored simulation facts.
+    They must reset without changing saves, story branches, time, weather, or
+    interaction state. Unity should persist only a versioned debug profile, load
+    missing fields with defaults, and publish requested versus effective values
+    so a capture can be reproduced after a renderer upgrade.
+19. **Story Mode is an explicit simulation profile.** Default boot is a quiet
+    renderer showcase: no door or ambient visitors, and a 20x clock multiplier
+    so the sun can be inspected across the full day. Enabling Story Mode from
+    settings must reset the authoritative clock to day 1 at 07:00 before any
+    visitor schedule is evaluated. Unity should implement this as a profile
+    transition in the simulation adapter, not as a renderer-only time hack;
+    saves must record the selected mode and never resurrect a visitor while the
+    mode is off.
+20. **The house is now a renderer test facility, not a domestic set.** Retire
+    the old staircase and cluttered floor plan. Build a sparse chamber atlas:
+    separate rooms with deliberately different extents, apertures, materials,
+    light rigs, shadow-caster budgets, LOD bands, and culling/PVS boundaries.
+    Keep stable semantic IDs only where story/save contracts need them. In
+    Unity, author each chamber as an additive scene or streaming cell with a
+    visible diagnostic label, deterministic portal links, and a known camera
+    route; geometry should demonstrate a renderer technique rather than imply
+    unneeded furniture or domestic decoration.
+21. **Stable lighting beats decorative noise.** Use a small physically legible
+    light rig per chamber: one sun/sky key, authored practicals, bounded fill,
+    and contact occlusion. Prefer slope-scaled receiver bias plus bounded 3x3
+    PCF (or PCSS when the target budget allows it) over large constant bias and
+    shimmering four-tap corners. Keep grain, VHS noise, flicker, and animated
+    texture perturbation disabled in the clean profile; expose them only as
+    explicit lenses. Unity shadow diagnostics must report kernel, bias,
+    cascade/tile allocation, caster count, and rejected-light reasons.

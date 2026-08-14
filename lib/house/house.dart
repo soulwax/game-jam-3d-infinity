@@ -15,12 +15,266 @@ class House {
   final Map<String, Portal> _portalById = {};
 
   House(this.seed) {
-    _buildRooms();
-    _buildPortals();
+    _buildShowcaseRooms();
+    _buildShowcasePortals();
     _applyMvpHorizontalScale();
     _applySpaciousScale();
     _index();
     _validate();
+  }
+
+  bool get isRendererShowcase => true;
+
+  /// The original domestic floor plan is retired. This deliberately sparse
+  /// renderer showcase uses eight isolated test chambers with different
+  /// dimensions, apertures, materials, and visibility boundaries. The legacy
+  /// room IDs remain as semantic save/content keys while their geometry is no
+  /// longer the old house.
+  void _buildShowcaseRooms() {
+    const specs =
+        <({String id, double x, double z, String wall, String floor})>[
+          (
+            id: 'living-room',
+            x: 0,
+            z: 0,
+            wall: 'wallpaper-stripes',
+            floor: 'floor-wood',
+          ),
+          (
+            id: 'hall',
+            x: 5,
+            z: 0,
+            wall: 'wallpaper-damask',
+            floor: 'floor-linoleum',
+          ),
+          (
+            id: 'kitchen',
+            x: 10,
+            z: 0,
+            wall: 'wallpaper-tiles',
+            floor: 'floor-tiles',
+          ),
+          (
+            id: 'cellar',
+            x: 15,
+            z: 0,
+            wall: 'wallpaper-damp',
+            floor: 'floor-concrete',
+          ),
+          (
+            id: 'bedroom',
+            x: 0,
+            z: 6,
+            wall: 'wallpaper-faded',
+            floor: 'floor-wood',
+          ),
+          (
+            id: 'landing',
+            x: 5,
+            z: 6,
+            wall: 'wallpaper-peeling',
+            floor: 'floor-concrete',
+          ),
+          (
+            id: 'bathroom',
+            x: 10,
+            z: 6,
+            wall: 'wallpaper-tiles',
+            floor: 'floor-tiles',
+          ),
+          (
+            id: 'spare-room',
+            x: 15,
+            z: 6,
+            wall: 'wallpaper-stripes',
+            floor: 'floor-linoleum',
+          ),
+        ];
+    for (final spec in specs) {
+      rooms.add(
+        Room(
+          id: spec.id,
+          floor: Floor.ground,
+          size: Vec3(4.8, 3.2, 5.0),
+          origin: Vec3(spec.x, 0, spec.z),
+          windows: spec.id == 'hall' || spec.id == 'landing'
+              ? []
+              : [
+                  Window(
+                    id: '${spec.id}-north-aperture',
+                    facing: spec.id == 'bathroom' ? Facing.east : Facing.north,
+                    offset: 1.7,
+                    sill: 1.0,
+                    w: 1.4,
+                    h: 1.5,
+                    frosted: spec.id == 'bathroom',
+                  ),
+                ],
+          portalIds: [],
+          mantles: [
+            Mantle(
+              id: 'showcase-${spec.id}-light',
+              name: '${spec.id} test light',
+              localAt: Vec3(2.4, 2.2, 0.35),
+            ),
+          ],
+          objects: const [],
+          surfaceWall: spec.wall,
+          surfaceFloor: spec.floor,
+          surfaceCeiling: 'ceiling-plaster',
+        ),
+      );
+    }
+  }
+
+  void _buildShowcasePortals() {
+    const portalsFor = <String, List<String>>{
+      'living-room': ['hall-living'],
+      'hall': ['front-door', 'hall-living', 'hall-kitchen', 'hall-landing'],
+      'kitchen': ['hall-kitchen', 'kitchen-living', 'kitchen-bathroom'],
+      'cellar': ['cellar-service'],
+      'bedroom': ['bedroom-service'],
+      'landing': ['hall-landing', 'landing-bedroom', 'landing-bathroom'],
+      'bathroom': ['landing-bathroom', 'kitchen-bathroom'],
+      'spare-room': ['spare-service'],
+    };
+    for (final room in rooms) {
+      room.portalIds.addAll(portalsFor[room.id] ?? const []);
+    }
+    portals.addAll([
+      Portal(
+        id: 'front-door',
+        a: 'hall',
+        b: 'outside',
+        facingA: Facing.north,
+        facingB: Facing.south,
+        offsetA: 1.9,
+        offsetB: 0,
+        width: 1.0,
+        height: 2.6,
+        exterior: true,
+        doorKit: 'kit-front-door-recessed',
+      ),
+      Portal(
+        id: 'hall-living',
+        a: 'hall',
+        b: 'living-room',
+        facingA: Facing.west,
+        facingB: Facing.east,
+        offsetA: 2.0,
+        offsetB: 2.0,
+        width: 1.2,
+        height: 2.6,
+        doorKit: 'kit-internal-four-panel-door',
+      ),
+      Portal(
+        id: 'hall-kitchen',
+        a: 'hall',
+        b: 'kitchen',
+        facingA: Facing.east,
+        facingB: Facing.west,
+        offsetA: 2.0,
+        offsetB: 2.0,
+        width: 1.2,
+        height: 2.6,
+        doorKit: 'kit-internal-four-panel-door',
+      ),
+      Portal(
+        id: 'kitchen-living',
+        a: 'kitchen',
+        b: 'cellar',
+        facingA: Facing.east,
+        facingB: Facing.west,
+        offsetA: 2.0,
+        offsetB: 2.0,
+        width: 1.2,
+        height: 2.6,
+        doorKit: 'kit-cellar-door-grille',
+      ),
+      Portal(
+        id: 'hall-landing',
+        a: 'hall',
+        b: 'landing',
+        facingA: Facing.south,
+        facingB: Facing.north,
+        offsetA: 2.0,
+        offsetB: 2.0,
+        width: 1.2,
+        height: 2.6,
+      ),
+      Portal(
+        id: 'landing-bedroom',
+        a: 'landing',
+        b: 'bedroom',
+        facingA: Facing.west,
+        facingB: Facing.east,
+        offsetA: 2.0,
+        offsetB: 2.0,
+        width: 1.2,
+        height: 2.6,
+        doorKit: 'kit-internal-four-panel-door',
+      ),
+      Portal(
+        id: 'landing-bathroom',
+        a: 'landing',
+        b: 'bathroom',
+        facingA: Facing.east,
+        facingB: Facing.west,
+        offsetA: 2.0,
+        offsetB: 2.0,
+        width: 1.2,
+        height: 2.6,
+        doorKit: 'kit-internal-four-panel-door',
+      ),
+      Portal(
+        id: 'kitchen-bathroom',
+        a: 'kitchen',
+        b: 'bathroom',
+        facingA: Facing.south,
+        facingB: Facing.north,
+        offsetA: 2.0,
+        offsetB: 2.0,
+        width: 1.2,
+        height: 2.6,
+        doorKit: 'kit-internal-four-panel-door',
+      ),
+      Portal(
+        id: 'cellar-service',
+        a: 'cellar',
+        b: 'outside',
+        facingA: Facing.south,
+        facingB: Facing.north,
+        offsetA: 2.0,
+        offsetB: 0,
+        width: 1.0,
+        height: 2.6,
+        exterior: true,
+      ),
+      Portal(
+        id: 'bedroom-service',
+        a: 'bedroom',
+        b: 'outside',
+        facingA: Facing.south,
+        facingB: Facing.north,
+        offsetA: 2.0,
+        offsetB: 0,
+        width: 1.0,
+        height: 2.6,
+        exterior: true,
+      ),
+      Portal(
+        id: 'spare-service',
+        a: 'spare-room',
+        b: 'outside',
+        facingA: Facing.south,
+        facingB: Facing.north,
+        offsetA: 2.0,
+        offsetB: 0,
+        width: 1.0,
+        height: 2.6,
+        exterior: true,
+      ),
+    ]);
   }
 
   /// Spawn anchor derived from the same profile that scales the house.
@@ -698,13 +952,15 @@ class House {
     if (rooms.length != 8) {
       throw StateError('expected eight rooms, got ${rooms.length}');
     }
-    if (windowsFromInside != 9 || windowsFromOutside != 11) {
-      throw StateError('window discrepancy must be 9 inside / 11 outside');
+    if (windowsFromInside < 1 || windowsFromOutside < windowsFromInside) {
+      throw StateError(
+        'showcase apertures must expose a stable inside/outside split',
+      );
     }
-    if (landings != 3 || stairs.single.landingHeights.last != 9.45) {
-      throw StateError('stairs must expose landings at 3.15, 6.3 and 9.45');
-    }
-    if (portals.length != 9) throw StateError('expected nine physical portals');
+    if (stairs.isNotEmpty)
+      throw StateError('showcase house must not contain stairs');
+    if (portals.length != 11)
+      throw StateError('expected eleven showcase portals');
     _validateNoOverlaps();
     _validateApertures();
   }
@@ -879,7 +1135,7 @@ class House {
   int get windowsFromOutside => 11;
   int get windowsFromInside =>
       rooms.fold(0, (count, room) => count + room.windows.length);
-  int get landings => stairs.single.landingHeights.length;
+  int get landings => stairs.isEmpty ? 0 : stairs.first.landingHeights.length;
   int get stairCreakIndex => (hashNoise(1, seed) * 10).toInt() % 8;
 
   List<Portal> pathBetweenRooms(String sourceId, String listenerId) {

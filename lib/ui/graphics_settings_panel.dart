@@ -57,6 +57,21 @@ class GraphicsSettingsPanel extends Panel {
       'medium': 'Medium',
       'low': 'Low',
     });
+    _addSelect(document, grid, 'outputEncoding', 'output encoding', {
+      'srgb': 'sRGB display',
+      'linear': 'Linear light',
+    });
+    _addSelect(document, grid, 'diagnosticLevel', 'renderer diagnostics', {
+      'off': 'Off',
+      'errors': 'Errors only',
+      'full': 'Full telemetry',
+    });
+    _addSelect(document, grid, 'shadowQuality', 'shadow allocation', {
+      'off': 'Off',
+      'profile': 'Profile default',
+      'standard': 'Standard maps',
+      'high': 'High maps',
+    });
     final toggle = buildElement(document, 'label', cls: 'setting-toggle');
     _dynamic = document.createElement('input') as web.HTMLInputElement;
     _dynamic!.type = 'checkbox';
@@ -125,6 +140,9 @@ class GraphicsSettingsPanel extends Panel {
           'frameTarget' => _profile.copyWith(frameTarget: value),
           'antialiasing' => _profile.copyWith(antialiasing: value),
           'textureQuality' => _profile.copyWith(textureQuality: value),
+          'outputEncoding' => _profile.copyWith(outputEncoding: value),
+          'diagnosticLevel' => _profile.copyWith(diagnosticLevel: value),
+          'shadowQuality' => _profile.copyWith(shadowQuality: value),
           _ => _profile,
         });
       }).toJS,
@@ -151,6 +169,9 @@ class GraphicsSettingsPanel extends Panel {
     _selects['frameTarget']?.value = requested.frameTarget;
     _selects['antialiasing']?.value = requested.antialiasing;
     _selects['textureQuality']?.value = requested.textureQuality;
+    _selects['outputEncoding']?.value = requested.outputEncoding;
+    _selects['diagnosticLevel']?.value = requested.diagnosticLevel;
+    _selects['shadowQuality']?.value = requested.shadowQuality;
     _dynamic?.checked = requested.dynamicResolution;
     _status?.textContent = downgradeReasons.isEmpty
         ? 'effective graphics match requested settings'

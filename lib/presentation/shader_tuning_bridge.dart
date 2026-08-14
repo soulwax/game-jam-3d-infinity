@@ -58,6 +58,15 @@ class ShaderTuningBridge {
       'post_bloom_threshold',
     );
     activeOverrides['postDither'] = state.getValue('post_dither');
+    activeOverrides['postDepthOfField'] = state.getValue('post_depth_of_field');
+    activeOverrides['postColorGrade'] = state.getValue('post_color_grade');
+    activeOverrides['postAffineWarp'] = state.getValue('post_affine_warp');
+    activeOverrides['postVertexSnap'] = state.getValue('post_vertex_snap');
+    activeOverrides['postQuantizationBits'] = state
+        .getValue('post_quantization_bits')
+        .toInt();
+    activeOverrides['postVhsChroma'] = state.getValue('post_vhs_chroma');
+    activeOverrides['postVhsNoise'] = state.getValue('post_vhs_noise');
     activeOverrides['contactLightBoost'] = state.getValue(
       'light_contact_boost',
     );

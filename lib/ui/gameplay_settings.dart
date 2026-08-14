@@ -33,6 +33,10 @@ final class GameplaySettingsProfile {
   final GameplayClockFormat clockFormat;
   final bool showObjective;
 
+  /// Story encounters are opt-in. The renderer showcase defaults to a quiet
+  /// house so time-of-day and culling can be inspected without interruptions.
+  final bool storyMode;
+
   GameplaySettingsProfile({
     this.version = schemaVersion,
     this.interactionMode = GameplayInteractionMode.press,
@@ -45,6 +49,7 @@ final class GameplaySettingsProfile {
     this.contextualReminders = true,
     this.clockFormat = GameplayClockFormat.twentyFourHour,
     this.showObjective = true,
+    this.storyMode = false,
   }) {
     if (version != schemaVersion) {
       throw ArgumentError('unsupported gameplay settings version $version');
@@ -64,6 +69,7 @@ final class GameplaySettingsProfile {
     bool? contextualReminders,
     GameplayClockFormat? clockFormat,
     bool? showObjective,
+    bool? storyMode,
   }) => GameplaySettingsProfile(
     interactionMode: interactionMode ?? this.interactionMode,
     promptDensity: promptDensity ?? this.promptDensity,
@@ -75,6 +81,7 @@ final class GameplaySettingsProfile {
     contextualReminders: contextualReminders ?? this.contextualReminders,
     clockFormat: clockFormat ?? this.clockFormat,
     showObjective: showObjective ?? this.showObjective,
+    storyMode: storyMode ?? this.storyMode,
   );
 
   Map<String, Object> toJson() => {
@@ -89,6 +96,7 @@ final class GameplaySettingsProfile {
     'contextualReminders': contextualReminders,
     'clockFormat': clockFormat.name,
     'showObjective': showObjective,
+    'storyMode': storyMode,
   };
 
   factory GameplaySettingsProfile.fromJson(Object? raw) {
@@ -137,6 +145,7 @@ final class GameplaySettingsProfile {
           ? enumValue('clockFormat', GameplayClockFormat.values)
           : GameplayClockFormat.twentyFourHour,
       showObjective: showObjective,
+      storyMode: raw['storyMode'] is bool ? raw['storyMode'] as bool : false,
     );
   }
 }
