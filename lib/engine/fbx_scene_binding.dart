@@ -15,6 +15,7 @@ final class FbxSceneBinding {
   final RenderWorld world;
   final ModelCache cache;
   final MaterialHandle material;
+  final MaterialHandle Function(int? materialSlot)? materialForSlot;
   final List<MeshHandle> _meshes = [];
   final List<InstanceId> _items = [];
   final List<CachedMesh> _cached = [];
@@ -29,6 +30,7 @@ final class FbxSceneBinding {
     required this.world,
     required this.cache,
     required this.material,
+    this.materialForSlot,
   });
 
   int get itemCount => _items.length;
@@ -38,10 +40,14 @@ final class FbxSceneBinding {
   Map<String, Object?> diagnostics() => {
     'attached': _attached,
     'disposed': _disposed,
+    'assetId': _package?.assetId,
     'activeLod': _activeLod,
     'itemCount': _items.length,
     'meshCount': _meshes.length,
     'cacheReferenceCount': _cached.length,
+    'materialSlotCount': _package == null
+        ? 0
+        : _package!.parts.map((part) => part.materialSlot).toSet().length,
   };
 
   Future<void> attach(
@@ -78,7 +84,12 @@ final class FbxSceneBinding {
           debugLabel: 'fbx:${package.assetId}:${package.parts[i].id}:$lod',
         );
         final item = world.addItem(
-          RetainedItemDescriptor(mesh: handle, material: material),
+          RetainedItemDescriptor(
+            mesh: handle,
+            material:
+                materialForSlot?.call(package.parts[i].materialSlot) ??
+                material,
+          ),
         );
         _meshes.add(handle);
         _items.add(item);

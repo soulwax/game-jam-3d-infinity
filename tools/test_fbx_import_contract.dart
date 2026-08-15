@@ -1,4 +1,6 @@
-import 'package:quarantine/engine/fbx_import_contract.dart';
+import 'package:pixeldart/assets/importers/fbx_import_config.dart';
+import 'package:pixeldart/assets/importers/fbx_import_provenance.dart';
+import 'package:pixeldart/assets/packages/model_package_validator.dart';
 
 void check(bool value, String message) {
   if (!value) throw StateError('FAIL: $message');
@@ -57,7 +59,10 @@ void main() {
     'upAxis': 'Y-up',
     'pivot': 'floor-center',
     'materialSlots': 1,
-    'parts': [{}],
+    'parts': [
+      {'materialSlot': 0},
+    ],
+    'materials': [{}],
     'textures': [],
     'mediaStatus': 'complete',
     'lods': ['S', '0', '1', '2'],
@@ -67,11 +72,11 @@ void main() {
     },
   };
   check(
-    validateFbxGeneratedPackage(validManifest).isEmpty,
+    validateGeneratedPackageManifest(validManifest).isEmpty,
     'package manifest passes',
   );
   check(
-    validateFbxGeneratedPackage({
+    validateGeneratedPackageManifest({
       ...validManifest,
       'packageHash': 'bad',
     }).isNotEmpty,

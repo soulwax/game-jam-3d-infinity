@@ -41,6 +41,9 @@ Future<void> main(List<String> args) async {
       'LOD0 attach diagnostics are incorrect: ${binding.diagnostics()}',
     );
   }
+  if (binding.diagnostics()['assetId'] != package.assetId) {
+    throw StateError('binding asset telemetry is incorrect');
+  }
   await binding.switchLod('LOD1');
   if (binding.activeLod != 'LOD1' ||
       binding.itemCount != package.parts.length) {

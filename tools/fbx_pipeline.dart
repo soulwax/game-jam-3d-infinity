@@ -3,65 +3,95 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:quarantine/engine/asset_source_contract.dart';
-import 'package:quarantine/engine/fbx_import_contract.dart';
+import 'package:pixeldart/assets/importers/asset_tool_command.dart';
+import 'package:pixeldart/assets/importers/converter_command.dart';
+import 'package:pixeldart/assets/importers/fbx_import_config.dart' as px_import;
+import 'package:pixeldart/assets/importers/asset_import_diagnostic.dart'
+    as px_diag;
+import 'package:pixeldart/assets/importers/fbx_import_provenance.dart'
+    as px_provenance;
+import 'package:pixeldart/assets/packages/model_package_validator.dart'
+    as px_package;
+import '../external/pixeldart/tools/assets/converter_process.dart'
+    as px_process;
 
 Future<void> main(List<String> args) async {
-  if (args.length == 5 && args[0] == 'init') {
-    await _initConfig(args[1], args[2], args[3], args[4]);
-    return;
-  }
-  if (args.length == 2 && args[0] == 'verify') {
-    await _verifyManifest(args[1]);
-    return;
-  }
-  if (args.length == 4 && args[0] == 'convert' && args[2] == '--out') {
-    await _convert(args[1], args[3]);
-    return;
-  }
-  if (args.length == 4 && args[0] == 'package' && args[2] == '--out') {
-    await _package(args[1], args[3]);
-    return;
-  }
-  if (args.length == 1 && args[0] == 'doctor') {
-    await _doctor();
-    return;
-  }
-  if (args.length != 3 || args[0] != 'preflight') {
+  final command = AssetToolCommand.parse(args);
+  if (command == null) {
     stderr.writeln(
-      'usage: dart run tools/fbx_pipeline.dart init <asset-id> <converter-id> '
-      '<converter-version> <import.json>\n'
-      '   or: dart run tools/fbx_pipeline.dart verify <generated-manifest.json>\n'
-      '   or: dart run tools/fbx_pipeline.dart convert <asset-dir> --out <dir>\n'
-      '   or: dart run tools/fbx_pipeline.dart package <asset-dir> --out <dir>\n'
-      '   or: dart run tools/fbx_pipeline.dart doctor\n'
-      '   or: dart run tools/fbx_pipeline.dart preflight <model.fbx> <import.json>',
+      'usage: dart run tools/fbx_pipeline.dart\n${AssetToolCommand.usage}',
     );
     exitCode = 64;
     return;
   }
-  final source = File(args[1]);
-  final configFile = File(args[2]);
-  final errors = <String>[];
-  if (!source.existsSync()) {
-    errors.add('FBX source does not exist: ${source.path}');
+  switch (command.subcommand) {
+    case AssetToolSubcommand.init:
+      final init = command.arguments;
+      await _initConfig(init[0], init[1], init[2], init[3]);
+      return;
+    case AssetToolSubcommand.verify:
+      await _verifyManifest(command.arguments.single);
+      return;
+    case AssetToolSubcommand.convert:
+      await _convert(command.arguments[0], command.arguments[1]);
+      return;
+    case AssetToolSubcommand.package:
+      await _package(command.arguments[0], command.arguments[1]);
+      return;
+    case AssetToolSubcommand.doctor:
+      await _doctor();
+      return;
+    case AssetToolSubcommand.preflight:
+      break;
   }
-  if (!configFile.existsSync()) {
-    errors.add('import config does not exist: ${configFile.path}');
+  final source = File(command.arguments[0]);
+  final configFile = File(command.arguments[1]);
+  final diagnostics = <px_diag.AssetImportDiagnostic>[];
+  void error(String code, String stage, String message) {
+    diagnostics.add(
+      px_diag.AssetImportDiagnostic(
+        code: code,
+        severity: px_diag.DiagnosticSeverity.error,
+        stage: stage,
+        message: message,
+        remediation: 'repair the source packet or import configuration',
+      ),
+    );
   }
 
-  FbxImportConfig? config;
+  if (!source.existsSync()) {
+    error(
+      'SOURCE_MISSING',
+      'source',
+      'FBX source does not exist: ${source.path}',
+    );
+  }
+  if (!configFile.existsSync()) {
+    error(
+      'CONFIG_MISSING',
+      'config',
+      'import config does not exist: ${configFile.path}',
+    );
+  }
+
+  px_import.FbxImportConfig? config;
   if (configFile.existsSync()) {
     try {
-      config = FbxImportConfig.fromJson(
+      config = px_import.FbxImportConfig.fromJson(
         jsonDecode(configFile.readAsStringSync()) as Map<String, dynamic>,
       );
-      errors.addAll(config.validate());
-      if (config.settingsHash != config.computedSettingsHash()) {
-        errors.add('settingsHash does not match canonical import settings');
+      for (final message in config.validate()) {
+        error('CONFIG_INVALID', 'config', message);
       }
-    } on Object catch (error) {
-      errors.add('invalid import config: $error');
+      if (config.settingsHash != config.computedSettingsHash()) {
+        error(
+          'CONFIG_HASH_MISMATCH',
+          'config',
+          'settingsHash does not match canonical import settings',
+        );
+      }
+    } on Object catch (caught) {
+      error('CONFIG_PARSE', 'config', 'invalid import config: $caught');
     }
   }
 
@@ -72,7 +102,11 @@ Future<void> main(List<String> args) async {
   if (source.existsSync()) {
     final length = source.lengthSync();
     if (length < 27) {
-      errors.add('FBX source is too small to contain a binary header');
+      error(
+        'SOURCE_TOO_SMALL',
+        'source',
+        'FBX source is too small to contain a binary header',
+      );
     } else {
       final bytes = await source
           .openRead(0, 27)
@@ -84,7 +118,11 @@ Future<void> main(List<String> args) async {
         asciiHeader =
             prefix.contains('FBXHeaderExtension') || prefix.contains('; FBX');
         if (!asciiHeader) {
-          errors.add('source is neither binary FBX nor recognized ASCII FBX');
+          error(
+            'SOURCE_HEADER',
+            'source',
+            'source is neither binary FBX nor recognized ASCII FBX',
+          );
         }
       } else {
         binaryHeader = true;
@@ -94,22 +132,29 @@ Future<void> main(List<String> args) async {
             (bytes[25] << 16) |
             (bytes[26] << 24);
       }
-      sourceSha256 = AssetConverter.computeSha256(await source.readAsBytes());
+      sourceSha256 = px_import.Sha256.compute(await source.readAsBytes());
     }
   }
-  final result = FbxPreflightResult(
+  if (config != null) {
+    diagnostics.add(
+      const px_diag.AssetImportDiagnostic(
+        code: 'CONVERTER_INSPECTION_PENDING',
+        severity: px_diag.DiagnosticSeverity.warning,
+        stage: 'converter',
+        message:
+            'scene node/material/animation inspection awaits pinned converter',
+        remediation: 'run the pinned converter inspection before promotion',
+      ),
+    );
+  }
+  final result = px_provenance.FbxPreflightResult(
     sourcePath: source.path,
     sourceBytes: source.existsSync() ? source.lengthSync() : 0,
     sourceSha256: sourceSha256,
     fbxVersion: fbxVersion,
     binaryHeader: binaryHeader,
     asciiHeader: asciiHeader,
-    errors: errors,
-    warnings: config == null
-        ? const []
-        : const [
-            'scene node/material/animation inspection awaits pinned converter',
-          ],
+    diagnostics: diagnostics,
   );
   stdout.writeln(const JsonEncoder.withIndent('  ').convert(result.toJson()));
   if (!result.passed) exitCode = 5;
@@ -141,7 +186,7 @@ Future<void> _package(String assetDir, String outputDir) async {
       return;
     }
     final glb = File(
-      '${neutral.path}/${FbxImportConfig.fromJson(jsonDecode(File('$assetDir/import.json').readAsStringSync()) as Map<String, dynamic>).assetId}.glb',
+      '${neutral.path}/${px_import.FbxImportConfig.fromJson(jsonDecode(File('$assetDir/import.json').readAsStringSync()) as Map<String, dynamic>).assetId}.glb',
     );
     final normalize = await Process.run(Platform.resolvedExecutable, [
       'run',
@@ -184,7 +229,7 @@ Future<void> _convert(String assetDir, String outputDir) async {
     exitCode = 5;
     return;
   }
-  final config = FbxImportConfig.fromJson(
+  final config = px_import.FbxImportConfig.fromJson(
     jsonDecode(configFile.readAsStringSync()) as Map<String, dynamic>,
   );
   errors.addAll(config.validate());
@@ -214,26 +259,29 @@ Future<void> _convert(String assetDir, String outputDir) async {
   }
   output.createSync(recursive: true);
   final neutral = File('${output.path}/${config.assetId}.glb');
-  final isAssimp = config.converterId == 'assimp-cli';
-  final command = isAssimp ? 'assimp' : 'blender';
+  final converter = ConverterCommandSpec.forConfig(config);
+  if (converter == null) {
+    stderr.writeln('unsupported converter identity: ${config.converterId}');
+    exitCode = 8;
+    return;
+  }
   try {
-    final arguments = isAssimp
-        ? <String>['export', sources.single.path, neutral.path]
-        : <String>[
-            '-b',
-            '--python',
-            'tools/fbx_blender_export.py',
-            '--',
-            '--source',
-            sources.single.path,
-            '--out',
-            neutral.path,
-            '--export-animations',
-            config.animationPolicy == 'bake-glb-clips' ? 'true' : 'false',
-          ];
-    final result = await Process.run(command, arguments);
-    if (result.exitCode != 0 || !neutral.existsSync()) {
-      stderr.writeln('${result.stdout}\n${result.stderr}'.trim());
+    final report = await px_process.runConverterProcess(
+      spec: converter,
+      config: config,
+      sourcePath: sources.single.path,
+      outputPath: neutral.path,
+      blenderScript: 'external/pixeldart/tools/assets/fbx_blender_export.py',
+    );
+    if (!report.evidence.passed || !neutral.existsSync()) {
+      final messages = <String>[
+        for (final diagnostic in report.evidence.diagnostics)
+          diagnostic.message,
+        report.stderr,
+      ];
+      stderr.writeln(
+        messages.where((message) => message.trim().isNotEmpty).join('\n'),
+      );
       exitCode = 8;
       return;
     }
@@ -243,7 +291,7 @@ Future<void> _convert(String assetDir, String outputDir) async {
       '$assetDir/import.json --out <empty-dir>, then run verify',
     );
   } on ProcessException catch (error) {
-    stderr.writeln('$command is unavailable: ${error.message}');
+    stderr.writeln('converter process failed: ${error.message}');
     exitCode = 8;
   }
 }
@@ -294,7 +342,11 @@ Future<void> _verifyManifest(String path) async {
   } else {
     try {
       manifest = jsonDecode(file.readAsStringSync()) as Map<String, dynamic>;
-      errors.addAll(validateFbxGeneratedPackage(manifest));
+      errors.addAll(
+        px_package
+            .validateGeneratedPackageManifest(manifest)
+            .map((diagnostic) => diagnostic.message),
+      );
       final packageFiles = manifest['packageFiles'];
       if (packageFiles is List &&
           packageFiles.every((entry) => entry is String)) {
@@ -312,7 +364,7 @@ Future<void> _verifyManifest(String path) async {
           }
         }
         if (errors.isEmpty &&
-            manifest['packageHash'] != AssetConverter.computeSha256(bytes)) {
+            manifest['packageHash'] != px_import.Sha256.compute(bytes)) {
           errors.add('packageHash does not match declared packageFiles');
         }
       }
@@ -338,7 +390,7 @@ Future<void> _initConfig(
   String outputPath,
 ) async {
   final output = File(outputPath);
-  final config = FbxImportConfig.recommended(
+  final config = px_import.FbxImportConfig.recommended(
     assetId: assetId,
     converterId: converterId,
     converterVersion: converterVersion,

@@ -80,11 +80,13 @@ final class FbxRuntimePart {
   final String id;
   final String lod0Path;
   final Map<String, String> lodFiles;
+  final int? materialSlot;
 
   const FbxRuntimePart({
     required this.id,
     required this.lod0Path,
     required this.lodFiles,
+    this.materialSlot,
   });
 
   factory FbxRuntimePart.fromJson(Map<String, dynamic> json) {
@@ -103,6 +105,7 @@ final class FbxRuntimePart {
           (throw const FormatException('FBX part id is required')),
       lod0Path: lod0,
       lodFiles: lodFiles,
+      materialSlot: json['materialSlot'] as int?,
     );
   }
 
@@ -110,5 +113,6 @@ final class FbxRuntimePart {
     'id': id,
     'lod0Path': lod0Path,
     'lodFiles': lodFiles,
+    'materialSlot': materialSlot,
   };
 }

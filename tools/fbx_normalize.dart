@@ -5,8 +5,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import 'dart:typed_data';
 
-import 'package:quarantine/engine/asset_source_contract.dart';
-import 'package:quarantine/engine/fbx_import_contract.dart';
+import 'package:pixeldart/assets/importers/fbx_import_config.dart';
 
 Future<void> main(List<String> args) async {
   if (args.length != 5 || args[0] != 'normalize' || args[3] != '--out') {
@@ -53,6 +52,29 @@ Future<void> main(List<String> args) async {
     final provenance = provenanceFile.existsSync()
         ? jsonDecode(provenanceFile.readAsStringSync()) as Map<String, dynamic>
         : const <String, dynamic>{};
+    final sourceFiles = provenance['sourceFiles'];
+    if (sourceFiles is! List || sourceFiles.isEmpty) {
+      throw const FormatException('PROVENANCE.json requires sourceFiles');
+    }
+    for (final raw in sourceFiles) {
+      final source = raw as Map;
+      final relative = source['path'] as String?;
+      final expectedHash = source['sha256'] as String?;
+      if (relative == null || expectedHash == null) {
+        throw const FormatException('sourceFiles require path and sha256');
+      }
+      if (relative.contains('..') || relative.startsWith('/')) {
+        throw FormatException('unsafe provenance source path: $relative');
+      }
+      final sourceFile = File('${configFile.parent.path}/$relative');
+      if (!sourceFile.existsSync()) {
+        throw FormatException('provenance source does not exist: $relative');
+      }
+      final actualHash = Sha256.compute(sourceFile.readAsBytesSync());
+      if (actualHash != expectedHash) {
+        throw FormatException('provenance hash mismatch: $relative');
+      }
+    }
     final parts = <Map<String, Object?>>[];
     final allMin = [double.infinity, double.infinity, double.infinity];
     final allMax = [
@@ -86,7 +108,7 @@ Future<void> main(List<String> args) async {
           ..writeAsBytesSync(generated.bytes);
         emittedFiles.add(file);
         lodFiles[entry.key] = name;
-        lodHashes[entry.key] = AssetConverter.computeSha256(generated.bytes);
+        lodHashes[entry.key] = Sha256.compute(generated.bytes);
         lodCounts[entry.key] = generated.vertexCount ~/ 3;
       }
       final base = qmesh!;
@@ -112,7 +134,7 @@ Future<void> main(List<String> args) async {
     if (parts.isEmpty)
       throw const FormatException('GLB contains no triangle primitives');
     emittedFiles.sort((a, b) => a.path.compareTo(b.path));
-    final packageHash = AssetConverter.computeSha256(
+    final packageHash = Sha256.compute(
       emittedFiles.expand((file) => file.readAsBytesSync()).toList(),
     );
     final manifest = <String, Object?>{

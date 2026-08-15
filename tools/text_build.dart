@@ -34,6 +34,17 @@ void main(List<String> args) {
     exit(1);
   }
 
+  if (!partial) {
+    final screenplay = Process.runSync(
+      Platform.executable,
+      ['run', 'tools/story_build.dart'],
+    );
+    if (screenplay.exitCode != 0) {
+      stderr.write(screenplay.stderr);
+      exit(1);
+    }
+  }
+
   if (partial) {
     stdout.writeln('Parsed ${sources.length} files, ${story.lineCount} lines '
         '(--partial: completeness not checked)');

@@ -10,6 +10,10 @@ import 'package:quarantine/engine/audio.dart';
 import 'package:quarantine/engine/audio_planner.dart';
 import 'package:quarantine/engine/camera.dart';
 import 'package:quarantine/engine/fps_motion.dart';
+import 'package:quarantine/engine/fbx_diagnostic_controller.dart';
+import 'package:quarantine/engine/fbx_runtime_package.dart';
+import 'package:quarantine/engine/fbx_scene_binding.dart';
+import 'package:pixeldart/rendering/assets/model_cache.dart' as px_model;
 import 'package:quarantine/engine/locomotion_controller.dart';
 import 'package:quarantine/engine/input.dart';
 import 'package:quarantine/engine/light_ranking_controller.dart';
@@ -180,6 +184,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   late PixeldartCapabilityMatrix capabilityMatrix;
   late PixeldartResourceGovernor resourceGovernor;
   late PixeldartShaderPipelineExporter shaderExporter;
+  FbxDiagnosticController? _fbxDiagnosticController;
 
   _PixeldartWebRuntime(this.context, this.width, this.height);
 
@@ -231,6 +236,55 @@ final class _PixeldartWebRuntime implements RendererRuntime {
 
   Map<String, Object> get effectiveConfiguration =>
       _renderer.configuration.toMap();
+
+  Map<String, Object?> get fbxDiagnostics =>
+      _fbxDiagnosticController?.diagnostics() ??
+      const {
+        'schema': 'pixeldart-fbx-diagnostic-v1',
+        'enabled': false,
+        'attached': false,
+        'activeLod': null,
+        'itemCount': 0,
+      };
+
+  void prepareFbxDiagnostics() {
+    if (!_initialized || _fbxDiagnosticController != null) return;
+    final material = _sceneMaterial;
+    if (material == null) return;
+    _fbxDiagnosticController = FbxDiagnosticController(
+      FbxSceneBinding(
+        resources: _renderer.resources,
+        world: _world,
+        cache: px_model.ModelCache(),
+        material: material,
+      ),
+    );
+  }
+
+  Future<void> enableFbxDiagnostics(
+    FbxRuntimePackage package,
+    Future<Uint8List> Function(String path) load,
+  ) async {
+    prepareFbxDiagnostics();
+    final controller = _fbxDiagnosticController;
+    if (controller == null) {
+      throw StateError('FBX diagnostics require an initialized room material');
+    }
+    await controller.enable(package, load);
+    _publishRendererDiagnostics();
+  }
+
+  Future<void> setFbxDiagnosticLod(String lod) async {
+    final controller = _fbxDiagnosticController;
+    if (controller == null) throw StateError('FBX diagnostics are unavailable');
+    await controller.setLod(lod);
+    _publishRendererDiagnostics();
+  }
+
+  void disableFbxDiagnostics() {
+    _fbxDiagnosticController?.disable();
+    _publishRendererDiagnostics();
+  }
 
   @override
   void initialize() {
@@ -589,6 +643,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _exteriorShellDescriptors[itemKey] = exteriorDescriptor;
       _exteriorShellItems[itemKey] = _world.addItem(exteriorDescriptor);
     }
+    prepareFbxDiagnostics();
   }
 
   /// Records the authored placement index for this runtime. Geometry remains
@@ -3132,12 +3187,15 @@ void _publishRendererDiagnostics() {
     ..setAttribute(
       'data-renderer-fbx-diagnostics',
       jsonEncode({
-        'schema': 'pixeldart-fbx-diagnostic-v1',
-        'enabled': _graphicsSettingsStore.effective.fbxDiagnostics,
-        'attached': false,
-        'activeLod': null,
-        'itemCount': 0,
-        'note': 'package binding is opt-in and not attached in normal gameplay',
+        ...(_pixeldartRuntime?.fbxDiagnostics ??
+            const {
+              'schema': 'pixeldart-fbx-diagnostic-v1',
+              'enabled': false,
+              'attached': false,
+              'activeLod': null,
+              'itemCount': 0,
+            }),
+        'settingsEnabled': _graphicsSettingsStore.effective.fbxDiagnostics,
       }),
     );
   final profileFallback = _pixeldartRuntime?.profileFallbackReason;

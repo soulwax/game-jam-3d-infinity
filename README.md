@@ -12,6 +12,34 @@ dart pub global activate webdev      # once
 dart pub global run webdev serve web:8080
 ```
 
+Narrative authors can validate and compile the complete screenplay graph and
+the granular dialogue corpus together:
+
+```sh
+dart run tools/text_build.dart
+```
+
+The command reads `text/story.screenplay`, checks all 21 days and branch
+targets, and emits `web/res/story_script.json` alongside `text.json`.
+
+The editor's headless data checks can be run without a display:
+
+```sh
+python3 tools/test_screenplay_editor.py
+```
+
+For a small visual editor using only Python's standard library, run:
+
+```sh
+python3 tools/screenplay_editor.py
+```
+
+Edit the selected scene, beats, branch prompt, or options, then choose
+`Save + validate`. The editor presents story moments and player-facing answers
+instead of screenplay syntax, offers friendly next-scene names, and keeps a
+`story.screenplay.bak` safety copy on every save. Use `--no-build` when Dart is
+not installed.
+
 - How to deploy (Vercel): import the repo and keep the defaults. `dist/web`
   is **committed**, so Vercel installs nothing, builds nothing, and just
   serves it — deploys land in seconds. A `pre-commit` hook keeps it honest:

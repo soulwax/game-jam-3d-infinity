@@ -1,0 +1,249 @@
+# THE QUARANTINE — master screenplay
+#
+# This is the human-editable dramatic spine. The granular prose remains in the
+# linked text/*.txt corpus; SOURCE records make the whole canon part of this
+# script, while LINK records show which material plays on each day.
+#
+# Grammar: SOURCE path | LINK path | SCENE id day title | BEAT kind | text |
+# DIALOGUE speaker | text | BRANCH id | prompt | OPTION id next | label.
+# Branch targets are scene ids or END. Keep ids stable: saves and analytics use them.
+
+SOURCE text/broadcasts/week-1.txt
+SOURCE text/broadcasts/week-2.txt
+SOURCE text/broadcasts/week-3.txt
+SOURCE text/documents.txt
+SOURCE text/endings.txt
+SOURCE text/nights.txt
+SOURCE text/reactions.txt
+SOURCE text/records.txt
+SOURCE text/street.txt
+SOURCE text/unverifiables.txt
+SOURCE text/vocabulary.txt
+SOURCE text/visitors/ayling.txt
+SOURCE text/visitors/caller.txt
+SOURCE text/visitors/census.txt
+SOURCE text/visitors/child.txt
+SOURCE text/visitors/clerk.txt
+SOURCE text/visitors/doctor.txt
+SOURCE text/visitors/engineer.txt
+SOURCE text/visitors/evacuee.txt
+SOURCE text/visitors/gas-man.txt
+SOURCE text/visitors/hazmat-boy.txt
+SOURCE text/visitors/milkman.txt
+SOURCE text/visitors/neighbour.txt
+SOURCE text/visitors/nurse.txt
+SOURCE text/visitors/postman.txt
+SOURCE text/visitors/ragman.txt
+SOURCE text/visitors/sibling.txt
+SOURCE text/visitors/stranger.txt
+SOURCE text/visitors/tuner.txt
+SOURCE text/visitors/twins.txt
+SOURCE text/visitors/warden.txt
+SOURCE text/visitors/watchman.txt
+SOURCE text/visitors/widow.txt
+
+SCENE day-01 1 Hospitality
+LINK text/broadcasts/week-1.txt
+LINK text/street.txt
+LINK text/visitors/ayling.txt
+BEAT action | The house opens on a street still full of ordinary traffic, tea, shopping, drains, and people lending one another small help.
+DIALOGUE iris | Iris names Ron casually; Ayling offers the shop and the wall-knock compact begins.
+BRANCH day-01-care | How do you meet the first small kindness?
+OPTION accept day-02 | Accept tea or help and keep the wall-knock promise.
+OPTION refuse day-02 | Refuse politely and keep the distance.
+
+SCENE day-02 2 Family evidence
+LINK text/visitors/sibling.txt
+LINK text/visitors/nurse.txt
+BEAT action | Denise brings pears and three true domestic facts before an over-precise memory. Nurse and Ken establish reliable outside routines.
+DIALOGUE denise | The pears are left on the step; the family argument is warm, ordinary, and specific.
+BRANCH day-02-pears | What do you do with the pears?
+OPTION take day-03 | Take them in and record the visit.
+OPTION leave day-03 | Leave them where they are.
+
+SCENE day-03 3 Being useful
+LINK text/visitors/child.txt
+LINK text/visitors/hazmat-boy.txt
+BEAT action | Sylvia wants a pencil for a window map. Ronnie's body does not fit the suit. Prentice still honors an appointment. Askew remains exact.
+DIALOGUE sylvia | “I'm Sylvia. Number 3.” The letterbox is the whole relationship, and the impossible second remains unwriteable.
+BRANCH day-03-pencil | Do you give Sylvia the pencil?
+OPTION give day-04 | Give it through the letterbox.
+OPTION keep day-04 | Keep it for the journal.
+OPTION none day-04 | Admit you have none.
+
+SCENE day-04 4 Repair
+LINK text/visitors/engineer.txt
+LINK text/visitors/clerk.txt
+LINK text/visitors/twins.txt
+BEAT action | Reeve, Liddell, and the Bells each repair a system that is slightly obsolete but still workable. An entry appears in the journal from three days ago.
+BRANCH day-04-trace | How close do you let Liddell get to the dead pair?
+OPTION trace day-05 | Let him trace it to the wall plate.
+OPTION outside day-05 | Keep him outside.
+
+SCENE day-05 5 Ownership of a record
+LINK text/visitors/warden.txt
+LINK text/visitors/sibling.txt
+LINK text/documents.txt
+BEAT action | Mrs Hallow asks for an ordinary heirloom. Denise defends privacy. Sowerby needs a box filled and writes in the journal.
+DIALOGUE warden | The record is requested as if ownership were an ordinary household courtesy.
+BRANCH day-05-record | What do you show?
+OPTION all day-06 | Show everything.
+OPTION card day-06 | Show the card only.
+OPTION refuse day-06 | Refuse.
+
+SCENE day-06 6 Being known
+LINK text/visitors/doctor.txt
+LINK text/visitors/tuner.txt
+LINK text/visitors/gas-man.txt
+BEAT action | Marchant asks memory questions without diagnosing. Ronnie repeats the script. Kettering appraises the repaired chair. Ashworth knows the private household.
+BRANCH day-06-detail | Do you accept Eileen's first identifying detail?
+OPTION accept day-07 | Accept it.
+OPTION refuse day-07 | Refuse it without explanation.
+
+SCENE day-07 7 Promises
+LINK text/broadcasts/week-1.txt
+LINK text/visitors/milkman.txt
+LINK text/visitors/nurse.txt
+BEAT action | Last milk, a reduced nursing list, held post, and Iris seeking a matching answer close the first act. The normality makes the future entry worse.
+BRANCH day-07-promise | Which promise do you keep?
+OPTION wall-knock day-08 | Keep the wall knock.
+OPTION letter day-08 | Reply to the letter.
+OPTION record day-08 | Defend the record.
+
+SCENE day-08 8 Wording travels
+LINK text/visitors/child.txt
+LINK text/visitors/stranger.txt
+LINK text/broadcasts/week-2.txt
+BEAT action | The boundary sighting becomes a phrase neighbors carry. Voss shows a harmless version mismatch. Sylvia asks what moved.
+BRANCH day-08-word | How do you answer the carried wording?
+OPTION cite day-09 | Cite the announcement.
+OPTION question day-09 | Question the word “accounted.”
+OPTION decline day-09 | Decline to make a claim.
+
+SCENE day-09 9 Performance
+LINK text/visitors/ayling.txt
+LINK text/visitors/evacuee.txt
+LINK text/visitors/sibling.txt
+BEAT action | Ayling enjoys correct wording. Reeve delivers the cost of reduced allowance. Corrigan describes billeting. Denise asks for acknowledgment rather than a date.
+BRANCH day-09-help | Where do you spend the practical help?
+OPTION person day-10 | Help one person.
+OPTION supplies day-10 | Preserve time and gas.
+
+SCENE day-10 10 The account
+LINK text/visitors/sibling.txt
+LINK text/visitors/clerk.txt
+LINK text/visitors/engineer.txt
+BEAT action | An appointment moves, an obsolete order persists, a copy is trusted, and Denise supplies mutually incompatible sighting facts.
+BRANCH day-10-notes | What status does the account receive?
+OPTION write day-11 | Write one concrete detail.
+OPTION uncertain day-11 | Mark it uncertain.
+OPTION omit day-11 | Omit it.
+
+SCENE day-11 11 Categories
+LINK text/visitors/census.txt
+LINK text/visitors/doctor.txt
+LINK text/visitors/hazmat-boy.txt
+BEAT action | Wren counts a household. Marchant repeats a bodily sequence. Ronnie cannot say the missing noun. The reliable scar distinction fails.
+BRANCH day-11-ronnie | Do you ask the direct question?
+OPTION ask day-12 | Ask Ronnie directly.
+OPTION suit day-12 | Ask about the suit.
+OPTION silence day-12 | Let the script end.
+
+SCENE day-12 12 Circulation
+LINK text/visitors/evacuee.txt
+LINK text/visitors/nurse.txt
+LINK text/visitors/ayling.txt
+BEAT action | Corrigan admits she floated the ration guess. Ken attributes it elsewhere. Iris speaks Denise's sentence. Prentice hears the room rather than a piano.
+BRANCH day-12-rumour | How do you handle the circulating story?
+OPTION confront day-13 | Confront the source.
+OPTION protect day-13 | Protect her.
+OPTION ordinary day-13 | Treat it as ordinary rumor.
+
+SCENE day-13 13 Mercy in correction
+LINK text/visitors/ayling.txt
+LINK text/visitors/stranger.txt
+LINK text/visitors/warden.txt
+BEAT action | Ayling accepts correction so action can continue. Voss preserves both copies. Sowerby needs one version. Ashworth refuses to correct your wrong account of him.
+BRANCH day-13-document | Which document do you present?
+OPTION helpful day-14 | Present the helpful falsification.
+OPTION harmful day-14 | Present the harmful correction.
+OPTION both day-14 | Present both and explain the conflict.
+
+SCENE day-14 14 Honest revision
+LINK text/visitors/child.txt
+LINK text/visitors/sibling.txt
+LINK text/visitors/evacuee.txt
+BEAT action | Sylvia times the absent word. Corrigan keeps her case packed. Denise arrives with a crossed-out list and admits the coach memory was hers to correct.
+DIALOGUE denise | “You were right about the coach to Rhyl.” The emotional climax is honest revision, with no scare interrupting it.
+BRANCH day-14-revision | How do you receive the concession?
+OPTION accept day-15 | Accept it.
+OPTION prosecute day-15 | Keep prosecuting the details.
+OPTION pencil day-15 | Offer Denise the pencil.
+
+SCENE day-15 15 Inherited answers
+LINK text/visitors/doctor.txt
+LINK text/visitors/warden.txt
+LINK text/visitors/clerk.txt
+BEAT action | Marchant carries forward last week. Sowerby finds boxes already filled. Cole reduces the player to door status.
+BRANCH day-15-effort | Do you correct the inherited answer?
+OPTION correct day-16 | Correct it.
+OPTION conserve day-16 | Conserve effort.
+
+SCENE day-16 16 Who counts as present
+LINK text/visitors/engineer.txt
+LINK text/visitors/ayling.txt
+LINK text/visitors/caller.txt
+BEAT action | An unchanged reading, “you saw it,” and a second plate orbit the lit empty house.
+BRANCH day-16-fiction | Do you challenge one compassionate fiction?
+OPTION challenge day-17 | Challenge it.
+OPTION allow day-17 | Allow it to stand.
+
+SCENE day-17 17 Names and objects
+LINK text/visitors/ayling.txt
+LINK text/visitors/neighbour.txt
+LINK text/visitors/twins.txt
+BEAT action | Ayling receives the clipboard. Ken carries the unposted parcel. Ashworth returns Eileen's case with one exact journal entry. The Bells abandon the scar test.
+DIALOGUE piano | Four distant notes occur twice with ordinary room timing; the house does not explain them.
+BRANCH day-17-responsibility | Which responsibility do you accept?
+OPTION clipboard day-18 | Accept the clipboard.
+OPTION parcel day-18 | Accept the parcel.
+OPTION case day-18 | Accept the case.
+
+SCENE day-18 18 Public event, private language
+LINK text/visitors/evacuee.txt
+LINK text/visitors/hazmat-boy.txt
+LINK text/visitors/clerk.txt
+BEAT action | The street is full and empty. Ayling has no detail. Ronnie completes his promise to return. Cole logs only the shut door.
+BRANCH day-18-ronnie | Does Ronnie risk one unscripted sentence?
+OPTION speak day-19 | Let him speak.
+OPTION script day-19 | Keep to the script.
+
+SCENE day-19 19 What care repeats
+LINK text/visitors/child.txt
+LINK text/visitors/sibling.txt
+LINK text/nights.txt
+BEAT action | Replays carry the journal anomaly. Sylvia has the pencil, Denise has pears or not, and Attercliffe knows she repeated herself. Physical residues remain inspectable while the false replay runs.
+BRANCH day-19-return | What do you revisit?
+OPTION pencil day-20 | Revisit the pencil.
+OPTION pears day-20 | Revisit the pears.
+OPTION journal day-20 | Revisit the journal.
+
+SCENE day-20 20 Unfinished business
+LINK text/visitors/warden.txt
+LINK text/visitors/ayling.txt
+LINK text/visitors/stranger.txt
+BEAT action | Hallow, Ayling, Sowerby, Attercliffe, and Iris close what can be closed: a dish, a form, a shift, a plate, a brief wall knock.
+BRANCH day-20-close | Which ordinary thread reaches closure?
+OPTION dish day-21 | Return the dish.
+OPTION form day-21 | Finish the form.
+OPTION wall day-21 | Answer the wall knock.
+
+SCENE day-21 21 Release
+LINK text/endings.txt
+LINK text/nights.txt
+BEAT action | Cole finishes his sheet. The Board thanks Ayling. No principal arrives to summarize the run.
+BEAT action | The ending returns two or three chosen objects and phrases as texture, then stops. It does not explain the sun or the house.
+BRANCH day-21-ending | Which authored ending does the recorded run reach?
+OPTION compliance END | Compliance: lock the house and sleep.
+OPTION rupture END | Rupture: the kitchen is there and wrong.
+OPTION synchronisation END | Synchronisation: gather the true entries and let the page end.

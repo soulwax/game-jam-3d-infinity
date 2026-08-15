@@ -2,6 +2,7 @@ import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 import 'corpus.dart';
+import 'screenplay.dart';
 import 'schema.dart'
     show
         StoryText,
@@ -29,6 +30,7 @@ class TextLibrary {
   late Map<String, dynamic> _reactions;
   late Map<String, dynamic> _variants;
   late Map<String, dynamic> _residues;
+  StoryScreenplay? _screenplay;
 
   TextLibrary._();
 
@@ -59,6 +61,15 @@ class TextLibrary {
       _residues = decoded['residues'] is Map
           ? Map<String, dynamic>.from(decoded['residues'] as Map)
           : <String, dynamic>{};
+      final screenplayResp = await web.window.fetch('res/story_script.json'.toJS).toDart;
+      // Older checked-in web bundles may predate the screenplay artifact. The
+      // content build produces it; keep those bundles playable while exposing
+      // the absence to callers through a null screenplay.
+      if (screenplayResp.ok) {
+        _screenplay = StoryScreenplay.fromJson(
+          (await screenplayResp.text().toDart).toString(),
+        );
+      }
     } catch (e) {
       throw 'Failed to load text.json: $e';
     }
@@ -352,6 +363,11 @@ class TextLibrary {
     final lines = _records[id];
     return lines is List ? List<String>.from(lines) : const [];
   }
+
+  /// The chronological dramatic spine. Granular dialogue still comes from the
+  /// normal corpus getters; this graph is for scene routing, branch UI, and
+  /// editor/runtime diagnostics.
+  StoryScreenplay? get screenplay => _screenplay;
 }
 
 final textLibrary = TextLibrary.instance;
