@@ -1,4 +1,4 @@
-import 'package:pixeldart/rendering/rendering.dart' as pixeldart;
+import 'package:pixeldart/pixeldart.dart' as pixeldart;
 
 /// Renderer-owned allocation policy for the three shipped Pixeldart profiles.
 /// It contains no DOM, save, or settings-store state.

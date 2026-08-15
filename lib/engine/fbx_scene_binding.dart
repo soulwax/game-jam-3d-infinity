@@ -1,15 +1,13 @@
 import 'dart:typed_data';
 
-import 'package:pixeldart/rendering/api/handles.dart';
-import 'package:pixeldart/rendering/api/renderer.dart';
-import 'package:pixeldart/rendering/api/scene.dart';
-import 'package:pixeldart/rendering/assets/model_cache.dart';
+import 'package:pixeldart/pixeldart_testing.dart';
 
 import 'fbx_runtime_package.dart';
 
-/// Binds a decoded static FBX package to the existing retained world. This is
-/// intentionally a small adapter: room/collision/portal truth remains owned
-/// by the game, while Pixeldart owns mesh handles and retained instances.
+/// Legacy offline binding for the generated FBX package shape.
+///
+/// It remains available to migration tests only. New integrations must bind a
+/// validated `ModelPackage` through Pixeldart's neutral scene-binding API.
 final class FbxSceneBinding {
   final ResourceLibrary resources;
   final RenderWorld world;

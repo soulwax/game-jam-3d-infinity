@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import os
 import queue
 import re
 import shutil
@@ -251,6 +252,7 @@ class Editor(tk.Tk if tk is not None else object):
         self.review_voice_name: str | None = None
         self.voice_player: subprocess.Popen[bytes] | None = None
         self.event_window: tk.Toplevel | None = None
+        self.character_window: tk.Toplevel | None = None
         self.dirty = False
 
         self.title("The Quarantine — Screenplay Editor")
@@ -260,6 +262,7 @@ class Editor(tk.Tk if tk is not None else object):
         self.bind("<Control-s>", lambda _event: self.save())
         self.bind("<F5>", lambda _event: self._preview())
         self.bind("<Control-e>", lambda _event: self._open_orchestrator())
+        self.bind("<Control-Shift-c>", lambda _event: self._open_characters())
         self.bind("<Control-Shift-v>", lambda _event: self._generate_voice())
         self._make_widgets()
         self._load_scene(0)
@@ -287,7 +290,7 @@ class Editor(tk.Tk if tk is not None else object):
 
         toolbar = ttk.Frame(self, padding=(8, 6))
         toolbar.grid(row=0, column=0, columnspan=3, sticky="ew")
-        toolbar.columnconfigure(7, weight=1)
+        toolbar.columnconfigure(8, weight=1)
 
         def separator(column: int) -> None:
             ttk.Separator(toolbar, orient="vertical").grid(
@@ -298,16 +301,19 @@ class Editor(tk.Tk if tk is not None else object):
         self._toolbar_button(toolbar, "Preview", self._preview, "preview the selected scene").grid(row=0, column=1, padx=2)
         separator(2)
         self._toolbar_button(toolbar, "Game events", self._open_orchestrator, "open the day and time planner").grid(row=0, column=3, padx=2)
-        self._toolbar_button(toolbar, "Voice line", self._generate_voice, "generate voice for the selected line").grid(row=0, column=4, padx=2)
-        separator(5)
+        self._toolbar_button(toolbar, "Characters", self._open_characters, "edit or add story characters").grid(row=0, column=4, padx=2)
+        self._toolbar_button(toolbar, "Voice line", self._generate_voice, "generate voice for the selected line").grid(row=0, column=5, padx=2)
+        separator(6)
         more = ttk.Menubutton(toolbar, text="More ▾")
         more_menu = tk.Menu(more, tearoff=False)
+        more_menu.add_command(label="Characters", command=self._open_characters)
+        more_menu.add_separator()
         more_menu.add_command(label="Restore last save", command=self._restore_backup)
         more_menu.add_command(label="What am I editing?", command=self._help)
         more_menu.add_separator()
         more_menu.add_command(label="Quit", command=self.close)
         more["menu"] = more_menu
-        more.grid(row=0, column=6, padx=2)
+        more.grid(row=0, column=7, padx=2)
 
         left = ttk.Frame(self, padding=8)
         left.grid(row=1, column=0, sticky="ns")
@@ -1342,6 +1348,210 @@ class Editor(tk.Tk if tk is not None else object):
         refresh()
         load(0 if self.script.events else None)
 
+    def _open_characters(self) -> None:
+        if self.character_window is not None and self.character_window.winfo_exists():
+            self.character_window.lift()
+            return
+        window = tk.Toplevel(self)
+        self.character_window = window
+        window.title("The Quarantine — Characters")
+        window.geometry("760x500")
+        window.minsize(620, 400)
+        window.columnconfigure(1, weight=1)
+        window.rowconfigure(0, weight=1)
+
+        def close_characters() -> None:
+            window.destroy()
+            self.character_window = None
+
+        window.protocol("WM_DELETE_WINDOW", close_characters)
+
+        left = ttk.Frame(window, padding=8)
+        left.grid(row=0, column=0, sticky="ns")
+        ttk.Label(left, text="Characters in the story").pack(anchor="w")
+        character_list = tk.Listbox(left, width=28, exportselection=False)
+        character_list.pack(fill="y", expand=True, pady=(6, 0))
+
+        right = ttk.Frame(window, padding=8)
+        right.grid(row=0, column=1, sticky="nsew")
+        right.columnconfigure(1, weight=1)
+        right.rowconfigure(4, weight=1)
+        character_id = tk.StringVar()
+        display_name = tk.StringVar()
+        source_path = tk.StringVar()
+        first_line = tk.Text(right, height=7, wrap="word", undo=True)
+
+        ttk.Label(
+            right,
+            text="Create a character once, then write their full visit in the linked text file.",
+            foreground="#555555",
+        ).grid(row=0, column=0, columnspan=2, sticky="w", pady=(0, 10))
+        ttk.Label(right, text="Character ID").grid(row=1, column=0, sticky="w", pady=3)
+        ttk.Entry(right, textvariable=character_id).grid(row=1, column=1, sticky="ew", pady=3)
+        ttk.Label(right, text="Name for writers").grid(row=2, column=0, sticky="w", pady=3)
+        ttk.Entry(right, textvariable=display_name).grid(row=2, column=1, sticky="ew", pady=3)
+        ttk.Label(right, text="Writing file").grid(row=3, column=0, sticky="w", pady=3)
+        ttk.Label(right, textvariable=source_path, foreground="#666666").grid(
+            row=3, column=1, sticky="w", pady=3
+        )
+        ttk.Label(right, text="First spoken line").grid(row=4, column=0, sticky="nw", pady=3)
+        first_line.grid(row=4, column=1, sticky="nsew", pady=3)
+        ttk.Label(
+            right,
+            text="New characters start on the selected scene's day and can be expanded with @day/@tier blocks.",
+            foreground="#666666",
+            wraplength=460,
+        ).grid(row=5, column=0, columnspan=2, sticky="w", pady=(4, 8))
+        buttons = ttk.Frame(right)
+        buttons.grid(row=6, column=0, columnspan=2, sticky="e")
+
+        def character_paths() -> list[Path]:
+            return sorted(
+                (
+                    self.path.parent.parent / source
+                    for source in self.script.sources
+                    if source.startswith("text/visitors/") and source.endswith(".txt")
+                ),
+                key=lambda path: path.stem,
+            )
+
+        def path_for(identifier: str) -> Path:
+            return self.path.parent.parent / "text" / "visitors" / f"{identifier}.txt"
+
+        def read_display_name(path: Path) -> str:
+            try:
+                for line in path.read_text(encoding="utf-8").splitlines():
+                    if line.startswith("# Character:"):
+                        return line[len("# Character:"):].strip()
+            except OSError:
+                pass
+            return path.stem.replace("-", " ").title()
+
+        def load(index: int | None) -> None:
+            character_id.set("")
+            display_name.set("")
+            source_path.set("")
+            first_line.delete("1.0", "end")
+            paths = character_paths()
+            if index is None or index >= len(paths):
+                return
+            path = paths[index]
+            character_id.set(path.stem)
+            source_path.set(path.relative_to(self.path.parent.parent).as_posix())
+            try:
+                lines = path.read_text(encoding="utf-8").splitlines()
+                display_name.set(read_display_name(path))
+            except OSError:
+                lines = []
+            first_line.delete("1.0", "end")
+            for line in lines:
+                if line and not line.startswith("#") and not line.startswith("@"):
+                    first_line.insert("1.0", line)
+                    break
+
+        def refresh() -> None:
+            character_list.delete(0, "end")
+            for path in character_paths():
+                character_list.insert("end", f"{read_display_name(path)}  ({path.stem})")
+
+        def new_character() -> None:
+            character_list.selection_clear(0, "end")
+            load(None)
+            display_name.set("")
+            first_line.insert("1.0", "Good morning. I won't keep you.")
+            character_id.focus_set()
+
+        def create_character() -> None:
+            identifier = re.sub(r"[^a-z0-9-]+", "-", character_id.get().strip().lower()).strip("-")
+            name = display_name.get().strip() or identifier.replace("-", " ").title()
+            line = first_line.get("1.0", "end").strip()
+            if not identifier or not line:
+                messagebox.showerror("Character needs a little more", "Give the character an ID and a first spoken line.", parent=window)
+                return
+            destination = path_for(identifier)
+            if destination.exists():
+                messagebox.showerror("Character already exists", "Choose a new ID or select this character and open its writing.", parent=window)
+                return
+            relative = destination.relative_to(self.path.parent.parent).as_posix()
+            content = (
+                f"# Character: {name}\n"
+                f"# Add more @day and @tier blocks as this character returns.\n"
+                f"@visitor {identifier}\n"
+                f"@day {self.scene.day if self.scene else 1}\n"
+                "@arrival 12 0\n"
+                "@tier full.1\n"
+                f"{line}\n"
+            )
+            try:
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                temporary = destination.with_name(destination.name + ".new")
+                temporary.write_text(content, encoding="utf-8")
+                temporary.replace(destination)
+            except OSError as error:
+                messagebox.showerror("Could not create character", str(error), parent=window)
+                return
+            if relative not in self.script.sources:
+                self.script.sources.append(relative)
+            if self.scene is not None and relative not in self.scene.links:
+                self.scene.links.append(relative)
+            self._mark_dirty()
+            refresh()
+            index = next((i for i, path in enumerate(character_paths()) if path == destination), None)
+            if index is not None:
+                character_list.selection_set(index)
+            source_path.set(relative)
+            self._set_tts_defaults(identifier)
+            self.status["text"] = f"Added {name}. Save to validate the new character."
+
+        def open_writing() -> None:
+            identifier = character_id.get().strip()
+            path = path_for(identifier)
+            if not path.exists():
+                messagebox.showinfo("No writing file yet", "Create the character first.", parent=window)
+                return
+            try:
+                if os.name == "nt":
+                    os.startfile(str(path))  # type: ignore[attr-defined]
+                elif sys.platform == "darwin":
+                    subprocess.Popen(["open", str(path)])
+                else:
+                    subprocess.Popen(["xdg-open", str(path)])
+            except OSError as error:
+                messagebox.showerror("Could not open writing", str(error), parent=window)
+
+        def save_details() -> None:
+            identifier = character_id.get().strip()
+            name = display_name.get().strip()
+            path = path_for(identifier)
+            if not path.exists() or not name:
+                messagebox.showerror("Character needs a name", "Select a character and give it a writer-facing name.", parent=window)
+                return
+            try:
+                lines = path.read_text(encoding="utf-8").splitlines()
+                replacement = f"# Character: {name}"
+                for index, line in enumerate(lines):
+                    if line.startswith("# Character:"):
+                        lines[index] = replacement
+                        break
+                else:
+                    lines.insert(0, replacement)
+                temporary = path.with_name(path.name + ".details")
+                temporary.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
+                temporary.replace(path)
+            except OSError as error:
+                messagebox.showerror("Could not save character", str(error), parent=window)
+                return
+            self.status["text"] = f"Updated {name}."
+            refresh()
+
+        character_list.bind("<<ListboxSelect>>", lambda _event: load(character_list.curselection()[0] if character_list.curselection() else None))
+        ttk.Button(buttons, text="New character", command=new_character).pack(side="left", padx=3)
+        ttk.Button(buttons, text="Create character", command=create_character).pack(side="left", padx=3)
+        ttk.Button(buttons, text="Save name", command=save_details).pack(side="left", padx=3)
+        ttk.Button(buttons, text="Open writing", command=open_writing).pack(side="left", padx=3)
+        refresh()
+        load(0 if character_paths() else None)
+
     @staticmethod
     def _event_label(event: Event) -> str:
         return f"Day {event.day:02d} · {event.hour:04.1f} · {event.kind.title()} · {event.label[:42]}"
@@ -1441,6 +1651,7 @@ class Editor(tk.Tk if tk is not None else object):
             "Scene: one day in the story.\n\n"
             "Story moments: things the player sees or hears. Use Action for description and Dialogue for spoken words.\n\n"
             "Choices: the question shown to the player. Each answer leads to another day, or END for an ending.\n\n"
+            "Characters: use the Characters toolbar button to create a visitor scaffold or open an existing character's writing.\n\n"
             "The filing label is hidden; the editor creates one for you.\n\n"
             "Your old screenplay is backed up as story.screenplay.bak whenever you save.",
         )

@@ -51,10 +51,15 @@ python3 tools/screenplay_editor.py
 ```
 
 The editor has a familiar Windows-style toolbar: **Save**, **Preview**, **Game
-events**, and **Voice line** are the frequent actions. Recovery, help, and quit
+events**, **Characters**, and **Voice line** are the frequent actions. Recovery, help, and quit
 live under **More** so they remain available without competing with daily work.
 Keyboard shortcuts are shown in the footer: `Ctrl+S`, `F5`, `Ctrl+E`, and
-`Ctrl+Shift+V`.
+`Ctrl+Shift+C`, `Ctrl+Shift+V`.
+
+Use **Characters** to create a new visitor with a valid writing scaffold and
+link it to the selected day. Select an existing character and choose **Open
+writing** to edit its full `@day`/`@tier` dialogue in the normal text editor;
+use **Save name** for the writer-facing name while keeping the stable ID intact.
 
 Edit the selected scene, beats, branch prompt, or options, then choose
 `Save + validate`. The editor presents story moments and player-facing answers

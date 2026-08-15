@@ -10,10 +10,6 @@ import 'package:quarantine/engine/audio.dart';
 import 'package:quarantine/engine/audio_planner.dart';
 import 'package:quarantine/engine/camera.dart';
 import 'package:quarantine/engine/fps_motion.dart';
-import 'package:quarantine/engine/fbx_diagnostic_controller.dart';
-import 'package:quarantine/engine/fbx_runtime_package.dart';
-import 'package:quarantine/engine/fbx_scene_binding.dart';
-import 'package:pixeldart/rendering/assets/model_cache.dart' as px_model;
 import 'package:quarantine/engine/locomotion_controller.dart';
 import 'package:quarantine/engine/input.dart';
 import 'package:quarantine/engine/light_ranking_controller.dart';
@@ -99,9 +95,8 @@ import 'package:quarantine/visitors/ambient.dart';
 import 'package:quarantine/visitors/director.dart';
 import 'package:quarantine/visitors/stand_ins.dart';
 import 'package:quarantine/visitors/state.dart';
-import 'package:pixeldart/rendering/rendering.dart' as px;
-import 'package:pixeldart/rendering/webgl/device_api.dart' as pxdevice;
-import 'package:pixeldart/rendering/webgl/webgl2_device.dart' as pxgl;
+import 'package:pixeldart/pixeldart_advanced.dart' as px;
+import 'package:pixeldart/rendering/webgl/webgl2_renderer_factory.dart' as pxweb;
 import 'package:web/web.dart' as web;
 
 @JS('Object.keys')
@@ -130,10 +125,10 @@ final class _RoomSurfaceSpec {
 final class _PixeldartWebRuntime implements RendererRuntime {
   static const _capabilityBridge = PixeldartCapabilityBridge();
   static const _profilePolicy = PixeldartRendererProfilePolicy();
-  final web.WebGL2RenderingContext context;
+  final pxweb.WebGl2DeviceLease deviceLease;
   int width;
   int height;
-  late pxgl.WebGl2Device _device;
+  late pxweb.WebGl2DeviceLease _device;
   late px.SceneRendererImpl _renderer;
   late px.RenderWorld _world;
   late px.RenderCapabilities _queriedCapabilities;
@@ -185,9 +180,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   late PixeldartCapabilityMatrix capabilityMatrix;
   late PixeldartResourceGovernor resourceGovernor;
   late PixeldartShaderPipelineExporter shaderExporter;
-  FbxDiagnosticController? _fbxDiagnosticController;
 
-  _PixeldartWebRuntime(this.context, this.width, this.height);
+  _PixeldartWebRuntime(this.deviceLease, this.width, this.height);
 
   @override
   RendererDiagnostics get diagnostics => RendererDiagnostics.fromEnvironment(
@@ -199,7 +193,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
 
   @override
   bool get contextLost =>
-      _initialized && _device.status == pxdevice.GpuDeviceStatus.lost;
+      _initialized && _device.device.status == pxweb.GpuDeviceStatus.lost;
 
   Iterable<String> get capabilityLabels {
     if (!_initialized) return const [];
@@ -238,59 +232,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   Map<String, Object> get effectiveConfiguration =>
       _renderer.configuration.toMap();
 
-  Map<String, Object?> get fbxDiagnostics =>
-      _fbxDiagnosticController?.diagnostics() ??
-      const {
-        'schema': 'pixeldart-fbx-diagnostic-v1',
-        'enabled': false,
-        'attached': false,
-        'activeLod': null,
-        'itemCount': 0,
-      };
-
-  void prepareFbxDiagnostics() {
-    if (!_initialized || _fbxDiagnosticController != null) return;
-    final material = _sceneMaterial;
-    if (material == null) return;
-    _fbxDiagnosticController = FbxDiagnosticController(
-      FbxSceneBinding(
-        resources: _renderer.resources,
-        world: _world,
-        cache: px_model.ModelCache(),
-        material: material,
-      ),
-    );
-  }
-
-  Future<void> enableFbxDiagnostics(
-    FbxRuntimePackage package,
-    Future<Uint8List> Function(String path) load,
-  ) async {
-    prepareFbxDiagnostics();
-    final controller = _fbxDiagnosticController;
-    if (controller == null) {
-      throw StateError('FBX diagnostics require an initialized room material');
-    }
-    await controller.enable(package, load);
-    _publishRendererDiagnostics();
-  }
-
-  Future<void> setFbxDiagnosticLod(String lod) async {
-    final controller = _fbxDiagnosticController;
-    if (controller == null) throw StateError('FBX diagnostics are unavailable');
-    await controller.setLod(lod);
-    _publishRendererDiagnostics();
-  }
-
-  void disableFbxDiagnostics() {
-    _fbxDiagnosticController?.disable();
-    _publishRendererDiagnostics();
-  }
-
   @override
   void initialize() {
-    _device = pxgl.WebGl2Device(context);
-    _queriedCapabilities = _device.queryCapabilities();
+    _device = deviceLease;
+    _queriedCapabilities = _device.device.queryCapabilities();
     _profile = _capabilityBridge.runtimeProfile(_queriedCapabilities);
     final surface = px.SurfaceMetrics(
       cssWidth: width,
@@ -298,7 +243,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       pixelWidth: width,
       pixelHeight: height,
     );
-    _renderer = px.SceneRendererImpl(_device);
+    _renderer = px.SceneRendererImpl(_device.device);
     try {
       _renderer.initialize(
         _configurationForProfile(_profile, width, height),
@@ -309,7 +254,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _profileFallbackReason =
           '${_profile.kind.name} profile failed; using safe graph: $error';
       _profile = px.QualityProfile.safe;
-      _renderer = px.SceneRendererImpl(_device)
+      _renderer = px.SceneRendererImpl(_device.device)
         ..initialize(px.RendererConfiguration.safe, surface);
     }
     _world = _renderer.createWorld();
@@ -470,7 +415,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       width: 256,
       height: 256,
       hasMips: true,
-      minFilter: pxdevice.GpuTextureFilter.linearMipmapLinear,
+      minFilter: pxweb.GpuTextureFilter.linearMipmapLinear,
       anisotropy: 8,
       debugLabel: 'texture:wall-plaster',
     );
@@ -478,7 +423,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       width: 512,
       height: 512,
       hasMips: true,
-      minFilter: pxdevice.GpuTextureFilter.linearMipmapLinear,
+      minFilter: pxweb.GpuTextureFilter.linearMipmapLinear,
       anisotropy: 8,
       debugLabel: 'texture:grime',
     );
@@ -490,7 +435,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         width: 256,
         height: 256,
         hasMips: true,
-        minFilter: pxdevice.GpuTextureFilter.linearMipmapLinear,
+      minFilter: pxweb.GpuTextureFilter.linearMipmapLinear,
         anisotropy: 8,
         debugLabel: 'texture:$key',
       );
@@ -644,7 +589,6 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _exteriorShellDescriptors[itemKey] = exteriorDescriptor;
       _exteriorShellItems[itemKey] = _world.addItem(exteriorDescriptor);
     }
-    prepareFbxDiagnostics();
   }
 
   /// Records the authored placement index for this runtime. Geometry remains
@@ -1219,7 +1163,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   void dispose() {
     if (!_initialized) return;
     _renderer.dispose();
-    _device.disposeListeners();
+    _device.dispose();
     _initialized = false;
   }
 
@@ -2606,8 +2550,8 @@ Future<void> main() async {
     _rendererGui = RendererGuiSurface(uiCanvas);
     _rendererGui!.resize(_canvas.width, _canvas.height);
   }
-  final ctx = canvas.getContext('webgl2') as web.WebGL2RenderingContext?;
-  if (ctx == null) {
+  final deviceLease = const pxweb.WebGl2RendererFactory().createLease(canvas);
+  if (deviceLease == null) {
     // Keep the constrained-browser contract observable without entering the
     // renderer or throwing across the WASM boundary. The smoke runner can
     // verify the explicit fallback state and the page remains inspectable.
@@ -2636,7 +2580,11 @@ Future<void> main() async {
     return;
   }
   try {
-    final runtime = _PixeldartWebRuntime(ctx, _canvas.width, _canvas.height);
+    final runtime = _PixeldartWebRuntime(
+      deviceLease,
+      _canvas.width,
+      _canvas.height,
+    );
     _pixeldartRuntime = runtime;
     _presentationBackend = const BackendFactory().create(
       _backendSelection,
@@ -3249,17 +3197,13 @@ void _publishRendererDiagnostics() {
     ..setAttribute('data-renderer-dof-focal-distance', '2.5m')
     ..setAttribute('data-renderer-camera-inertia', 'exponential-smoothing')
     ..setAttribute(
-      'data-renderer-fbx-diagnostics',
-      jsonEncode({
-        ...(_pixeldartRuntime?.fbxDiagnostics ??
-            const {
-              'schema': 'pixeldart-fbx-diagnostic-v1',
-              'enabled': false,
-              'attached': false,
-              'activeLod': null,
-              'itemCount': 0,
-            }),
-        'settingsEnabled': _graphicsSettingsStore.effective.fbxDiagnostics,
+      'data-renderer-model-package-diagnostics',
+      jsonEncode(const {
+        'schema': 'pixeldart-model-package-diagnostic-v1',
+        'enabled': false,
+        'attached': false,
+        'activeLod': null,
+        'itemCount': 0,
       }),
     );
   final profileFallback = _pixeldartRuntime?.profileFallbackReason;

@@ -3,9 +3,8 @@ import 'dart:typed_data';
 import 'fbx_runtime_package.dart';
 import 'fbx_scene_binding.dart';
 
-/// Opt-in debug owner for inspecting a normalized FBX room in Pixeldart.
-/// Disabled by default so diagnostics can never replace the simulation room
-/// or add geometry to a normal play session.
+/// Legacy offline diagnostic owner for inspecting a generated FBX package.
+/// Browser/game runtime code must not instantiate this controller.
 final class FbxDiagnosticController {
   final FbxSceneBinding binding;
   bool _enabled = false;

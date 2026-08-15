@@ -1,4 +1,4 @@
-import 'package:pixeldart/rendering/rendering.dart' as pixeldart;
+import 'package:pixeldart/pixeldart_advanced.dart' as pixeldart;
 
 import 'capability_policy.dart';
 

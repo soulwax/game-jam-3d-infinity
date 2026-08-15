@@ -1,8 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:pixeldart/rendering/api/mesh.dart' as pixeldart;
-import 'package:pixeldart/rendering/math/bounds.dart' as pixeldart_bounds;
-import 'package:pixeldart/rendering/math/vec.dart' as pixeldart_vec;
+import 'package:pixeldart/pixeldart.dart' as pixeldart;
 
 import 'exterior_mesh.dart';
 import 'exterior_pvs.dart';
@@ -58,9 +56,9 @@ pixeldart.MeshData toPixeldartMeshData(HouseExteriorMesh mesh) {
     layout: pixeldart.VertexLayoutDescriptor.compatibility14,
     vertices: vertices,
     indices: Uint16List.fromList(mesh.indices),
-    localBounds: pixeldart_bounds.Aabb(
-      pixeldart_vec.Vec3(mesh.bounds.minX, mesh.bounds.minY, mesh.bounds.minZ),
-      pixeldart_vec.Vec3(mesh.bounds.maxX, mesh.bounds.maxY, mesh.bounds.maxZ),
+    localBounds: pixeldart.Aabb(
+      pixeldart.Vec3(mesh.bounds.minX, mesh.bounds.minY, mesh.bounds.minZ),
+      pixeldart.Vec3(mesh.bounds.maxX, mesh.bounds.maxY, mesh.bounds.maxZ),
     ),
   );
 }

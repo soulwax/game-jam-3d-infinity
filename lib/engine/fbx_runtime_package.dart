@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:pixeldart/rendering/assets/model_cache.dart';
+import 'package:pixeldart/pixeldart_testing.dart';
 
-/// Runtime-facing view of a verified static FBX package. It deliberately
-/// accepts bytes from an injected loader so browser fetch policy stays outside
-/// the asset contract and tests can use the same code with local files.
+/// Legacy offline view of a generated FBX package.
+///
+/// This is retained only for migration tools that consume the old
+/// `pixeldart-fbx-package-v1` manifest. Browser/game runtime code must use
+/// Pixeldart's source-neutral `ModelPackageLoader` instead.
 final class FbxRuntimePackage {
   final String assetId;
   final String runtimeProfile;
