@@ -1,0 +1,851 @@
+{
+  "version": 1,
+  "sources": [
+    "text/broadcasts/week-1.txt",
+    "text/broadcasts/week-2.txt",
+    "text/broadcasts/week-3.txt",
+    "text/documents.txt",
+    "text/endings.txt",
+    "text/nights.txt",
+    "text/reactions.txt",
+    "text/records.txt",
+    "text/street.txt",
+    "text/unverifiables.txt",
+    "text/vocabulary.txt",
+    "text/visitors/ayling.txt",
+    "text/visitors/caller.txt",
+    "text/visitors/census.txt",
+    "text/visitors/child.txt",
+    "text/visitors/clerk.txt",
+    "text/visitors/doctor.txt",
+    "text/visitors/engineer.txt",
+    "text/visitors/evacuee.txt",
+    "text/visitors/gas-man.txt",
+    "text/visitors/hazmat-boy.txt",
+    "text/visitors/milkman.txt",
+    "text/visitors/neighbour.txt",
+    "text/visitors/nurse.txt",
+    "text/visitors/postman.txt",
+    "text/visitors/ragman.txt",
+    "text/visitors/sibling.txt",
+    "text/visitors/stranger.txt",
+    "text/visitors/tuner.txt",
+    "text/visitors/twins.txt",
+    "text/visitors/warden.txt",
+    "text/visitors/watchman.txt",
+    "text/visitors/widow.txt"
+  ],
+  "events": [],
+  "scenes": [
+    {
+      "id": "day-01",
+      "day": 1,
+      "title": "Hospitality",
+      "sources": [
+        "text/broadcasts/week-1.txt",
+        "text/street.txt",
+        "text/visitors/ayling.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "The house opens on a street still full of ordinary traffic, tea, shopping, drains, and people lending one another small help."
+        },
+        {
+          "kind": "dialogue",
+          "text": "Iris names Ron casually; Ayling offers the shop and the wall-knock compact begins.",
+          "speaker": "iris"
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-01-care",
+          "prompt": "How do you meet the first small kindness?",
+          "options": [
+            {
+              "id": "accept",
+              "label": "Accept tea or help and keep the wall-knock promise.",
+              "next": "day-02"
+            },
+            {
+              "id": "refuse",
+              "label": "Refuse politely and keep the distance.",
+              "next": "day-02"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-02",
+      "day": 2,
+      "title": "Family evidence",
+      "sources": [
+        "text/visitors/sibling.txt",
+        "text/visitors/nurse.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Denise brings pears and three true domestic facts before an over-precise memory. Nurse and Ken establish reliable outside routines."
+        },
+        {
+          "kind": "dialogue",
+          "text": "The pears are left on the step; the family argument is warm, ordinary, and specific.",
+          "speaker": "denise"
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-02-pears",
+          "prompt": "What do you do with the pears?",
+          "options": [
+            {
+              "id": "take",
+              "label": "Take them in and record the visit.",
+              "next": "day-03"
+            },
+            {
+              "id": "leave",
+              "label": "Leave them where they are.",
+              "next": "day-03"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-03",
+      "day": 3,
+      "title": "Being useful",
+      "sources": [
+        "text/visitors/child.txt",
+        "text/visitors/hazmat-boy.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Sylvia wants a pencil for a window map. Ronnie's body does not fit the suit. Prentice still honors an appointment. Askew remains exact."
+        },
+        {
+          "kind": "dialogue",
+          "text": "“I'm Sylvia. Number 3.” The letterbox is the whole relationship, and the impossible second remains unwriteable.",
+          "speaker": "sylvia"
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-03-pencil",
+          "prompt": "Do you give Sylvia the pencil?",
+          "options": [
+            {
+              "id": "give",
+              "label": "Give it through the letterbox.",
+              "next": "day-04"
+            },
+            {
+              "id": "keep",
+              "label": "Keep it for the journal.",
+              "next": "day-04"
+            },
+            {
+              "id": "none",
+              "label": "Admit you have none.",
+              "next": "day-04"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-04",
+      "day": 4,
+      "title": "Repair",
+      "sources": [
+        "text/visitors/engineer.txt",
+        "text/visitors/clerk.txt",
+        "text/visitors/twins.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Reeve, Liddell, and the Bells each repair a system that is slightly obsolete but still workable. An entry appears in the journal from three days ago."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-04-trace",
+          "prompt": "How close do you let Liddell get to the dead pair?",
+          "options": [
+            {
+              "id": "trace",
+              "label": "Let him trace it to the wall plate.",
+              "next": "day-05"
+            },
+            {
+              "id": "outside",
+              "label": "Keep him outside.",
+              "next": "day-05"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-05",
+      "day": 5,
+      "title": "Ownership of a record",
+      "sources": [
+        "text/visitors/warden.txt",
+        "text/visitors/sibling.txt",
+        "text/documents.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Mrs Hallow asks for an ordinary heirloom. Denise defends privacy. Sowerby needs a box filled and writes in the journal."
+        },
+        {
+          "kind": "dialogue",
+          "text": "The record is requested as if ownership were an ordinary household courtesy.",
+          "speaker": "warden"
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-05-record",
+          "prompt": "What do you show?",
+          "options": [
+            {
+              "id": "all",
+              "label": "Show everything.",
+              "next": "day-06"
+            },
+            {
+              "id": "card",
+              "label": "Show the card only.",
+              "next": "day-06"
+            },
+            {
+              "id": "refuse",
+              "label": "Refuse.",
+              "next": "day-06"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-06",
+      "day": 6,
+      "title": "Being known",
+      "sources": [
+        "text/visitors/doctor.txt",
+        "text/visitors/tuner.txt",
+        "text/visitors/gas-man.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Marchant asks memory questions without diagnosing. Ronnie repeats the script. Kettering appraises the repaired chair. Ashworth knows the private household."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-06-detail",
+          "prompt": "Do you accept Eileen's first identifying detail?",
+          "options": [
+            {
+              "id": "accept",
+              "label": "Accept it.",
+              "next": "day-07"
+            },
+            {
+              "id": "refuse",
+              "label": "Refuse it without explanation.",
+              "next": "day-07"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-07",
+      "day": 7,
+      "title": "Promises",
+      "sources": [
+        "text/broadcasts/week-1.txt",
+        "text/visitors/milkman.txt",
+        "text/visitors/nurse.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Last milk, a reduced nursing list, held post, and Iris seeking a matching answer close the first act. The normality makes the future entry worse."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-07-promise",
+          "prompt": "Which promise do you keep?",
+          "options": [
+            {
+              "id": "wall-knock",
+              "label": "Keep the wall knock.",
+              "next": "day-08"
+            },
+            {
+              "id": "letter",
+              "label": "Reply to the letter.",
+              "next": "day-08"
+            },
+            {
+              "id": "record",
+              "label": "Defend the record.",
+              "next": "day-08"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-08",
+      "day": 8,
+      "title": "Wording travels",
+      "sources": [
+        "text/visitors/child.txt",
+        "text/visitors/stranger.txt",
+        "text/broadcasts/week-2.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "The boundary sighting becomes a phrase neighbors carry. Voss shows a harmless version mismatch. Sylvia asks what moved."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-08-word",
+          "prompt": "How do you answer the carried wording?",
+          "options": [
+            {
+              "id": "cite",
+              "label": "Cite the announcement.",
+              "next": "day-09"
+            },
+            {
+              "id": "question",
+              "label": "Question the word “accounted.”",
+              "next": "day-09"
+            },
+            {
+              "id": "decline",
+              "label": "Decline to make a claim.",
+              "next": "day-09"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-09",
+      "day": 9,
+      "title": "Performance",
+      "sources": [
+        "text/visitors/ayling.txt",
+        "text/visitors/evacuee.txt",
+        "text/visitors/sibling.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Ayling enjoys correct wording. Reeve delivers the cost of reduced allowance. Corrigan describes billeting. Denise asks for acknowledgment rather than a date."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-09-help",
+          "prompt": "Where do you spend the practical help?",
+          "options": [
+            {
+              "id": "person",
+              "label": "Help one person.",
+              "next": "day-10"
+            },
+            {
+              "id": "supplies",
+              "label": "Preserve time and gas.",
+              "next": "day-10"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-10",
+      "day": 10,
+      "title": "The account",
+      "sources": [
+        "text/visitors/sibling.txt",
+        "text/visitors/clerk.txt",
+        "text/visitors/engineer.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "An appointment moves, an obsolete order persists, a copy is trusted, and Denise supplies mutually incompatible sighting facts."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-10-notes",
+          "prompt": "What status does the account receive?",
+          "options": [
+            {
+              "id": "write",
+              "label": "Write one concrete detail.",
+              "next": "day-11"
+            },
+            {
+              "id": "uncertain",
+              "label": "Mark it uncertain.",
+              "next": "day-11"
+            },
+            {
+              "id": "omit",
+              "label": "Omit it.",
+              "next": "day-11"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-11",
+      "day": 11,
+      "title": "Categories",
+      "sources": [
+        "text/visitors/census.txt",
+        "text/visitors/doctor.txt",
+        "text/visitors/hazmat-boy.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Wren counts a household. Marchant repeats a bodily sequence. Ronnie cannot say the missing noun. The reliable scar distinction fails."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-11-ronnie",
+          "prompt": "Do you ask the direct question?",
+          "options": [
+            {
+              "id": "ask",
+              "label": "Ask Ronnie directly.",
+              "next": "day-12"
+            },
+            {
+              "id": "suit",
+              "label": "Ask about the suit.",
+              "next": "day-12"
+            },
+            {
+              "id": "silence",
+              "label": "Let the script end.",
+              "next": "day-12"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-12",
+      "day": 12,
+      "title": "Circulation",
+      "sources": [
+        "text/visitors/evacuee.txt",
+        "text/visitors/nurse.txt",
+        "text/visitors/ayling.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Corrigan admits she floated the ration guess. Ken attributes it elsewhere. Iris speaks Denise's sentence. Prentice hears the room rather than a piano."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-12-rumour",
+          "prompt": "How do you handle the circulating story?",
+          "options": [
+            {
+              "id": "confront",
+              "label": "Confront the source.",
+              "next": "day-13"
+            },
+            {
+              "id": "protect",
+              "label": "Protect her.",
+              "next": "day-13"
+            },
+            {
+              "id": "ordinary",
+              "label": "Treat it as ordinary rumor.",
+              "next": "day-13"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-13",
+      "day": 13,
+      "title": "Mercy in correction",
+      "sources": [
+        "text/visitors/ayling.txt",
+        "text/visitors/stranger.txt",
+        "text/visitors/warden.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Ayling accepts correction so action can continue. Voss preserves both copies. Sowerby needs one version. Ashworth refuses to correct your wrong account of him."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-13-document",
+          "prompt": "Which document do you present?",
+          "options": [
+            {
+              "id": "helpful",
+              "label": "Present the helpful falsification.",
+              "next": "day-14"
+            },
+            {
+              "id": "harmful",
+              "label": "Present the harmful correction.",
+              "next": "day-14"
+            },
+            {
+              "id": "both",
+              "label": "Present both and explain the conflict.",
+              "next": "day-14"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-14",
+      "day": 14,
+      "title": "Honest revision",
+      "sources": [
+        "text/visitors/child.txt",
+        "text/visitors/sibling.txt",
+        "text/visitors/evacuee.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Sylvia times the absent word. Corrigan keeps her case packed. Denise arrives with a crossed-out list and admits the coach memory was hers to correct."
+        },
+        {
+          "kind": "dialogue",
+          "text": "“You were right about the coach to Rhyl.” The emotional climax is honest revision, with no scare interrupting it.",
+          "speaker": "denise"
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-14-revision",
+          "prompt": "How do you receive the concession?",
+          "options": [
+            {
+              "id": "accept",
+              "label": "Accept it.",
+              "next": "day-15"
+            },
+            {
+              "id": "prosecute",
+              "label": "Keep prosecuting the details.",
+              "next": "day-15"
+            },
+            {
+              "id": "pencil",
+              "label": "Offer Denise the pencil.",
+              "next": "day-15"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-15",
+      "day": 15,
+      "title": "Inherited answers",
+      "sources": [
+        "text/visitors/doctor.txt",
+        "text/visitors/warden.txt",
+        "text/visitors/clerk.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Marchant carries forward last week. Sowerby finds boxes already filled. Cole reduces the player to door status."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-15-effort",
+          "prompt": "Do you correct the inherited answer?",
+          "options": [
+            {
+              "id": "correct",
+              "label": "Correct it.",
+              "next": "day-16"
+            },
+            {
+              "id": "conserve",
+              "label": "Conserve effort.",
+              "next": "day-16"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-16",
+      "day": 16,
+      "title": "Who counts as present",
+      "sources": [
+        "text/visitors/engineer.txt",
+        "text/visitors/ayling.txt",
+        "text/visitors/caller.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "An unchanged reading, “you saw it,” and a second plate orbit the lit empty house."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-16-fiction",
+          "prompt": "Do you challenge one compassionate fiction?",
+          "options": [
+            {
+              "id": "challenge",
+              "label": "Challenge it.",
+              "next": "day-17"
+            },
+            {
+              "id": "allow",
+              "label": "Allow it to stand.",
+              "next": "day-17"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-17",
+      "day": 17,
+      "title": "Names and objects",
+      "sources": [
+        "text/visitors/ayling.txt",
+        "text/visitors/neighbour.txt",
+        "text/visitors/twins.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Ayling receives the clipboard. Ken carries the unposted parcel. Ashworth returns Eileen's case with one exact journal entry. The Bells abandon the scar test."
+        },
+        {
+          "kind": "dialogue",
+          "text": "Four distant notes occur twice with ordinary room timing; the house does not explain them.",
+          "speaker": "piano"
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-17-responsibility",
+          "prompt": "Which responsibility do you accept?",
+          "options": [
+            {
+              "id": "clipboard",
+              "label": "Accept the clipboard.",
+              "next": "day-18"
+            },
+            {
+              "id": "parcel",
+              "label": "Accept the parcel.",
+              "next": "day-18"
+            },
+            {
+              "id": "case",
+              "label": "Accept the case.",
+              "next": "day-18"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-18",
+      "day": 18,
+      "title": "Public event, private language",
+      "sources": [
+        "text/visitors/evacuee.txt",
+        "text/visitors/hazmat-boy.txt",
+        "text/visitors/clerk.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "The street is full and empty. Ayling has no detail. Ronnie completes his promise to return. Cole logs only the shut door."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-18-ronnie",
+          "prompt": "Does Ronnie risk one unscripted sentence?",
+          "options": [
+            {
+              "id": "speak",
+              "label": "Let him speak.",
+              "next": "day-19"
+            },
+            {
+              "id": "script",
+              "label": "Keep to the script.",
+              "next": "day-19"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-19",
+      "day": 19,
+      "title": "What care repeats",
+      "sources": [
+        "text/visitors/child.txt",
+        "text/visitors/sibling.txt",
+        "text/nights.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Replays carry the journal anomaly. Sylvia has the pencil, Denise has pears or not, and Attercliffe knows she repeated herself. Physical residues remain inspectable while the false replay runs."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-19-return",
+          "prompt": "What do you revisit?",
+          "options": [
+            {
+              "id": "pencil",
+              "label": "Revisit the pencil.",
+              "next": "day-20"
+            },
+            {
+              "id": "pears",
+              "label": "Revisit the pears.",
+              "next": "day-20"
+            },
+            {
+              "id": "journal",
+              "label": "Revisit the journal.",
+              "next": "day-20"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-20",
+      "day": 20,
+      "title": "Unfinished business",
+      "sources": [
+        "text/visitors/warden.txt",
+        "text/visitors/ayling.txt",
+        "text/visitors/stranger.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Hallow, Ayling, Sowerby, Attercliffe, and Iris close what can be closed: a dish, a form, a shift, a plate, a brief wall knock."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-20-close",
+          "prompt": "Which ordinary thread reaches closure?",
+          "options": [
+            {
+              "id": "dish",
+              "label": "Return the dish.",
+              "next": "day-21"
+            },
+            {
+              "id": "form",
+              "label": "Finish the form.",
+              "next": "day-21"
+            },
+            {
+              "id": "wall",
+              "label": "Answer the wall knock.",
+              "next": "day-21"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "day-21",
+      "day": 21,
+      "title": "Release",
+      "sources": [
+        "text/endings.txt",
+        "text/nights.txt"
+      ],
+      "beats": [
+        {
+          "kind": "action",
+          "text": "Cole finishes his sheet. The Board thanks Ayling. No principal arrives to summarize the run."
+        },
+        {
+          "kind": "action",
+          "text": "The ending returns two or three chosen objects and phrases as texture, then stops. It does not explain the sun or the house."
+        }
+      ],
+      "branches": [
+        {
+          "id": "day-21-ending",
+          "prompt": "Which authored ending does the recorded run reach?",
+          "options": [
+            {
+              "id": "compliance",
+              "label": "Compliance: lock the house and sleep.",
+              "next": "END"
+            },
+            {
+              "id": "rupture",
+              "label": "Rupture: the kitchen is there and wrong.",
+              "next": "END"
+            },
+            {
+              "id": "synchronisation",
+              "label": "Synchronisation: gather the true entries and let the page end.",
+              "next": "END"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

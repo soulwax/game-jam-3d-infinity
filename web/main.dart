@@ -2606,7 +2606,25 @@ Future<void> main() async {
     _rendererGui!.resize(_canvas.width, _canvas.height);
   }
   final ctx = canvas.getContext('webgl2') as web.WebGL2RenderingContext?;
-  if (ctx == null) throw StateError('Pixeldart requires WebGL2');
+  if (ctx == null) {
+    // Keep the constrained-browser contract observable without entering the
+    // renderer or throwing across the WASM boundary. The smoke runner can
+    // verify the explicit fallback state and the page remains inspectable.
+    _setBootPhase('no-webgl2');
+    _canvas
+      ..setAttribute('data-renderer-backend', 'legacy')
+      ..setAttribute('data-renderer-fallback', 'true')
+      ..setAttribute(
+        'data-renderer-diagnostics',
+        jsonEncode({
+          'backend': 'legacy',
+          'fallback': true,
+          'fallbackReason': 'webgl2 unavailable',
+          'capabilities': const <String>[],
+        }),
+      );
+    return;
+  }
   try {
     final runtime = _PixeldartWebRuntime(ctx, _canvas.width, _canvas.height);
     _pixeldartRuntime = runtime;
@@ -3391,11 +3409,12 @@ Future<void> _loadAuthoredHouseManifest() async {
   if (_house.isRendererShowcase) {
     _canvas.setAttribute('data-house-manifest', 'renderer-showcase');
     _canvas.setAttribute('data-house-manifest-source', 'runtime-showcase');
-    // The former domestic manifest is intentionally stale after the house
-    // replacement. Chamber geometry is now authored by House itself until a
-    // matching showcase manifest is produced.
-    await _loadAuthoredHouseInventory();
-    await _loadAuthoredHouseSoundscape();
+    // The former domestic inventory/soundscape are intentionally stale after
+    // the house replacement. Do not probe their legacy URLs in showcase mode:
+    // a missing old asset must not appear as a runtime network failure.
+    _canvas.setAttribute('data-house-inventory', 'showcase-bypassed');
+    _canvas.setAttribute('data-house-soundscape', 'showcase-bypassed');
+    _canvas.setAttribute('data-audio-planner', 'showcase-bypassed');
     return;
   }
   const urls = ['res/house/house.json', 'assets/house/house.json'];

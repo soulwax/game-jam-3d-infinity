@@ -250,13 +250,48 @@ class Editor(tk.Tk if tk is not None else object):
         self._make_widgets()
         self._load_scene(0)
 
+    @staticmethod
+    def _toolbar_button(parent: tk.Misc, text: str, command: object, tip: str) -> ttk.Button:
+        button = ttk.Button(parent, text=text, command=command)
+        previous_title = [""]
+
+        def show_tip(_event: object) -> None:
+            previous_title[0] = parent.winfo_toplevel().title()
+            parent.winfo_toplevel().title(f"{previous_title[0]} · {tip}")
+
+        def hide_tip(_event: object) -> None:
+            parent.winfo_toplevel().title(previous_title[0] or "The Quarantine — Screenplay Editor")
+
+        button.bind("<Enter>", show_tip)
+        button.bind("<Leave>", hide_tip)
+        return button
+
     def _make_widgets(self) -> None:
         self.columnconfigure(1, weight=1)
         self.columnconfigure(2, weight=1)
-        self.rowconfigure(0, weight=1)
+        self.rowconfigure(1, weight=1)
+
+        toolbar = ttk.Frame(self, padding=(8, 6))
+        toolbar.grid(row=0, column=0, columnspan=3, sticky="ew")
+        toolbar.columnconfigure(8, weight=1)
+
+        def separator(column: int) -> None:
+            ttk.Separator(toolbar, orient="vertical").grid(
+                row=0, column=column, sticky="ns", padx=7
+            )
+
+        self._toolbar_button(toolbar, "Save", self.save, "save and validate").grid(row=0, column=0, padx=2)
+        self._toolbar_button(toolbar, "Preview", self._preview, "preview the selected scene").grid(row=0, column=1, padx=2)
+        separator(2)
+        self._toolbar_button(toolbar, "Game events", self._open_orchestrator, "open the day and time planner").grid(row=0, column=3, padx=2)
+        self._toolbar_button(toolbar, "Voice line", self._generate_voice, "generate voice for the selected line").grid(row=0, column=4, padx=2)
+        separator(5)
+        self._toolbar_button(toolbar, "Restore", self._restore_backup, "restore the last saved screenplay").grid(row=0, column=6, padx=2)
+        self._toolbar_button(toolbar, "Help", self._help, "show editing guidance").grid(row=0, column=7, padx=2)
+        self._toolbar_button(toolbar, "Quit", self.close, "close the editor").grid(row=0, column=9, padx=2)
 
         left = ttk.Frame(self, padding=8)
-        left.grid(row=0, column=0, sticky="ns")
+        left.grid(row=1, column=0, sticky="ns")
         ttk.Label(left, text="Scenes").pack(anchor="w")
         self.scene_list = tk.Listbox(left, width=28, exportselection=False)
         self.scene_list.pack(fill="y", expand=True)
@@ -265,7 +300,7 @@ class Editor(tk.Tk if tk is not None else object):
         self.scene_list.bind("<<ListboxSelect>>", self._scene_selected)
 
         center = ttk.Frame(self, padding=8)
-        center.grid(row=0, column=1, sticky="nsew")
+        center.grid(row=1, column=1, sticky="nsew")
         center.columnconfigure(0, weight=1)
         center.rowconfigure(4, weight=1)
         center.rowconfigure(8, weight=1)
@@ -327,7 +362,7 @@ class Editor(tk.Tk if tk is not None else object):
         )
 
         right = ttk.Frame(self, padding=8)
-        right.grid(row=0, column=2, sticky="nsew")
+        right.grid(row=1, column=2, sticky="nsew")
         right.columnconfigure(0, weight=1)
         right.rowconfigure(4, weight=1)
         ttk.Label(right, text="Choices in this scene").grid(row=0, column=0, sticky="w")
@@ -361,7 +396,7 @@ class Editor(tk.Tk if tk is not None else object):
         ttk.Button(right, text="What am I editing?", command=self._help).grid(row=6, column=0, sticky="e")
 
         bottom = ttk.Frame(self, padding=(8, 0, 8, 8))
-        bottom.grid(row=1, column=0, columnspan=3, sticky="ew")
+        bottom.grid(row=2, column=0, columnspan=3, sticky="ew")
         bottom.columnconfigure(0, weight=1)
         self.status = ttk.Label(bottom, text=str(self.path))
         self.status.grid(row=0, column=0, sticky="w")
@@ -793,6 +828,12 @@ class Editor(tk.Tk if tk is not None else object):
         )
         filter_day.set("All days")
         filter_day.pack(fill="x", pady=(8, 3))
+        day_navigation = ttk.Frame(left)
+        day_navigation.pack(fill="x", pady=(0, 3))
+        ttk.Button(day_navigation, text="‹", width=3, command=lambda: select_relative_day(-1)).pack(side="left")
+        day_summary = ttk.Label(day_navigation, text="All days", anchor="center")
+        day_summary.pack(side="left", fill="x", expand=True)
+        ttk.Button(day_navigation, text="›", width=3, command=lambda: select_relative_day(1)).pack(side="left")
         filter_kind = ttk.Combobox(
             left,
             values=("All kinds", "broadcast", "visitor", "choice", "aftermath", "ending"),
@@ -889,6 +930,14 @@ class Editor(tk.Tk if tk is not None else object):
                 and (selected_kind == "All kinds" or event.kind == selected_kind)
             ]
 
+        def select_relative_day(offset: int) -> None:
+            current = filter_day.get()
+            day_number = int(current[-2:]) if current != "All days" else (self.scene.day if self.scene else 1)
+            day_number = min(21, max(1, day_number + offset))
+            filter_day.set(f"Day {day_number:02d}")
+            refresh()
+            load(None)
+
         def draw_timeline() -> None:
             timeline.delete("all")
             width = max(timeline.winfo_width(), 270)
@@ -964,8 +1013,15 @@ class Editor(tk.Tk if tk is not None else object):
 
         def refresh() -> None:
             event_list.delete(0, "end")
-            for event in ordered_events():
+            visible_events = ordered_events()
+            for event in visible_events:
                 event_list.insert("end", self._event_label(event))
+            if filter_day.get() == "All days":
+                day_summary["text"] = f"All days · {len(visible_events)} moments"
+            else:
+                next_event = visible_events[0] if visible_events else None
+                suffix = f" · next {next_event.hour:04.1f}" if next_event else " · quiet"
+                day_summary["text"] = f"{filter_day.get()} · {len(visible_events)} moments{suffix}"
             speakers = self._speaker_choices()
             speaker["values"] = speakers + [
                 name for name in ("denise", "sylvia", "warden") if name not in speakers

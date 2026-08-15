@@ -33,6 +33,8 @@ filter by day or kind, duplicate a moment as a starting point, and use
 `Story changes` for optional `key=value` facts that later dialogue can read.
 The day timeline is a visual 24-hour rail: select a day, click an empty time to
 start an event there, or click an existing marker to edit it.
+Use the ‹ and › day buttons to move through the 21-day story, while the day
+summary shows the number of moments and the next scheduled time.
 The Hour field also has half-hour nudge buttons for quick rhythm changes, and
 the editor checks destinations, event kinds, and voice cues before saving.
 
@@ -47,6 +49,11 @@ For a small visual editor using only Python's standard library, run:
 ```sh
 python3 tools/screenplay_editor.py
 ```
+
+The editor has a familiar Windows-style toolbar: **Save**, **Preview**, **Game
+events**, **Voice line**, **Restore**, **Help**, and **Quit**. The same actions
+remain available in the detailed panels, so the toolbar is a shortcut rather
+than a separate editing mode.
 
 Edit the selected scene, beats, branch prompt, or options, then choose
 `Save + validate`. The editor presents story moments and player-facing answers

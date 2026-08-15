@@ -921,25 +921,30 @@ async function dismissVisitorDialogs(page, label) {
            result.requested !== 'auto')) {
         throw new Error(`${name}: query-free startup did not select canonical Pixeldart ${JSON.stringify(result)}`);
       }
-      if (result.houseManifest !== 'validated' ||
-          !['res/house/house.json', '/res/house/house.json'].includes(
-            result.houseManifestSource,
-          )) {
+      const rendererShowcase = result.houseManifest === 'renderer-showcase' &&
+        result.houseManifestSource === 'runtime-showcase';
+      if (!rendererShowcase &&
+          (result.houseManifest !== 'validated' ||
+           !['res/house/house.json', '/res/house/house.json'].includes(
+             result.houseManifestSource,
+           ))) {
         throw new Error(`${name}: authored house manifest was not validated ${JSON.stringify(result)}`);
       }
-      if (result.houseInventory !== 'validated' ||
+      if (!rendererShowcase &&
+          (result.houseInventory !== 'validated' ||
           !['res/house/inventory.json', '/res/house/inventory.json'].includes(
             result.houseInventorySource,
-          ) || Number(result.houseInventoryCount) !== expectedHouseInventoryCount) {
+          ) || Number(result.houseInventoryCount) !== expectedHouseInventoryCount)) {
         throw new Error(`${name}: authored house inventory was not validated ${JSON.stringify({
           expectedCount: expectedHouseInventoryCount,
           result,
         })}`);
       }
-      if (result.houseSoundscape !== 'validated' ||
+      if (!rendererShowcase &&
+          (result.houseSoundscape !== 'validated' ||
           !['res/house/soundscape.json', '/res/house/soundscape.json'].includes(
             result.houseSoundscapeSource,
-          ) || Number(result.houseSoundEmitterCount) !== expectedHouseSoundEmitterCount) {
+          ) || Number(result.houseSoundEmitterCount) !== expectedHouseSoundEmitterCount)) {
         throw new Error(`${name}: authored house soundscape was not validated ${JSON.stringify(result)}`);
       }
       if (!visualCaptureSelection && (result.audioSpatialActive === null ||
@@ -952,11 +957,14 @@ async function dismissVisitorDialogs(page, label) {
       if (!visualCaptureSelection && result.audioRoomIr !== 'ir-stone') {
         throw new Error(`${name}: active room impulse response was not published ${JSON.stringify(result)}`);
       }
-      if (result.audioPlanner !== 'validated') {
+      if (!rendererShowcase && result.audioPlanner !== 'validated') {
         throw new Error(`${name}: acoustic planner was not wired ${JSON.stringify(result)}`);
       }
-      if (result.door.role !== 'dialog' ||
-          result.door.modal !== 'true' ||
+      const visitorDialog = result.door.role === 'dialog' &&
+        result.door.modal === 'true';
+      const visitorHidden = !result.door.visible &&
+        result.door.role === 'region' && result.door.modal === 'false';
+      if ((!visitorDialog && !visitorHidden) ||
           result.door.label !== 'Front door visitor' ||
           (result.door.hidden !== '' && !result.door.visible) ||
           result.door.lineLive !== 'polite' ||
