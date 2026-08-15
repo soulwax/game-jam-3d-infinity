@@ -51,9 +51,10 @@ python3 tools/screenplay_editor.py
 ```
 
 The editor has a familiar Windows-style toolbar: **Save**, **Preview**, **Game
-events**, **Voice line**, **Restore**, **Help**, and **Quit**. The same actions
-remain available in the detailed panels, so the toolbar is a shortcut rather
-than a separate editing mode.
+events**, and **Voice line** are the frequent actions. Recovery, help, and quit
+live under **More** so they remain available without competing with daily work.
+Keyboard shortcuts are shown in the footer: `Ctrl+S`, `F5`, `Ctrl+E`, and
+`Ctrl+Shift+V`.
 
 Edit the selected scene, beats, branch prompt, or options, then choose
 `Save + validate`. The editor presents story moments and player-facing answers
@@ -62,11 +63,23 @@ instead of screenplay syntax, offers friendly next-scene names, and keeps a
 not installed.
 
 To voice one selected visitor or broadcast line, choose its speaker, performance,
-performance, transmission, and an optional variation cue under `Voice this line`,
-then press `Generate voice clip`.
-The editor runs `scripts/tts.py` for that line only, writes the clip to
-`web/res/vo/`, and updates the audio manifest. TTS needs `ffmpeg`, `ffprobe`,
-and the backend's normal network/dependency setup.
+transmission, and an optional variation cue under `Voice this line`, then press
+`Generate review`. The editor stages the sample privately, offers **Play**,
+and only copies it into `web/res/vo/` and the audio manifest when you press
+**Keep**. **Discard** removes the staged file without touching the game.
+The **Quick style** menu covers common choices such as Natural visitor, Official
+broadcast, Close whisper, Urgent, and Distant; choose Custom when you want to
+adjust the individual controls.
+Accepted manifest-backed visitor clips are loaded by the game audio system and
+played automatically when their visitor/day/tier/line key matches. Reload the
+game after keeping a clip so the browser loads the updated manifest. TTS needs
+`ffmpeg`, `ffprobe`, and the backend's normal network/dependency setup.
+
+For precise creative experiments, use `--line-file` instead of fighting shell
+quoting; UTF-8 punctuation is preserved. `--rate +6%` and `--pitch -2Hz` give
+small direct performance adjustments without creating a new named tone. The
+cache includes the complete text and voice settings, so distinct creative
+lines cannot collide.
 
 - How to deploy (Vercel): import the repo and keep the defaults. `dist/web`
   is **committed**, so Vercel installs nothing, builds nothing, and just

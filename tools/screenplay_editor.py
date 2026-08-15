@@ -10,8 +10,10 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import json
 import queue
 import re
+import shutil
 import subprocess
 import sys
 import threading
@@ -80,10 +82,13 @@ class Script:
 
 TONES = (
     "neutral", "formal", "official", "casual", "courteous", "weary",
-    "grave", "clipped", "confiding", "rehearsed", "flat",
+    "grave", "clipped", "confiding", "rehearsed", "flat", "happy",
+    "aggressive", "apologetic", "frightened", "gracious", "thinning",
+    "flattening", "hollowed", "whisper", "adrift",
 )
 TRANSMISSIONS = (
     "clean", "door", "letterbox", "wireless", "tannoy", "phone", "wall",
+    "floor", "window", "tvset", "bedside",
 )
 VOICE_DEFAULTS = {
     "broadcast": ("formal", "wireless"),
@@ -239,6 +244,12 @@ class Editor(tk.Tk if tk is not None else object):
         self.option: Option | None = None
         self.tts_queue: queue.Queue[tuple[int, str]] = queue.Queue()
         self.tts_button: ttk.Button | None = None
+        self.tts_play_button: ttk.Button | None = None
+        self.tts_keep_button: ttk.Button | None = None
+        self.tts_discard_button: ttk.Button | None = None
+        self.review_voice_path: Path | None = None
+        self.review_voice_name: str | None = None
+        self.voice_player: subprocess.Popen[bytes] | None = None
         self.event_window: tk.Toplevel | None = None
         self.dirty = False
 
@@ -247,6 +258,9 @@ class Editor(tk.Tk if tk is not None else object):
         self.minsize(900, 600)
         self.protocol("WM_DELETE_WINDOW", self.close)
         self.bind("<Control-s>", lambda _event: self.save())
+        self.bind("<F5>", lambda _event: self._preview())
+        self.bind("<Control-e>", lambda _event: self._open_orchestrator())
+        self.bind("<Control-Shift-v>", lambda _event: self._generate_voice())
         self._make_widgets()
         self._load_scene(0)
 
@@ -273,7 +287,7 @@ class Editor(tk.Tk if tk is not None else object):
 
         toolbar = ttk.Frame(self, padding=(8, 6))
         toolbar.grid(row=0, column=0, columnspan=3, sticky="ew")
-        toolbar.columnconfigure(8, weight=1)
+        toolbar.columnconfigure(7, weight=1)
 
         def separator(column: int) -> None:
             ttk.Separator(toolbar, orient="vertical").grid(
@@ -286,9 +300,14 @@ class Editor(tk.Tk if tk is not None else object):
         self._toolbar_button(toolbar, "Game events", self._open_orchestrator, "open the day and time planner").grid(row=0, column=3, padx=2)
         self._toolbar_button(toolbar, "Voice line", self._generate_voice, "generate voice for the selected line").grid(row=0, column=4, padx=2)
         separator(5)
-        self._toolbar_button(toolbar, "Restore", self._restore_backup, "restore the last saved screenplay").grid(row=0, column=6, padx=2)
-        self._toolbar_button(toolbar, "Help", self._help, "show editing guidance").grid(row=0, column=7, padx=2)
-        self._toolbar_button(toolbar, "Quit", self.close, "close the editor").grid(row=0, column=9, padx=2)
+        more = ttk.Menubutton(toolbar, text="More ▾")
+        more_menu = tk.Menu(more, tearoff=False)
+        more_menu.add_command(label="Restore last save", command=self._restore_backup)
+        more_menu.add_command(label="What am I editing?", command=self._help)
+        more_menu.add_separator()
+        more_menu.add_command(label="Quit", command=self.close)
+        more["menu"] = more_menu
+        more.grid(row=0, column=6, padx=2)
 
         left = ttk.Frame(self, padding=8)
         left.grid(row=1, column=0, sticky="ns")
@@ -346,12 +365,34 @@ class Editor(tk.Tk if tk is not None else object):
             voice_frame, values=("none",) + CUES, state="readonly"
         )
         self.tts_cue.grid(row=4, column=1, sticky="ew")
-        self.tts_button = ttk.Button(
-            voice_frame, text="Generate voice clip", command=self._generate_voice
+        ttk.Label(voice_frame, text="Quick style").grid(row=5, column=0, sticky="w")
+        self.tts_preset = ttk.Combobox(
+            voice_frame,
+            values=("Custom", "Natural visitor", "Official broadcast", "Close whisper", "Urgent", "Distant"),
+            state="readonly",
         )
-        self.tts_button.grid(row=5, column=0, columnspan=2, sticky="e", pady=(4, 0))
+        self.tts_preset.grid(row=5, column=1, sticky="ew")
+        self.tts_preset.bind("<<ComboboxSelected>>", self._apply_tts_preset)
+        voice_buttons = ttk.Frame(voice_frame)
+        voice_buttons.grid(row=6, column=0, columnspan=2, sticky="e", pady=(4, 0))
+        self.tts_button = ttk.Button(
+            voice_buttons, text="Generate review", command=self._generate_voice
+        )
+        self.tts_button.pack(side="left", padx=2)
+        self.tts_play_button = ttk.Button(
+            voice_buttons, text="Play", command=self._play_review_voice, state="disabled"
+        )
+        self.tts_play_button.pack(side="left", padx=2)
+        self.tts_keep_button = ttk.Button(
+            voice_buttons, text="Keep", command=self._keep_review_voice, state="disabled"
+        )
+        self.tts_keep_button.pack(side="left", padx=2)
+        self.tts_discard_button = ttk.Button(
+            voice_buttons, text="Discard", command=self._discard_review_voice, state="disabled"
+        )
+        self.tts_discard_button.pack(side="left", padx=2)
         self.tts_status = ttk.Label(voice_frame, text="Choose a line, then make a clip.")
-        self.tts_status.grid(row=6, column=0, columnspan=2, sticky="w")
+        self.tts_status.grid(row=7, column=0, columnspan=2, sticky="w")
         beat_buttons = ttk.Frame(beat_form)
         beat_buttons.grid(row=4, column=0, columnspan=2, sticky="e")
         ttk.Button(beat_buttons, text="New moment", command=self._new_beat).pack(side="left", padx=2)
@@ -400,11 +441,9 @@ class Editor(tk.Tk if tk is not None else object):
         bottom.columnconfigure(0, weight=1)
         self.status = ttk.Label(bottom, text=str(self.path))
         self.status.grid(row=0, column=0, sticky="w")
-        ttk.Button(bottom, text="Preview scene", command=self._preview).grid(row=0, column=1, padx=4)
-        ttk.Button(bottom, text="Game events", command=self._open_orchestrator).grid(row=0, column=2, padx=4)
-        ttk.Button(bottom, text="Save + validate", command=self.save).grid(row=0, column=3, padx=4)
-        ttk.Button(bottom, text="Restore last save", command=self._restore_backup).grid(row=0, column=4, padx=4)
-        ttk.Button(bottom, text="Quit", command=self.close).grid(row=0, column=5)
+        ttk.Label(bottom, text="Ctrl+S Save · F5 Preview · Ctrl+E Game events · Ctrl+Shift+V Voice").grid(
+            row=0, column=1, padx=4
+        )
 
     def _scene_selected(self, _event: object = None) -> None:
         selection = self.scene_list.curselection()
@@ -518,6 +557,23 @@ class Editor(tk.Tk if tk is not None else object):
         self.tts_set.set(transmission)
         self.tts_backend.set("auto")
         self.tts_cue.set("none")
+        self.tts_preset.set("Custom")
+
+    def _apply_tts_preset(self, _event: object = None) -> None:
+        preset = self.tts_preset.get()
+        values = {
+            "Natural visitor": ("neutral", "door", "none"),
+            "Official broadcast": ("formal", "wireless", "none"),
+            "Close whisper": ("confiding", "wall", "under-breath"),
+            "Urgent": ("frightened", "door", "rushed"),
+            "Distant": ("neutral", "window", "distant"),
+        }.get(preset)
+        if values is None:
+            return
+        tone, transmission, cue = values
+        self.tts_tone.set(tone)
+        self.tts_set.set(transmission)
+        self.tts_cue.set(cue)
 
     def _new_beat(self) -> None:
         self.beat_list.selection_clear(0, "end")
@@ -532,13 +588,25 @@ class Editor(tk.Tk if tk is not None else object):
         selection = self.beat_list.curselection()
         number = selection[0] + 1 if selection else len(self.scene.beats) + 1
         speaker = self.tts_speaker.get().strip() or "line"
+        cue = self.tts_cue.get().strip().lower()
+        visitor_link = any(
+            "visitors" in link.split("/") and Path(link).stem == speaker
+            for link in self.scene.links
+        )
+        if visitor_link and cue in ("", "none"):
+            dialogue_number = sum(
+                1
+                for beat in self.scene.beats[: (selection[0] + 1 if selection else len(self.scene.beats))]
+                if beat.kind == "dialogue" and beat.speaker == speaker
+            )
+            if dialogue_number:
+                return f"{speaker}-day{self.scene.day:02d}-full-{dialogue_number}"
         safe_scene = re.sub(r"[^a-z0-9-]+", "-", self.scene.scene_id.lower()).strip("-")
         safe_speaker = re.sub(r"[^a-z0-9-]+", "-", speaker.lower()).strip("-")
         tone = re.sub(r"[^a-z0-9-]+", "-", self.tts_tone.get().lower()).strip("-")
         transmission = re.sub(
             r"[^a-z0-9-]+", "-", self.tts_set.get().lower()
         ).strip("-")
-        cue = self.tts_cue.get().strip().lower()
         variation = "-".join(
             part for part in (tone, transmission, cue if cue != "none" else "") if part
         )
@@ -555,21 +623,35 @@ class Editor(tk.Tk if tk is not None else object):
             return
         if self.tts_button is None:
             return
+        if self.review_voice_path is not None:
+            self._discard_review_voice(confirm=True)
+            if self.review_voice_path is not None:
+                return
+        voice_name = self._voice_name()
+        review_dir = self.path.parent.parent / "web" / "res" / "vo" / ".review"
+        review_dir.mkdir(parents=True, exist_ok=True)
+        self.review_voice_name = voice_name
+        self.review_voice_path = review_dir / f"{voice_name}.ogg"
         command = [
             sys.executable,
             "scripts/tts.py",
             "--line", text,
-            "--name", self._voice_name(),
+            "--name", voice_name,
             "--speaker", speaker,
             "--tone", self.tts_tone.get() or "neutral",
             "--set", self.tts_set.get() or "clean",
             "--backend", self.tts_backend.get() or "auto",
+            "--out", str(review_dir),
+            "--no-manifest",
         ]
         cue = self.tts_cue.get().strip()
         if cue and cue != "none":
             command.extend(("--cue", cue))
         self.tts_button.configure(state="disabled")
-        self.tts_status["text"] = "Making the clip… the editor is still usable."
+        for button in (self.tts_play_button, self.tts_keep_button, self.tts_discard_button):
+            if button is not None:
+                button.configure(state="disabled")
+        self.tts_status["text"] = f"Making review for {voice_name}…"
         thread = threading.Thread(target=self._run_tts, args=(command,), daemon=True)
         thread.start()
         self.after(100, self._poll_tts)
@@ -597,14 +679,104 @@ class Editor(tk.Tk if tk is not None else object):
         if self.tts_button is not None:
             self.tts_button.configure(state="normal")
         code, output = result
-        if code == 0:
-            self.tts_status["text"] = "Voice clip ready in web/res/vo and registered in the manifest."
+        if code == 0 and self.review_voice_path is not None and self.review_voice_path.exists():
+            self.tts_status["text"] = (
+                f"Review ready for {self.review_voice_name} — Play, Keep, or Discard."
+            )
+            for button in (self.tts_play_button, self.tts_keep_button, self.tts_discard_button):
+                if button is not None:
+                    button.configure(state="normal")
         else:
+            self._discard_review_voice()
             self.tts_status["text"] = "Voice clip was not made."
             messagebox.showerror(
                 "Voice generation stopped",
                 "The line was not changed. Check the details below:\n\n" + output[-3000:],
             )
+
+    def _play_review_voice(self) -> None:
+        path = self.review_voice_path
+        if path is None or not path.exists():
+            self.tts_status["text"] = "There is no review clip to play."
+            return
+        if self.voice_player is not None and self.voice_player.poll() is None:
+            self.voice_player.terminate()
+        players = (
+            ("ffplay", ("ffplay", "-nodisp", "-autoexit", "-loglevel", "quiet", str(path))),
+            ("paplay", ("paplay", str(path))),
+            ("aplay", ("aplay", str(path))),
+        )
+        for name, command in players:
+            if shutil.which(name) is None:
+                continue
+            try:
+                self.voice_player = subprocess.Popen(command)
+                self.tts_status["text"] = "Playing the review clip…"
+                return
+            except OSError:
+                continue
+        self.tts_status["text"] = "No local audio player found (install ffplay or paplay)."
+
+    def _keep_review_voice(self) -> None:
+        path = self.review_voice_path
+        name = self.review_voice_name
+        if path is None or name is None or not path.exists():
+            return
+        destination_dir = self.path.parent.parent / "web" / "res" / "vo"
+        destination_dir.mkdir(parents=True, exist_ok=True)
+        destination = destination_dir / f"{name}.ogg"
+        manifest_path = self.path.parent.parent / "web" / "res" / "manifest.json"
+        moved = False
+        try:
+            if destination.exists() and not messagebox.askyesno(
+                "Replace game voice?",
+                f"Replace the existing game clip {destination.name}?",
+                parent=self,
+            ):
+                return
+            path.replace(destination)
+            moved = True
+            data = json.loads(manifest_path.read_text(encoding="utf-8"))
+            data.setdefault("sfx", {})[f"vo-{name}"] = f"vo/{name}.ogg"
+            temporary = manifest_path.with_name(manifest_path.name + ".voice.tmp")
+            temporary.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            temporary.replace(manifest_path)
+        except (OSError, json.JSONDecodeError) as error:
+            if moved and destination.exists() and not path.exists():
+                try:
+                    destination.replace(path)
+                except OSError:
+                    pass
+            self.tts_status["text"] = f"Could not keep the clip: {error}"
+            return
+        self.review_voice_path = None
+        self.review_voice_name = None
+        for button in (self.tts_play_button, self.tts_keep_button, self.tts_discard_button):
+            if button is not None:
+                button.configure(state="disabled")
+        self.tts_status["text"] = "Kept in web/res/vo and manifest. Reload the game to load it."
+
+    def _discard_review_voice(self, confirm: bool = False) -> None:
+        path = self.review_voice_path
+        if path is None:
+            return
+        if confirm and not messagebox.askyesno(
+            "Discard review clip?",
+            "The generated voice sample has not been kept. Discard it and make a new one?",
+        ):
+            return
+        if self.voice_player is not None and self.voice_player.poll() is None:
+            self.voice_player.terminate()
+        try:
+            path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        self.review_voice_path = None
+        self.review_voice_name = None
+        for button in (self.tts_play_button, self.tts_keep_button, self.tts_discard_button):
+            if button is not None:
+                button.configure(state="disabled")
+        self.tts_status["text"] = "Review clip discarded."
 
     def _save_beat(self) -> None:
         if self.scene is None:
@@ -1318,6 +1490,13 @@ class Editor(tk.Tk if tk is not None else object):
     def close(self) -> None:
         if self.dirty and not messagebox.askyesno("Unsaved changes", "Discard unsaved changes?"):
             return
+        if self.review_voice_path is not None and self.review_voice_path.exists():
+            if not messagebox.askyesno(
+                "Discard unreviewed voice?",
+                "A generated voice sample is waiting for Keep or Discard. Discard it now?",
+            ):
+                return
+            self._discard_review_voice()
         self.destroy()
 
 

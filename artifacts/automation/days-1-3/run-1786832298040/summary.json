@@ -1,0 +1,182 @@
+{
+  "status": "failed",
+  "exitCode": 5,
+  "scenario": "days-1-3",
+  "runId": "run-1786832298040",
+  "failure": {
+    "kind": "assertion",
+    "message": "browser smoke exited with code 1"
+  },
+  "events": 11,
+  "traceBytes": 2735,
+  "droppedEvents": 0,
+  "history": [
+    {
+      "seq": 0,
+      "type": "run.start",
+      "tick": 0,
+      "data": {
+        "scenario": "days-1-3"
+      }
+    },
+    {
+      "seq": 1,
+      "type": "runner.lifecycle",
+      "tick": 0,
+      "data": {
+        "phase": "starting-server",
+        "browser": "firefox"
+      }
+    },
+    {
+      "seq": 2,
+      "type": "runner.lifecycle",
+      "tick": 0,
+      "data": {
+        "phase": "server-ready",
+        "baseUrl": "http://127.0.0.1:43085"
+      }
+    },
+    {
+      "seq": 3,
+      "type": "runner.config",
+      "tick": 0,
+      "data": {
+        "mode": "run",
+        "scenario": "days-1-3",
+        "serverRoot": "dist/web",
+        "port": 0,
+        "baseUrl": "http://127.0.0.1:8090",
+        "browser": "firefox",
+        "renderer": "pixeldart",
+        "profile": "safe",
+        "viewport": {
+          "width": 800,
+          "height": 500
+        },
+        "seed": 7,
+        "fixedDelta": 0.016666666666666666,
+        "timeoutTicks": 120,
+        "artifacts": "artifacts/automation",
+        "headless": true,
+        "resolvedRun": {
+          "schemaVersion": 2,
+          "canonical": {
+            "mode": "run",
+            "scenario": "days-1-3",
+            "serverRoot": "dist/web",
+            "port": 0,
+            "baseUrl": "http://127.0.0.1:8090",
+            "browser": "firefox",
+            "renderer": "pixeldart",
+            "profile": "safe",
+            "viewport": {
+              "width": 800,
+              "height": 500
+            },
+            "seed": 7,
+            "fixedDelta": 0.016666666666666666,
+            "timeoutTicks": 120,
+            "artifacts": "artifacts/automation",
+            "headless": true
+          },
+          "compatibilityAliases": {}
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "type": "artifact",
+      "tick": 4,
+      "data": {
+        "name": "browser-stdout.log",
+        "bytes": 3483,
+        "contentType": "text/plain"
+      }
+    },
+    {
+      "seq": 5,
+      "type": "artifact",
+      "tick": 5,
+      "data": {
+        "name": "browser-stderr.log",
+        "bytes": 432,
+        "contentType": "text/plain"
+      }
+    },
+    {
+      "seq": 6,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical.png",
+        "bytes": 80832,
+        "contentType": "image/png"
+      }
+    },
+    {
+      "seq": 7,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical.json",
+        "bytes": 2908,
+        "contentType": "application/json",
+        "captureSchemaVersion": "1",
+        "captureScenario": "days-1-3",
+        "captureRoute": "pixeldart-canonical",
+        "capturePath": "/?renderer=pixeldart",
+        "captureRequestedRenderer": "pixeldart",
+        "captureRequestedProfile": "safe",
+        "captureNegotiatedProfile": "high",
+        "captureProfileNegotiation": "capability-negotiated",
+        "captureScreenshot": "browser-days-1-3-pixeldart-canonical.png",
+        "captureWidth": 800,
+        "captureHeight": 500,
+        "resolvedRunSchemaVersion": "2",
+        "resolvedRenderer": "pixeldart",
+        "resolvedProfile": "safe"
+      }
+    },
+    {
+      "seq": 8,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical.digest.json",
+        "bytes": 353,
+        "contentType": "application/json",
+        "schemaVersion": "1",
+        "screenshot": "browser-days-1-3-pixeldart-canonical.png",
+        "metadata": "browser-days-1-3-pixeldart-canonical.json",
+        "screenshotSha256": "67a6e436c3d2280d7fca677162bccf17a1aaa41fb0b3b734eb67d7b6e524ea02",
+        "metadataSha256": "39890e22c0eedf604019c5c3cb223b9599d5ae9177e3fd62a51a031ca79b8d1f"
+      }
+    },
+    {
+      "seq": 9,
+      "type": "runner.browser-exit",
+      "tick": 0,
+      "data": {
+        "exitCode": 1,
+        "stdoutBytes": 3483,
+        "watchdogSeconds": 16.0,
+        "timedOut": false
+      }
+    },
+    {
+      "seq": 10,
+      "type": "run.failure",
+      "tick": 0,
+      "data": {
+        "kind": "assertion",
+        "message": "browser smoke exited with code 1"
+      }
+    }
+  ],
+  "replayCommand": "dart run tools/automation.dart run --scenario days-1-3",
+  "cleanup": {
+    "server": "closed",
+    "browser": "closed"
+  }
+}

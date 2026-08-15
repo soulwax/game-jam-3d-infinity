@@ -47,10 +47,12 @@ import re
 import shutil
 import subprocess
 import sys
+import time
+import unicodedata
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from corpus import (BROADCAST, ALT, ABSENT, DIRECTIVES, CUES, KIND_DEFAULTS,
@@ -68,6 +70,7 @@ TEXT_CHOICES_FILE = ROOT / "web" / "res" / "text_choices.json"
 VENV = ROOT / "scripts" / ".venv"
 CACHE = ROOT / "scripts" / ".cache"
 SR = 24000
+CACHE_FORMAT = "tts-cache-v2"
 
 
 def load_text_choices() -> dict[str, int]:
@@ -87,6 +90,11 @@ TEXT_CHOICES = load_text_choices()
 
 def unit_address(unit: Unit, part: Part) -> str:
     return f"{unit.stem}:{part.label}"
+
+
+def normalize_tts_text(text: str) -> str:
+    """Make equivalent user input share a cache entry without rewriting prose."""
+    return unicodedata.normalize("NFC", text.replace("\r\n", "\n")).strip()
 
 
 @dataclass(frozen=True)
@@ -408,9 +416,15 @@ class Job:
 def plan_jobs(text: str, cache: Path, backend: str, voice: str, gender: str,
               tone: Tone, limit: int) -> list[Job]:
     jobs = []
-    for piece in chunk_text(text, limit):
-        sig = "|".join([backend, voice, gender, tone.rate, tone.pitch, piece])
-        h = hashlib.sha1(sig.encode("utf-8")).hexdigest()[:16]
+    for piece in chunk_text(normalize_tts_text(text), limit):
+        # JSON framing avoids collisions when creative text contains pipes,
+        # newlines, or other delimiter-looking punctuation.
+        sig = json.dumps(
+            [CACHE_FORMAT, backend, voice, gender, tone.rate, tone.pitch, piece],
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        h = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:24]
         jobs.append(Job(piece, voice, gender, tone.rate, tone.pitch,
                         cache / f"{h}.mp3"))
     return jobs
@@ -425,7 +439,11 @@ def failed(job: Job, exc: Exception) -> SystemExit:
 
 
 def run_jobs(jobs: list[Job], backend: str, connections: int) -> None:
-    todo = list({j.path: j for j in jobs if not j.path.exists()}.values())
+    todo = list({
+        j.path: j
+        for j in jobs
+        if not j.path.is_file() or j.path.stat().st_size < 128
+    }.values())
     if not todo:
         return
     print(f"synthesising {len(todo)} clip(s) over {connections} connection(s) "
@@ -469,6 +487,7 @@ def run_jobs(jobs: list[Job], backend: str, connections: int) -> None:
                             job.path.with_suffix(".json").unlink(missing_ok=True)
                             if n == RETRIES - 1:
                                 raise failed(job, exc) from exc
+                            time.sleep(0.4 * (2 ** n))
 
             await asyncio.gather(*(one(j) for j in todo))
 
@@ -486,6 +505,7 @@ def run_jobs(jobs: list[Job], backend: str, connections: int) -> None:
                 tmp.unlink(missing_ok=True)
                 if n == RETRIES - 1:
                     raise failed(job, exc) from exc
+                time.sleep(0.4 * (2 ** n))
 
     with ThreadPoolExecutor(max_workers=connections) as pool:
         list(pool.map(fetch, todo))
@@ -783,6 +803,13 @@ def plan_units(units: list[Unit], a: argparse.Namespace,
     plans = []
     for unit in units:
         tone = TONES[pick(a, unit, "tone")]
+        overrides = {}
+        if getattr(a, "rate", None):
+            overrides["rate"] = a.rate
+        if getattr(a, "pitch", None):
+            overrides["pitch"] = a.pitch
+        if overrides:
+            tone = replace(tone, **overrides)
         gender = pick(a, unit, "voice")
         voice = (a.voice_name
                  or unit.direction.get("voice_name")
@@ -1086,6 +1113,8 @@ def main() -> None:
     p.add_argument("--all", action="store_true",
                    help="include broadcasts (requires --day or --speaker)")
     p.add_argument("--line", help="one-off text, bypassing text/")
+    p.add_argument("--line-file", type=Path,
+                   help="UTF-8 file containing one-off text; preserves creative punctuation")
     p.add_argument("--name", help="output stem for --line")
     p.add_argument("--cue", action="append", choices=tuple(sorted(CUES)),
                    help="authored performance/transmission cue (repeatable)")
@@ -1095,6 +1124,8 @@ def main() -> None:
     p.add_argument("--voice-name", help="exact edge-tts voice; beats --voice")
     p.add_argument("--tone", choices=tuple(TONES),
                    help="overrides the speaker's default")
+    p.add_argument("--rate", help="precise Edge rate override, e.g. +6%% or -12%%")
+    p.add_argument("--pitch", help="precise Edge pitch override, e.g. +2Hz or -8Hz")
     p.add_argument("--set", choices=tuple(SETS),
                    help="transmission character; overrides the speaker's default")
     p.add_argument("--radio-level", type=int, choices=tuple(RADIO),
@@ -1156,14 +1187,19 @@ def main() -> None:
     if a.check:
         sys.exit(check_clips(a.max_seconds, a.lufs))
 
-    if not (a.all or a.day or a.speaker or a.line):
-        p.error("give --day, --speaker, --all or --line")
+    if a.line and a.line_file:
+        p.error("choose --line or --line-file, not both")
+    if not (a.all or a.day or a.speaker or a.line or a.line_file):
+        p.error("give --day, --speaker, --all, --line or --line-file")
     if a.all and not (a.day or a.speaker):
         p.error("--all requires either --day or --speaker")
     if a.jobs < 1:
         p.error("--jobs must be at least 1")
     if a.connections < 1:
         p.error("--connections must be at least 1")
+    for name, value, suffix in (("--rate", a.rate, "%"), ("--pitch", a.pitch, "Hz")):
+        if value and not re.fullmatch(r"[+-]\d+(?:\.\d+)?" + re.escape(suffix), value):
+            p.error(f"{name} must look like +6{suffix} or -12{suffix}")
     for tool in ("ffmpeg", "ffprobe"):
         if not shutil.which(tool):
             raise SystemExit(f"{tool} not found on PATH")
@@ -1175,9 +1211,16 @@ def main() -> None:
     if not a.chunk_chars:
         a.chunk_chars = 180 if a.backend == "gtts" else 500
 
-    if a.line:
+    if a.line or a.line_file:
+        if a.line_file:
+            try:
+                line_text = a.line_file.read_text(encoding="utf-8")
+            except OSError as error:
+                p.error(f"could not read --line-file: {error}")
+        else:
+            line_text = a.line
         units = [Unit(a.name or "line", a.speaker[0] if a.speaker else BROADCAST,
-                      0, [Part("line", a.line)])]
+                      0, [Part("line", line_text)])]
     else:
         visitor_dir = TEXT_DIR / "visitors"
         broadcast_dir = TEXT_DIR / "broadcasts"

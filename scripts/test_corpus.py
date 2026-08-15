@@ -723,6 +723,21 @@ def test_unit_address_matches_dart_scheme():
     assert tts.unit_address(unit, part) == "neighbour-day01-full-2:full-2"
 
 
+def test_normalize_tts_text_preserves_creative_prose():
+    assert tts.normalize_tts_text("  Café\r\n— wait…  ") == "Café\n— wait…"
+
+
+def test_cache_key_is_stable_and_delimiter_safe():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        cache = pathlib.Path(tmpdir)
+        tone = tts.TONES["neutral"]
+        first = tts.plan_jobs("A | B", cache, "gtts", "voice", "male", tone, 180)
+        same = tts.plan_jobs("A | B", cache, "gtts", "voice", "male", tone, 180)
+        other = tts.plan_jobs("A B", cache, "gtts", "voice", "male", tone, 180)
+        assert first[0].path == same[0].path
+        assert first[0].path != other[0].path
+
+
 if __name__ == "__main__":
     test_parse_forward_directives()
     test_parse_forward_directive_override()
@@ -777,4 +792,6 @@ if __name__ == "__main__":
     test_resolve_falls_back_when_address_missing_from_choices()
     test_resolve_choices_index_advances_per_span()
     test_unit_address_matches_dart_scheme()
+    test_normalize_tts_text_preserves_creative_prose()
+    test_cache_key_is_stable_and_delimiter_safe()
     print("All tests passed!")

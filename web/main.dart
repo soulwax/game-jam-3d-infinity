@@ -1845,6 +1845,7 @@ HouseSoundscape? _houseSoundscape;
 HouseInventory? _houseInventory;
 AudioPlanner? _audioPlanner;
 int _audioEventSequence = 0;
+String? _lastPlayedVisitorVoice;
 final HouseClock _houseClock = HouseClock();
 final HouseServiceSoundScheduler _houseServiceSounds =
     HouseServiceSoundScheduler();
@@ -2621,6 +2622,15 @@ Future<void> main() async {
           'fallback': true,
           'fallbackReason': 'webgl2 unavailable',
           'capabilities': const <String>[],
+          'selection': {
+            'kind': 'legacy',
+            'explicit': true,
+            'automatic': false,
+            'fallback': true,
+            'fallbackReason': 'webgl2 unavailable',
+            'rejected': false,
+            'aliasUsed': false,
+          },
         }),
       );
     return;
@@ -2637,7 +2647,33 @@ Future<void> main() async {
     if (_automationDiagnosticsEnabled) {
       _canvas.setAttribute('data-renderer-error-stack', '$stack');
     }
-    rethrow;
+    // A context can exist while the adapter still cannot satisfy the
+    // renderer's surface/profile contract (for example constrained
+    // capability mode). Keep this failure observable and recoverable rather
+    // than allowing a WASM exception to terminate the page.
+    _setBootPhase('no-webgl2');
+    _canvas
+      ..setAttribute('data-renderer-backend', 'legacy')
+      ..setAttribute('data-renderer-fallback', 'true')
+      ..setAttribute(
+        'data-renderer-diagnostics',
+        jsonEncode({
+          'backend': 'legacy',
+          'fallback': true,
+          'fallbackReason': 'webgl2 initialization failed',
+          'capabilities': const <String>[],
+          'selection': {
+            'kind': 'legacy',
+            'explicit': true,
+            'automatic': false,
+            'fallback': true,
+            'fallbackReason': 'webgl2 initialization failed',
+            'rejected': false,
+            'aliasUsed': false,
+          },
+        }),
+      );
+    return;
   }
   _publishRendererDiagnostics();
   try {
@@ -3195,6 +3231,7 @@ void _publishRendererDiagnostics() {
       Uri.base.queryParameters['renderer'] ?? 'auto',
     )
     ..setAttribute('data-renderer-backend', diagnostics.backend)
+    ..setAttribute('data-renderer-fallback', diagnostics.fallback ? 'true' : 'false')
     ..setAttribute('data-renderer-profile', diagnostics.profile)
     ..setAttribute('data-renderer-diagnostics', diagnostics.encode())
     ..setAttribute(
@@ -4356,6 +4393,7 @@ void _updateVisitorSchedule() {
       responseChoices: Door.choiceLabels,
       isVisitor: true,
     );
+    _playVisitorVoice();
     _showStrangerCaseNote(arrival);
     return;
   }
@@ -4386,6 +4424,7 @@ void _restoreVisitorDoor() {
     responseChoices: Door.choiceLabels,
     isVisitor: true,
   );
+  _playVisitorVoice();
   _showStrangerCaseNote(state.arrival);
   if (state.phase != VisitPhase.waiting) {
     _presentDoorLine();
@@ -4558,6 +4597,23 @@ void _presentDoorLine() {
     }
   }
   _showDoorCitationOptions();
+  _playVisitorVoice();
+}
+
+/// Plays a manifest-backed visitor clip when one exists. Text remains the
+/// authoritative fallback, so missing or newly generated audio never blocks a
+/// conversation.
+void _playVisitorVoice() {
+  final state = _visitorDirector.active;
+  final line = state?.currentLine;
+  final audio = _audio;
+  if (state == null || line == null || audio == null) return;
+  final key =
+      'vo-${state.arrival.visitor}-day${state.arrival.day.toString().padLeft(2, '0')}'
+      '-${state.tier.name}-${state.lineIndex + 1}';
+  if (_lastPlayedVisitorVoice == key) return;
+  _lastPlayedVisitorVoice = key;
+  audio.play(key, gain: 1.0);
 }
 
 void _chooseNarrativeReaction(String optionId) {
@@ -4580,6 +4636,7 @@ void _chooseNarrativeReaction(String optionId) {
 void _endVisitorDoor() {
   _door.hide();
   _dialogueCoordinator.clear();
+  _lastPlayedVisitorVoice = null;
   _input.requestPointerLock(_canvas);
 }
 
