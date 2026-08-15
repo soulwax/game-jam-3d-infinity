@@ -26,6 +26,7 @@ def main() -> None:
     assert [scene.day for scene in script.scenes] == list(range(1, 22))
     assert len({scene.scene_id for scene in script.scenes}) == 21
     assert sum(len(branch.options) for scene in script.scenes for branch in scene.branches) == 55
+    assert {"hesitant", "broken-radio", "under-breath"}.issubset(set(EDITOR.CUES))
 
     encoded = EDITOR.encode_script(script)
     with tempfile.TemporaryDirectory(prefix="screenplay-editor-") as directory:
@@ -39,6 +40,31 @@ def main() -> None:
             scene.day for scene in script.scenes
         ]
 
+    script.events.append(
+        EDITOR.Event(
+            "event-test-01",
+            "visitor",
+            1,
+            15.5,
+            "A visitor arrives",
+            "text/visitors/ayling.txt",
+            "ayling",
+            "hesitant",
+            ["visitor.present=true", "residue.test=threshold"],
+            "day-02",
+        )
+    )
+    with tempfile.TemporaryDirectory(prefix="screenplay-events-") as directory:
+        event_path = Path(directory) / "story.screenplay"
+        event_path.write_text(EDITOR.encode_script(script), encoding="utf-8")
+        event_script = EDITOR.parse_script(event_path)
+        event = event_script.events[-1]
+        assert event.kind == "visitor"
+        assert event.hour == 15.5
+        assert event.cue == "hesitant"
+        assert event.effects == ["visitor.present=true", "residue.test=threshold"]
+        assert event.next_scene == "day-02"
+
     with tempfile.NamedTemporaryFile("w", suffix=".screenplay", delete=False) as malformed:
         malformed.write("OPTION orphan END | This has no branch\n")
         malformed_path = Path(malformed.name)
@@ -51,6 +77,19 @@ def main() -> None:
             raise AssertionError("malformed screenplay was accepted")
     finally:
         malformed_path.unlink(missing_ok=True)
+
+    with tempfile.NamedTemporaryFile("w", suffix=".screenplay", delete=False) as malformed_event:
+        malformed_event.write("EVENT broken visitor 1 12 | Broken\nEVENT_EFFECT | missing-equals\n")
+        malformed_event_path = Path(malformed_event.name)
+    try:
+        try:
+            EDITOR.parse_script(malformed_event_path)
+        except ValueError as error:
+            assert "EVENT_EFFECT needs key=value" in str(error)
+        else:
+            raise AssertionError("malformed event effect was accepted")
+    finally:
+        malformed_event_path.unlink(missing_ok=True)
 
     print("screenplay editor data checks: ok")
 

@@ -6,6 +6,9 @@
 #
 # Grammar: SOURCE path | LINK path | SCENE id day title | BEAT kind | text |
 # DIALOGUE speaker | text | BRANCH id | prompt | OPTION id next | label.
+# The editor's Game events window writes EVENT id kind day hour | label, followed
+# by optional EVENT_SOURCE, EVENT_SPEAKER, EVENT_CUE, EVENT_EFFECT | key=value,
+# and EVENT_NEXT scene-id records. These are the game-loop schedule, not prose.
 # Branch targets are scene ids or END. Keep ids stable: saves and analytics use them.
 
 SOURCE text/broadcasts/week-1.txt

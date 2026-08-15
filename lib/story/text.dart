@@ -2,6 +2,7 @@ import 'dart:js_interop';
 import 'package:web/web.dart' as web;
 
 import 'corpus.dart';
+import 'game_event_orchestrator.dart';
 import 'screenplay.dart';
 import 'schema.dart'
     show
@@ -31,6 +32,7 @@ class TextLibrary {
   late Map<String, dynamic> _variants;
   late Map<String, dynamic> _residues;
   StoryScreenplay? _screenplay;
+  GameEventOrchestrator? _eventOrchestrator;
 
   TextLibrary._();
 
@@ -66,9 +68,10 @@ class TextLibrary {
       // content build produces it; keep those bundles playable while exposing
       // the absence to callers through a null screenplay.
       if (screenplayResp.ok) {
-        _screenplay = StoryScreenplay.fromJson(
-          (await screenplayResp.text().toDart).toString(),
-        );
+      _screenplay = StoryScreenplay.fromJson(
+        (await screenplayResp.text().toDart).toString(),
+      );
+      _eventOrchestrator = GameEventOrchestrator(_screenplay!);
       }
     } catch (e) {
       throw 'Failed to load text.json: $e';
@@ -368,6 +371,10 @@ class TextLibrary {
   /// normal corpus getters; this graph is for scene routing, branch UI, and
   /// editor/runtime diagnostics.
   StoryScreenplay? get screenplay => _screenplay;
+
+  /// Authored event schedule for game-loop adapters. Null only when an older
+  /// web bundle has no compiled screenplay artifact.
+  GameEventOrchestrator? get gameEvents => _eventOrchestrator;
 }
 
 final textLibrary = TextLibrary.instance;

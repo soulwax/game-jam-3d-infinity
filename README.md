@@ -22,6 +22,20 @@ dart run tools/text_build.dart
 The command reads `text/story.screenplay`, checks all 21 days and branch
 targets, and emits `web/res/story_script.json` alongside `text.json`.
 
+The **Game events** window in the editor is the authoring home for the runtime
+schedule. Use **Build day plan** to create visitor and broadcast events from
+the screenplay links, then add timing, cues, narrative effects, and follow-up
+scenes. The compiled event schedule is available to the Dart game layer through
+`TextLibrary.gameEvents`. The game keeps a save-friendly delivery cursor, then
+hands each event's effects to `GameSession`; authored flags therefore survive
+reloads without letting the renderer mutate game state. In the event window,
+filter by day or kind, duplicate a moment as a starting point, and use
+`Story changes` for optional `key=value` facts that later dialogue can read.
+The day timeline is a visual 24-hour rail: select a day, click an empty time to
+start an event there, or click an existing marker to edit it.
+The Hour field also has half-hour nudge buttons for quick rhythm changes, and
+the editor checks destinations, event kinds, and voice cues before saving.
+
 The editor's headless data checks can be run without a display:
 
 ```sh
@@ -39,6 +53,13 @@ Edit the selected scene, beats, branch prompt, or options, then choose
 instead of screenplay syntax, offers friendly next-scene names, and keeps a
 `story.screenplay.bak` safety copy on every save. Use `--no-build` when Dart is
 not installed.
+
+To voice one selected visitor or broadcast line, choose its speaker, performance,
+performance, transmission, and an optional variation cue under `Voice this line`,
+then press `Generate voice clip`.
+The editor runs `scripts/tts.py` for that line only, writes the clip to
+`web/res/vo/`, and updates the audio manifest. TTS needs `ffmpeg`, `ffprobe`,
+and the backend's normal network/dependency setup.
 
 - How to deploy (Vercel): import the repo and keep the defaults. `dist/web`
   is **committed**, so Vercel installs nothing, builds nothing, and just

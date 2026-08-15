@@ -724,6 +724,7 @@ class CompiledApp {
       _7815: x0 => x0.code,
       _7818: x0 => x0.shiftKey,
       _7821: x0 => x0.repeat,
+      _8587: x0 => x0.ok,
       _8839: x0 => x0.matches,
       _9865: x0 => x0.id,
       _9867: x0 => x0.connected,

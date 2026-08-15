@@ -15,6 +15,7 @@ import 'presentation_snapshot.dart';
 import 'domain_snapshot.dart';
 import '../story/narrative_state.dart';
 import '../story/schema.dart' show ReactionOption, VisitorReaction;
+import '../story/screenplay.dart' show ScreenplayEvent;
 
 enum GameSessionEventType {
   timeAdvanced,
@@ -273,6 +274,23 @@ class GameSession {
       return false;
     }
     _narrative.apply(reaction, option);
+    return true;
+  }
+
+  /// Applies effects authored on a screenplay event.
+  ///
+  /// Timing and delivery are owned by [GameEventCursor]; this method remains
+  /// the single authoritative write path for narrative flags.
+  bool applyAuthoredEvent(ScreenplayEvent event) {
+    final deliveredKey = 'event.${event.id}';
+    if (_narrative.hasFlag(deliveredKey)) return false;
+    _narrative.flags[deliveredKey] = 'true';
+    for (final effect in event.effects) {
+      final separator = effect.indexOf('=');
+      if (separator <= 0 || separator == effect.length - 1) continue;
+      _narrative.flags[effect.substring(0, separator)] =
+          effect.substring(separator + 1);
+    }
     return true;
   }
 

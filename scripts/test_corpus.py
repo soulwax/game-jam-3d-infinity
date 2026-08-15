@@ -672,7 +672,10 @@ def test_parse_unknown_at_directive_raises_exit():
 def test_cues_include_new_tags():
     for tag in ("wireless-hum", "static-burst", "mid-sentence-start",
                 "over-specific", "through-floor", "door-muffled",
-                "long-pause", "whisper", "off-key"):
+                "long-pause", "whisper", "off-key", "careful", "hesitant",
+                "rushed", "measured", "under-breath", "breathless",
+                "distant", "telephone", "broken-radio", "echoing",
+                "stammering", "long-breath"):
         assert tag in tts.CUES
 
 

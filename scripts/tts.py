@@ -1087,6 +1087,8 @@ def main() -> None:
                    help="include broadcasts (requires --day or --speaker)")
     p.add_argument("--line", help="one-off text, bypassing text/")
     p.add_argument("--name", help="output stem for --line")
+    p.add_argument("--cue", action="append", choices=tuple(sorted(CUES)),
+                   help="authored performance/transmission cue (repeatable)")
 
     p.add_argument("--voice", choices=("male", "female"),
                    help="overrides the speaker's default")
@@ -1223,6 +1225,12 @@ def main() -> None:
             units = [u for u in units if not u.silent]
         if not units:
             raise SystemExit("that --day/--speaker combination matches nothing")
+
+    if a.cue:
+        for unit in units:
+            for cue in a.cue:
+                if cue not in unit.cues:
+                    unit.cues.append(cue)
 
     dest = (Path(a.out).resolve() if a.out else OUT_DIR)
 

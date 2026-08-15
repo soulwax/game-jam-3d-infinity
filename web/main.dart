@@ -65,6 +65,7 @@ import 'package:quarantine/sim/time.dart';
 import 'package:quarantine/sim/weather.dart';
 import 'package:quarantine/story/schema.dart' show vocabularyFields;
 import 'package:quarantine/story/text.dart';
+import 'package:quarantine/story/game_event_orchestrator.dart';
 import 'package:quarantine/story/unverifiable_notice.dart';
 import 'package:quarantine/story/physical_aftermath_manager.dart';
 import 'package:quarantine/ui/ambient_notice.dart';
@@ -1816,6 +1817,7 @@ late House _house;
 late GameTime _time;
 late GameSession _session;
 late BrowserSaveStore _saveStore;
+GameEventCursor? _authoredEventCursor;
 
 web.Element? _fpsDiv;
 
@@ -2675,6 +2677,13 @@ Future<void> main() async {
             vocabulary: vocabulary,
             snapshot: saved.snapshot!,
           );
+    final eventPlan = textLibrary.gameEvents;
+    _authoredEventCursor = eventPlan == null
+        ? null
+        : GameEventCursor.fromJson(
+            eventPlan,
+            saved.snapshot?.meta['authoredEvents'],
+          );
     _visitorDirector.narrative = _session.narrative;
     _weatherSchedule = WeatherSchedule(seed: _session.runSeed);
     _inventoryInspections.restore(saved.snapshot?.meta['inventoryInspections']);
@@ -3297,6 +3306,8 @@ void _saveSession(String status) {
           ).toJson(),
           'visitors': _visitorDirector.snapshot.toJson(),
           'ambient': _ambientDirector.deliveredIds,
+          if (_authoredEventCursor != null)
+            'authoredEvents': _authoredEventCursor!.toJson(),
           'unverifiables': _unverifiableDaysShown.toList()..sort(),
           'inventoryInspections': _inventoryInspections.toJson(),
           if (_ending != null) 'ending': _ending!.toJson(),
@@ -3840,6 +3851,7 @@ void _raf(num ts) {
           }
         }
         _updateVisitorSchedule();
+        _updateAuthoredEvents();
         _syncDifficultySeam();
         _updateAmbientEvents();
         _updateUnverifiableNotice();
@@ -4327,6 +4339,20 @@ void _updateVisitorSchedule() {
     );
     _showStrangerCaseNote(arrival);
     return;
+  }
+}
+
+/// Hands compiled screenplay events to the game session without making the
+/// renderer or editor responsible for narrative state.
+void _updateAuthoredEvents() {
+  final cursor = _authoredEventCursor;
+  if (cursor == null) return;
+  final snapshot = _session.snapshot;
+  for (final event in cursor.advance(day: snapshot.day, hour: snapshot.hour)) {
+    if (!_session.applyAuthoredEvent(event)) continue;
+    _canvas
+      ..setAttribute('data-story-last-event', event.id)
+      ..setAttribute('data-story-last-event-kind', event.kind);
   }
 }
 

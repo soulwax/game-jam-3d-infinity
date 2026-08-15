@@ -26,6 +26,30 @@ void main() {
   }
   final sceneIds = {for (final scene in parsed.scenes) scene.id};
   if (sceneIds.length != parsed.scenes.length) _fail('scene ids must be unique');
+  final eventIds = {for (final event in parsed.events) event.event_id};
+  if (eventIds.length != parsed.events.length) _fail('event ids must be unique');
+  for (final event in parsed.events) {
+    if (!const {'broadcast', 'visitor', 'choice', 'aftermath', 'ending'}
+        .contains(event.kind)) {
+      _fail('${event.event_id} has unknown kind ${event.kind}');
+    }
+    if (event.day < 1 || event.day > 21 || event.hour < 0 || event.hour >= 24) {
+      _fail('${event.event_id} has an invalid day or hour');
+    }
+    if (event.source.isNotEmpty && !parsed.sources.contains(event.source)) {
+      _fail('${event.event_id} references source ${event.source}, which is not declared');
+    }
+    for (final effect in event.effects) {
+      if (!effect.contains('=') || effect.startsWith('=') || effect.endsWith('=')) {
+        _fail('${event.event_id} has malformed effect $effect');
+      }
+    }
+    if (event.next_scene.isNotEmpty &&
+        event.next_scene != 'END' &&
+        !sceneIds.contains(event.next_scene)) {
+      _fail('${event.event_id} points to ${event.next_scene}, which does not exist');
+    }
+  }
   for (final scene in parsed.scenes) {
     for (final branch in scene.branches) {
       if (branch.options.length < 2) _fail('${scene.id}/${branch.id} needs at least two options');
@@ -39,6 +63,21 @@ void main() {
   final json = <String, Object?>{
     'version': 1,
     'sources': parsed.sources,
+    'events': [
+      for (final event in parsed.events)
+        {
+          'id': event.event_id,
+          'kind': event.kind,
+          'day': event.day,
+          'hour': event.hour,
+          'label': event.label,
+          if (event.source.isNotEmpty) 'source': event.source,
+          if (event.speaker.isNotEmpty) 'speaker': event.speaker,
+          if (event.cue.isNotEmpty) 'cue': event.cue,
+          if (event.effects.isNotEmpty) 'effects': event.effects,
+          if (event.next_scene.isNotEmpty) 'nextScene': event.next_scene,
+        },
+    ],
     'scenes': [
       for (final scene in parsed.scenes)
         {
@@ -75,9 +114,11 @@ void main() {
 
 StoryScreenplay _parse(List<String> lines) {
   final sources = <String>[];
+  final events = <ScreenplayEvent>[];
   final scenes = <ScreenplayScene>[];
   ScreenplaySceneBuilder? scene;
   ScreenplayBranchBuilder? branch;
+  ScreenplayEventBuilder? event;
   for (var i = 0; i < lines.length; i++) {
     final raw = lines[i].trim();
     if (raw.isEmpty || raw.startsWith('#')) continue;
@@ -88,11 +129,45 @@ StoryScreenplay _parse(List<String> lines) {
       case 'SOURCE':
         if (head.length != 2) _fail('line ${i + 1}: SOURCE path');
         sources.add(head[1]);
+      case 'EVENT':
+        if (head.length != 5 || value.isEmpty) {
+          _fail('line ${i + 1}: EVENT id kind day hour | label');
+        }
+        if (scene != null) {
+          scenes.add(scene.build());
+          scene = null;
+        }
+        if (event != null) events.add(event.build());
+        event = ScreenplayEventBuilder(
+          head[1], head[2], int.tryParse(head[3]) ?? -1,
+          double.tryParse(head[4]) ?? double.nan, value,
+        );
+        scene = null;
+        branch = null;
+      case 'EVENT_SOURCE':
+        if (event == null || head.length != 2) _fail('line ${i + 1}: EVENT_SOURCE path');
+        event!.source = head[1];
+      case 'EVENT_SPEAKER':
+        if (event == null || head.length != 2) _fail('line ${i + 1}: EVENT_SPEAKER speaker');
+        event!.speaker = head[1];
+      case 'EVENT_CUE':
+        if (event == null || head.length != 2) _fail('line ${i + 1}: EVENT_CUE cue');
+        event!.cue = head[1];
+      case 'EVENT_EFFECT':
+        if (event == null || value.isEmpty) _fail('line ${i + 1}: EVENT_EFFECT | key=value');
+        event!.effects.add(value);
+      case 'EVENT_NEXT':
+        if (event == null || head.length != 2) _fail('line ${i + 1}: EVENT_NEXT scene-id');
+        event!.nextScene = head[1];
       case 'LINK':
-        if (scene == null || head.length != 2) _fail('line ${i + 1}: LINK path');
+        if (scene == null || event != null || head.length != 2) _fail('line ${i + 1}: LINK path');
         scene.sources.add(head[1]);
       case 'SCENE':
         if (head.length < 4) _fail('line ${i + 1}: SCENE id day title');
+        if (event != null) {
+          events.add(event.build());
+          event = null;
+        }
         if (scene != null) scenes.add(scene.build());
         scene = ScreenplaySceneBuilder(head[1], int.tryParse(head[2]) ?? -1, head.sublist(3).join(' '));
         branch = null;
@@ -113,9 +188,41 @@ StoryScreenplay _parse(List<String> lines) {
         _fail('line ${i + 1}: unknown record ${head.first}');
     }
   }
+  if (event != null) events.add(event.build());
   if (scene != null) scenes.add(scene.build());
   if (scenes.any((scene) => scene.day < 1 || scene.day > 21)) _fail('scene day must be 1..21');
-  return StoryScreenplay(sources: [...LinkedHashSet<String>.from(sources)], scenes: scenes);
+  return StoryScreenplay(
+    sources: [...LinkedHashSet<String>.from(sources)],
+    scenes: scenes,
+    events: events,
+  );
+}
+
+class ScreenplayEventBuilder {
+  ScreenplayEventBuilder(this.id, this.kind, this.day, this.hour, this.label);
+  final String id;
+  final String kind;
+  final int day;
+  final double hour;
+  final String label;
+  String source = '';
+  String speaker = '';
+  String cue = '';
+  final effects = <String>[];
+  String nextScene = '';
+
+  ScreenplayEvent build() => ScreenplayEvent(
+        id: id,
+        kind: kind,
+        day: day,
+        hour: hour,
+        label: label,
+        source: source,
+        speaker: speaker,
+        cue: cue,
+        effects: effects,
+        nextScene: nextScene,
+      );
 }
 
 class ScreenplaySceneBuilder {

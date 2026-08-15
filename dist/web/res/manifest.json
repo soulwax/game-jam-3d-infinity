@@ -18,6 +18,11 @@
           "status": "generated"
         },
         {
+          "path": "story_script.json",
+          "reason": "built from text/story.screenplay by tools/story_build.dart",
+          "status": "generated"
+        },
+        {
           "path": "licenses/NOTICE.txt",
           "reason": "authored attribution notice for bundled assets, not an asset itself",
           "status": "generated"

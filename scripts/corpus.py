@@ -109,6 +109,18 @@ CUES: dict[str, dict[str, str]] = {
     "long-pause": {"lead": "3.0"},
     "whisper": {"tone": "whisper"},
     "off-key": {"tone": "adrift", "wow": "1"},
+    "careful": {"tone": "courteous", "lead": "1.4"},
+    "hesitant": {"tone": "confiding", "lead": "1.8"},
+    "rushed": {"tone": "frightened", "lead": "0.2"},
+    "measured": {"tone": "rehearsed", "lead": "1.6"},
+    "under-breath": {"tone": "whisper", "set": "wall", "distance": "2"},
+    "breathless": {"tone": "frightened", "wow": "1"},
+    "distant": {"set": "window", "distance": "4"},
+    "telephone": {"set": "phone", "radio_level": "1"},
+    "broken-radio": {"set": "wireless", "radio_level": "4", "crackle": "2"},
+    "echoing": {"set": "floor", "distance": "2"},
+    "stammering": {"tone": "adrift", "wow": "2", "lead": "1.2"},
+    "long-breath": {"lead": "2.2"},
 }
 
 
