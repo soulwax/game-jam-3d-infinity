@@ -238,6 +238,35 @@ List<String> validateFbxGeneratedPackage(Map<String, dynamic> manifest) {
   requiredString('converterVersion');
   requiredString('settingsHash');
   requiredString('licenseId');
+  for (final key in [
+    'packageFiles',
+    'sourceFiles',
+    'sourceHashes',
+    'units',
+    'upAxis',
+    'pivot',
+    'materialSlots',
+    'runtimeProfile',
+  ]) {
+    if (!manifest.containsKey(key)) errors.add('$key is required');
+  }
+  final packageFiles = manifest['packageFiles'];
+  if (packageFiles is List &&
+      packageFiles.any((file) => file is! String || file.isEmpty)) {
+    errors.add('packageFiles must contain non-empty paths');
+  }
+  if (packageFiles is List &&
+      packageFiles.any(
+        (file) =>
+            file is String &&
+            (file.toLowerCase().endsWith('.fbx') ||
+                file.toLowerCase().endsWith('.glb') ||
+                file.toLowerCase().endsWith('.gltf')),
+      )) {
+    errors.add(
+      'runtime package must not contain FBX or glTF source/intermediates',
+    );
+  }
   if (manifest['sourceFormat'] != 'fbx') {
     errors.add('sourceFormat must be fbx');
   }
@@ -251,6 +280,13 @@ List<String> validateFbxGeneratedPackage(Map<String, dynamic> manifest) {
   if (parts is! List || parts.isEmpty) errors.add('parts must be non-empty');
   final textures = manifest['textures'];
   if (textures is! List) errors.add('textures must be a list');
+  final mediaStatus = manifest['mediaStatus'];
+  if (mediaStatus != 'complete' && mediaStatus != 'incomplete') {
+    errors.add('mediaStatus must be complete or incomplete');
+  }
+  if (manifest['runtimeProfile'] == 'runtime' && mediaStatus != 'complete') {
+    errors.add('runtime packages cannot contain incomplete texture media');
+  }
   final lods = manifest['lods'];
   if (lods is! List || lods.length < 3) {
     errors.add('lods must contain LOD-S, LOD0, LOD1, and LOD2');

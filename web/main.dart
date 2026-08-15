@@ -2207,6 +2207,7 @@ Future<void> _commitGraphicsProfile(
       downgradeReasons: negotiation.downgradeReasons,
     );
     _persistGraphicsSettings();
+    _publishRendererDiagnostics();
   } catch (error) {
     _graphicsSettingsStore = GraphicsSettingsStore(
       requested: previousEffective,
@@ -2247,6 +2248,7 @@ void _loadGraphicsSettings() {
     downgradeReasons: negotiation.downgradeReasons,
   );
   _persistGraphicsSettings();
+  _publishRendererDiagnostics();
 }
 
 GraphicsCapabilitySnapshot _graphicsCapabilities() {
@@ -3126,7 +3128,18 @@ void _publishRendererDiagnostics() {
       'inverse-square-smooth-cutoff',
     )
     ..setAttribute('data-renderer-dof-focal-distance', '2.5m')
-    ..setAttribute('data-renderer-camera-inertia', 'exponential-smoothing');
+    ..setAttribute('data-renderer-camera-inertia', 'exponential-smoothing')
+    ..setAttribute(
+      'data-renderer-fbx-diagnostics',
+      jsonEncode({
+        'schema': 'pixeldart-fbx-diagnostic-v1',
+        'enabled': _graphicsSettingsStore.effective.fbxDiagnostics,
+        'attached': false,
+        'activeLod': null,
+        'itemCount': 0,
+        'note': 'package binding is opt-in and not attached in normal gameplay',
+      }),
+    );
   final profileFallback = _pixeldartRuntime?.profileFallbackReason;
   if (profileFallback != null) {
     _canvas.setAttribute('data-renderer-profile-fallback', profileFallback);

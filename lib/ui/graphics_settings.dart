@@ -12,6 +12,7 @@ class GraphicsSettingsProfile {
   final String outputEncoding;
   final String diagnosticLevel;
   final String shadowQuality;
+  final bool fbxDiagnostics;
 
   const GraphicsSettingsProfile({
     this.version = 1,
@@ -24,6 +25,7 @@ class GraphicsSettingsProfile {
     this.outputEncoding = 'srgb',
     this.diagnosticLevel = 'full',
     this.shadowQuality = 'profile',
+    this.fbxDiagnostics = false,
   });
 
   GraphicsSettingsProfile copyWith({
@@ -36,6 +38,7 @@ class GraphicsSettingsProfile {
     String? outputEncoding,
     String? diagnosticLevel,
     String? shadowQuality,
+    bool? fbxDiagnostics,
   }) => GraphicsSettingsProfile(
     version: version,
     preset: preset ?? this.preset,
@@ -47,6 +50,7 @@ class GraphicsSettingsProfile {
     outputEncoding: outputEncoding ?? this.outputEncoding,
     diagnosticLevel: diagnosticLevel ?? this.diagnosticLevel,
     shadowQuality: shadowQuality ?? this.shadowQuality,
+    fbxDiagnostics: fbxDiagnostics ?? this.fbxDiagnostics,
   );
 
   static GraphicsSettingsProfile forPreset(GraphicsPreset preset) =>
@@ -98,6 +102,7 @@ class GraphicsSettingsProfile {
     String? outputEncoding,
     String? diagnosticLevel,
     String? shadowQuality,
+    bool? fbxDiagnostics,
   }) {
     final updated = copyWith(
       renderScale: renderScale,
@@ -108,6 +113,7 @@ class GraphicsSettingsProfile {
       outputEncoding: outputEncoding,
       diagnosticLevel: diagnosticLevel,
       shadowQuality: shadowQuality,
+      fbxDiagnostics: fbxDiagnostics,
     );
     for (final candidate in [
       GraphicsPreset.high,
@@ -122,7 +128,8 @@ class GraphicsSettingsProfile {
           p.textureQuality == updated.textureQuality &&
           p.outputEncoding == updated.outputEncoding &&
           p.diagnosticLevel == updated.diagnosticLevel &&
-          p.shadowQuality == updated.shadowQuality) {
+          p.shadowQuality == updated.shadowQuality &&
+          p.fbxDiagnostics == updated.fbxDiagnostics) {
         return updated.copyWith(preset: candidate);
       }
     }
@@ -179,6 +186,7 @@ class GraphicsSettingsProfile {
     'outputEncoding': outputEncoding,
     'diagnosticLevel': diagnosticLevel,
     'shadowQuality': shadowQuality,
+    'fbxDiagnostics': fbxDiagnostics,
   };
 
   factory GraphicsSettingsProfile.fromJson(Object? raw) {
@@ -199,6 +207,7 @@ class GraphicsSettingsProfile {
       outputEncoding: raw['outputEncoding'] as String? ?? 'srgb',
       diagnosticLevel: raw['diagnosticLevel'] as String? ?? 'full',
       shadowQuality: raw['shadowQuality'] as String? ?? 'profile',
+      fbxDiagnostics: raw['fbxDiagnostics'] as bool? ?? false,
     );
     profile.validate();
     return profile;

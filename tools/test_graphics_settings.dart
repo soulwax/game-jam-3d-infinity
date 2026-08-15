@@ -50,6 +50,7 @@ void main() {
     dynamicResolution: false,
     frameTarget: 'display',
     textureQuality: 'high',
+    shadowQuality: 'standard',
   );
   check(restoredStandard.preset == GraphicsPreset.standard, 'matching standard options resolves to Standard preset');
 

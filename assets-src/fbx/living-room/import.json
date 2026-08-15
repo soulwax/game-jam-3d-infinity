@@ -1,0 +1,18 @@
+{
+  "schema": "pixeldart-fbx-import-v1",
+  "assetId": "living-room",
+  "sourceFormat": "fbx",
+  "converterId": "assimp-cli",
+  "converterVersion": "6.0.0",
+  "settingsHash": "b9e6fd5acebefee85a8f588e27cce496bae01aa6609ed4936973bb0d5f9e0e32",
+  "units": "metres",
+  "upAxis": "Y-up",
+  "forwardAxis": "-Z",
+  "scaleToMetres": 0.01,
+  "pivot": "floor-center",
+  "triangulate": true,
+  "generateTangents": "mikktspace-v2",
+  "lodPolicy": "lod-s-0-1-2",
+  "textureCap": 4096,
+  "animationPolicy": "reject-skinned-input"
+}

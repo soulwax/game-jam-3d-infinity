@@ -1,0 +1,19 @@
+{
+  "schema": "pixeldart-fbx-source-v1",
+  "assetId": "living-room",
+  "status": "source-only",
+  "licenseId": "user-confirmed-licensed-source",
+  "licenseEvidence": "pending-recording",
+  "sourceFormat": "fbx",
+  "sourceFiles": [
+    {
+      "path": "source/InteriorTest.fbx",
+      "sha256": "383a2269f797231bd38d5ab04d1bab685c0526b43b2cb920442d91b85bd96359",
+      "bytes": 1384188,
+      "fbxVersion": 7400
+    }
+  ],
+  "importConfig": "import.json",
+  "runtimePackage": null,
+  "notes": "Licensed living-room source supplied by the project owner. Assimp inspection reports approximately 500 x 300 x 817 source units, so import scale is locked to 0.01 metres per source unit. Do not ship the FBX directly; convert, apply scale, and verify a glTF/QMSH package first."
+}
