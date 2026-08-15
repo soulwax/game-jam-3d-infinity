@@ -6476,7 +6476,7 @@ r=new A.qm(a,h,b,r,j,f,k,g,i,!1,e,l==null?null:A.aX(l,s,t.X))
 r.i8(a,b,c,!1,e,f,g,h,i,j,k,l)
 return r},
 Cq(a,b,c,d,e){var s=A.m8("RENDERER_SHA"),r=A.m8("GAME_SHA"),q=A.m8("DART_SDK_VERSION")
-return A.ya(a,"bd7c889fae82-32c603108913-dirty",b,!1,d,r,A.m8("LOCKFILE_SHA256"),e,A.m8("PROJECT_VERSION"),s,q,null)},
+return A.ya(a,"3903df2376f9-32c603108913-dirty",b,!1,d,r,A.m8("LOCKFILE_SHA256"),e,A.m8("PROJECT_VERSION"),s,q,null)},
 m8(a){var s=B.ju.h(0,a)
 return s.length===0?null:s},
 qm:function qm(a,b,c,d,e,f,g,h,i,j,k,l){var _=this
@@ -22266,7 +22266,7 @@ B.js=new A.a3(B.da,["Move forward","Move back","Move left","Move right","Interac
 B.k7={uScene:0,uHistory:1}
 B.jt=new A.a3(B.k7,[0,1],t.I)
 B.jI={RENDERER_SHA:0,GAME_SHA:1,DART_SDK_VERSION:2,LOCKFILE_SHA256:3,PROJECT_VERSION:4}
-B.ju=new A.a3(B.jI,["32c603108913263d00564b4552f5a8b12012fbe7","bd7c889fae82b04aa65038686a1d19bfcd6b58d9","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29","0.1.2.0"],t.D)
+B.ju=new A.a3(B.jI,["32c603108913263d00564b4552f5a8b12012fbe7","3903df2376f91d98773f65e745e620b40d1bd2d3","3.12.2","45ec8ddeeb3836a9419f1d3ed4d340f60e610615db671faa136c79cf675fdb29","0.1.2.0"],t.D)
 B.jU={aPosition:0,aUvMat:1}
 B.d0=new A.a3(B.jU,[0,4],t.I)
 B.k8={uScene:0,uLut:1}
