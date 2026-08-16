@@ -8,7 +8,9 @@
 # DIALOGUE speaker | text | BRANCH id | prompt | OPTION id next | label.
 # The editor's Game events window writes EVENT id kind day hour | label, followed
 # by optional EVENT_SOURCE, EVENT_SPEAKER, EVENT_CUE, EVENT_EFFECT | key=value,
-# and EVENT_NEXT scene-id records. These are the game-loop schedule, not prose.
+# and EVENT_NEXT scene-id, and EVENT_RANDOM earliest-hour latest-hour records.
+# A random range resolves to a stable minute inside the range for each game run.
+# These are the game-loop schedule, not prose.
 # Branch targets are scene ids or END. Keep ids stable: saves and analytics use them.
 
 SOURCE text/broadcasts/week-1.txt

@@ -48,6 +48,16 @@ void main() {
     if (event.day < 1 || event.day > 21 || event.hour < 0 || event.hour >= 24) {
       _fail('${event.id} has an invalid day or hour');
     }
+    if (event.hasRandomRange &&
+        (event.randomFrom == null ||
+            event.randomTo == null ||
+            !event.randomFrom!.isFinite ||
+            !event.randomTo!.isFinite ||
+            event.randomFrom! < 0 ||
+            event.randomTo! >= 24 ||
+            event.randomFrom! > event.randomTo!)) {
+      _fail('${event.id} has an invalid random time range');
+    }
     if (event.source.isNotEmpty && !parsed.sources.contains(event.source)) {
       _fail(
         '${event.id} references source ${event.source}, which is not declared',
@@ -90,6 +100,8 @@ void main() {
           'day': event.day,
           'hour': event.hour,
           'label': event.label,
+          if (event.hasRandomRange) 'randomFrom': event.randomFrom,
+          if (event.hasRandomRange) 'randomTo': event.randomTo,
           if (event.source.isNotEmpty) 'source': event.source,
           if (event.speaker.isNotEmpty) 'speaker': event.speaker,
           if (event.cue.isNotEmpty) 'cue': event.cue,
@@ -193,6 +205,11 @@ StoryScreenplay _parse(List<String> lines) {
         if (event == null || head.length != 2)
           _fail('line ${i + 1}: EVENT_NEXT scene-id');
         event!.nextScene = head[1];
+      case 'EVENT_RANDOM':
+        if (event == null || head.length != 3)
+          _fail('line ${i + 1}: EVENT_RANDOM earliest latest');
+        event!.randomFrom = double.tryParse(head[1]);
+        event!.randomTo = double.tryParse(head[2]);
       case 'LINK':
         if (scene == null || event != null || head.length != 2)
           _fail('line ${i + 1}: LINK path');
@@ -258,6 +275,10 @@ class ScreenplayEventBuilder {
   String cue = '';
   final effects = <String>[];
   String nextScene = '';
+  double? randomFrom;
+  double? randomTo;
+
+  bool get hasRandomRange => randomFrom != null || randomTo != null;
 
   ScreenplayEvent build() => ScreenplayEvent(
     id: id,
@@ -270,6 +291,8 @@ class ScreenplayEventBuilder {
     cue: cue,
     effects: effects,
     nextScene: nextScene,
+    randomFrom: randomFrom,
+    randomTo: randomTo,
   );
 }
 

@@ -52,6 +52,8 @@ def main() -> None:
             "hesitant",
             ["visitor.present=true", "residue.test=threshold"],
             "day-02",
+            random_from=16.0,
+            random_to=18.5,
         )
     )
     with tempfile.TemporaryDirectory(prefix="screenplay-events-") as directory:
@@ -64,6 +66,8 @@ def main() -> None:
         assert event.cue == "hesitant"
         assert event.effects == ["visitor.present=true", "residue.test=threshold"]
         assert event.next_scene == "day-02"
+        assert event.random_from == 16.0
+        assert event.random_to == 18.5
 
     with tempfile.NamedTemporaryFile("w", suffix=".screenplay", delete=False) as malformed:
         malformed.write("OPTION orphan END | This has no branch\n")

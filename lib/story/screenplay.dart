@@ -69,6 +69,8 @@ class ScreenplayEvent {
     this.cue = '',
     Iterable<String> effects = const [],
     this.nextScene = '',
+    this.randomFrom,
+    this.randomTo,
   }) : effects = List<String>.unmodifiable(effects);
 
   final String id;
@@ -81,6 +83,10 @@ class ScreenplayEvent {
   final String cue;
   final List<String> effects;
   final String nextScene;
+  final double? randomFrom;
+  final double? randomTo;
+
+  bool get hasRandomRange => randomFrom != null || randomTo != null;
 
   factory ScreenplayEvent.fromJson(Object? value) {
     if (value is! Map ||
@@ -103,6 +109,22 @@ class ScreenplayEvent {
     if (day < 1 || day > 21 || !hour.isFinite || hour < 0 || hour >= 24) {
       throw const FormatException('screenplay event day/hour is out of range');
     }
+    final randomFrom = value['randomFrom'];
+    final randomTo = value['randomTo'];
+    if ((randomFrom != null && randomFrom is! num) ||
+        (randomTo != null && randomTo is! num) ||
+        (randomFrom == null) != (randomTo == null)) {
+      throw const FormatException('screenplay event random range is invalid');
+    }
+    if (randomFrom is num &&
+        randomTo is num &&
+        (!randomFrom.toDouble().isFinite ||
+            !randomTo.toDouble().isFinite ||
+            randomFrom < 0 ||
+            randomTo >= 24 ||
+            randomFrom > randomTo)) {
+      throw const FormatException('screenplay event random range is out of range');
+    }
     String optionalString(String key) {
       final item = value[key];
       return item == null ? '' : item is String ? item : (throw FormatException('screenplay event $key is invalid'));
@@ -118,6 +140,8 @@ class ScreenplayEvent {
       cue: optionalString('cue'),
       effects: [for (final item in rawEffects) item as String],
       nextScene: optionalString('nextScene'),
+      randomFrom: randomFrom is num ? randomFrom.toDouble() : null,
+      randomTo: randomTo is num ? randomTo.toDouble() : null,
     );
   }
 }

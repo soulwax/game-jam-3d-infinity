@@ -4,6 +4,7 @@
     python scripts/tts.py --speaker warden --day 5 --tone official
     python scripts/tts.py --all
     python scripts/tts.py --line "Open the door." --name knock-plea --tone aggressive
+    python scripts/tts.py --line "Stay back." --name warning --voice-name en-GB-ThomasNeural --variation strained
 
 Two axes shape the result and they are independent:
 
@@ -13,6 +14,9 @@ Two axes shape the result and they are independent:
   --set              the *transmission* — what it is heard through. A valve
                      wireless, a failing television, a front door, a corridor
                      tannoy, a telephone, or nothing at all.
+  --variation        the character after synthesis: natural, bright, dark,
+                     breathy, nasal, strained, childlike, warm, hollow,
+                     metallic, shaky, or elderly.
 
 Two source shapes are understood, both from text/:
 
@@ -386,10 +390,29 @@ def ensure_edge() -> bool:
         subprocess.run([sys.executable, "-m", "venv", str(VENV)], check=True)
         subprocess.run([str(py), "-m", "pip", "install", "-q",
                         "--disable-pip-version-check", "edge-tts"], check=True)
-    if Path(sys.executable).resolve() != py.resolve():
+    # The venv's POSIX python is often a symlink to the system interpreter.
+    # Comparing resolved paths makes the re-executed process look like the
+    # original process and silently falls back to gTTS. Compare actual paths.
+    if Path(sys.executable).absolute() != py.absolute():
         sys.exit(subprocess.run(
             [str(py), str(Path(__file__).resolve()), *sys.argv[1:]]).returncode)
-    return False
+    return True
+
+
+VARIATIONS: dict[str, tuple[float, str]] = {
+    "natural": (1.00, ""),
+    "bright": (1.045, "equalizer=f=3200:t=q:w=1.4:g=4,equalizer=f=260:t=q:w=1.0:g=-2"),
+    "dark": (0.91, "equalizer=f=230:t=q:w=1.0:g=4,equalizer=f=2600:t=q:w=1.2:g=-5"),
+    "breathy": (1.00, "highpass=f=120,lowpass=f=5200,acompressor=threshold=-26dB:ratio=2:attack=20:release=180"),
+    "nasal": (1.00, "equalizer=f=900:t=q:w=0.9:g=5,equalizer=f=280:t=q:w=1.0:g=-4"),
+    "strained": (0.97, "equalizer=f=1200:t=q:w=1.0:g=4,equalizer=f=3600:t=q:w=1.2:g=3,acompressor=threshold=-24dB:ratio=3:attack=3:release=70"),
+    "childlike": (1.08, "equalizer=f=3400:t=q:w=1.5:g=3,equalizer=f=260:t=q:w=1.0:g=-2"),
+    "warm": (0.985, "equalizer=f=180:t=q:w=0.9:g=3,equalizer=f=2800:t=q:w=1.3:g=2"),
+    "hollow": (1.00, "equalizer=f=300:t=q:w=1.1:g=-5,equalizer=f=1800:t=q:w=1.0:g=-3,equalizer=f=4200:t=q:w=1.2:g=2"),
+    "metallic": (1.00, "highpass=f=260,equalizer=f=2500:t=q:w=1.4:g=6,aecho=0.8:0.35:18:0.14"),
+    "shaky": (1.00, "tremolo=f=5.2:d=0.12,equalizer=f=2400:t=q:w=1.3:g=2"),
+    "elderly": (0.87, "equalizer=f=180:t=q:w=1.0:g=4,equalizer=f=2200:t=q:w=1.1:g=-4,acompressor=threshold=-28dB:ratio=2:attack=18:release=220"),
+}
 
 
 @dataclass
@@ -586,8 +609,10 @@ def silence(seconds: float, dest: Path) -> None:
 
 
 def shape_line(src: Path, dest: Path, tone: Tone, shift: float,
-               wow: int = 0) -> None:
+               wow: int = 0, variation: tuple[float, str] = (1.0, "")) -> None:
     chain = []
+    variation_shift, variation_filter = variation
+    shift *= variation_shift
     if abs(shift - 1.0) > 1e-3:
         chain += [f"asetrate={SR}*{shift:.4f}", f"aresample={SR}",
                   f"atempo={1 / shift:.4f}"]
@@ -595,6 +620,8 @@ def shape_line(src: Path, dest: Path, tone: Tone, shift: float,
     freq, depth = WOW[wow]
     if depth:
         chain.append(f"vibrato=f={freq}:d={depth}")
+    if variation_filter:
+        chain.append(variation_filter)
     chain.append(
         f"aformat=sample_fmts=s16:sample_rates={SR}:channel_layouts=mono")
     run(ff("-i", str(src), "-af", ",".join(c for c in chain if c),
@@ -794,6 +821,7 @@ class Plan:
     dropouts: int | None
     fault_part: str
     lead: float | None
+    variation: tuple[float, str]
     stem: str
     jobs: list[list[Job]]
 
@@ -811,6 +839,11 @@ def plan_units(units: list[Unit], a: argparse.Namespace,
         if overrides:
             tone = replace(tone, **overrides)
         gender = pick(a, unit, "voice")
+        variation_name = pick(a, unit, "variation")
+        if variation_name not in VARIATIONS:
+            raise SystemExit(
+                f"{unit.stem}: variation is {variation_name!r}, needs "
+                f"one of {', '.join(VARIATIONS)}")
         voice = (a.voice_name
                  or unit.direction.get("voice_name")
                  or SPEAKERS.get(unit.speaker, {}).get("voice_name")
@@ -837,6 +870,7 @@ def plan_units(units: list[Unit], a: argparse.Namespace,
             gauge["crackle"], gauge["distance"],
             int(drops) if drops else None, str(pick(a, unit, "fault_part")),
             float(lead) if lead else None,
+            VARIATIONS[variation_name],
             unit.stem + (f"-{a.tag}" if a.tag else ""), jobs))
     return plans
 
@@ -874,7 +908,7 @@ def render(plan: Plan, a: argparse.Namespace, out_dir: Path,
             continue
         audio = join_jobs(plan.jobs[i], work / f"{stem}-{i}")
         shaped = work / f"{stem}-{i}.wav"
-        shape_line(audio, shaped, tone, plan.shift, plan.wow)
+        shape_line(audio, shaped, tone, plan.shift, plan.wow, plan.variation)
         voiced.append(Piece(part.label, shaped, duration(shaped), gap))
 
     budget = a.max_seconds
@@ -1126,6 +1160,8 @@ def main() -> None:
                    help="overrides the speaker's default")
     p.add_argument("--rate", help="precise Edge rate override, e.g. +6%% or -12%%")
     p.add_argument("--pitch", help="precise Edge pitch override, e.g. +2Hz or -8Hz")
+    p.add_argument("--variation", choices=tuple(VARIATIONS),
+                   help="timbre/age variation independent of tone and transmission")
     p.add_argument("--set", choices=tuple(SETS),
                    help="transmission character; overrides the speaker's default")
     p.add_argument("--radio-level", type=int, choices=tuple(RADIO),

@@ -35,6 +35,19 @@ void main() {
     restored.effective.preset == GraphicsPreset.standard,
     'effective persists separately',
   );
+  final migrated = GraphicsSettingsProfile.fromJson({
+    ...requested.toJson(),
+    'fbxDiagnostics': true,
+    'modelPackageDiagnostics': null,
+  });
+  check(
+    migrated.modelPackageDiagnostics,
+    'legacy fbx diagnostics key migrates to model-package diagnostics',
+  );
+  check(
+    !requested.toJson().containsKey('fbxDiagnostics'),
+    'new graphics settings do not write the legacy fbx key',
+  );
 
   // S-04: Preset resolution and custom auto-detection
   final highPreset = GraphicsSettingsProfile.forPreset(GraphicsPreset.high);

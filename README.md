@@ -37,6 +37,14 @@ Use the ‹ and › day buttons to move through the 21-day story, while the day
 summary shows the number of moments and the next scheduled time.
 The Hour field also has half-hour nudge buttons for quick rhythm changes, and
 the editor checks destinations, event kinds, and voice cues before saving.
+To make an event flexible, turn on **Random time** and enter an **Earliest** and
+**Latest** hour. The event remains one named moment, but the timeline shows its
+window as a band so flexible pacing is visible instead of hidden in prose.
+The compiler rejects incomplete, reversed, or out-of-day ranges. At runtime the
+game resolves each range to a stable minute using the run seed and event ID, so
+the same playthrough does not move an event every frame, while a new run can
+feel different. Save data keeps the delivered-event IDs, so reloads do not
+repeat an already-fired random event.
 
 The editor's headless data checks can be run without a display:
 
@@ -74,11 +82,28 @@ and only copies it into `web/res/vo/` and the audio manifest when you press
 **Keep**. **Discard** removes the staged file without touching the game.
 The **Quick style** menu covers common choices such as Natural visitor, Official
 broadcast, Close whisper, Urgent, and Distant; choose Custom when you want to
-adjust the individual controls.
+adjust the individual controls. The **Character** control adds natural, bright,
+dark, breathy, nasal, strained, childlike, warm, hollow, metallic, shaky, and
+elderly timbral variations independently of the emotional performance and
+transmission. Named characters also receive distinct neural voice identities
+automatically, while the automatic backend now
+properly uses installed Edge neural voices when available; gTTS remains a
+working fallback and still receives the same timbre processing.
 Accepted manifest-backed visitor clips are loaded by the game audio system and
 played automatically when their visitor/day/tier/line key matches. Reload the
 game after keeping a clip so the browser loads the updated manifest. TTS needs
 `ffmpeg`, `ffprobe`, and the backend's normal network/dependency setup.
+
+The repository also includes a voice demonstration pack under
+`web/res/vo/demo/`. The current set covers Irish, Australian, North American,
+New Zealand, and British voices across courteous, alert, authoritative,
+elderly, rough, intimate, measured, and technical performances. It also
+demonstrates door, window, tannoy, wall, floor, telephone, wireless, and clean
+transmissions. The clips are registered in `web/res/manifest.json` so they can
+be used immediately by audio-preview tooling or the game.
+The same folder also contains a `demo-lab-*` A/B set: one identical sentence
+rendered with different neural voices and character profiles, making it easy to
+compare timbre without the wording or scene context changing.
 
 For precise creative experiments, use `--line-file` instead of fighting shell
 quoting; UTF-8 punctuation is preserved. `--rate +6%` and `--pitch -2Hz` give

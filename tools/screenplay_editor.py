@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import math
 import os
 import queue
 import re
@@ -62,6 +63,8 @@ class Event:
     cue: str = ""
     effects: list[str] = field(default_factory=list)
     next_scene: str = ""
+    random_from: float | None = None
+    random_to: float | None = None
 
 
 @dataclass
@@ -90,6 +93,10 @@ TONES = (
 TRANSMISSIONS = (
     "clean", "door", "letterbox", "wireless", "tannoy", "phone", "wall",
     "floor", "window", "tvset", "bedside",
+)
+VOICE_VARIATIONS = (
+    "natural", "bright", "dark", "breathy", "nasal", "strained", "childlike",
+    "warm", "hollow", "metallic", "shaky", "elderly",
 )
 VOICE_DEFAULTS = {
     "broadcast": ("formal", "wireless"),
@@ -165,6 +172,20 @@ def parse_script(path: Path) -> Script:
             elif record == "EVENT_NEXT":
                 _need(event, "EVENT_NEXT")
                 event.next_scene = words[1]
+            elif record == "EVENT_RANDOM":
+                _need(event, "EVENT_RANDOM")
+                if len(words) != 3:
+                    raise ValueError("EVENT_RANDOM needs earliest and latest hour")
+                event.random_from = float(words[1])
+                event.random_to = float(words[2])
+                if (
+                    not math.isfinite(event.random_from)
+                    or not math.isfinite(event.random_to)
+                    or event.random_from < 0
+                    or event.random_to >= 24
+                    or event.random_from > event.random_to
+                ):
+                    raise ValueError("EVENT_RANDOM must stay within 0–24 and earliest must come first")
             elif record == "LINK":
                 _need(scene, "LINK")
                 scene.links.append(words[1])
@@ -213,6 +234,8 @@ def encode_script(script: Script) -> str:
             lines.append(f"EVENT_EFFECT | {effect}")
         if event.next_scene:
             lines.append(f"EVENT_NEXT {event.next_scene}")
+        if event.random_from is not None and event.random_to is not None:
+            lines.append(f"EVENT_RANDOM {event.random_from:g} {event.random_to:g}")
     if script.events:
         lines.append("")
     for scene in script.scenes:
@@ -366,21 +389,26 @@ class Editor(tk.Tk if tk is not None else object):
             voice_frame, values=("auto", "edge", "gtts"), state="readonly"
         )
         self.tts_backend.grid(row=3, column=1, sticky="ew")
-        ttk.Label(voice_frame, text="Variation").grid(row=4, column=0, sticky="w")
+        ttk.Label(voice_frame, text="Character").grid(row=4, column=0, sticky="w")
+        self.tts_variation = ttk.Combobox(
+            voice_frame, values=VOICE_VARIATIONS, state="readonly"
+        )
+        self.tts_variation.grid(row=4, column=1, sticky="ew")
+        ttk.Label(voice_frame, text="Cue").grid(row=5, column=0, sticky="w")
         self.tts_cue = ttk.Combobox(
             voice_frame, values=("none",) + CUES, state="readonly"
         )
-        self.tts_cue.grid(row=4, column=1, sticky="ew")
-        ttk.Label(voice_frame, text="Quick style").grid(row=5, column=0, sticky="w")
+        self.tts_cue.grid(row=5, column=1, sticky="ew")
+        ttk.Label(voice_frame, text="Quick style").grid(row=6, column=0, sticky="w")
         self.tts_preset = ttk.Combobox(
             voice_frame,
             values=("Custom", "Natural visitor", "Official broadcast", "Close whisper", "Urgent", "Distant"),
             state="readonly",
         )
-        self.tts_preset.grid(row=5, column=1, sticky="ew")
+        self.tts_preset.grid(row=6, column=1, sticky="ew")
         self.tts_preset.bind("<<ComboboxSelected>>", self._apply_tts_preset)
         voice_buttons = ttk.Frame(voice_frame)
-        voice_buttons.grid(row=6, column=0, columnspan=2, sticky="e", pady=(4, 0))
+        voice_buttons.grid(row=7, column=0, columnspan=2, sticky="e", pady=(4, 0))
         self.tts_button = ttk.Button(
             voice_buttons, text="Generate review", command=self._generate_voice
         )
@@ -398,7 +426,7 @@ class Editor(tk.Tk if tk is not None else object):
         )
         self.tts_discard_button.pack(side="left", padx=2)
         self.tts_status = ttk.Label(voice_frame, text="Choose a line, then make a clip.")
-        self.tts_status.grid(row=7, column=0, columnspan=2, sticky="w")
+        self.tts_status.grid(row=8, column=0, columnspan=2, sticky="w")
         beat_buttons = ttk.Frame(beat_form)
         beat_buttons.grid(row=4, column=0, columnspan=2, sticky="e")
         ttk.Button(beat_buttons, text="New moment", command=self._new_beat).pack(side="left", padx=2)
@@ -561,6 +589,7 @@ class Editor(tk.Tk if tk is not None else object):
         )
         self.tts_tone.set(tone)
         self.tts_set.set(transmission)
+        self.tts_variation.set("natural")
         self.tts_backend.set("auto")
         self.tts_cue.set("none")
         self.tts_preset.set("Custom")
@@ -568,17 +597,18 @@ class Editor(tk.Tk if tk is not None else object):
     def _apply_tts_preset(self, _event: object = None) -> None:
         preset = self.tts_preset.get()
         values = {
-            "Natural visitor": ("neutral", "door", "none"),
-            "Official broadcast": ("formal", "wireless", "none"),
-            "Close whisper": ("confiding", "wall", "under-breath"),
-            "Urgent": ("frightened", "door", "rushed"),
-            "Distant": ("neutral", "window", "distant"),
+            "Natural visitor": ("neutral", "door", "natural", "none"),
+            "Official broadcast": ("formal", "wireless", "dark", "none"),
+            "Close whisper": ("confiding", "wall", "breathy", "under-breath"),
+            "Urgent": ("frightened", "door", "strained", "rushed"),
+            "Distant": ("neutral", "window", "hollowed", "distant"),
         }.get(preset)
         if values is None:
             return
-        tone, transmission, cue = values
+        tone, transmission, variation, cue = values
         self.tts_tone.set(tone)
         self.tts_set.set(transmission)
+        self.tts_variation.set(variation)
         self.tts_cue.set(cue)
 
     def _new_beat(self) -> None:
@@ -599,7 +629,11 @@ class Editor(tk.Tk if tk is not None else object):
             "visitors" in link.split("/") and Path(link).stem == speaker
             for link in self.scene.links
         )
-        if visitor_link and cue in ("", "none"):
+        if (
+            visitor_link
+            and cue in ("", "none")
+            and self.tts_variation.get() == "natural"
+        ):
             dialogue_number = sum(
                 1
                 for beat in self.scene.beats[: (selection[0] + 1 if selection else len(self.scene.beats))]
@@ -614,7 +648,7 @@ class Editor(tk.Tk if tk is not None else object):
             r"[^a-z0-9-]+", "-", self.tts_set.get().lower()
         ).strip("-")
         variation = "-".join(
-            part for part in (tone, transmission, cue if cue != "none" else "") if part
+            part for part in (tone, transmission, self.tts_variation.get(), cue if cue != "none" else "") if part
         )
         return f"screenplay-{safe_scene}-line-{number:02d}-{safe_speaker}-{variation}"
 
@@ -646,6 +680,7 @@ class Editor(tk.Tk if tk is not None else object):
             "--speaker", speaker,
             "--tone", self.tts_tone.get() or "neutral",
             "--set", self.tts_set.get() or "clean",
+            "--variation", self.tts_variation.get() or "natural",
             "--backend", self.tts_backend.get() or "auto",
             "--out", str(review_dir),
             "--no-manifest",
@@ -1047,6 +1082,9 @@ class Editor(tk.Tk if tk is not None else object):
         )
         day = tk.StringVar()
         hour = tk.StringVar()
+        random_time = tk.BooleanVar(value=False)
+        random_from = tk.StringVar()
+        random_to = tk.StringVar()
         label = tk.StringVar()
         source = ttk.Combobox(right, state="readonly")
         speaker = ttk.Combobox(right, state="readonly")
@@ -1070,6 +1108,27 @@ class Editor(tk.Tk if tk is not None else object):
                 ttk.Entry(right, textvariable=variable).grid(row=row, column=1, sticky="ew", pady=3)
             else:
                 variable.grid(row=row, column=1, sticky="ew", pady=3)
+
+        def toggle_random_time() -> None:
+            state = "normal" if random_time.get() else "disabled"
+            for entry in (random_from_entry, random_to_entry):
+                entry.configure(state=state)
+
+        ttk.Checkbutton(
+            right,
+            text="Random time",
+            variable=random_time,
+            command=toggle_random_time,
+        ).grid(row=2, column=3, sticky="w", padx=(5, 0))
+        range_frame = ttk.Frame(right)
+        range_frame.grid(row=3, column=2, columnspan=2, sticky="w", padx=(5, 0))
+        ttk.Label(range_frame, text="earliest").pack(side="left")
+        random_from_entry = ttk.Entry(range_frame, textvariable=random_from, width=6)
+        random_from_entry.pack(side="left", padx=(3, 6))
+        ttk.Label(range_frame, text="latest").pack(side="left")
+        random_to_entry = ttk.Entry(range_frame, textvariable=random_to, width=6)
+        random_to_entry.pack(side="left", padx=(3, 0))
+        toggle_random_time()
 
         def nudge_hour(amount: float) -> None:
             try:
@@ -1134,7 +1193,10 @@ class Editor(tk.Tk if tk is not None else object):
                     font=("TkDefaultFont", 8),
                 )
             for event in ordered_events():
-                y = top + (event.hour / 24.0) * (bottom - top)
+                start_hour = event.random_from if event.random_from is not None else event.hour
+                end_hour = event.random_to if event.random_to is not None else event.hour
+                y = top + (start_hour / 24.0) * (bottom - top)
+                end_y = top + (end_hour / 24.0) * (bottom - top)
                 color = {
                     "broadcast": "#4b75a8",
                     "visitor": "#9b5c45",
@@ -1142,6 +1204,11 @@ class Editor(tk.Tk if tk is not None else object):
                     "aftermath": "#66845a",
                     "ending": "#9a7a36",
                 }.get(event.kind, "#666666")
+                if end_hour != start_hour:
+                    timeline.create_line(
+                        axis_x + 1, y, axis_x + 1, end_y,
+                        fill=color, width=5,
+                    )
                 timeline.create_oval(
                     axis_x - 3,
                     y - 4,
@@ -1152,8 +1219,12 @@ class Editor(tk.Tk if tk is not None else object):
                 )
                 timeline.create_text(
                     axis_x + 12,
-                    y,
-                    text=f"{event.hour:04.1f}  {event.label[:28]}",
+                    (y + end_y) / 2,
+                    text=(
+                        f"{start_hour:04.1f}–{end_hour:04.1f}  {event.label[:24]}"
+                        if end_hour != start_hour
+                        else f"{event.hour:04.1f}  {event.label[:28]}"
+                    ),
                     anchor="w",
                     fill="#333333",
                     font=("TkDefaultFont", 8),
@@ -1174,7 +1245,19 @@ class Editor(tk.Tk if tk is not None else object):
                 event for event in ordered_events() if event.day == day_number
             ]
             close = min(nearest, key=lambda event: abs(event.hour - placed_hour), default=None)
-            if close is not None and abs(close.hour - placed_hour) <= 0.5:
+            in_range = next(
+                (
+                    event for event in nearest
+                    if event.random_from is not None
+                    and event.random_to is not None
+                    and event.random_from <= placed_hour <= event.random_to
+                ),
+                None,
+            )
+            close = in_range or close
+            if close is not None and (
+                in_range is not None or abs(close.hour - placed_hour) <= 0.5
+            ):
                 visible = ordered_events()
                 event_list.selection_clear(0, "end")
                 index = visible.index(close)
@@ -1214,6 +1297,10 @@ class Editor(tk.Tk if tk is not None else object):
             for variable in (event_id, day, hour, label):
                 variable.set("")
             event_kind.set("visitor")
+            random_time.set(False)
+            random_from.set("")
+            random_to.set("")
+            toggle_random_time()
             speaker.set("")
             cue.set("none")
             next_scene.set("")
@@ -1226,6 +1313,11 @@ class Editor(tk.Tk if tk is not None else object):
             event_kind.set(event.kind)
             day.set(str(event.day))
             hour.set(str(event.hour))
+            has_range = event.random_from is not None and event.random_to is not None
+            random_time.set(has_range)
+            random_from.set("" if event.random_from is None else str(event.random_from))
+            random_to.set("" if event.random_to is None else str(event.random_to))
+            toggle_random_time()
             label.set(event.label)
             source.set(event.source)
             speaker.set(event.speaker)
@@ -1247,18 +1339,26 @@ class Editor(tk.Tk if tk is not None else object):
                     identifier,
                     event_kind.get().strip(),
                     int(day.get()),
-                    float(hour.get()),
+                    float(random_from.get()) if random_time.get() and random_from.get().strip() else float(hour.get()),
                     label.get().strip(),
                     source.get().strip(),
                     speaker.get().strip(),
                     "" if cue.get() == "none" else cue.get().strip(),
                     [line.strip() for line in effects.get("1.0", "end").splitlines() if line.strip()],
                     self._scene_id_from_label(next_scene.get()),
+                    float(random_from.get()) if random_time.get() and random_from.get().strip() else None,
+                    float(random_to.get()) if random_time.get() and random_to.get().strip() else None,
                 )
                 if event.day < 1 or event.day > 21 or event.hour < 0 or event.hour >= 24:
                     raise ValueError("Day must be 1–21 and hour must be from 0 to under 24.")
                 if not event.label:
                     raise ValueError("Give the event a short description.")
+                if random_time.get() and (
+                    event.random_from is None or event.random_to is None
+                    or event.random_from < 0 or event.random_to >= 24
+                    or event.random_from > event.random_to
+                ):
+                    raise ValueError("Random time needs an earliest and latest hour from 0 to under 24.")
                 if any("=" not in effect or effect.startswith("=") or effect.endswith("=") for effect in event.effects):
                     raise ValueError("Each story change needs a key=value, for example alarm.level=high.")
                 if event.source and event.source not in self.script.sources:
@@ -1297,6 +1397,10 @@ class Editor(tk.Tk if tk is not None else object):
             hour.set("12")
             event_kind.set("visitor")
             cue.set("none")
+            random_time.set(False)
+            random_from.set("")
+            random_to.set("")
+            toggle_random_time()
 
         def duplicate_event() -> None:
             original = selected_event()
@@ -1307,6 +1411,10 @@ class Editor(tk.Tk if tk is not None else object):
             load(None)
             day.set(str(original.day))
             hour.set(str(original.hour))
+            random_time.set(original.random_from is not None and original.random_to is not None)
+            random_from.set("" if original.random_from is None else str(original.random_from))
+            random_to.set("" if original.random_to is None else str(original.random_to))
+            toggle_random_time()
             event_kind.set(original.kind)
             label.set(f"Copy of {original.label}")
             source.set(original.source)
@@ -1554,7 +1662,12 @@ class Editor(tk.Tk if tk is not None else object):
 
     @staticmethod
     def _event_label(event: Event) -> str:
-        return f"Day {event.day:02d} · {event.hour:04.1f} · {event.kind.title()} · {event.label[:42]}"
+        timing = (
+            f"{event.random_from:04.1f}–{event.random_to:04.1f} random"
+            if event.random_from is not None and event.random_to is not None
+            else f"{event.hour:04.1f}"
+        )
+        return f"Day {event.day:02d} · {timing} · {event.kind.title()} · {event.label[:42]}"
 
     def _event_internal_name(self, label: str) -> str:
         stem = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-") or "event"

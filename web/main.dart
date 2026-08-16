@@ -2685,6 +2685,7 @@ Future<void> main() async {
         : GameEventCursor.fromJson(
             eventPlan,
             saved.snapshot?.meta['authoredEvents'],
+            runSeed: _session.runSeed,
           );
     _visitorDirector.narrative = _session.narrative;
     _weatherSchedule = WeatherSchedule(seed: _session.runSeed);

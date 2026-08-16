@@ -19,6 +19,27 @@ class GameEventOrchestrator {
 
   final List<ScreenplayEvent> _events;
 
+  /// Resolves a random-time event deterministically for a particular run.
+  /// The same run seed and event ID always produce the same minute.
+  double hourFor(ScreenplayEvent event, {int runSeed = 0}) {
+    final from = event.randomFrom;
+    final to = event.randomTo;
+    if (from == null || to == null) return event.hour;
+    var hash = 0x811c9dc5 ^ runSeed;
+    for (final codeUnit in '${event.id}:${event.day}'.codeUnits) {
+      hash ^= codeUnit;
+      hash = (hash * 0x01000193) & 0x7fffffff;
+    }
+    final fraction = hash / 0x7fffffff;
+    final rawMinute = ((from + (to - from) * fraction) * 60).round();
+    final firstMinute = (from * 60).ceil();
+    final lastMinute = (to * 60).floor();
+    final minute = firstMinute <= lastMinute
+        ? rawMinute.clamp(firstMinute, lastMinute)
+        : rawMinute.clamp(0, 1439);
+    return minute.toDouble() / 60.0;
+  }
+
   List<ScreenplayEvent> eventsForDay(int day) => [
         for (final event in _events)
           if (event.day == day) event,
@@ -30,11 +51,14 @@ class GameEventOrchestrator {
     required int day,
     required double fromHour,
     required double toHour,
+    int runSeed = 0,
   }) {
     if (toHour < fromHour) return const [];
     return [
       for (final event in eventsForDay(day))
-        if (event.hour >= fromHour && event.hour < toHour) event,
+        if (hourFor(event, runSeed: runSeed) >= fromHour &&
+            hourFor(event, runSeed: runSeed) < toHour)
+          event,
     ];
   }
 
@@ -51,16 +75,24 @@ class GameEventOrchestrator {
 /// The editor owns the schedule; this cursor only remembers which authored
 /// records have already been handed to the authoritative game session.
 class GameEventCursor {
-  GameEventCursor(this.plan, {Iterable<String> delivered = const []})
+  GameEventCursor(
+    this.plan, {
+    this.runSeed = 0,
+    Iterable<String> delivered = const [],
+  })
       : _delivered = {...delivered};
 
   final GameEventOrchestrator plan;
+  final int runSeed;
   final Set<String> _delivered;
 
   List<ScreenplayEvent> advance({required int day, required double hour}) {
     final due = <ScreenplayEvent>[];
     for (final event in plan.eventsForDay(day)) {
-      if (event.hour <= hour && _delivered.add(event.id)) due.add(event);
+      if (plan.hourFor(event, runSeed: runSeed) <= hour &&
+          _delivered.add(event.id)) {
+        due.add(event);
+      }
     }
     return due;
   }
@@ -74,13 +106,14 @@ class GameEventCursor {
   static GameEventCursor fromJson(
     GameEventOrchestrator plan,
     Object? raw,
+    {int runSeed = 0}
   ) {
     if (raw is! Map || raw['delivered'] is! List) {
-      return GameEventCursor(plan);
+      return GameEventCursor(plan, runSeed: runSeed);
     }
     final delivered = (raw['delivered'] as List)
         .whereType<String>()
         .where((id) => plan.byId(id) != null);
-    return GameEventCursor(plan, delivered: delivered);
+    return GameEventCursor(plan, runSeed: runSeed, delivered: delivered);
   }
 }

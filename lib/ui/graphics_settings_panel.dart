@@ -10,7 +10,7 @@ class GraphicsSettingsPanel extends Panel {
   void Function()? onBack;
   final Map<String, web.HTMLSelectElement> _selects = {};
   web.HTMLInputElement? _dynamic;
-  web.HTMLInputElement? _fbxDiagnostics;
+  web.HTMLInputElement? _modelPackageDiagnostics;
   web.HTMLElement? _status;
   GraphicsSettingsProfile _profile = const GraphicsSettingsProfile();
 
@@ -86,21 +86,30 @@ class GraphicsSettingsPanel extends Panel {
       ..appendChild(_dynamic!)
       ..appendChild(buildElement(document, 'span', text: 'Dynamic resolution'));
     grid.appendChild(toggle);
-    final fbxToggle = buildElement(document, 'label', cls: 'setting-toggle');
-    _fbxDiagnostics = document.createElement('input') as web.HTMLInputElement;
-    _fbxDiagnostics!.type = 'checkbox';
-    _fbxDiagnostics!.addEventListener(
+    final modelPackageToggle = buildElement(
+      document,
+      'label',
+      cls: 'setting-toggle',
+    );
+    _modelPackageDiagnostics =
+        document.createElement('input') as web.HTMLInputElement;
+    _modelPackageDiagnostics!.type = 'checkbox';
+    _modelPackageDiagnostics!.addEventListener(
       'change',
       ((JSAny? _) {
-        _emit(_profile.copyWith(fbxDiagnostics: _fbxDiagnostics!.checked));
+        _emit(
+          _profile.copyWith(
+            modelPackageDiagnostics: _modelPackageDiagnostics!.checked,
+          ),
+        );
       }).toJS,
     );
-    fbxToggle
-      ..appendChild(_fbxDiagnostics!)
+    modelPackageToggle
+      ..appendChild(_modelPackageDiagnostics!)
       ..appendChild(
-        buildElement(document, 'span', text: 'FBX room diagnostics (debug)'),
+        buildElement(document, 'span', text: 'Model package diagnostics (debug)'),
       );
-    grid.appendChild(fbxToggle);
+    grid.appendChild(modelPackageToggle);
     root.appendChild(grid);
     _status = buildElement(document, 'p', cls: 'settings-copy');
     _status!.setAttribute('aria-live', 'polite');
@@ -189,7 +198,7 @@ class GraphicsSettingsPanel extends Panel {
     _selects['diagnosticLevel']?.value = requested.diagnosticLevel;
     _selects['shadowQuality']?.value = requested.shadowQuality;
     _dynamic?.checked = requested.dynamicResolution;
-    _fbxDiagnostics?.checked = requested.fbxDiagnostics;
+    _modelPackageDiagnostics?.checked = requested.modelPackageDiagnostics;
     _status?.textContent = downgradeReasons.isEmpty
         ? 'effective graphics match requested settings'
         : 'effective fallback: ${downgradeReasons.join('; ')}';

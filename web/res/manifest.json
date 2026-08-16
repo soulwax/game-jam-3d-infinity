@@ -62,7 +62,23 @@
     "pipe-tick": "sfx/pipe-tick.wav",
     "range-settle": "sfx/range-settle.wav",
     "cellar-drip": "sfx/cellar-drip.wav",
-    "cistern-settle": "sfx/cistern-settle.wav"
+    "cistern-settle": "sfx/cistern-settle.wav",
+    "vo-demo-new-irish-courteous": "vo/demo/demo-new-irish-courteous.ogg",
+    "vo-demo-new-australian-alert": "vo/demo/demo-new-australian-alert.ogg",
+    "vo-demo-new-authority-warning": "vo/demo/demo-new-authority-warning.ogg",
+    "vo-demo-new-old-confession": "vo/demo/demo-new-old-confession.ogg",
+    "vo-demo-new-rough-laugh": "vo/demo/demo-new-rough-laugh.ogg",
+    "vo-demo-new-close-secret": "vo/demo/demo-new-close-secret.ogg",
+    "vo-demo-new-british-measured": "vo/demo/demo-new-british-measured.ogg",
+    "vo-demo-new-american-engineer": "vo/demo/demo-new-american-engineer.ogg",
+    "vo-demo-lab-ryan-natural": "vo/demo/demo-lab-ryan-natural.ogg",
+    "vo-demo-lab-libby-breathy": "vo/demo/demo-lab-libby-breathy.ogg",
+    "vo-demo-lab-sonia-elderly": "vo/demo/demo-lab-sonia-elderly.ogg",
+    "vo-demo-lab-thomas-strained": "vo/demo/demo-lab-thomas-strained.ogg",
+    "vo-demo-lab-ryan-bright": "vo/demo/demo-lab-ryan-bright.ogg",
+    "vo-demo-lab-libby-hollow": "vo/demo/demo-lab-libby-hollow.ogg",
+    "vo-demo-lab-sonia-metallic": "vo/demo/demo-lab-sonia-metallic.ogg",
+    "vo-demo-lab-thomas-shaky": "vo/demo/demo-lab-thomas-shaky.ogg"
   },
   "music": {
     "loop": "music/loop.ogg"

@@ -85,7 +85,8 @@ class Unit:
 
 DIRECTIVES = {"@tone": "tone", "@voice-name": "voice_name",
               "@voice": "voice", "@set": "set", "@radio": "radio_level",
-              "@wow": "wow", "@crackle": "crackle", "@distance": "distance"}
+              "@wow": "wow", "@crackle": "crackle", "@distance": "distance",
+              "@variation": "variation"}
 
 
 CUES: dict[str, dict[str, str]] = {
@@ -127,39 +128,39 @@ CUES: dict[str, dict[str, str]] = {
 KIND_DEFAULTS: dict[str, dict[str, str]] = {
     BROADCAST: {"tone": "formal", "voice": "male", "set": "wireless",
                 "radio_level": "1", "wow": "1", "crackle": "1",
-                "distance": "0"},
+                "distance": "0", "variation": "natural"},
     "visitor": {"tone": "neutral", "voice": "male", "set": "door",
                 "radio_level": "0", "wow": "0", "crackle": "0",
-                "distance": "1"},
+                "distance": "1", "variation": "natural"},
 }
 
 for _kind in KIND_DEFAULTS.values():
     _kind.update({"dropouts": "", "fault_part": "", "lead": ""})
 
 SPEAKERS: dict[str, dict[str, str]] = {
-    "warden": {"tone": "official", "voice": "male"},
-    "doctor": {"tone": "official", "voice": "male"},
-    "hazmat-boy": {"tone": "casual", "voice": "male"},
-    "gas-man": {"tone": "casual", "voice": "male"},
-    "postman": {"tone": "casual", "voice": "male"},
-    "neighbour": {"tone": "casual", "voice": "female"},
-    "ayling": {"tone": "casual", "voice": "female"},
-    "caller": {"tone": "casual", "voice": "female"},
+    "warden": {"tone": "official", "voice": "male", "voice_name": "en-GB-ThomasNeural"},
+    "doctor": {"tone": "official", "voice": "male", "voice_name": "en-GB-RyanNeural"},
+    "hazmat-boy": {"tone": "casual", "voice": "male", "voice_name": "en-IE-ConnorNeural"},
+    "gas-man": {"tone": "casual", "voice": "male", "voice_name": "en-AU-WilliamMultilingualNeural"},
+    "postman": {"tone": "casual", "voice": "male", "voice_name": "en-CA-LiamNeural"},
+    "neighbour": {"tone": "casual", "voice": "female", "voice_name": "en-AU-NatashaNeural"},
+    "ayling": {"tone": "casual", "voice": "female", "voice_name": "en-IE-EmilyNeural"},
+    "caller": {"tone": "casual", "voice": "female", "voice_name": "en-CA-ClaraNeural"},
     "child": {"tone": "casual", "voice": "female",
               "voice_name": "en-GB-MaisieNeural", "set": "letterbox"},
-    "sibling": {"tone": "neutral"},
-    "stranger": {"tone": "neutral"},
-    "clerk": {"tone": "official", "voice": "male"},
-    "evacuee": {"tone": "weary", "voice": "female"},
-    "ragman": {"tone": "casual", "voice": "male"},
-    "twins": {"tone": "neutral", "voice": "female"},
-    "watchman": {"tone": "clipped", "voice": "male"},
-    "widow": {"tone": "weary", "voice": "female"},
-    "milkman": {"tone": "casual", "voice": "male"},
-    "nurse": {"tone": "courteous", "voice": "female"},
-    "tuner": {"tone": "courteous", "voice": "male"},
-    "engineer": {"tone": "neutral", "voice": "male"},
-    "census": {"tone": "official", "voice": "female"},
+    "sibling": {"tone": "neutral", "voice_name": "en-GB-LibbyNeural"},
+    "stranger": {"tone": "neutral", "voice_name": "en-GB-SoniaNeural"},
+    "clerk": {"tone": "official", "voice": "male", "voice_name": "en-US-ChristopherNeural"},
+    "evacuee": {"tone": "weary", "voice": "female", "voice_name": "en-GB-SoniaNeural"},
+    "ragman": {"tone": "casual", "voice": "male", "voice_name": "en-US-BrianNeural"},
+    "twins": {"tone": "neutral", "voice": "female", "voice_name": "en-US-JennyNeural"},
+    "watchman": {"tone": "clipped", "voice": "male", "voice_name": "en-NZ-MitchellNeural"},
+    "widow": {"tone": "weary", "voice": "female", "voice_name": "en-NZ-MollyNeural"},
+    "milkman": {"tone": "casual", "voice": "male", "voice_name": "en-US-RogerNeural"},
+    "nurse": {"tone": "courteous", "voice": "female", "voice_name": "en-US-EmmaNeural"},
+    "tuner": {"tone": "courteous", "voice": "male", "voice_name": "en-US-AndrewNeural"},
+    "engineer": {"tone": "neutral", "voice": "male", "voice_name": "en-US-SteffanNeural"},
+    "census": {"tone": "official", "voice": "female", "voice_name": "en-GB-SoniaNeural"},
 }
 
 
