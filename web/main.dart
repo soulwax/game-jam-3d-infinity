@@ -164,6 +164,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   px.CameraView? _cameraView;
   px.FrameEnvironment _environment = const px.FrameEnvironment();
   px.PostProcessState _post = px.PostProcessState.off;
+  double _rainIntensity = 0;
+  double _surfaceWetness = 0;
   px.FrameStats? _lastFrameStats;
   double _lastFrameMs = 0;
   double _timeSeconds = 0;
@@ -946,9 +948,11 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final effectiveRain = (_shaderTuning.getValue('rain_override') >= 0.0)
         ? _shaderTuning.getValue('rain_override')
         : weather.rainIntensity;
+    _rainIntensity = effectiveRain.clamp(0.0, 1.0).toDouble();
     final effectiveWetness = (_shaderTuning.getValue('wetness_override') >= 0.0)
         ? _shaderTuning.getValue('wetness_override')
         : atmos.windowSurfaceWetness;
+    _surfaceWetness = effectiveWetness.clamp(0.0, 1.0).toDouble();
 
     _thunderstormEngine.update(0.0166, rainIntensity: effectiveRain);
     final flash = _thunderstormEngine.flashState;
@@ -1067,8 +1071,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   void setPostProcess(
     RuptureState rupture, {
     required bool reducedMotion,
-    double rainIntensity = 0,
+    double? rainIntensity,
     double rainWindowVisibility = 1,
+    double? surfaceWetness,
   }) {
     final step = rupture.step;
     final duration = rupture.stageDuration;
@@ -1105,7 +1110,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       vignette: tuningVignette,
       grain: tuningGrain,
       ditherStrength: tuningDither,
-      rainIntensity: rainIntensity,
+      rainIntensity: (rainIntensity ?? _rainIntensity)
+          .clamp(0.0, 1.0)
+          .toDouble(),
+      surfaceWetness: (surfaceWetness ?? _surfaceWetness)
+          .clamp(0.0, 1.0)
+          .toDouble(),
       rainWindowVisibility: rainWindowVisibility,
       colorGradeStrength: math.max(
         tuningGrade,
@@ -3940,9 +3950,6 @@ void _raf(num ts) {
       _pixeldartRuntime?.setPostProcess(
         _rupture,
         reducedMotion: _reducedMotion,
-        rainIntensity: _weatherSchedule
-            .forDay(_session.snapshot.day)
-            .rainIntensity,
         rainWindowVisibility: _rainWindowVisibility(_currentRoom),
       );
       _presentationBackend.submit(

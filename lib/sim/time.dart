@@ -37,8 +37,14 @@ class GameTime {
     _hour = math.min(_hour + dt * hoursPerSecond, 24.0 - 1e-6);
   }
 
-  void skipToHour(int h) {
-    _hour = h.toDouble();
+  /// Places the clock at an exact fractional hour, preserving minute
+  /// precision for debug controls and deterministic test fixtures.
+  void skipToHour(num hour) {
+    final value = hour.toDouble();
+    if (!value.isFinite || value < 0 || value >= 24) {
+      throw FormatException('skipped hour must be finite and in [0, 24)');
+    }
+    _hour = value;
   }
 
   void restoreHour(double hour) {

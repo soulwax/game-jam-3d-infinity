@@ -24,25 +24,25 @@ void main() {
   };
 
   // Test Digit1 -> 0 ('Open the door')
-  final consumed1 = coordinator.handleNumericKey('Digit1');
+  final consumed1 = coordinator.handleKey('Digit1');
   if (!consumed1 || selectedChoiceIndex != 0 || selectedChoiceText != 'Open the door') {
     throw StateError('Digit1 failed to select choice 0: $selectedChoiceIndex, $selectedChoiceText');
   }
 
   // Test Digit3 -> 2 ('Remain silent')
-  final consumed3 = coordinator.handleNumericKey('Digit3');
+  final consumed3 = coordinator.handleKey('Digit3');
   if (!consumed3 || selectedChoiceIndex != 2 || selectedChoiceText != 'Remain silent') {
     throw StateError('Digit3 failed to select choice 2: $selectedChoiceIndex, $selectedChoiceText');
   }
 
   // Test Numpad2 -> 1 ('Speak through letterbox')
-  final consumedNum2 = coordinator.handleNumericKey('Numpad2');
+  final consumedNum2 = coordinator.handleKey('Numpad2');
   if (!consumedNum2 || selectedChoiceIndex != 1 || selectedChoiceText != 'Speak through letterbox') {
     throw StateError('Numpad2 failed to select choice 1: $selectedChoiceIndex, $selectedChoiceText');
   }
 
   // Test Out-of-bounds Digit (Digit9 when only 3 choices exist) -> false
-  final consumedOut = coordinator.handleNumericKey('Digit9');
+  final consumedOut = coordinator.handleKey('Digit9');
   if (consumedOut) {
     throw StateError('Digit9 must not be consumed when choice count is 3');
   }
