@@ -1,6 +1,6 @@
 import 'package:quarantine/config.dart';
 import 'package:quarantine/game/player_state.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) => throw StateError(message);
 void _expect(bool condition, String message) {
@@ -8,7 +8,7 @@ void _expect(bool condition, String message) {
 }
 
 void main() {
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final state = PlayerState(
     roomId: 'hall',
     eye: house.defaultPlayerEye(playerEyeHeight),

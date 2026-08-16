@@ -3,9 +3,9 @@ import 'dart:math' as math;
 import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/locomotion_controller.dart';
 import 'package:quarantine/engine/math3.dart';
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/interaction.dart';
 import 'package:quarantine/presentation/pbr_material_shading_pipeline.dart';
+import 'house_fixture.dart';
 
 void main() {
   print('========================================================================');
@@ -37,7 +37,7 @@ void main() {
 
   // 3. Occluded Raycast Bounding & Room Occlusion
   print('Testing Occluded Raycast Bounding & Range...');
-  final house = House(0);
+  final house = loadAuthoredHouse(seed: 0);
   final room = house.byId('hall');
   if (room == null) {
     throw StateError('House must contain hall room');

@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/inventory.dart';
+import 'house_fixture.dart';
 
 Never fail(String message) => throw StateError('house inventory: $message');
 
@@ -10,7 +10,7 @@ void main() {
   final file = File(path);
   if (!file.existsSync()) fail('missing $path');
   final inventory = HouseInventory.decode(file.readAsStringSync());
-  inventory.validateAgainst(House(42));
+  inventory.validateAgainst(loadAuthoredHouse(seed: 42));
   if (inventory.assets.length < 20) fail('inventory catalog is too small');
   if (inventory.placements.length < 24) {
     fail('inventory needs precise placements for every room');

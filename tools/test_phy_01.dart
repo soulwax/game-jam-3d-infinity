@@ -2,7 +2,7 @@ import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/game/player_state.dart';
 import 'package:quarantine/house/collision.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) => throw StateError(message);
 
@@ -20,7 +20,7 @@ void _expectVec(Vec3 a, Vec3 b, String label) {
 }
 
 void main() {
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final stair = house.stairs.single;
 
   // Start at lower stair endpoint and move up deterministically.

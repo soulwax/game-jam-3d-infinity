@@ -2,7 +2,7 @@ import 'package:quarantine/game/presentation_snapshot.dart';
 import 'package:quarantine/presentation/build_provenance.dart';
 import 'package:quarantine/presentation/capability_policy.dart';
 import 'package:quarantine/presentation/frame_coalescer.dart';
-import 'package:quarantine/presentation/legacy_backend.dart';
+import 'package:quarantine/presentation/pixeldart_backend.dart';
 import 'package:quarantine/presentation/query_smoke.dart';
 import 'package:quarantine/presentation/renderer_backend.dart';
 import 'package:quarantine/presentation/resource_lifecycle.dart';
@@ -45,12 +45,14 @@ void main() {
   final queries = rendererQuerySmoke();
   _expect(
     queries.length == 6 &&
-        queries.where((query) => query.query != 'unknown').every(queryIsSafe),
-    'known query matrix is safe',
+        queries
+            .where((query) => query.query == '' || query.query == 'pixeldart')
+            .every(queryIsSafe),
+    'canonical query matrix is safe',
   );
   _expect(
-    queries.last.selection.fallback && queries.last.selection.rejected,
-    'unknown query is visible and explicitly rejected before bootstrap',
+    queries.where((query) => query.selection.rejected).length == 4,
+    'retired and unknown queries are visible and explicitly rejected',
   );
 
   final leases = ResourceLeaseTable();
@@ -61,7 +63,7 @@ void main() {
     'lease release at zero owners',
   );
 
-  final backend = LegacyBackend()..initialize();
+  final backend = PixeldartBackend()..initialize();
   final frame = RendererFrame(
     snapshot: PresentationSnapshot(values: const {'day': 1}),
   );

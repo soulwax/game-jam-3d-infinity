@@ -3,8 +3,6 @@ import 'dart:convert';
 enum AutomationMode { help, list, validate, run }
 
 enum AutomationRenderer {
-  auto,
-  legacy,
   pixeldart;
 
   /// Compatibility symbol for the pre-C-01 automation identity.

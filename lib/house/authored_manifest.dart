@@ -1,6 +1,8 @@
 import 'dart:convert';
 
+import '../engine/math3.dart';
 import 'house.dart';
+import 'room.dart';
 
 /// Renderer-neutral authored house data loaded from assets/house/house.json.
 ///
@@ -10,6 +12,7 @@ final class AuthoredHouseManifest {
   final String houseId;
   final String sourceRef;
   final double modelScale;
+  final List<AuthoredLevel> levels;
   final List<AuthoredRoom> rooms;
   final List<AuthoredPortal> portals;
   final List<AuthoredStair> stairs;
@@ -19,6 +22,7 @@ final class AuthoredHouseManifest {
     required this.houseId,
     required this.sourceRef,
     required this.modelScale,
+    required this.levels,
     required this.rooms,
     required this.portals,
     required this.stairs,
@@ -40,6 +44,10 @@ final class AuthoredHouseManifest {
       houseId: _string(map, 'houseId'),
       sourceRef: _string(map, 'sourceRef'),
       modelScale: modelScale,
+      levels: _list(
+        map,
+        'levels',
+      ).map((value) => AuthoredLevel.fromJson(value)).toList(growable: false),
       rooms: _list(map, 'rooms')
           .map((value) => AuthoredRoom.fromJson(value, modelScale))
           .toList(growable: false),
@@ -53,7 +61,67 @@ final class AuthoredHouseManifest {
       exteriorCells: _list(map, 'exteriorCells')
           .map((value) => value is String ? value : _bad('exterior cell'))
           .toList(growable: false),
-    );
+    )..validateTopology();
+  }
+
+  /// Stable name used by the product plan. The older manifest name remains
+  /// available so existing callers do not have to migrate in one change.
+  AuthoredHouseManifest get blueprint => this;
+
+  void validateTopology() {
+    _unique(levels.map((level) => level.id), 'level');
+    _unique(rooms.map((room) => room.id), 'room');
+    _unique(portals.map((portal) => portal.id), 'portal');
+    _unique(stairs.map((stair) => stair.id), 'stair');
+    final levelIds = levels.map((level) => level.id).toSet();
+    final roomIds = rooms.map((room) => room.id).toSet();
+    final portalById = {for (final portal in portals) portal.id: portal};
+    for (final room in rooms) {
+      if (!levelIds.contains(room.levelId)) {
+        throw FormatException(
+          'rooms.${room.id}.floor references unknown level ${room.levelId}',
+        );
+      }
+      _unique(room.windows.map((window) => window.id), 'window in ${room.id}');
+      _unique(room.portalIds, 'portal reference in ${room.id}');
+      for (final portalId in room.portalIds) {
+        final portal = portalById[portalId];
+        if (portal == null) {
+          throw FormatException(
+            'rooms.${room.id}.portalIds references unknown portal $portalId',
+          );
+        }
+        if (!portal.touches(room.id)) {
+          throw FormatException(
+            'rooms.${room.id}.portalIds references $portalId, which does not touch the room',
+          );
+        }
+      }
+    }
+    for (final portal in portals) {
+      if (portal.a != 'outside' && !roomIds.contains(portal.a)) {
+        throw FormatException('portals.${portal.id}.a references ${portal.a}');
+      }
+      if (portal.b != 'outside' && !roomIds.contains(portal.b)) {
+        throw FormatException('portals.${portal.id}.b references ${portal.b}');
+      }
+      if (portal.a == portal.b) {
+        throw FormatException('portals.${portal.id} has identical endpoints');
+      }
+    }
+    for (final stair in stairs) {
+      final portal = portalById[stair.portalId];
+      if (portal == null) {
+        throw FormatException(
+          'stairs.${stair.id}.portalId references unknown portal ${stair.portalId}',
+        );
+      }
+      if (!portal.stair) {
+        throw FormatException(
+          'stairs.${stair.id}.portalId ${stair.portalId} is not marked stair',
+        );
+      }
+    }
   }
 
   void validateAgainst(House house) {
@@ -124,55 +192,176 @@ final class AuthoredHouseManifest {
   }
 }
 
+typedef HouseBlueprint = AuthoredHouseManifest;
+
+/// Installs a validated semantic blueprint into a fresh runtime house. Asset
+/// loading and renderer presentation remain outside this builder.
+House buildHouseFromBlueprint(AuthoredHouseManifest blueprint, int seed) {
+  blueprint.validateTopology();
+  final house = House.empty(seed);
+  Floor floor(String id) => switch (id) {
+    'ground' => Floor.ground,
+    'first' => Floor.first,
+    _ => Floor.hidden,
+  };
+  for (final room in blueprint.rooms) {
+    house.rooms.add(
+      Room(
+        id: room.id,
+        floor: floor(room.levelId),
+        origin: Vec3(room.origin[0], room.origin[1], room.origin[2]),
+        size: Vec3(room.size[0], room.size[1], room.size[2]),
+        windows: [
+          for (final window in room.windows)
+            Window(
+              id: window.id,
+              facing: window.facing,
+              offset: window.offset,
+              sill: window.sill,
+              w: window.width,
+              h: window.height,
+              frosted: window.frosted,
+            ),
+        ],
+        portalIds: List.unmodifiable(room.portalIds),
+        mantles: const [],
+        objects: const [],
+        surfaceWall: room.surfaceWall,
+        surfaceFloor: room.surfaceFloor,
+        surfaceCeiling: room.surfaceCeiling,
+      ),
+    );
+  }
+  for (final portal in blueprint.portals) {
+    house.portals.add(
+      Portal(
+        id: portal.id,
+        a: portal.a,
+        b: portal.b,
+        facingA: portal.facingA,
+        facingB: portal.facingB,
+        offsetA: portal.offsetA,
+        offsetB: portal.offsetB,
+        width: portal.width,
+        height: portal.height,
+        exterior: portal.exterior,
+        stair: portal.stair,
+        sticks: portal.sticks,
+        open: portal.open,
+        doorKit: portal.doorKit,
+      ),
+    );
+  }
+  for (final stair in blueprint.stairs) {
+    house.stairs.add(
+      StairTransition(
+        id: stair.id,
+        portalId: stair.portalId,
+        landingHeights: List.unmodifiable(stair.landingHeights),
+        min: Vec3(stair.min[0], stair.min[1], stair.min[2]),
+        max: Vec3(stair.max[0], stair.max[1], stair.max[2]),
+        lowerEye: Vec3(stair.lowerEye[0], stair.lowerEye[1], stair.lowerEye[2]),
+        upperEye: Vec3(stair.upperEye[0], stair.upperEye[1], stair.upperEye[2]),
+      ),
+    );
+  }
+  house.indexAuthoredBlueprint();
+  return house;
+}
+
+final class AuthoredLevel {
+  final String id;
+  final String kind;
+  final double floorY;
+
+  const AuthoredLevel({
+    required this.id,
+    required this.kind,
+    required this.floorY,
+  });
+
+  factory AuthoredLevel.fromJson(Object? raw) {
+    final map = _object(raw, 'level');
+    return AuthoredLevel(
+      id: _string(map, 'id'),
+      kind: _string(map, 'kind'),
+      floorY: _number(map, 'floorY'),
+    );
+  }
+}
+
 final class AuthoredRoom {
   final String id;
+  final String levelId;
   final List<double> origin;
   final List<double> size;
   final List<AuthoredWindow> windows;
+  final List<String> portalIds;
+  final String surfaceWall;
+  final String surfaceFloor;
+  final String surfaceCeiling;
 
   const AuthoredRoom({
     required this.id,
+    required this.levelId,
     required this.origin,
     required this.size,
     required this.windows,
+    required this.portalIds,
+    required this.surfaceWall,
+    required this.surfaceFloor,
+    required this.surfaceCeiling,
   });
 
   factory AuthoredRoom.fromJson(Object? raw, double scale) {
     final map = _object(raw, 'room');
     return AuthoredRoom(
       id: _string(map, 'id'),
+      levelId: _string(map, 'floor'),
       origin: _scaledVec3(map['origin'], 'origin', scale),
       size: _scaledVec3(map['size'], 'size', scale),
       windows: _list(map, 'windows')
           .map((value) => AuthoredWindow.fromJson(value, scale))
           .toList(growable: false),
+      portalIds: _list(map, 'portalIds')
+          .map((value) => value is String ? value : _bad('portal id'))
+          .toList(growable: false),
+      surfaceWall: _surface(map, 'wall'),
+      surfaceFloor: _surface(map, 'floor'),
+      surfaceCeiling: _surface(map, 'ceiling'),
     );
   }
 }
 
 final class AuthoredWindow {
   final String id;
+  final Facing facing;
   final double offset;
   final double sill;
   final double width;
   final double height;
+  final bool frosted;
 
   const AuthoredWindow({
     required this.id,
+    required this.facing,
     required this.offset,
     required this.sill,
     required this.width,
     required this.height,
+    required this.frosted,
   });
 
   factory AuthoredWindow.fromJson(Object? raw, double scale) {
     final map = _object(raw, 'window');
     return AuthoredWindow(
       id: _string(map, 'id'),
+      facing: _facing(map, 'facing'),
       offset: _number(map, 'offset') * scale,
       sill: _number(map, 'sill') * scale,
       width: _number(map, 'width') * scale,
       height: _number(map, 'height') * scale,
+      frosted: map['frosted'] == true,
     );
   }
 }
@@ -181,18 +370,36 @@ final class AuthoredPortal {
   final String id;
   final String a;
   final String b;
+  final Facing facingA;
+  final Facing facingB;
+  final double offsetA;
+  final double offsetB;
   final double width;
   final double height;
   final String? doorKit;
+  final bool stair;
+  final bool exterior;
+  final bool open;
+  final bool sticks;
 
   const AuthoredPortal({
     required this.id,
     required this.a,
     required this.b,
+    required this.facingA,
+    required this.facingB,
+    required this.offsetA,
+    required this.offsetB,
     required this.width,
     required this.height,
     required this.doorKit,
+    required this.stair,
+    required this.exterior,
+    required this.open,
+    required this.sticks,
   });
+
+  bool touches(String roomId) => a == roomId || b == roomId;
 
   factory AuthoredPortal.fromJson(Object? raw, double scale) {
     final map = _object(raw, 'portal');
@@ -200,9 +407,17 @@ final class AuthoredPortal {
       id: _string(map, 'id'),
       a: _string(map, 'a'),
       b: _string(map, 'b'),
+      facingA: _facing(map, 'facingA'),
+      facingB: _facing(map, 'facingB'),
+      offsetA: _number(map, 'offsetA') * scale,
+      offsetB: _number(map, 'offsetB') * scale,
       width: _number(map, 'width') * scale,
       height: _number(map, 'height') * scale,
       doorKit: map['doorKit'] is String ? map['doorKit'] as String : null,
+      stair: map['stair'] == true,
+      exterior: map['exterior'] == true,
+      open: map['open'] != false,
+      sticks: map['sticks'] == true,
     );
   }
 }
@@ -210,14 +425,32 @@ final class AuthoredPortal {
 final class AuthoredStair {
   final String id;
   final String portalId;
+  final List<double> landingHeights;
+  final List<double> min;
+  final List<double> max;
+  final List<double> lowerEye;
+  final List<double> upperEye;
 
-  const AuthoredStair({required this.id, required this.portalId});
+  const AuthoredStair({
+    required this.id,
+    required this.portalId,
+    required this.landingHeights,
+    required this.min,
+    required this.max,
+    required this.lowerEye,
+    required this.upperEye,
+  });
 
   factory AuthoredStair.fromJson(Object? raw) {
     final map = _object(raw, 'stair');
     return AuthoredStair(
       id: _string(map, 'id'),
       portalId: _string(map, 'portalId'),
+      landingHeights: _numbers(map['landingHeights'], 'landingHeights'),
+      min: _vec3(map['min'], 'min'),
+      max: _vec3(map['max'], 'max'),
+      lowerEye: _vec3(map['lowerEye'], 'lowerEye'),
+      upperEye: _vec3(map['upperEye'], 'upperEye'),
     );
   }
 }
@@ -233,6 +466,31 @@ String _string(Map<String, dynamic> map, String key) {
   return value is String && value.isNotEmpty
       ? value
       : _bad('$key is not a string');
+}
+
+String _surface(Map<String, dynamic> map, String key) {
+  final surface = map['surface'];
+  if (surface is! Map<String, dynamic>) return _bad('surface is not an object');
+  return _string(surface, key);
+}
+
+Facing _facing(Map<String, dynamic> map, String key) {
+  return switch (_string(map, key)) {
+    'north' => Facing.north,
+    'east' => Facing.east,
+    'south' => Facing.south,
+    'west' => Facing.west,
+    final value => _bad('$key has unknown facing $value'),
+  };
+}
+
+List<double> _numbers(Object? value, String label) {
+  if (value is! List ||
+      value.isEmpty ||
+      value.any((item) => item is! num || !item.isFinite)) {
+    return _bad('$label is not a non-empty finite number list');
+  }
+  return [for (final item in value) (item as num).toDouble()];
 }
 
 double _number(Map<String, dynamic> map, String key) {
@@ -254,6 +512,15 @@ List<double> _vec3(Object? value, String label) {
 List<double> _scaledVec3(Object? value, String label, double scale) => [
   for (final component in _vec3(value, label)) component * scale,
 ];
+
+void _unique(Iterable<String> values, String label) {
+  final seen = <String>{};
+  for (final value in values) {
+    if (!seen.add(value)) {
+      throw FormatException('duplicate $label id $value');
+    }
+  }
+}
 
 Never _bad(String message) => throw FormatException(message);
 

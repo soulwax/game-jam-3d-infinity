@@ -12,30 +12,16 @@ void main() {
   const policy = BackendBootstrapPolicy();
   const selector = BackendSelector();
 
-  final noWebgl = policy.fallback(
-    selector.select('pixeldart'),
-    BackendFallbackReason.webglUnavailable,
-  );
-  _expect(
-    noWebgl.kind == RendererBackendKind.legacy &&
-        noWebgl.fallback &&
-        noWebgl.fallbackReason == 'webgl2 unavailable',
-    'WebGL absence produces a typed legacy fallback',
-  );
-
-  final initFailed = policy.fallback(
-    selector.select('next'),
-    BackendFallbackReason.pixeldartInitializationFailed,
-  );
-  _expect(
-    initFailed.kind == RendererBackendKind.legacy &&
-        initFailed.fallback &&
-        initFailed.aliasUsed &&
-        initFailed.aliasReason ==
-            'renderer query "next" is a compatibility alias; use "pixeldart"' &&
-        initFailed.fallbackReason == 'pixeldart initialization failed',
-    'Pixeldart init fallback preserves next alias guidance',
-  );
+  var fallbackRejected = false;
+  try {
+    policy.fallback(
+      selector.select('pixeldart'),
+      BackendFallbackReason.webglUnavailable,
+    );
+  } catch (_) {
+    fallbackRejected = true;
+  }
+  _expect(fallbackRejected, 'WebGL absence must not create a legacy backend');
 
   final rejected = selector.select('typo');
   final rejectedFallback = policy.fallback(
@@ -45,17 +31,17 @@ void main() {
   _expect(
     identical(rejectedFallback, rejected) &&
         rejectedFallback.rejected &&
-        rejectedFallback.rejectionReason == 'unsupported renderer query "typo"',
+        rejectedFallback.rejectionReason ==
+            'unsupported renderer query "typo"; use pixeldart',
     'rejected legacy fallback is not rewritten by bootstrap policy',
   );
 
   final explicitLegacy = selector.select('legacy');
   _expect(
-    identical(
-      policy.fallback(explicitLegacy, BackendFallbackReason.webglUnavailable),
-      explicitLegacy,
-    ),
-    'explicit legacy remains an intentional choice',
+    explicitLegacy.kind == RendererBackendKind.pixeldart &&
+        explicitLegacy.rejected &&
+        explicitLegacy.aliasUsed,
+    'legacy query is rejected as a retired alias',
   );
-  print('backend bootstrap: typed fallback preservation passes');
+  print('backend bootstrap: legacy fallback retirement passes');
 }

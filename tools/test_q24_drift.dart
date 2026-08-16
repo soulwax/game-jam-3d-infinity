@@ -1,9 +1,9 @@
 import 'package:quarantine/config.dart';
 import 'package:quarantine/game/session.dart';
 import 'package:quarantine/house/drift.dart';
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/journal/entry.dart';
 import 'package:quarantine/sim/day.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) =>
     throw StateError('q24 drift test failed: $message');
@@ -77,7 +77,7 @@ void main() {
     'a room with no scheduled change must never drift',
   );
 
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final kitchen = house.byId('kitchen')!;
   final spareRoom = house.byId('spare-room')!;
   final originalKitchenSize = kitchen.size;
@@ -118,9 +118,11 @@ void main() {
     'place': ['hall'],
     'time': ['dawn'],
   });
+  final blueprint = loadAuthoredBlueprint();
   final session = GameSession.create(
     vocabulary: vocabulary,
     houseSeed: 42,
+    houseBlueprint: blueprint,
     startDay: 15,
   );
   session.sleep(SleepQuality.long, SleepLocation.bed, currentRoom: 'hall');
@@ -136,6 +138,7 @@ void main() {
   final restored = GameSession.restore(
     vocabulary: vocabulary,
     snapshot: session.toSaveSnapshot(),
+    houseBlueprint: blueprint,
   );
   _expect(
     restored.house.drift.landedCount == session.house.drift.landedCount,

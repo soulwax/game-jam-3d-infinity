@@ -1,6 +1,6 @@
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/engine/master_acoustic_simulator.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) =>
     throw StateError('Audio Acoustic Mixdown test failed: $message');
@@ -15,7 +15,7 @@ void main() {
   // 1. Engine self-validation
   _expect(MasterAcousticSimulator.validate(), 'MasterAcousticSimulator self-validation failed');
 
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
 
   // 2. Direct in-room acoustic path
   final directPath = MasterAcousticSimulator.evaluateOcclusion(

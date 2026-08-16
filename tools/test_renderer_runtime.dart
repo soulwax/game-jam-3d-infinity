@@ -1,6 +1,5 @@
 import 'package:quarantine/game/presentation_snapshot.dart';
 import 'package:quarantine/presentation/pixeldart_backend.dart';
-import 'package:quarantine/presentation/legacy_backend.dart';
 import 'package:quarantine/presentation/renderer_diagnostics.dart';
 import 'package:quarantine/presentation/renderer_backend.dart';
 import 'package:quarantine/presentation/renderer_runtime.dart';
@@ -80,23 +79,5 @@ void main() {
   );
   _expect(runtime.disposals == 1, 'runtime dispose was not delegated');
 
-  final legacyRuntime = _RuntimeProbe();
-  final legacy = LegacyBackend(runtime: legacyRuntime)..initialize();
-  legacy.submit(frame);
-  legacy.resize(640, 480);
-  legacy.handleInput(const RendererInputAction(id: 'legacy-use'));
-  legacy.loseContext();
-  legacy.recover();
-  legacy.dispose();
-  _expect(
-    legacyRuntime.initializes == 1 &&
-        legacyRuntime.submits == 1 &&
-        legacyRuntime.resizes == 1 &&
-        legacyRuntime.inputs == 1 &&
-        legacyRuntime.losses == 1 &&
-        legacyRuntime.recoveries == 1 &&
-        legacyRuntime.disposals == 1,
-    'legacy runtime lifecycle was not delegated',
-  );
   print('renderer runtime bridge: neutral backend delegates lifecycle safely');
 }

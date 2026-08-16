@@ -1,6 +1,6 @@
 import 'package:quarantine/engine/audio_planner.dart';
 import 'package:quarantine/engine/math3.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) => throw StateError('audio planner: $message');
 
@@ -9,7 +9,7 @@ void _expect(bool value, String message) {
 }
 
 void main() {
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final cues = AudioCueSet(<String, List<String>>{
     'clock': ['clock-a', 'clock-b', 'clock-c'],
   });

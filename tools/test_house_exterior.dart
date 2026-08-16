@@ -1,10 +1,7 @@
-import 'dart:io';
-import 'dart:typed_data';
-
 import 'package:quarantine/house/exterior_mesh.dart';
 import 'package:quarantine/house/exterior_mesh_adapter.dart';
 import 'package:quarantine/house/exterior_scene.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 Never fail(String message) => throw StateError('house exterior: $message');
 
@@ -13,7 +10,7 @@ void require(bool condition, String message) {
 }
 
 void main() {
-  final generated = buildHouseExteriorMesh(House(42));
+  final generated = buildHouseExteriorMesh(loadAuthoredHouse(seed: 42));
   final encoded = encodeHouseExteriorMesh(generated);
   final decoded = decodeHouseExteriorMesh(encoded);
   require(
@@ -68,22 +65,9 @@ void main() {
   require(decoded.bounds.minY < -0.3, 'foundation/plinth missing');
   require(decoded.bounds.maxY > 10.8, 'roof/chimney silhouette missing');
 
-  final path = File('assets/house/exterior/main_shell.qhmx');
-  require(path.existsSync(), 'generated exterior asset is missing');
-  final onDisk = decodeHouseExteriorMesh(
-    Uint8List.fromList(path.readAsBytesSync()),
-  );
-  require(
-    onDisk.triangleCount == decoded.triangleCount,
-    'on-disk triangle count drifted',
-  );
-  require(
-    onDisk.vertices.length == decoded.vertices.length,
-    'on-disk vertex count drifted',
-  );
   print(
     'house exterior: ${decoded.vertices.length} indexed vertices, '
-    '${decoded.triangleCount} triangles, ${path.lengthSync()} bytes, '
+    '${decoded.triangleCount} triangles, ${encoded.length} bytes, '
     '${(decoded.indexReuse * 100).toStringAsFixed(1)}% reuse pass',
   );
 }

@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:quarantine/automation/automation_scenario.dart';
 import 'package:quarantine/automation/visual_capture_manifest.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 void main() {
   final manifest = VisualCaptureManifest.decode(
@@ -14,7 +14,7 @@ void main() {
     ).readAsStringSync(),
   );
   final errors = manifest.validateAgainstScenarios(
-    house: House(42017),
+    house: loadAuthoredHouse(seed: 42017),
     scenarios: [scenario],
     expectedHouseId: 'quarantine-house-main',
   );
@@ -59,7 +59,7 @@ void main() {
     ),
   );
   final provenanceErrors = unknownWaypoint.validateAgainstScenarios(
-    house: House(42017),
+    house: loadAuthoredHouse(seed: 42017),
     scenarios: [scenario],
     expectedHouseId: 'quarantine-house-main',
   );
@@ -74,7 +74,7 @@ void main() {
         .replaceFirst('"profile": "high"', '"profile": "standard"'),
   );
   final driftErrors = driftedPair.validateAgainstScenarios(
-    house: House(42017),
+    house: loadAuthoredHouse(seed: 42017),
     scenarios: [scenario],
     expectedHouseId: 'quarantine-house-main',
   );
@@ -106,7 +106,7 @@ void main() {
 }
 ''');
   final malformedErrors = malformed.validate(
-    house: House(42017),
+    house: loadAuthoredHouse(seed: 42017),
     scenarioIds: {'ground-circuit'},
     expectedHouseId: 'quarantine-house-main',
   );

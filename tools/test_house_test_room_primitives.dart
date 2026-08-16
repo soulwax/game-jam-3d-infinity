@@ -2,8 +2,8 @@ import 'package:quarantine/engine/camera.dart';
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/engine/mesh.dart';
 import 'package:quarantine/house/geometry.dart';
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/interaction.dart';
+import 'house_fixture.dart';
 
 void main() {
   print(
@@ -14,7 +14,7 @@ void main() {
     '========================================================================',
   );
 
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
 
   // 1. Verify all rooms produce valid structural shell geometry.
   print('Testing RoomGeometry generation across all house rooms...');

@@ -51,7 +51,6 @@ final class PixeldartBackend implements RendererBackend {
           backend: 'pixeldart',
           profile: 'safe',
           capabilities: [],
-          fallback: false,
         );
     final selection = selectionDiagnostics;
     return selection == null ? base : base.withSelection(selection);

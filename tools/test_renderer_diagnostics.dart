@@ -34,8 +34,8 @@ void main() {
   }
   _expect(rejected, 'incomplete diagnostics reject');
   final boundary = RendererDiagnostics.fromEnvironment(
-    backend: 'legacy',
-    profile: 'legacy',
+    backend: 'pixeldart',
+    profile: 'safe',
     capabilities: const [],
   );
   _expect(!boundary.provenancePinned, 'missing release defines stay visible');

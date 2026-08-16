@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/inventory.dart';
 import 'package:quarantine/house/soundscape.dart';
+import 'house_fixture.dart';
 
 Never fail(String message) => throw StateError('house soundscape: $message');
 
@@ -11,7 +11,7 @@ void main() {
   final inventory = HouseInventory.decode(
     File('$root/assets/house/inventory.json').readAsStringSync(),
   );
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final soundscape = HouseSoundscape.decode(
     File('$root/assets/house/soundscape.json').readAsStringSync(),
   );

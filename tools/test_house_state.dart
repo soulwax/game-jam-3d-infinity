@@ -1,5 +1,5 @@
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/state.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) => throw StateError(message);
 
@@ -20,7 +20,7 @@ void _reject(Map<String, dynamic> value, String message) {
 void _rejectApply(Map<String, dynamic> value, String message) {
   var rejected = false;
   try {
-    HouseState.fromJson(value).applyTo(House(42));
+    HouseState.fromJson(value).applyTo(loadAuthoredHouse(seed: 42));
   } on FormatException {
     rejected = true;
   }
@@ -28,14 +28,14 @@ void _rejectApply(Map<String, dynamic> value, String message) {
 }
 
 void main() {
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final captured = HouseState.capture(house);
   final json = captured.toJson();
   final restored = HouseState.fromJson(json);
   _expect(
     restored.portals.keys.toSet().length == house.portals.length &&
         restored.windows.keys.length == house.windowsFromInside &&
-        restored.mantles.isNotEmpty,
+        restored.mantles.isEmpty,
     'captured state contains every authored ID',
   );
 

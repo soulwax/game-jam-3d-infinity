@@ -1,5 +1,4 @@
 import 'package:quarantine/game/presentation_snapshot.dart';
-import 'package:quarantine/presentation/legacy_backend.dart';
 import 'package:quarantine/presentation/pixeldart_backend.dart';
 import 'package:quarantine/presentation/renderer_backend.dart';
 
@@ -41,7 +40,6 @@ void check(RendererBackend backend) {
 }
 
 void main() {
-  check(LegacyBackend());
   check(PixeldartBackend());
-  print('backend lifecycle parity fixtures passed');
+  print('Pixeldart backend lifecycle fixture passed');
 }

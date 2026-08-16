@@ -8,9 +8,10 @@ import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/focus.dart';
 import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/inventory.dart';
+import 'house_fixture.dart';
 
 void main() {
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final inventory = HouseInventory.decode(
     File('assets/house/inventory.json').readAsStringSync(),
   );

@@ -1,11 +1,11 @@
 import 'package:quarantine/house/geometry.dart';
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/engine/vertex_format.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) => throw StateError(message);
 
 void main() {
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   for (final room in house.rooms) {
     final geometry = buildRoomGeometry(house, room);
     if (geometry.floor.isEmpty || geometry.ceiling.isEmpty) {
@@ -72,5 +72,5 @@ void main() {
   if (!changed) {
     _fail('door leaf geometry does not change with portal state');
   }
-  print('room geometry: shared legacy/Pixeldart openings and fixture pass');
+  print('room geometry: authored openings and renderer handoff pass');
 }

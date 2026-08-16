@@ -18,5 +18,4 @@ List<QuerySmokeResult> rendererQuerySmoke() {
 
 bool queryIsSafe(QuerySmokeResult result) =>
     !result.selection.rejected &&
-    (result.selection.kind == RendererBackendKind.legacy ||
-        result.selection.kind == RendererBackendKind.pixeldart);
+    result.selection.kind == RendererBackendKind.pixeldart;

@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:quarantine/automation/automation_route.dart';
 import 'package:quarantine/automation/automation_scenario.dart';
 import 'package:quarantine/engine/math3.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 void main() {
   final authored = AutomationScenario.decode(
@@ -113,7 +113,7 @@ void main() {
     authoredGround.waypoints.length == 3,
     'ground route has a clearance-aware start/portal chain',
   );
-  final house = House(authored.fixture.seed);
+  final house = loadAuthoredHouse(seed: authored.fixture.seed);
   final routePlan = AutomationRoutePlan(
     id: authoredGround.id,
     rooms: authoredGround.rooms,

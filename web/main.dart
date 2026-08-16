@@ -2154,7 +2154,7 @@ void _configureSettingsPanel(SettingsPanel panel, {bool nested = false}) {
       _gameplayOptions = profile;
       if (!storyWasEnabled && profile.storyMode) {
         // Story Mode is a clean narrative start, never a continuation of a
-        // renderer showcase clock or a partially observed visitor schedule.
+        // The narrative mode always starts from the canonical campaign clock.
         _time.dayNumber = 1;
         _time.restoreHour(sunriseHour.toDouble());
         _door.hide();
@@ -2541,6 +2541,35 @@ void _applyAccessibilityProfile() {
 
 bool _ambientNoticeInitialized = false;
 
+void _publishRendererUnavailable(String reason) {
+  _setBootPhase('renderer-unavailable');
+  _canvas
+    ..setAttribute('data-renderer-backend', 'pixeldart')
+    ..setAttribute('data-renderer-fallback', 'false')
+    ..setAttribute('data-renderer-error', reason)
+    ..setAttribute(
+      'data-renderer-diagnostics',
+      jsonEncode({
+        'backend': 'pixeldart',
+        'fallback': false,
+        'failureReason': reason,
+        'capabilities': const <String>[],
+        'selection': {
+          'kind': 'pixeldart',
+          'explicit': _backendSelection.explicit,
+          'automatic': _backendSelection.automatic,
+          'fallback': false,
+          'rejected': _backendSelection.rejected,
+          'aliasUsed': _backendSelection.aliasUsed,
+          if (_backendSelection.rejectionReason != null)
+            'rejectionReason': _backendSelection.rejectionReason,
+          if (_backendSelection.aliasReason != null)
+            'aliasReason': _backendSelection.aliasReason,
+        },
+      }),
+    );
+}
+
 void _installAccessibilityMediaListeners() {
   final reducedMotion = web.window.matchMedia(
     '(prefers-reduced-motion: reduce)',
@@ -2577,31 +2606,7 @@ Future<void> main() async {
   }
   final deviceLease = const pxweb.WebGl2RendererFactory().createLease(canvas);
   if (deviceLease == null) {
-    // Keep the constrained-browser contract observable without entering the
-    // renderer or throwing across the WASM boundary. The smoke runner can
-    // verify the explicit fallback state and the page remains inspectable.
-    _setBootPhase('no-webgl2');
-    _canvas
-      ..setAttribute('data-renderer-backend', 'legacy')
-      ..setAttribute('data-renderer-fallback', 'true')
-      ..setAttribute(
-        'data-renderer-diagnostics',
-        jsonEncode({
-          'backend': 'legacy',
-          'fallback': true,
-          'fallbackReason': 'webgl2 unavailable',
-          'capabilities': const <String>[],
-          'selection': {
-            'kind': 'legacy',
-            'explicit': true,
-            'automatic': false,
-            'fallback': true,
-            'fallbackReason': 'webgl2 unavailable',
-            'rejected': false,
-            'aliasUsed': false,
-          },
-        }),
-      );
+    _publishRendererUnavailable('webgl2 unavailable');
     return;
   }
   try {
@@ -2620,34 +2625,10 @@ Future<void> main() async {
     if (_automationDiagnosticsEnabled) {
       _canvas.setAttribute('data-renderer-error-stack', '$stack');
     }
-    // A context can exist while the adapter still cannot satisfy the
-    // renderer's surface/profile contract (for example constrained
-    // capability mode). Keep this failure observable and recoverable rather
-    // than allowing a WASM exception to terminate the page.
-    _setBootPhase('no-webgl2');
-    _canvas
-      ..setAttribute('data-renderer-backend', 'legacy')
-      ..setAttribute('data-renderer-fallback', 'true')
-      ..setAttribute(
-        'data-renderer-diagnostics',
-        jsonEncode({
-          'backend': 'legacy',
-          'fallback': true,
-          'fallbackReason': 'webgl2 initialization failed',
-          'capabilities': const <String>[],
-          'selection': {
-            'kind': 'legacy',
-            'explicit': true,
-            'automatic': false,
-            'fallback': true,
-            'fallbackReason': 'webgl2 initialization failed',
-            'rejected': false,
-            'aliasUsed': false,
-          },
-        }),
-      );
+    _publishRendererUnavailable('pixeldart initialization failed');
     return;
   }
+
   _publishRendererDiagnostics();
   try {
     _setBootPhase('initializing');
@@ -2680,11 +2661,16 @@ Future<void> main() async {
       for (final field in vocabularyFields)
         field: textLibrary.getVocabulary(field),
     });
+    final houseBlueprint = await _loadHouseBlueprintForSession();
     _saveStore = BrowserSaveStore();
     final saved = _saveStore.read(
       isUsable: (snapshot) {
         try {
-          GameSession.restore(vocabulary: vocabulary, snapshot: snapshot);
+          GameSession.restore(
+            vocabulary: vocabulary,
+            snapshot: snapshot,
+            houseBlueprint: houseBlueprint,
+          );
           return true;
         } on FormatException {
           return false;
@@ -2696,6 +2682,7 @@ Future<void> main() async {
         ? GameSession.create(
             vocabulary: vocabulary,
             houseSeed: 42,
+            houseBlueprint: houseBlueprint,
             runSeed: captureFixture?.seed ?? _mintRunSeed(),
             startDay: captureFixture?.day ?? 1,
             startHour: captureFixture?.hour.floor() ?? initialDayHour,
@@ -2703,6 +2690,7 @@ Future<void> main() async {
         : GameSession.restore(
             vocabulary: vocabulary,
             snapshot: saved.snapshot!,
+            houseBlueprint: houseBlueprint,
           );
     final eventPlan = textLibrary.gameEvents;
     _authoredEventCursor = eventPlan == null
@@ -3413,17 +3401,6 @@ void _loadManifest() async {
 }
 
 Future<void> _loadAuthoredHouseManifest() async {
-  if (_house.isRendererShowcase) {
-    _canvas.setAttribute('data-house-manifest', 'renderer-showcase');
-    _canvas.setAttribute('data-house-manifest-source', 'runtime-showcase');
-    // The former domestic inventory/soundscape are intentionally stale after
-    // the house replacement. Do not probe their legacy URLs in showcase mode:
-    // a missing old asset must not appear as a runtime network failure.
-    _canvas.setAttribute('data-house-inventory', 'showcase-bypassed');
-    _canvas.setAttribute('data-house-soundscape', 'showcase-bypassed');
-    _canvas.setAttribute('data-audio-planner', 'showcase-bypassed');
-    return;
-  }
   const urls = ['res/house/house.json', 'assets/house/house.json'];
   Object? lastError;
   var validated = false;
@@ -3451,6 +3428,25 @@ Future<void> _loadAuthoredHouseManifest() async {
   // from silently disabling the game's acoustic planner.
   await _loadAuthoredHouseInventory();
   await _loadAuthoredHouseSoundscape();
+}
+
+Future<AuthoredHouseManifest> _loadHouseBlueprintForSession() async {
+  const urls = ['res/house/house.json', 'assets/house/house.json'];
+  Object? lastError;
+  for (final url in urls) {
+    try {
+      final response = await web.window.fetch(url.toJS).toDart;
+      final source = (await response.text().toDart).toString();
+      final blueprint = AuthoredHouseManifest.decode(source);
+      blueprint.validateTopology();
+      _canvas.setAttribute('data-house-blueprint', 'validated');
+      _canvas.setAttribute('data-house-blueprint-source', url);
+      return blueprint;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw StateError('authored house blueprint unavailable: $lastError');
 }
 
 Future<void> _loadAuthoredHouseInventory() async {

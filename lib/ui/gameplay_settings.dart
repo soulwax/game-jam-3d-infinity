@@ -33,8 +33,8 @@ final class GameplaySettingsProfile {
   final GameplayClockFormat clockFormat;
   final bool showObjective;
 
-  /// Story encounters are opt-in. The renderer showcase defaults to a quiet
-  /// house so time-of-day and culling can be inspected without interruptions.
+  /// Story encounters are opt-in so the player can learn the house before
+  /// visitors and scheduled events begin.
   final bool storyMode;
 
   GameplaySettingsProfile({

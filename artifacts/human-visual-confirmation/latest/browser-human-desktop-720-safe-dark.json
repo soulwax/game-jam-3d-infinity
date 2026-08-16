@@ -1,0 +1,35 @@
+{
+  "captureContractVersion": 1,
+  "taskId": "RPA-05-HUMAN",
+  "purpose": "human-visual-confirmation",
+  "surface": "game",
+  "state": "dark",
+  "sourceMethod": "browser",
+  "safeArea": "full-frame",
+  "theme": "default",
+  "locale": "en",
+  "motion": "settled",
+  "quality": "safe",
+  "audience": "development",
+  "seed": null,
+  "privacyCheck": "pass",
+  "rightsStatus": "licensed-or-original",
+  "altText": "Human review capture: desktop-720, safe profile, dark state.",
+  "notes": "Requested profile/state is encoded in the URL; verify the effective runtime state in-app. Machine-captured evidence; aesthetic approval remains human-owned.",
+  "schemaVersion": 1,
+  "reviewCaptureId": "desktop-720-safe-dark",
+  "requestedRenderer": "pixeldart",
+  "profile": "safe",
+  "visualState": "dark",
+  "viewport": {
+    "id": "desktop-720",
+    "width": 1280,
+    "height": 720
+  },
+  "sourceUrl": "http://127.0.0.1:8090/?renderer=pixeldart&profile=safe&visualState=dark",
+  "browser": {
+    "name": "firefox",
+    "version": "153.0"
+  },
+  "screenshot": "browser-human-desktop-720-safe-dark.png"
+}

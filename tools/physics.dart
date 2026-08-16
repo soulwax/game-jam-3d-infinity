@@ -4,7 +4,7 @@ import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/game/player_state.dart';
 import 'package:quarantine/house/collision.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) => throw StateError(message);
 
@@ -66,7 +66,7 @@ _ReplayResult _runReplayScenario({
   required int warmupSteps,
   required int replaySteps,
 }) {
-  final house = House(houseSeed);
+  final house = loadAuthoredHouse(seed: houseSeed);
   final stair = house.stairs.single;
 
   final path = stair.upperEye - stair.lowerEye;

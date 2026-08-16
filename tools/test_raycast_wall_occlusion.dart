@@ -3,8 +3,8 @@ import 'dart:math' as math;
 import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/camera.dart';
 import 'package:quarantine/engine/math3.dart';
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/interaction.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) =>
     throw StateError('Raycast wall occlusion test failed: $message');
@@ -23,7 +23,7 @@ Camera _facing(Vec3 eye, Vec3 target) {
 void main() {
   print('Testing raycast wall occlusion and room-bounded range...');
 
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final livingRoom = house.byId('living-room')!;
   final hall = house.byId('hall')!;
 

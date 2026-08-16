@@ -3,10 +3,10 @@ import 'dart:io';
 import 'package:quarantine/automation/automation_route.dart';
 import 'package:quarantine/automation/automation_scenario.dart';
 import 'package:quarantine/engine/math3.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 void main() {
-  final house = House(42017);
+  final house = loadAuthoredHouse(seed: 42017);
   final ground = AutomationRoutePlan.fromTopology(
     id: 'ground-circuit',
     house: house,

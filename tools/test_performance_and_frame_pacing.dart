@@ -4,9 +4,9 @@ import 'package:quarantine/engine/scratch_pool.dart';
 import 'package:quarantine/presentation/dynamic_resolution_scaler.dart';
 import 'package:quarantine/presentation/pbr_material_shading_pipeline.dart';
 import 'package:quarantine/game/save_integrity_validator.dart';
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/focus.dart';
 import 'package:quarantine/engine/camera.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) =>
     throw StateError('Performance & Frame Pacing test failed: $message');
@@ -62,7 +62,7 @@ void main() {
 
   // 5. Raycast & Focus Resolution Stress Test (5,000 queries)
   print('Benchmarking Focus Resolver across 5,000 queries...');
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final camera = Camera();
   final hall = house.byId('hall')!;
   camera.eye = hall.origin + Vec3(1.0, playerEyeHeight, 1.0);

@@ -4,8 +4,6 @@ class BackendSelection {
   final RendererBackendKind kind;
   final bool explicit;
   final bool automatic;
-  final bool fallback;
-  final String? fallbackReason;
 
   /// The query was understood as unsupported, even though a safe fallback is
   /// retained until the bootstrap layer can turn this into a hard failure.
@@ -18,8 +16,6 @@ class BackendSelection {
     this.kind, {
     required this.explicit,
     this.automatic = false,
-    this.fallback = false,
-    this.fallbackReason,
     this.rejected = false,
     this.rejectionReason,
     this.aliasUsed = false,
@@ -33,27 +29,11 @@ class BackendSelection {
     'kind': kind.name,
     'explicit': explicit,
     'automatic': automatic,
-    'fallback': fallback,
     'rejected': rejected,
     'aliasUsed': aliasUsed,
-    if (fallbackReason != null) 'fallbackReason': fallbackReason,
     if (rejectionReason != null) 'rejectionReason': rejectionReason,
     if (aliasReason != null) 'aliasReason': aliasReason,
   };
-
-  /// Converts a selected Pixeldart request to a legacy fallback without
-  /// discarding the original alias or rejection explanation.
-  BackendSelection withLegacyFallback(String reason) => BackendSelection(
-    RendererBackendKind.legacy,
-    explicit: explicit,
-    automatic: automatic,
-    fallback: true,
-    fallbackReason: reason,
-    rejected: rejected,
-    rejectionReason: rejectionReason,
-    aliasUsed: aliasUsed,
-    aliasReason: aliasReason,
-  );
 }
 
 class BackendSelector {
@@ -65,28 +45,25 @@ class BackendSelector {
       return const BackendSelection(
         RendererBackendKind.pixeldart,
         explicit: false,
-        automatic: true,
       );
     }
-    if (value == 'pixeldart' ||
-        value == 'next' ||
-        value == 'auto' ||
-        value == 'legacy') {
-      return BackendSelection(
+    if (value == 'pixeldart') {
+      return const BackendSelection(
         RendererBackendKind.pixeldart,
-        explicit: value == 'pixeldart' || value == 'next',
-        automatic: value == 'auto',
-        aliasUsed: value == 'next',
-        aliasReason: value == 'next'
-            ? 'renderer query "next" is a compatibility alias; use "pixeldart"'
-            : null,
+        explicit: true,
       );
     }
+    final alias = value == 'next' || value == 'auto' || value == 'legacy';
+    final reason = alias
+        ? 'renderer query "$value" is retired; use pixeldart'
+        : 'unsupported renderer query "$value"; use pixeldart';
     return BackendSelection(
       RendererBackendKind.pixeldart,
       explicit: false,
       rejected: true,
-      rejectionReason: 'unsupported renderer query "$value"; use pixeldart',
+      rejectionReason: reason,
+      aliasUsed: alias,
+      aliasReason: alias ? reason : null,
     );
   }
 }

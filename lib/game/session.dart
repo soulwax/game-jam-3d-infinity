@@ -2,6 +2,7 @@ import '../config.dart';
 import '../difficulty/rules.dart';
 import '../difficulty/state.dart';
 import '../house/house.dart';
+import '../house/authored_manifest.dart';
 import '../house/interaction.dart';
 import '../house/state.dart';
 import '../journal/entry.dart';
@@ -97,6 +98,7 @@ class GameSession {
   factory GameSession.create({
     required Vocabulary vocabulary,
     int houseSeed = 1,
+    AuthoredHouseManifest? houseBlueprint,
     int runSeed = 0,
     int startDay = 1,
     int startHour = sunriseHour,
@@ -118,10 +120,13 @@ class GameSession {
     final time = GameTime(dayNumber: startDay, dayLengthSeconds: daySeconds);
     time.skipToHour(startHour);
     final journal = Journal(vocabulary);
+    final house = houseBlueprint == null
+        ? House.empty(houseSeed)
+        : buildHouseFromBlueprint(houseBlueprint, houseSeed);
     return GameSession._(
       houseSeed,
       runSeed,
-      House(houseSeed),
+      house,
       time,
       journal,
       DayLoop(journal: journal, time: time),
@@ -133,6 +138,7 @@ class GameSession {
   factory GameSession.restore({
     required Vocabulary vocabulary,
     required SaveSnapshot snapshot,
+    AuthoredHouseManifest? houseBlueprint,
     double daySeconds = dayLengthSeconds,
   }) {
     final run = snapshot.run;
@@ -175,7 +181,9 @@ class GameSession {
       time: time,
       json: Map<String, dynamic>.from(dayLoopJson),
     );
-    final house = House(seed);
+    final house = houseBlueprint == null
+        ? House.empty(seed)
+        : buildHouseFromBlueprint(houseBlueprint, seed);
     HouseState.fromJson(Map<String, dynamic>.from(houseJson)).applyTo(house);
     final difficulty = DifficultyState.fromJson(
       Map<String, dynamic>.from(difficultyJson),

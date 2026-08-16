@@ -66,7 +66,7 @@ function readAutomationArgs() {
   const resolvedRun = parsed?.resolvedRun;
   const canonical = resolvedRun?.canonical;
   const aliases = resolvedRun?.compatibilityAliases;
-  if (!['auto', 'legacy', 'pixeldart', 'next'].includes(renderer) ||
+  if (!['auto', 'pixeldart', 'next'].includes(renderer) ||
       !['safe', 'standard', 'high', 'clean'].includes(profile) ||
       typeof scenario !== 'string' || !/^[a-z0-9][a-z0-9._-]*$/.test(scenario) ||
       !Number.isInteger(width) || width < 1 ||
@@ -76,7 +76,7 @@ function readAutomationArgs() {
       !aliases || typeof aliases !== 'object' || Array.isArray(aliases) ||
       (aliases.renderer != null && aliases.renderer !== 'next') ||
       (aliases.profile != null && aliases.profile !== 'clean') ||
-      !['auto', 'legacy', 'pixeldart'].includes(canonical.renderer) ||
+      !['auto', 'pixeldart'].includes(canonical.renderer) ||
       !['safe', 'standard', 'high'].includes(canonical.profile) ||
       canonical.scenario !== scenario ||
       canonical.viewport?.width !== width || canonical.viewport?.height !== height ||
@@ -150,14 +150,11 @@ function assertSelectionDiagnostics(name, result, diagnostics) {
       selection.kind !== result.backend ||
       typeof selection.explicit !== 'boolean' ||
       typeof selection.automatic !== 'boolean' ||
-      typeof selection.fallback !== 'boolean' ||
       typeof selection.rejected !== 'boolean' ||
       typeof selection.aliasUsed !== 'boolean') {
     throw new Error(`${name}: selection diagnostics were incomplete ${JSON.stringify({ result, diagnostics })}`);
   }
-  if (selection.fallback !== diagnostics.fallback ||
-      (selection.fallback && typeof selection.fallbackReason !== 'string') ||
-      (selection.rejected && typeof selection.rejectionReason !== 'string') ||
+  if ((selection.rejected && typeof selection.rejectionReason !== 'string') ||
       (selection.aliasUsed && typeof selection.aliasReason !== 'string')) {
     throw new Error(`${name}: selection diagnostics did not preserve explanations ${JSON.stringify({ result, diagnostics })}`);
   }
@@ -642,7 +639,6 @@ function writeEmbodiedEvidence(routeName, routePath, result, evidence, capture) 
 
 const routes = [
   ['pixeldart-default', '/'],
-  ['legacy-explicit', '/?renderer=legacy'],
   ['pixeldart-canonical', '/?renderer=pixeldart'],
   ['pixeldart-next', '/?renderer=next'],
   ['pixeldart-auto-candidate', '/?renderer=auto'],
@@ -698,16 +694,12 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
   try {
     const selectedRoutes = automationArgs
       ? [[
-          automationArgs.renderer === 'legacy'
-            ? 'legacy-explicit'
-            : automationArgs.renderer === 'pixeldart'
+          automationArgs.renderer === 'pixeldart'
               ? 'pixeldart-canonical'
             : automationArgs.renderer === 'next'
               ? 'pixeldart-next'
               : 'pixeldart-default',
-          automationArgs.renderer === 'legacy'
-            ? '/?renderer=legacy'
-            : automationArgs.renderer === 'pixeldart'
+          automationArgs.renderer === 'pixeldart'
               ? '/?renderer=pixeldart'
             : automationArgs.renderer === 'next'
               ? '/?renderer=next'
@@ -888,7 +880,7 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       if (visualCaptureSelection && !isPixeldartBackend(result.backend)) {
         throw new Error(`${name}: selected visual capture requires Pixeldart, but startup fell back ${JSON.stringify({ backend: result.backend, error: result.error, errorStack: result.errorStack })}`);
       }
-      if (!/^(legacy|pixeldart|next)$/.test(result.backend ?? '') ||
+      if (result.backend !== 'pixeldart' ||
           !result.diagnostics || !result.bootPhase) {
         throw new Error(`${name}: incomplete diagnostics ${JSON.stringify(result)}`);
       }
@@ -923,9 +915,9 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         throw new Error(`${name}: authored Pixeldart textures did not load ${JSON.stringify(result)}`);
       }
       if (name === 'unknown-fallback' &&
-          (diagnostics.fallback !== true ||
-           diagnostics.fallbackReason !== 'unknown renderer query')) {
-        throw new Error(`${name}: fallback diagnostics were incomplete ${JSON.stringify(diagnostics)}`);
+          (!diagnostics.selection?.rejected ||
+           typeof diagnostics.selection?.rejectionReason !== 'string')) {
+        throw new Error(`${name}: rejected-query diagnostics were incomplete ${JSON.stringify(diagnostics)}`);
       }
       if (name === 'pixeldart-auto-candidate' &&
           (!isPixeldartBackend(result.backend) || result.fallback === 'true')) {
@@ -936,17 +928,13 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
            result.requested !== 'auto')) {
         throw new Error(`${name}: query-free startup did not select canonical Pixeldart ${JSON.stringify(result)}`);
       }
-      const rendererShowcase = result.houseManifest === 'renderer-showcase' &&
-        result.houseManifestSource === 'runtime-showcase';
-      if (!rendererShowcase &&
-          (result.houseManifest !== 'validated' ||
-           !['res/house/house.json', '/res/house/house.json'].includes(
-             result.houseManifestSource,
-           ))) {
+      if (result.houseManifest !== 'validated' ||
+          !['res/house/house.json', '/res/house/house.json'].includes(
+            result.houseManifestSource,
+          )) {
         throw new Error(`${name}: authored house manifest was not validated ${JSON.stringify(result)}`);
       }
-      if (!rendererShowcase &&
-          (result.houseInventory !== 'validated' ||
+      if (result.houseInventory !== 'validated' ||
           !['res/house/inventory.json', '/res/house/inventory.json'].includes(
             result.houseInventorySource,
           ) || Number(result.houseInventoryCount) !== expectedHouseInventoryCount)) {
@@ -955,8 +943,7 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
           result,
         })}`);
       }
-      if (!rendererShowcase &&
-          (result.houseSoundscape !== 'validated' ||
+      if (result.houseSoundscape !== 'validated' ||
           !['res/house/soundscape.json', '/res/house/soundscape.json'].includes(
             result.houseSoundscapeSource,
           ) || Number(result.houseSoundEmitterCount) !== expectedHouseSoundEmitterCount)) {
@@ -972,7 +959,7 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       if (!visualCaptureSelection && result.audioRoomIr !== 'ir-stone') {
         throw new Error(`${name}: active room impulse response was not published ${JSON.stringify(result)}`);
       }
-      if (!rendererShowcase && result.audioPlanner !== 'validated') {
+      if (result.audioPlanner !== 'validated') {
         throw new Error(`${name}: acoustic planner was not wired ${JSON.stringify(result)}`);
       }
       const visitorDialog = result.door.role === 'dialog' &&
@@ -1008,9 +995,6 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       if (isPixeldartBackend(result.backend) &&
           (!result.frameStats || result.frameBudget !== 'ok')) {
         throw new Error(`${name}: renderer budget evidence failed ${JSON.stringify(result)}`);
-      }
-      if (result.backend === 'legacy' && Number(result.frameSubmits ?? '0') < 1) {
-        throw new Error(`${name}: legacy renderer did not receive a backend frame ${JSON.stringify(result)}`);
       }
       await page.locator('#game').focus();
       const focusedId = await page.evaluate(() => document.activeElement?.id ?? '');
@@ -1168,9 +1152,7 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         }
         console.log(`embodied-approach: ${JSON.stringify({ route: name, before, approach, approachDistance })}`);
         // The route proves real movement and the production interaction path;
-        // the current showcase layout does not guarantee a mantle raycast from
-        // this approach on every adapter, so an unfocused action is asserted
-        // as a non-mutating denial instead of inventing a camera transform.
+        // do not invent camera transforms when focus is unavailable.
         const focusSettleMs = 0;
         const focusedPrompt = '';
         for (const key of ['s', 'a', 'd', 'w']) {
@@ -1322,7 +1304,7 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       const noWebglFailures = trackPageHealth(noWebglPage);
       await noWebglPage.goto(`${baseUrl}/?renderer=next`);
       await noWebglPage.waitForFunction(
-        () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'no-webgl2',
+        () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'renderer-unavailable',
         null,
         { timeout: 15000 },
       );
@@ -1332,10 +1314,10 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         fallback: canvas.getAttribute('data-renderer-fallback'),
         diagnostics: canvas.getAttribute('data-renderer-diagnostics'),
       }));
-      if (noWebgl.phase !== 'no-webgl2' || noWebgl.backend !== 'legacy' ||
-          noWebgl.fallback !== 'true' ||
+      if (noWebgl.phase !== 'renderer-unavailable' || noWebgl.backend !== 'pixeldart' ||
+          noWebgl.fallback !== 'false' ||
           !noWebgl.diagnostics?.includes('webgl2 unavailable')) {
-        throw new Error(`WebGL2-unavailable fallback failed ${JSON.stringify(noWebgl)}`);
+        throw new Error(`WebGL2-unavailable failure presentation failed ${JSON.stringify(noWebgl)}`);
       }
       let noWebglDiagnostics;
       try {
@@ -1344,12 +1326,12 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         throw new Error(`WebGL2-unavailable diagnostics were not valid JSON: ${error}`);
       }
       assertSelectionDiagnostics(
-        'webgl2-unavailable-fallback',
+        'webgl2-unavailable-failure',
         { backend: noWebgl.backend },
         noWebglDiagnostics,
       );
-      assertHealthy(noWebglFailures, 'webgl2-unavailable-fallback');
-      console.log(`webgl2-unavailable-fallback: ${JSON.stringify(noWebgl)}`);
+      assertHealthy(noWebglFailures, 'webgl2-unavailable-failure');
+      console.log(`webgl2-unavailable-failure: ${JSON.stringify(noWebgl)}`);
       await noWebglPage.close();
     } finally {
       await noWebglBrowser.close();
@@ -1363,7 +1345,7 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       const constrainedFailures = trackPageHealth(constrainedPage);
       await constrainedPage.goto(`${baseUrl}/?renderer=next`);
       await constrainedPage.waitForFunction(
-        () => ['running', 'no-webgl2'].includes(
+          () => ['running', 'renderer-unavailable'].includes(
           document.querySelector('#game')?.getAttribute('data-boot-phase'),
         ),
         null,
@@ -1375,7 +1357,7 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         fallback: canvas.getAttribute('data-renderer-fallback'),
         diagnostics: canvas.getAttribute('data-renderer-diagnostics'),
       }));
-      if (!/^(legacy|pixeldart|next)$/.test(constrained.backend ?? '') ||
+      if (!/^(pixeldart)$/.test(constrained.backend ?? '') ||
           !constrained.diagnostics ||
           (constrained.phase === 'running' && !isPixeldartBackend(constrained.backend) &&
            constrained.fallback !== 'true')) {

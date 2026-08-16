@@ -1,7 +1,7 @@
 import 'package:quarantine/house/exterior_pvs.dart';
 import 'package:quarantine/house/exterior_mesh_adapter.dart';
 import 'package:quarantine/house/exterior_scene.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 Never fail(String message) => throw StateError('house exterior PVS: $message');
 
@@ -10,7 +10,7 @@ void require(bool condition, String message) {
 }
 
 void main() {
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   const pvs = ExteriorPvs();
   pvs.validateAgainst(house);
   for (final band in ExteriorCameraBand.values) {

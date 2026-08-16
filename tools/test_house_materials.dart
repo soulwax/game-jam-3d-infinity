@@ -1,8 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/surface_materials.dart';
+import 'house_fixture.dart';
 
 Never fail(String message) => throw StateError('house materials: $message');
 
@@ -20,7 +20,7 @@ Map<String, dynamic> readObject(String path) {
 
 void main() {
   final root = Directory.current.path;
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final roomIds = {for (final room in house.rooms) room.id};
   final surfaceIds = <String>{};
   for (final room in house.rooms) {

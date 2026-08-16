@@ -285,32 +285,30 @@ class MasterAcousticSimulator {
   }
 
   /// Self-validation method for audio test suites.
-  static bool validate() {
-    final house = House(42);
+  static bool validate({House? house}) {
+    if (house != null) {
+      final inRoom = evaluateOcclusion(
+        house: house,
+        emitterRoomId: 'hall',
+        listenerRoomId: 'hall',
+        emitterPos: Vec3(11, 1, 2),
+        listenerPos: Vec3(12, 1, 3),
+      );
+      if (!inRoom.isDirectPath || inRoom.lowPassCutoffHz < 19000.0) return false;
 
-    // Occlusion test
-    final inRoom = evaluateOcclusion(
-      house: house,
-      emitterRoomId: 'hall',
-      listenerRoomId: 'hall',
-      emitterPos: Vec3(11, 1, 2),
-      listenerPos: Vec3(12, 1, 3),
-    );
-    if (!inRoom.isDirectPath || inRoom.lowPassCutoffHz < 19000.0) return false;
+      final hallLivingPortal = house.portals.firstWhere((p) =>
+          (p.a == 'hall' && p.b == 'living-room') || (p.b == 'hall' && p.a == 'living-room'));
+      hallLivingPortal.open = false;
 
-    // Closed door test
-    final hallLivingPortal = house.portals.firstWhere((p) =>
-        (p.a == 'hall' && p.b == 'living-room') || (p.b == 'hall' && p.a == 'living-room'));
-    hallLivingPortal.open = false;
-
-    final closedDoor = evaluateOcclusion(
-      house: house,
-      emitterRoomId: 'hall',
-      listenerRoomId: 'living-room',
-      emitterPos: Vec3(11, 1, 2),
-      listenerPos: Vec3(3, 1, 2),
-    );
-    if (closedDoor.isDirectPath || closedDoor.lowPassCutoffHz > 800.0) return false;
+      final closedDoor = evaluateOcclusion(
+        house: house,
+        emitterRoomId: 'hall',
+        listenerRoomId: 'living-room',
+        emitterPos: Vec3(11, 1, 2),
+        listenerPos: Vec3(3, 1, 2),
+      );
+      if (closedDoor.isDirectPath || closedDoor.lowPassCutoffHz > 800.0) return false;
+    }
 
     // Ducking test
     final ducked = calculateBusGains(isVoiceActive: true, isRadioActive: false);

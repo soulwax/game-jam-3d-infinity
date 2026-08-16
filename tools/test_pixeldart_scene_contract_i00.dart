@@ -12,11 +12,11 @@
 //     the Pixeldart path is absent).
 
 import 'package:quarantine/engine/camera.dart';
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/inventory.dart';
 import 'package:quarantine/presentation/pixeldart_scene_contract.dart';
 import 'package:quarantine/sim/rupture.dart';
 import 'package:quarantine/sim/weather.dart';
+import 'house_fixture.dart';
 
 void check(bool condition, String message) {
   if (!condition) throw StateError('FAIL: $message');
@@ -33,7 +33,7 @@ void main() async {
   check(contract.profileFallbackReason == null, 'null contract: no fallback reason');
 
   // 3. Build minimal domain stubs.
-  final house = House(0);
+  final house = loadAuthoredHouse(seed: 0);
   final inventory = HouseInventory.fromJson({
     'schemaVersion': 1,
     'sourceRef': 'test',

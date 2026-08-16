@@ -1,0 +1,35 @@
+{
+  "captureContractVersion": 1,
+  "taskId": "RPA-05-HUMAN",
+  "purpose": "human-visual-confirmation",
+  "surface": "game",
+  "state": "bright",
+  "sourceMethod": "browser",
+  "safeArea": "full-frame",
+  "theme": "default",
+  "locale": "en",
+  "motion": "settled",
+  "quality": "high",
+  "audience": "development",
+  "seed": null,
+  "privacyCheck": "pass",
+  "rightsStatus": "licensed-or-original",
+  "altText": "Human review capture: narrow, high profile, bright state.",
+  "notes": "Requested profile/state is encoded in the URL; verify the effective runtime state in-app. Machine-captured evidence; aesthetic approval remains human-owned.",
+  "schemaVersion": 1,
+  "reviewCaptureId": "narrow-high-bright",
+  "requestedRenderer": "pixeldart",
+  "profile": "high",
+  "visualState": "bright",
+  "viewport": {
+    "id": "narrow",
+    "width": 390,
+    "height": 844
+  },
+  "sourceUrl": "http://127.0.0.1:8090/?renderer=pixeldart&profile=high&visualState=bright",
+  "browser": {
+    "name": "firefox",
+    "version": "153.0"
+  },
+  "screenshot": "browser-human-narrow-high-bright.png"
+}

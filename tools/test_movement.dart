@@ -1,6 +1,7 @@
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/house/collision.dart';
 import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) => throw StateError(message);
 
@@ -32,7 +33,7 @@ void _expect(bool value, String message) {
 }
 
 void main() {
-  final stableHouse = House(42);
+  final stableHouse = loadAuthoredHouse(seed: 42);
   final hall = stableHouse.byId('hall')!;
   final hallSize = stableHouse.effectiveSize(hall);
   final hallStart = Vec3(
@@ -47,9 +48,9 @@ void main() {
     Vec3(0, 0, 0.4),
     frames: 30,
   );
-  final at60 = _move(House(42), hallStart, 'hall', Vec3(0, 0, 0.4), frames: 60);
+  final at60 = _move(loadAuthoredHouse(seed: 42), hallStart, 'hall', Vec3(0, 0, 0.4), frames: 60);
   final at120 = _move(
-    House(42),
+    loadAuthoredHouse(seed: 42),
     hallStart,
     'hall',
     Vec3(0, 0, 0.4),
@@ -65,10 +66,10 @@ void main() {
     hallStart.y,
     hallStart.z,
   );
-  final wall = _move(House(42), wallStart, 'hall', Vec3(1, 0, 0));
+  final wall = _move(loadAuthoredHouse(seed: 42), wallStart, 'hall', Vec3(1, 0, 0));
   _expect(wall.eye.x <= wallStart.x, 'a solid wall must reject movement');
 
-  final closedHouse = House(42);
+  final closedHouse = loadAuthoredHouse(seed: 42);
   closedHouse.portalById('hall-living')!.open = false;
   final livingPortal = closedHouse.portalById('hall-living')!;
   final livingPortalZ =
@@ -85,7 +86,7 @@ void main() {
   );
 
   final open = _move(
-    House(42),
+    loadAuthoredHouse(seed: 42),
     Vec3(hall.origin.x + 0.2, hallStart.y, livingPortalZ),
     'hall',
     Vec3(-1, 0, 0),
@@ -95,7 +96,7 @@ void main() {
     'an open canonical portal must allow crossing',
   );
 
-  final stairHouse = House(42);
+  final stairHouse = loadAuthoredHouse(seed: 42);
   final stair = stairHouse.stairs.single;
   final upstairs = _move(
     stairHouse,
@@ -109,7 +110,7 @@ void main() {
     'stairs must carry the player smoothly from hall to landing',
   );
   final downstairs = _move(
-    House(42),
+    loadAuthoredHouse(seed: 42),
     stair.upperEye,
     'landing',
     Vec3(0, 0, 8.1),

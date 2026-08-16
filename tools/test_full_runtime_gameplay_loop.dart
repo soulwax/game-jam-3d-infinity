@@ -1,13 +1,13 @@
 import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/camera.dart';
 import 'package:quarantine/engine/math3.dart';
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/focus.dart';
 import 'package:quarantine/story/narrative_state.dart';
 import 'package:quarantine/story/narrative_encounter_director.dart';
 import 'package:quarantine/story/physical_aftermath_manager.dart';
 import 'package:quarantine/story/ending_texture_synthesizer.dart';
 import 'package:quarantine/story/timeline_progression_coordinator.dart';
+import 'house_fixture.dart';
 
 Never _fail(String message) =>
     throw StateError('Full Runtime Gameplay Loop test failed: $message');
@@ -19,7 +19,7 @@ void _expect(bool condition, String message) {
 void main() {
   print('Running Full Runtime Gameplay Loop End-to-End Simulation...');
 
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final narrativeState = NarrativeState();
   final director = NarrativeEncounterDirector(state: narrativeState);
   final aftermath = PhysicalAftermathManager(state: narrativeState);

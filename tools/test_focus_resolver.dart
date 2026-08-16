@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:quarantine/engine/camera.dart';
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/house/focus.dart';
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/inventory.dart';
+import 'house_fixture.dart';
 
 void _fail(String message) => throw StateError(message);
 
@@ -13,7 +13,7 @@ void _expect(bool cond, String message) {
 }
 
 void main() {
-  final house = House(42);
+  final house = loadAuthoredHouse(seed: 42);
   final inventory = HouseInventory.decode(
     File('assets/house/inventory.json').readAsStringSync(),
   );

@@ -1,0 +1,580 @@
+{
+  "schemaVersion": 1,
+  "packet": "human-visual-confirmation",
+  "status": "pending-human-review",
+  "reviewer": null,
+  "reviewedAt": null,
+  "decision": null,
+  "request": {
+    "url": "http://127.0.0.1:8090/",
+    "profiles": [
+      "safe",
+      "high"
+    ],
+    "states": [
+      "normal",
+      "dark",
+      "bright"
+    ],
+    "viewports": [
+      {
+        "id": "desktop-720",
+        "width": 1280,
+        "height": 720
+      },
+      {
+        "id": "desktop-1080",
+        "width": 1920,
+        "height": 1080
+      },
+      {
+        "id": "narrow",
+        "width": 390,
+        "height": 844
+      }
+    ],
+    "readySelector": "canvas"
+  },
+  "requiredChecks": [
+    "normal play distance and camera framing",
+    "readable darkness and focal hierarchy",
+    "materials, normals, silhouette, and contact grounding",
+    "near/mid/far spatial depth without light leaks",
+    "interaction, captions, focus, and clipping at default UI scale",
+    "narrow viewport layout and safe-area behavior",
+    "high and safe profile differences remain intentional",
+    "dark and bright states remain coherent and legible",
+    "no proxy, floating prop, collision mismatch, or debug residue"
+  ],
+  "instructions": [
+    "Review every capture at 100% scale in the named runtime build.",
+    "Use the checklist for each viewport/profile/state; record concrete defects, not vibes.",
+    "Reject the packet if any hard-fail defect or unreadable state is present.",
+    "Only a real human may fill reviewer, reviewedAt, and decision."
+  ],
+  "captures": [
+    {
+      "id": "desktop-720-safe-normal",
+      "viewport": {
+        "id": "desktop-720",
+        "width": 1280,
+        "height": 720
+      },
+      "profile": "safe",
+      "state": "normal",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-safe-normal.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-safe-normal.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-safe-normal.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-720-safe-dark",
+      "viewport": {
+        "id": "desktop-720",
+        "width": 1280,
+        "height": 720
+      },
+      "profile": "safe",
+      "state": "dark",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-safe-dark.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-safe-dark.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-safe-dark.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-720-safe-bright",
+      "viewport": {
+        "id": "desktop-720",
+        "width": 1280,
+        "height": 720
+      },
+      "profile": "safe",
+      "state": "bright",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-safe-bright.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-safe-bright.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-safe-bright.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-720-high-normal",
+      "viewport": {
+        "id": "desktop-720",
+        "width": 1280,
+        "height": 720
+      },
+      "profile": "high",
+      "state": "normal",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-high-normal.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-high-normal.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-high-normal.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-720-high-dark",
+      "viewport": {
+        "id": "desktop-720",
+        "width": 1280,
+        "height": 720
+      },
+      "profile": "high",
+      "state": "dark",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-high-dark.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-high-dark.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-high-dark.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-720-high-bright",
+      "viewport": {
+        "id": "desktop-720",
+        "width": 1280,
+        "height": 720
+      },
+      "profile": "high",
+      "state": "bright",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-high-bright.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-high-bright.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-720-high-bright.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-1080-safe-normal",
+      "viewport": {
+        "id": "desktop-1080",
+        "width": 1920,
+        "height": 1080
+      },
+      "profile": "safe",
+      "state": "normal",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-safe-normal.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-safe-normal.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-safe-normal.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-1080-safe-dark",
+      "viewport": {
+        "id": "desktop-1080",
+        "width": 1920,
+        "height": 1080
+      },
+      "profile": "safe",
+      "state": "dark",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-safe-dark.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-safe-dark.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-safe-dark.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-1080-safe-bright",
+      "viewport": {
+        "id": "desktop-1080",
+        "width": 1920,
+        "height": 1080
+      },
+      "profile": "safe",
+      "state": "bright",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-safe-bright.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-safe-bright.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-safe-bright.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-1080-high-normal",
+      "viewport": {
+        "id": "desktop-1080",
+        "width": 1920,
+        "height": 1080
+      },
+      "profile": "high",
+      "state": "normal",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-high-normal.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-high-normal.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-high-normal.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-1080-high-dark",
+      "viewport": {
+        "id": "desktop-1080",
+        "width": 1920,
+        "height": 1080
+      },
+      "profile": "high",
+      "state": "dark",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-high-dark.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-high-dark.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-high-dark.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "desktop-1080-high-bright",
+      "viewport": {
+        "id": "desktop-1080",
+        "width": 1920,
+        "height": 1080
+      },
+      "profile": "high",
+      "state": "bright",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-high-bright.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-high-bright.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-desktop-1080-high-bright.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "narrow-safe-normal",
+      "viewport": {
+        "id": "narrow",
+        "width": 390,
+        "height": 844
+      },
+      "profile": "safe",
+      "state": "normal",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-narrow-safe-normal.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-narrow-safe-normal.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-narrow-safe-normal.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "narrow-safe-dark",
+      "viewport": {
+        "id": "narrow",
+        "width": 390,
+        "height": 844
+      },
+      "profile": "safe",
+      "state": "dark",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-narrow-safe-dark.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-narrow-safe-dark.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-narrow-safe-dark.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "narrow-safe-bright",
+      "viewport": {
+        "id": "narrow",
+        "width": 390,
+        "height": 844
+      },
+      "profile": "safe",
+      "state": "bright",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-narrow-safe-bright.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-narrow-safe-bright.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-narrow-safe-bright.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "narrow-high-normal",
+      "viewport": {
+        "id": "narrow",
+        "width": 390,
+        "height": 844
+      },
+      "profile": "high",
+      "state": "normal",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-narrow-high-normal.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-narrow-high-normal.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-narrow-high-normal.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "narrow-high-dark",
+      "viewport": {
+        "id": "narrow",
+        "width": 390,
+        "height": 844
+      },
+      "profile": "high",
+      "state": "dark",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-narrow-high-dark.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-narrow-high-dark.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-narrow-high-dark.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    },
+    {
+      "id": "narrow-high-bright",
+      "viewport": {
+        "id": "narrow",
+        "width": 390,
+        "height": 844
+      },
+      "profile": "high",
+      "state": "bright",
+      "screenshot": "artifacts/human-visual-confirmation/latest/browser-human-narrow-high-bright.png",
+      "metadata": "artifacts/human-visual-confirmation/latest/browser-human-narrow-high-bright.json",
+      "digest": "artifacts/human-visual-confirmation/latest/browser-human-narrow-high-bright.digest.json",
+      "review": {
+        "status": "pending-human-review",
+        "scores": {
+          "normal play distance and camera framing": null,
+          "readable darkness and focal hierarchy": null,
+          "materials, normals, silhouette, and contact grounding": null,
+          "near/mid/far spatial depth without light leaks": null,
+          "interaction, captions, focus, and clipping at default UI scale": null,
+          "narrow viewport layout and safe-area behavior": null,
+          "high and safe profile differences remain intentional": null,
+          "dark and bright states remain coherent and legible": null,
+          "no proxy, floating prop, collision mismatch, or debug residue": null
+        },
+        "defects": [],
+        "notes": ""
+      }
+    }
+  ],
+  "output": "artifacts/human-visual-confirmation/latest/human-visual-confirmation.json"
+}

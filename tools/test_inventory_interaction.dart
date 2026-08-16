@@ -3,8 +3,8 @@ import 'dart:io';
 
 import 'package:quarantine/house/inventory.dart';
 import 'package:quarantine/house/inventory_interaction.dart';
-import 'package:quarantine/house/house.dart';
 import 'package:quarantine/game/save.dart';
+import 'house_fixture.dart';
 
 void main() {
   final inventory = HouseInventory.decode(
@@ -55,7 +55,7 @@ void main() {
   (secondPickable['interaction'] as Map<String, dynamic>)['focusId'] =
       'front-door-clock';
   final duplicate = HouseInventory.fromJson(raw);
-  _expectThrows(() => duplicate.validateAgainst(House(42)));
+  _expectThrows(() => duplicate.validateAgainst(loadAuthoredHouse(seed: 42)));
   stdout.writeln(
     'inventory interaction: event identity, persistence, and pickable guard pass',
   );

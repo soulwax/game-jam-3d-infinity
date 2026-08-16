@@ -7,7 +7,7 @@
 //  4. Route validation against House room bounds succeeds cleanly.
 
 import 'package:quarantine/house/hero_route_reference.dart';
-import 'package:quarantine/house/house.dart';
+import 'house_fixture.dart';
 
 void check(bool condition, String message) {
   if (!condition) throw StateError('FAIL: $message');
@@ -42,7 +42,7 @@ void main() {
   check(board.atmosphericDensity.containsKey('fog'), 'Atmospheric density includes fog');
 
   // 4. Validate against House instance
-  final house = House(0);
+  final house = loadAuthoredHouse(seed: 0);
   final valid = heroRef.validateAgainstHouse(house);
   check(valid, 'Canonical waypoints fall inside house room bounds');
 

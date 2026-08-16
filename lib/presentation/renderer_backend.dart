@@ -2,7 +2,6 @@ import '../game/presentation_snapshot.dart';
 import 'renderer_diagnostics.dart';
 
 enum RendererBackendKind {
-  legacy,
   pixeldart;
 
   /// Compatibility symbol for callers that still use the pre-C-01 name.

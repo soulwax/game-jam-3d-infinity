@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:quarantine/house/authored_manifest.dart';
-import 'package:quarantine/house/house.dart';
+import 'package:quarantine/house/room.dart';
 import 'package:quarantine/house/scale_profile.dart';
 
 Never fail(String message) => throw StateError('house manifest: $message');
@@ -37,7 +37,25 @@ void main() {
   final authored = AuthoredHouseManifest.decode(
     File(housePath).readAsStringSync(),
   );
-  authored.validateAgainst(House(42));
+  authored.validateTopology();
+  require(authored.levels.length == 3, 'expected three authored levels');
+  require(
+    authored.rooms.every((room) => room.portalIds.isNotEmpty),
+    'every authored room needs a portal reference',
+  );
+  final authoredRuntime = buildHouseFromBlueprint(authored, 42);
+  authored.validateAgainst(authoredRuntime);
+  require(
+    authoredRuntime.rooms.length == 8 &&
+        authoredRuntime.portals.length == 9 &&
+        authoredRuntime.stairs.length == 1,
+    'blueprint builder must construct the canonical graph counts',
+  );
+  require(
+    authoredRuntime.byId('cellar')?.floor == Floor.hidden &&
+        authoredRuntime.byId('bedroom')?.floor == Floor.first,
+    'blueprint builder must preserve level mapping',
+  );
   final house = readObject(housePath);
   require(
     stringOf(house, 'houseId') == 'quarantine-house-main',
@@ -166,6 +184,19 @@ void main() {
     jsonEncode(stair['landingHeights']) == jsonEncode([1.4, 2.8, 4.2]),
     'stair landing heights drifted',
   );
+
+  final malformed = jsonDecode(jsonEncode(house)) as Map<String, dynamic>;
+  final malformedRooms = malformed['rooms'] as List<dynamic>;
+  final firstRoom = Map<String, dynamic>.from(malformedRooms.first as Map);
+  firstRoom['portalIds'] = ['missing-portal'];
+  malformedRooms[0] = firstRoom;
+  var rejected = false;
+  try {
+    AuthoredHouseManifest.fromJson(malformed);
+  } on FormatException catch (error) {
+    rejected = error.message.toString().contains('missing-portal');
+  }
+  require(rejected, 'invalid portal reference must fail with its ID');
 
   final routePath = '$root/assets/house/verification/routes.json';
   final routes = readObject(routePath);

@@ -1,7 +1,6 @@
 import 'backend_selector.dart';
-import 'renderer_backend.dart';
 
-/// Reasons the bootstrap boundary may downgrade a Pixeldart selection.
+/// Reasons used when publishing a Pixeldart-unavailable browser state.
 enum BackendFallbackReason {
   webglUnavailable('webgl2 unavailable'),
   pixeldartInitializationFailed('pixeldart initialization failed');
@@ -11,11 +10,8 @@ enum BackendFallbackReason {
   const BackendFallbackReason(this.message);
 }
 
-/// Keeps renderer-selection explanations intact across bootstrap downgrades.
-///
-/// The web entrypoint owns the concrete context/runtime work. It should call
-/// [fallback] instead of constructing a fresh legacy selection so alias and
-/// rejection diagnostics remain visible to the existing publisher.
+/// Legacy renderer fallback is retired. The web entrypoint publishes an
+/// unavailable Pixeldart state directly instead of manufacturing a backend.
 final class BackendBootstrapPolicy {
   const BackendBootstrapPolicy();
 
@@ -23,7 +19,11 @@ final class BackendBootstrapPolicy {
     BackendSelection selection,
     BackendFallbackReason reason,
   ) {
-    if (selection.kind != RendererBackendKind.pixeldart) return selection;
-    return selection.withLegacyFallback(reason.message);
+    if (selection.rejected) {
+      return selection;
+    }
+    throw StateError(
+      'renderer fallback is retired (${reason.message}); publish Pixeldart unavailable',
+    );
   }
 }

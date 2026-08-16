@@ -1,5 +1,4 @@
 import 'backend_selector.dart';
-import 'legacy_backend.dart';
 import 'pixeldart_backend.dart';
 import 'renderer_backend.dart';
 import 'renderer_runtime.dart';
@@ -11,17 +10,13 @@ final class BackendFactory {
     BackendSelection selection, {
     RendererRuntime? runtime,
   }) {
-    if (selection.kind == RendererBackendKind.pixeldart &&
-        !selection.fallback) {
-      return PixeldartBackend(
-        runtime: runtime,
-        selectionDiagnostics: selection.toJson(),
+    if (selection.kind != RendererBackendKind.pixeldart) {
+      throw StateError(
+        'legacy renderer backend is retired; production requires Pixeldart',
       );
     }
-    return LegacyBackend(
+    return PixeldartBackend(
       runtime: runtime,
-      fallback: selection.fallback,
-      fallbackReason: selection.fallbackReason,
       selectionDiagnostics: selection.toJson(),
     );
   }
