@@ -1,0 +1,291 @@
+{
+  "schemaVersion": 1,
+  "kind": "embodied-route-v1",
+  "scenario": "days-1-3",
+  "routeName": "pixeldart-canonical",
+  "routePath": "/?renderer=pixeldart",
+  "capture": {
+    "screenshot": "browser-days-1-3-pixeldart-canonical-embodied-capture.png",
+    "metadata": "browser-days-1-3-pixeldart-canonical-embodied-capture.json",
+    "digest": "browser-days-1-3-pixeldart-canonical-embodied-capture.digest.json"
+  },
+  "requestedRenderer": "pixeldart",
+  "requestedProfile": "safe",
+  "resolvedRun": {
+    "schemaVersion": 2,
+    "canonical": {
+      "mode": "run",
+      "scenario": "days-1-3",
+      "serverRoot": "dist/web",
+      "port": 8090,
+      "baseUrl": "http://127.0.0.1:8090",
+      "browser": "firefox",
+      "renderer": "pixeldart",
+      "profile": "safe",
+      "viewport": {
+        "width": 800,
+        "height": 500
+      },
+      "seed": 7,
+      "fixedDelta": 0.016666666666666666,
+      "timeoutTicks": 900,
+      "artifacts": "artifacts/automation/rpa05-index-smoke-pass",
+      "headless": true
+    },
+    "compatibilityAliases": {}
+  },
+  "effectiveRenderer": "pixeldart",
+  "effectiveProfile": "high",
+  "profileNegotiation": "capability-negotiated",
+  "visualCaptureSelection": null,
+  "actions": [
+    "visitor.ignore-until-clear",
+    "KeyW:3500ms+KeyA:1800ms",
+    "KeyE:unfocused",
+    "departure:cardinal-probes+KeyS:800ms",
+    "KeyE:denied-after-focus-clear"
+  ],
+  "assertions": {
+    "focus": "none (layout-dependent)",
+    "positiveAction": "unfocused-action-denied",
+    "negativeAction": "save-preserved-after-denial",
+    "saveAuthoritative": true,
+    "movementAuthoritative": true
+  },
+  "evidence": {
+    "before": {
+      "roomId": "hall",
+      "eye": {
+        "x": 12.9375,
+        "y": 1.65,
+        "z": 0.825
+      },
+      "yaw": 0,
+      "pitch": 0
+    },
+    "approach": {
+      "roomId": "living-room",
+      "eye": {
+        "x": 5.9688180347830615,
+        "y": 1.65,
+        "z": 4.069326372705164
+      },
+      "yaw": -0.588,
+      "pitch": 0.98
+    },
+    "positive": {
+      "focus": "",
+      "action": "unfocused-denial"
+    },
+    "after": {
+      "roomId": "living-room",
+      "eye": {
+        "x": 7.538952529619321,
+        "y": 1.65,
+        "z": 1.7030458422620596
+      },
+      "yaw": -0.5039999999999999,
+      "pitch": 0.14000000000000007
+    },
+    "denial": {
+      "prompt": "",
+      "savePresent": true
+    },
+    "settle": {
+      "positiveMs": 0,
+      "denialClearMs": 10
+    },
+    "inputTrace": [
+      {
+        "label": "visitor.ignore-until-clear",
+        "elapsedMs": 0
+      },
+      {
+        "label": "KeyK:save-before",
+        "elapsedMs": 14
+      },
+      {
+        "label": "KeyW:down",
+        "elapsedMs": 267
+      },
+      {
+        "label": "KeyW:up",
+        "elapsedMs": 3777
+      },
+      {
+        "label": "KeyA:down",
+        "elapsedMs": 3958
+      },
+      {
+        "label": "KeyA:up",
+        "elapsedMs": 5769
+      },
+      {
+        "label": "KeyK:save-approach",
+        "elapsedMs": 6153
+      },
+      {
+        "label": "KeyS:departure-down",
+        "elapsedMs": 6236
+      },
+      {
+        "label": "KeyS:departure-up",
+        "elapsedMs": 6541
+      },
+      {
+        "label": "KeyA:departure-down",
+        "elapsedMs": 6622
+      },
+      {
+        "label": "KeyA:departure-up",
+        "elapsedMs": 6926
+      },
+      {
+        "label": "KeyD:departure-down",
+        "elapsedMs": 7007
+      },
+      {
+        "label": "KeyD:departure-up",
+        "elapsedMs": 7311
+      },
+      {
+        "label": "KeyW:departure-down",
+        "elapsedMs": 7390
+      },
+      {
+        "label": "KeyW:departure-up",
+        "elapsedMs": 7695
+      },
+      {
+        "label": "KeyS:departure-final-down",
+        "elapsedMs": 7774
+      },
+      {
+        "label": "KeyS:departure-final-up",
+        "elapsedMs": 9179
+      },
+      {
+        "label": "KeyK:save-after",
+        "elapsedMs": 9573
+      },
+      {
+        "label": "KeyE:unfocused",
+        "elapsedMs": 9693
+      },
+      {
+        "label": "KeyE:denied-after-focus-clear",
+        "elapsedMs": 9822
+      },
+      {
+        "label": "reload:restore-check",
+        "elapsedMs": 9928
+      },
+      {
+        "label": "visitor.restore-ignore-until-clear",
+        "elapsedMs": 10567
+      },
+      {
+        "label": "KeyL:sleep-day-1",
+        "elapsedMs": 10774
+      },
+      {
+        "label": "KeyL:sleep-day-2",
+        "elapsedMs": 11274
+      }
+    ],
+    "restore": {
+      "player": {
+        "roomId": "living-room",
+        "eye": {
+          "x": 7.540585244740418,
+          "y": 1.65,
+          "z": 1.700596755765137
+        },
+        "yaw": -0.5039999999999999,
+        "pitch": 0.14000000000000007
+      },
+      "distance": 0.002943430538685887
+    },
+    "dayCycle": {
+      "schemaVersion": 1,
+      "startDay": 1,
+      "endDay": 3,
+      "transitions": [
+        "Rest:day-1→day-2",
+        "Rest:day-2→day-3"
+      ],
+      "checkpoints": [
+        {
+          "day": 1,
+          "hour": 7.960416666666203,
+          "capture": {
+            "screenshot": "browser-days-1-3-pixeldart-canonical-day-1.png",
+            "metadata": "browser-days-1-3-pixeldart-canonical-day-1.json",
+            "digest": "browser-days-1-3-pixeldart-canonical-day-1.digest.json"
+          }
+        },
+        {
+          "day": 2,
+          "hour": 7,
+          "capture": {
+            "screenshot": "browser-days-1-3-pixeldart-canonical-day-2.png",
+            "metadata": "browser-days-1-3-pixeldart-canonical-day-2.json",
+            "digest": "browser-days-1-3-pixeldart-canonical-day-2.digest.json"
+          }
+        },
+        {
+          "day": 3,
+          "hour": 7.000694444444444,
+          "capture": {
+            "screenshot": "browser-days-1-3-pixeldart-canonical-day-3.png",
+            "metadata": "browser-days-1-3-pixeldart-canonical-day-3.json",
+            "digest": "browser-days-1-3-pixeldart-canonical-day-3.digest.json"
+          }
+        }
+      ]
+    }
+  },
+  "evidenceNormalized": {
+    "before": {
+      "roomId": "hall",
+      "eye": {
+        "x": 13,
+        "y": 1.5,
+        "z": 1
+      },
+      "yaw": 0,
+      "pitch": 0
+    },
+    "approach": {
+      "roomId": "living-room",
+      "eye": {
+        "x": 6,
+        "y": 1.5,
+        "z": 4
+      },
+      "yaw": -0.5,
+      "pitch": 1
+    },
+    "after": {
+      "roomId": "living-room",
+      "eye": {
+        "x": 7.5,
+        "y": 1.5,
+        "z": 1.5
+      },
+      "yaw": -0.5,
+      "pitch": 0
+    },
+    "positive": {
+      "focus": "",
+      "action": "unfocused-denial"
+    },
+    "denial": {
+      "prompt": "",
+      "savePresent": true
+    },
+    "movementDistance": 5.5
+  },
+  "normalizationMeters": 0.5,
+  "replayKey": "days-1-3|pixeldart-canonical|/?renderer=pixeldart|pixeldart|safe|high|hall|13|1.5|1|living-room|6|1.5|4|living-room|7.5|1.5|1.5|unfocused-action"
+}

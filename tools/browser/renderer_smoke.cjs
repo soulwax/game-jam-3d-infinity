@@ -808,6 +808,8 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         inventoryItems: canvas.getAttribute('data-renderer-inventory-items'),
         inventoryResolution: canvas.getAttribute('data-renderer-inventory-resolution'),
         inventoryProxyCount: canvas.getAttribute('data-renderer-inventory-proxy-count'),
+        modelPackages: canvas.getAttribute('data-renderer-model-packages'),
+        modelPackageCount: canvas.getAttribute('data-renderer-model-package-count'),
         houseSoundscape: canvas.getAttribute('data-house-soundscape'),
         houseSoundscapeSource: canvas.getAttribute('data-house-soundscape-source'),
         houseSoundEmitterCount: canvas.getAttribute('data-house-sound-emitter-count'),
@@ -949,6 +951,9 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       if (result.inventoryResolution !== 'proxy' ||
           Number(result.inventoryProxyCount) !== Number(result.inventoryItems)) {
         throw new Error(`${name}: inventory proxy state was not explicit ${JSON.stringify(result)}`);
+      }
+      if (result.modelPackages !== 'validated' || Number(result.modelPackageCount) !== 0) {
+        throw new Error(`${name}: promoted model index was not validated ${JSON.stringify(result)}`);
       }
       if (result.houseSoundscape !== 'validated' ||
           !['res/house/soundscape.json', '/res/house/soundscape.json'].includes(
@@ -1183,7 +1188,8 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         // looking down through the live pointer-input path. This is still a
         // real player action; it avoids making the clear assertion depend on
         // which authored prop happens to be nearest after departure.
-        await page.mouse.move(415, 400);
+        await page.mouse.move(100, 240);
+        await page.mouse.move(700, 240);
         await page.waitForTimeout(180);
         await page.keyboard.press('k');
         traceInput('KeyK:save-after');

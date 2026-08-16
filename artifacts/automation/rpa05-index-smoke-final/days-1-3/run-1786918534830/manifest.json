@@ -1,8 +1,8 @@
 {
-  "status": "failed",
-  "exitCode": 5,
+  "status": "passed",
+  "exitCode": 0,
   "scenario": "days-1-3",
-  "runId": "run-1786918146964",
+  "runId": "run-1786918534830",
   "resolvedRun": {
     "mode": "run",
     "scenario": "days-1-3",
@@ -19,7 +19,7 @@
     "seed": 7,
     "fixedDelta": 0.016666666666666666,
     "timeoutTicks": 900,
-    "artifacts": "artifacts/automation/rpa05-index-smoke-pass",
+    "artifacts": "artifacts/automation/rpa05-index-smoke-final",
     "headless": true,
     "resolvedRun": {
       "schemaVersion": 2,
@@ -39,7 +39,7 @@
         "seed": 7,
         "fixedDelta": 0.016666666666666666,
         "timeoutTicks": 900,
-        "artifacts": "artifacts/automation/rpa05-index-smoke-pass",
+        "artifacts": "artifacts/automation/rpa05-index-smoke-final",
         "headless": true
       },
       "compatibilityAliases": {}

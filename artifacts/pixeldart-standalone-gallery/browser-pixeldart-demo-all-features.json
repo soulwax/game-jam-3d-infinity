@@ -1,0 +1,54 @@
+{
+  "captureContractVersion": 1,
+  "taskId": "V-01",
+  "purpose": "documentation",
+  "surface": "renderer",
+  "state": "demo-all-features",
+  "sourceMethod": "browser",
+  "safeArea": "full-frame",
+  "theme": "renderer-default",
+  "locale": "en",
+  "motion": "settled",
+  "quality": "safe",
+  "audience": "documentation",
+  "seed": null,
+  "privacyCheck": "pass",
+  "rightsStatus": "original",
+  "altText": "Standalone Pixeldart demo with lighting, shadows, post effects, fog, and materials.",
+  "notes": "Standalone Pixeldart WebGL2 demo capture; no house inventory or PVS data.",
+  "schemaVersion": 1,
+  "renderer": "pixeldart",
+  "profile": "safe",
+  "buildId": "3662947235e8-93a7e35137dd-dirty",
+  "gameSha": "3662947235e847a5925e66949e78a21bcb0284a8",
+  "rendererSha": "93a7e35137dd4ffbb46188b1a69d5f63b1baa889",
+  "projectVersion": "0.1.2.0",
+  "browser": {
+    "name": "firefox",
+    "version": "153.0"
+  },
+  "gpu": {
+    "vendor": "Intel",
+    "renderer": "Intel(R) HD Graphics, or similar",
+    "version": "WebGL 2.0"
+  },
+  "viewport": {
+    "width": 640,
+    "height": 360
+  },
+  "sourceUrl": "http://127.0.0.1:8092/renderer_test/",
+  "fixture": "standalone",
+  "camera": "standalone-demo-default",
+  "simulation": {
+    "seed": null,
+    "day": null,
+    "hour": null,
+    "weather": null
+  },
+  "capture": {
+    "scale": "css",
+    "animations": "disabled",
+    "fullPage": false
+  },
+  "screenshot": "browser-pixeldart-demo-all-features.png"
+}

@@ -167,6 +167,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   px.FrameEnvironment _environment = const px.FrameEnvironment();
   px.PostProcessState _post = px.PostProcessState.off;
   double _rainIntensity = 0;
+  double _rainWindowVisibility = 1;
+  int _rainParticleCount = 0;
+  px.MeshHandle? _rainParticleMesh;
+  px.MaterialHandle? _rainParticleMaterial;
   double _surfaceWetness = 0;
   px.FrameStats? _lastFrameStats;
   double _lastFrameMs = 0;
@@ -457,6 +461,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         uvScaleV: 1.0,
       ),
     );
+    _installRainParticleResources();
     for (final room in house.rooms) {
       final surfaces = <String, px.MaterialHandle>{};
       for (final entry in <String, String>{
@@ -1147,6 +1152,147 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       vhsGhostWeight: tape ? progress : 0.0,
       reducedMotion: reducedMotion,
     );
+    _rainWindowVisibility = rainWindowVisibility.clamp(0.0, 1.0).toDouble();
+  }
+
+  void _installRainParticleResources() {
+    if (_rainParticleMesh != null || _rainParticleMaterial != null) return;
+    // A thin vertical quad is submitted as frame-local geometry. Its world
+    // transform moves each drop; the mesh itself never changes or reuploads.
+    const w = 0.012;
+    const h = 0.52;
+    final vertices = Float32List.fromList([
+      -w,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0.55,
+      0.68,
+      0.82,
+      0.72,
+      0,
+      0,
+      0,
+      0,
+      w,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0.55,
+      0.68,
+      0.82,
+      0.72,
+      1,
+      0,
+      0,
+      0,
+      w,
+      -h,
+      0,
+      0,
+      0,
+      1,
+      0.55,
+      0.68,
+      0.82,
+      0.12,
+      1,
+      1,
+      0,
+      0,
+      -w,
+      0,
+      0,
+      0,
+      0,
+      1,
+      0.55,
+      0.68,
+      0.82,
+      0.72,
+      0,
+      0,
+      0,
+      0,
+      w,
+      -h,
+      0,
+      0,
+      0,
+      1,
+      0.55,
+      0.68,
+      0.82,
+      0.12,
+      1,
+      1,
+      0,
+      0,
+      -w,
+      -h,
+      0,
+      0,
+      0,
+      1,
+      0.55,
+      0.68,
+      0.82,
+      0.12,
+      0,
+      1,
+      0,
+      0,
+    ]);
+    _rainParticleMesh = _renderer.resources.registerMesh(
+      _meshFromVertices(vertices),
+      debugLabel: 'weather:rain-particle',
+    );
+    _rainParticleMaterial = _registerMaterial(
+      const px.MaterialDefinition(
+        key: 'weather:rain-particle',
+        tintR: 0.55,
+        tintG: 0.68,
+        tintB: 0.82,
+        roughness: 0.18,
+        emissiveStrength: 0.08,
+        alphaMode: px.AlphaMode.blended,
+        receivesShadow: false,
+      ),
+    );
+  }
+
+  void _submitRainParticles(px.RenderEncoder frame, px.FrameInput input) {
+    _rainParticleCount = 0;
+    final mesh = _rainParticleMesh;
+    final material = _rainParticleMaterial;
+    if (mesh == null ||
+        material == null ||
+        _rainIntensity <= 0.01 ||
+        _rainWindowVisibility <= 0.01) {
+      return;
+    }
+    final count = (8 + _rainIntensity * 32 * _rainWindowVisibility)
+        .round()
+        .clamp(0, 40);
+    final gust = math.sin(_timeSeconds * 0.7) * 0.18;
+    final field = px.AtmosphericParticleField(
+      mesh: mesh,
+      material: material,
+      anchor: px.AtmosphericParticleAnchor.camera,
+      origin: const px.Vec3(0, 3, 0),
+      halfExtents: const px.Vec3(2.75, 3, 2.75),
+      initialVelocity: px.Vec3(gust, -5.4, 0.12),
+      acceleration: const px.Vec3(0, -2.6, 0),
+      lifetimeSeconds: 0.9,
+      particleCount: count,
+      seed: _noiseSeed,
+      instanceFamilyKey: 0x7261696e,
+    );
+    _rainParticleCount = field.submit(frame, input);
   }
 
   void setFrameClock({
@@ -1178,12 +1324,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       timeSeconds: _timeSeconds,
     );
     final stopwatch = Stopwatch()..start();
-    _renderer.beginFrame(_world, input);
+    final frame = _renderer.beginFrame(_world, input);
+    _submitRainParticles(frame, input);
     _lastFrameStats = _renderer.endFrame();
     stopwatch.stop();
     _lastFrameMs =
         stopwatch.elapsedMicroseconds / Duration.microsecondsPerMillisecond;
   }
+
+  int get rainParticleCount => _rainParticleCount;
 
   @override
   void handleInput(RendererInputAction action) {}
@@ -4009,6 +4158,10 @@ void _raf(num ts) {
             runtime.frameBudgetWithinLimits ? 'ok' : 'exceeded',
           );
         }
+        _canvas.setAttribute(
+          'data-renderer-rain-particles',
+          '${runtime.rainParticleCount}',
+        );
       }
     }
 
