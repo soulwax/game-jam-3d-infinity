@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="1" failures="1" name="automation">
+  <testsuite name="days-1-3" tests="1" failures="1" errors="0" time="0.0">
+    <testcase name="days-1-3" classname="automation.days-1-3" time="0.0">
+      <failure message="FormatException: embodied evidence input trace is incomplete: browser-days-1-3-pixeldart-canonical-embodied.json" type="infrastructure"/>
+    </testcase>
+  </testsuite>
+</testsuites>

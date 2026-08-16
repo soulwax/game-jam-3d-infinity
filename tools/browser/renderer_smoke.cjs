@@ -24,10 +24,10 @@ const expectedHouseInventoryCount = (() => {
     'inventory.json',
   );
   const decoded = JSON.parse(fs.readFileSync(file, 'utf8'));
-  if (!Array.isArray(decoded.assets) || decoded.assets.length < 1) {
-    throw new Error(`authored inventory has no assets: ${file}`);
+  if (!Array.isArray(decoded.placements) || decoded.placements.length < 1) {
+    throw new Error(`authored inventory has no placements: ${file}`);
   }
-  return decoded.assets.length;
+  return decoded.placements.length;
 })();
 const expectedHouseSoundEmitterCount = (() => {
   const file = pathModule.join(
@@ -805,6 +805,9 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         houseInventory: canvas.getAttribute('data-house-inventory'),
         houseInventorySource: canvas.getAttribute('data-house-inventory-source'),
         houseInventoryCount: canvas.getAttribute('data-house-inventory-count'),
+        inventoryItems: canvas.getAttribute('data-renderer-inventory-items'),
+        inventoryResolution: canvas.getAttribute('data-renderer-inventory-resolution'),
+        inventoryProxyCount: canvas.getAttribute('data-renderer-inventory-proxy-count'),
         houseSoundscape: canvas.getAttribute('data-house-soundscape'),
         houseSoundscapeSource: canvas.getAttribute('data-house-soundscape-source'),
         houseSoundEmitterCount: canvas.getAttribute('data-house-sound-emitter-count'),
@@ -937,16 +940,20 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       if (result.houseInventory !== 'validated' ||
           !['res/house/inventory.json', '/res/house/inventory.json'].includes(
             result.houseInventorySource,
-          ) || Number(result.houseInventoryCount) !== expectedHouseInventoryCount)) {
+          ) || Number(result.houseInventoryCount) !== expectedHouseInventoryCount) {
         throw new Error(`${name}: authored house inventory was not validated ${JSON.stringify({
           expectedCount: expectedHouseInventoryCount,
           result,
         })}`);
       }
+      if (result.inventoryResolution !== 'proxy' ||
+          Number(result.inventoryProxyCount) !== Number(result.inventoryItems)) {
+        throw new Error(`${name}: inventory proxy state was not explicit ${JSON.stringify(result)}`);
+      }
       if (result.houseSoundscape !== 'validated' ||
           !['res/house/soundscape.json', '/res/house/soundscape.json'].includes(
             result.houseSoundscapeSource,
-          ) || Number(result.houseSoundEmitterCount) !== expectedHouseSoundEmitterCount)) {
+          ) || Number(result.houseSoundEmitterCount) !== expectedHouseSoundEmitterCount) {
         throw new Error(`${name}: authored house soundscape was not validated ${JSON.stringify(result)}`);
       }
       if (!visualCaptureSelection && (result.audioSpatialActive === null ||
@@ -1165,9 +1172,18 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         }
         traceInput('KeyS:departure-final-down');
         await page.keyboard.down('s');
-        await page.waitForTimeout(800);
+        // Give the avatar enough real movement time to leave the doorway
+        // focus cone on slower/headless adapters; the prompt must clear from
+        // gameplay movement, not from a synthetic camera mutation.
+        await page.waitForTimeout(1400);
         await page.keyboard.up('s');
         traceInput('KeyS:departure-final-up');
+        await page.waitForTimeout(180);
+        // Leave any incidental inventory focus as well as the doorway focus by
+        // looking down through the live pointer-input path. This is still a
+        // real player action; it avoids making the clear assertion depend on
+        // which authored prop happens to be nearest after departure.
+        await page.mouse.move(415, 400);
         await page.waitForTimeout(180);
         await page.keyboard.press('k');
         traceInput('KeyK:save-after');
@@ -1184,9 +1200,10 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
           `${name}: mantle focus clear`,
         );
         const clearedPrompt = (await page.locator('.prompt').textContent())?.trim() ?? '';
-        traceInput('KeyE:denied-after-focus-clear');
+        traceInput('KeyE:unfocused');
         await page.keyboard.press('e');
         await page.waitForTimeout(120);
+        traceInput('KeyE:denied-after-focus-clear');
         await page.keyboard.press('k');
         await page.waitForTimeout(100);
         const denialAfterRaw = await page.evaluate(() => window.localStorage.getItem('quarantine.save.active'));

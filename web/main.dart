@@ -45,6 +45,7 @@ import 'package:quarantine/house/geometry.dart';
 import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/inventory.dart';
 import 'package:quarantine/house/inventory_interaction.dart';
+import 'package:quarantine/presentation/model_package_index.dart';
 import 'package:quarantine/house/soundscape.dart';
 import 'package:quarantine/house/exterior_mesh_adapter.dart';
 import 'package:quarantine/house/exterior_pvs.dart';
@@ -96,7 +97,8 @@ import 'package:quarantine/visitors/director.dart';
 import 'package:quarantine/visitors/stand_ins.dart';
 import 'package:quarantine/visitors/state.dart';
 import 'package:pixeldart/pixeldart_advanced.dart' as px;
-import 'package:pixeldart/rendering/webgl/webgl2_renderer_factory.dart' as pxweb;
+import 'package:pixeldart/rendering/webgl/webgl2_renderer_factory.dart'
+    as pxweb;
 import 'package:web/web.dart' as web;
 
 @JS('Object.keys')
@@ -437,7 +439,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         width: 256,
         height: 256,
         hasMips: true,
-      minFilter: pxweb.GpuTextureFilter.linearMipmapLinear,
+        minFilter: pxweb.GpuTextureFilter.linearMipmapLinear,
         anisotropy: 8,
         debugLabel: 'texture:$key',
       );
@@ -655,6 +657,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     }
     _canvas.setAttribute(
       'data-renderer-inventory-items',
+      '${_inventoryItemsById.length}',
+    );
+    // RPA-05 is not closed yet: until promoted packages are wired into this
+    // presentation path, every authored placement is intentionally a proxy.
+    // Publish that state so browser evidence cannot mistake placeholder
+    // geometry for an accepted model package.
+    _canvas.setAttribute('data-renderer-inventory-resolution', 'proxy');
+    _canvas.setAttribute(
+      'data-renderer-inventory-proxy-count',
       '${_inventoryItemsById.length}',
     );
   }
@@ -1001,11 +1012,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     const defaultFogDensity = 0.012;
     const defaultFogHeightFalloff = 0.60;
     final tunedFogDensity = _shaderTuning.getValue('fog_density');
-    final tunedFogHeightFalloff =
-        _shaderTuning.getValue('fog_height_falloff');
-    final fogDensity = atmos.fogDensity *
+    final tunedFogHeightFalloff = _shaderTuning.getValue('fog_height_falloff');
+    final fogDensity =
+        atmos.fogDensity *
         (tunedFogDensity / defaultFogDensity).clamp(0.0, 8.0).toDouble();
-    final fogHeightFalloff = atmos.fogHeightFalloff *
+    final fogHeightFalloff =
+        atmos.fogHeightFalloff *
         (tunedFogHeightFalloff / defaultFogHeightFalloff)
             .clamp(0.0, 8.0)
             .toDouble();
@@ -1780,6 +1792,7 @@ BackendSelection _selectRuntimeBackend() {
 int _mintRunSeed() => 1 + math.Random().nextInt(0x7FFFFFFF);
 
 late web.HTMLCanvasElement _canvas;
+late web.HTMLCanvasElement _uiCanvas;
 late Camera _camera;
 late Input _input;
 late House _house;
@@ -2599,6 +2612,7 @@ Future<void> main() async {
   final uiCanvas =
       web.document.getElementById('ui-canvas') as web.HTMLCanvasElement?;
   if (uiCanvas != null) {
+    _uiCanvas = uiCanvas;
     uiCanvas.width = _canvas.width;
     uiCanvas.height = _canvas.height;
     _rendererGui = RendererGuiSurface(uiCanvas);
@@ -3193,7 +3207,10 @@ void _publishRendererDiagnostics() {
       Uri.base.queryParameters['renderer'] ?? 'auto',
     )
     ..setAttribute('data-renderer-backend', diagnostics.backend)
-    ..setAttribute('data-renderer-fallback', diagnostics.fallback ? 'true' : 'false')
+    ..setAttribute(
+      'data-renderer-fallback',
+      diagnostics.fallback ? 'true' : 'false',
+    )
     ..setAttribute('data-renderer-profile', diagnostics.profile)
     ..setAttribute('data-renderer-diagnostics', diagnostics.encode())
     ..setAttribute(
@@ -3397,7 +3414,33 @@ void _loadManifest() async {
   } catch (_) {}
   _applyCredits(data);
 
-  await Future.wait([_loadTextures(data), _initAudio(data)]);
+  await Future.wait([
+    _loadTextures(data),
+    _initAudio(data),
+    _loadPromotedModelIndex(),
+  ]);
+}
+
+/// Discover the build-time promoted package handoff without making proxy
+/// geometry look like a successful package load. Binding remains a separate
+/// presentation step owned by RPA-05.
+Future<void> _loadPromotedModelIndex() async {
+  const url = 'res/models/index.json';
+  try {
+    final response = await web.window.fetch(url.toJS).toDart;
+    if (!response.ok) throw StateError('HTTP ${response.status}');
+    final source = (await response.text().toDart).toString();
+    final index = PresentationModelPackageIndex.decode(source);
+    _canvas.setAttribute('data-renderer-model-packages', 'validated');
+    _canvas.setAttribute('data-renderer-model-packages-source', url);
+    _canvas.setAttribute(
+      'data-renderer-model-package-count',
+      '${index.assetIds.length}',
+    );
+  } catch (error) {
+    _canvas.setAttribute('data-renderer-model-packages', 'unavailable');
+    _canvas.setAttribute('data-renderer-model-package-error', '$error');
+  }
 }
 
 Future<void> _loadAuthoredHouseManifest() async {
@@ -3747,6 +3790,11 @@ void _resize() {
   final h = web.window.innerHeight;
   _canvas.width = w > 0 ? w : 800;
   _canvas.height = h > 0 ? h : 600;
+  if (web.document.getElementById('ui-canvas')
+      case final web.HTMLCanvasElement ui) {
+    ui.width = _canvas.width;
+    ui.height = _canvas.height;
+  }
   _rendererGui?.resize(_canvas.width, _canvas.height);
   _presentationBackend.resize(_canvas.width, _canvas.height);
   final surface = _pixeldartRuntime?.surfaceLabel;
@@ -4278,7 +4326,10 @@ void _renderCanvasGui(double dt, FocusSnapshot focus) {
   final gui = _rendererGui;
   if (gui == null) return;
 
-  final canvasRect = _canvas.getBoundingClientRect();
+  // GUI geometry is authored in the UI canvas' CSS viewport. The WebGL canvas
+  // may have a different backing size or layout offset, so using it here can
+  // shift focus labels away from the visual center.
+  final canvasRect = _uiCanvas.getBoundingClientRect();
   final screenW = canvasRect.width.toDouble();
   final screenH = canvasRect.height.toDouble();
   if (screenW <= 0 || screenH <= 0) return;
