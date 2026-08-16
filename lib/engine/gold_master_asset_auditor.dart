@@ -14,7 +14,7 @@ import 'package:quarantine/story/ending_texture_synthesizer.dart';
 import 'package:quarantine/story/narrative_state.dart';
 
 /// Report of Gold Master Asset Audit.
-class GoldMasterAuditReport {
+class ProductionAuditReport {
   final bool roomManifestsVerified;
   final int totalPropsAudited;
   final bool characterSheetsVerified;
@@ -22,10 +22,10 @@ class GoldMasterAuditReport {
   final bool lightingRigsVerified;
   final bool pbrShadingVerified;
   final bool audioMixdownVerified;
-  final bool isGoldMasterReady;
+  final bool allChecksPass;
   final String diagnostic;
 
-  const GoldMasterAuditReport({
+  const ProductionAuditReport({
     required this.roomManifestsVerified,
     required this.totalPropsAudited,
     required this.characterSheetsVerified,
@@ -33,7 +33,7 @@ class GoldMasterAuditReport {
     required this.lightingRigsVerified,
     required this.pbrShadingVerified,
     required this.audioMixdownVerified,
-    required this.isGoldMasterReady,
+    required this.allChecksPass,
     required this.diagnostic,
   });
 
@@ -45,15 +45,15 @@ class GoldMasterAuditReport {
         'lightingRigsVerified': lightingRigsVerified,
         'pbrShadingVerified': pbrShadingVerified,
         'audioMixdownVerified': audioMixdownVerified,
-        'isGoldMasterReady': isGoldMasterReady,
+        'allChecksPass': allChecksPass,
         'diagnostic': diagnostic,
       };
 }
 
 /// Gold Master Asset & System Auditor.
-class GoldMasterAssetAuditor {
+class ProductionAssetAuditor {
   /// Runs a comprehensive audit of all game systems, assets, and manifests.
-  static GoldMasterAuditReport runAudit() {
+  static ProductionAuditReport runAudit() {
     // 1. Audit Room Manifests & Props
     final hallValid = HallFurnishingManifest.validate();
     final kitchenValid = KitchenFurnishingManifest.validate();
@@ -106,10 +106,10 @@ class GoldMasterAssetAuditor {
         audioMixdownVerified;
 
     final diag = allReady
-        ? 'GOLD MASTER AUDIT PASSED: All 8 rooms, 50+ props, 21 days, PBR pipeline, and acoustics 100% certified.'
-        : 'GOLD MASTER AUDIT FAILED: One or more asset manifests failed validation.';
+        ? 'content and capability checks passed; human release review remains required.'
+        : 'one or more content or capability checks failed.';
 
-    return GoldMasterAuditReport(
+    return ProductionAuditReport(
       roomManifestsVerified: roomManifestsVerified,
       totalPropsAudited: totalProps,
       characterSheetsVerified: characterSheetsVerified,
@@ -117,7 +117,7 @@ class GoldMasterAssetAuditor {
       lightingRigsVerified: lightingRigsVerified,
       pbrShadingVerified: pbrShadingVerified,
       audioMixdownVerified: audioMixdownVerified,
-      isGoldMasterReady: allReady,
+      allChecksPass: allReady,
       diagnostic: diag,
     );
   }
@@ -125,6 +125,6 @@ class GoldMasterAssetAuditor {
   /// Self-validation for unit tests.
   static bool validate() {
     final report = runAudit();
-    return report.isGoldMasterReady && report.totalPropsAudited >= 40;
+    return report.allChecksPass && report.totalPropsAudited >= 40;
   }
 }

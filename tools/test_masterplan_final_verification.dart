@@ -29,6 +29,8 @@ void main() {
   final summerAtmos = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, daylightHours: 12.0, rainIntensity: 0.0, shutterOpen: true);
   final winterAtmos = DayNightAtmosphereEngine.evaluateAtmosphere(hour: 12.0, daylightHours: 10.0, rainIntensity: 0.0, shutterOpen: true);
   check(summerAtmos.sunColor.r > 0, 'Atmosphere sun color must be valid');
+  check(winterAtmos.sunColor.r > 0,
+      'Seasonal daylight arc must produce a valid winter sun color');
   print('[✓] Section 36: Seasonal daylight arc evaluation verified');
 
   // 3. Verify Shader Tuning State & Fine Steps (§41.3)
@@ -78,6 +80,6 @@ void main() {
   print('[✓] Section 36: RealisticThunderstormEngine lightning strobes & speed-of-sound thunder delay verified');
 
   print('\n========================================================================');
-  print(' MASTERPLAN FINAL INTEGRATION TEST SUITE PASSED SUCCESSFULLY (ALL CHECKS CERTIFIED)');
+  print(' MASTERPLAN INTEGRATION EVIDENCE SUITE PASSED');
   print('========================================================================\n');
 }

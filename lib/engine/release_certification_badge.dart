@@ -1,23 +1,21 @@
 import 'package:quarantine/engine/gold_master_asset_auditor.dart';
-import 'package:quarantine/game/save_integrity_validator.dart';
 
 /// Cryptographic release certification badge and manifest.
-class ReleaseCertificationBadge {
-  static const String releaseVersion = '1.0.0-gold-master';
+class ReleaseEvidenceManifest {
+  static const String evidenceSchema = 'quarantine-release-evidence-v1';
   static const String gameTitle = 'The Quarantine (November 1918)';
-  static const int totalReleaseGates = 10;
+  static const int totalEvidenceGates = 10;
 
   /// Generates the signed Gold Master Release Manifest.
   static Map<String, dynamic> generateManifest() {
-    final audit = GoldMasterAssetAuditor.runAudit();
+    final audit = ProductionAssetAuditor.runAudit();
 
     final manifest = {
       'gameTitle': gameTitle,
-      'releaseVersion': releaseVersion,
-      'timestamp': DateTime.now().toUtc().toIso8601String(),
-      'status': 'GOLD_MASTER_CERTIFIED',
-      'certifiedGates': totalReleaseGates,
-      'gates': [
+      'schema': evidenceSchema,
+      'status': 'AUDIT_ONLY',
+      'evidenceGates': totalEvidenceGates,
+      'checks': [
         'Gate 1: Whole-Product Convergence',
         'Gate 2: Narrative Truth Ledger & 1918 Setting',
         'Gate 3: Rendering Fidelity & Advanced PBR Shader Pipeline',
@@ -32,17 +30,14 @@ class ReleaseCertificationBadge {
       'assetAudit': audit.toJson(),
     };
 
-    final checksum = SaveIntegrityValidator.computeChecksum(manifest.toString());
-    manifest['releaseChecksum'] = 'GM-$checksum';
-
     return manifest;
   }
 
   /// Self-validation for unit tests.
   static bool validate() {
     final manifest = generateManifest();
-    return manifest['status'] == 'GOLD_MASTER_CERTIFIED' &&
-        manifest['certifiedGates'] == 10 &&
-        manifest['releaseChecksum'] != null;
+    return manifest['status'] == 'AUDIT_ONLY' &&
+        manifest['evidenceGates'] == totalEvidenceGates &&
+        manifest['schema'] == evidenceSchema;
   }
 }

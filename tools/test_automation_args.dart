@@ -66,7 +66,7 @@ void _parsesExplicitValues() {
   _expect(
     args.renderer == AutomationRenderer.pixeldart &&
         args.renderer == AutomationRenderer.next,
-    'Pixeldart renderer uses canonical enum identity and next alias equality',
+    'Pixeldart renderer uses canonical enum identity',
   );
   _expect(
     args.profile == AutomationProfile.high &&
@@ -94,27 +94,11 @@ void _parsesExplicitValues() {
     !aliases.containsKey('renderer') && aliases['profile'] == 'clean',
     'resolved run records the profile compatibility alias',
   );
-  final compatibility = parseAutomationArgs(const [
+  final rejectedAlias = parseAutomationArgs(const [
     'validate',
     '--renderer=next',
-    '--profile=clean',
   ]);
-  final compatibilityJson =
-      jsonDecode(compatibility.args!.encode()) as Map<String, dynamic>;
-  _expect(
-    compatibilityJson['renderer'] == 'next' &&
-        compatibilityJson['profile'] == 'clean',
-    'compatibility input retains its legacy wire spellings',
-  );
-  final compatibilityRun =
-      compatibilityJson['resolvedRun'] as Map<String, dynamic>;
-  final compatibilityAliases =
-      compatibilityRun['compatibilityAliases'] as Map<String, dynamic>;
-  _expect(
-    compatibilityAliases['renderer'] == 'next' &&
-        compatibilityAliases['profile'] == 'clean',
-    'resolved run records both compatibility aliases',
-  );
+  _expect(!rejectedAlias.isSuccess, 'next renderer alias must be rejected');
   _expect(args.serverRoot == 'dist/web release', 'path with spaces');
 }
 
@@ -149,7 +133,7 @@ void _rejectsConflictingHeadlessFlags() {
 void _helpListsCanonicalRendererNames() {
   _expect(
     automationHelp.contains('pixeldart') &&
-        automationHelp.contains('next alias') &&
+        !automationHelp.contains('next alias') &&
         automationHelp.contains('standard, high') &&
         automationHelp.contains('clean alias'),
     'help lists canonical renderer/profile names and compatibility aliases',
@@ -167,7 +151,7 @@ void _roundTripsResolvedJson() {
   _expect(json['port'] == 8123, 'JSON port');
   _expect((json['viewport'] as Map)['width'] == 640, 'JSON viewport');
   final canonical = ((json['resolvedRun'] as Map)['canonical'] as Map);
-  _expect(canonical['renderer'] == 'auto', 'resolved run default renderer');
+  _expect(canonical['renderer'] == 'pixeldart', 'resolved run default renderer');
   _expect(canonical['profile'] == 'safe', 'resolved run default profile');
 }
 

@@ -49,8 +49,13 @@ void main() {
 
   // Raycast through solid west wall should be rejected
   final size = house.effectiveSize(room);
-  final centerEye = room.origin + Vec3(size.x * 0.5, 1.65, size.z * 0.5);
-  final hasLos = hasLineOfSight(house, 'hall', centerEye, centerEye + Vec3(-100.0, 0, 0));
+  final centerEye = room.origin + Vec3(size.x * 0.5, 1.65, size.z * 0.15);
+  final hasLos = hasLineOfSight(
+    house,
+    'hall',
+    centerEye,
+    centerEye + Vec3(-100.0, 0, 0),
+  );
   if (hasLos) {
     throw StateError('Line of sight must be false through solid room walls');
   }

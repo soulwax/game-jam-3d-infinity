@@ -40,6 +40,8 @@ When sources disagree, use this order:
 7. Dart tests prove only the behavior they execute; their names are not canon.
 8. Unity scenes and generated ScriptableObjects are consumers, never independent
    authoring sources.
+9. `tmp/HUMAN_AGILE_GUIDE.md` describes human cadence, WIP, review, and handoff;
+   it is operational guidance and cannot redefine a packet or product decision.
 
 If this document conflicts with the product masterplan, stop and fix this
 document. Do not change the product vision to make a port easier.
@@ -135,6 +137,109 @@ Before handing off a plan change:
 git diff --check -- UNITY_PLAN.md
 git status --short
 ```
+
+### 0.6 Minimalistic human-like code
+
+All Unity code must look like a careful human wrote the smallest complete
+solution for the current packet. “Flexible,” “enterprise,” and “future-proof”
+are not goals unless a current requirement proves the need.
+
+The rule is:
+
+> Prefer one direct data flow, one obvious owner, and one readable implementation
+> over frameworks, indirection, cleverness, or speculative reuse.
+
+Required habits:
+
+- Read the surrounding code before naming or structuring new code.
+- Use plain C# and Unity APIs already approved by this plan.
+- Keep behavior close to its owner and dependencies visible in constructors or
+  serialized fields.
+- Write short top-to-bottom methods with early returns for invalid/rejected
+  cases.
+- Use concrete names from the game: `PortalController`, `JournalEntry`,
+  `StoryEvent`, `SaveStore`, `RoomBinding`.
+- Comment only when correctness depends on a reason that code cannot express.
+- Delete dead branches, unused fields, temporary logging, copied scaffolding,
+  and obsolete comments before handoff.
+- Prefer an enum or small result type when a Boolean argument/result would be
+  ambiguous at the call site.
+- Keep public APIs narrow; default to `private` and expose immutable/read-only
+  data.
+- Make invalid authored content fail during sync/import/bootstrap with the
+  stable ID and source path in the error.
+- Return a typed rejection for ordinary player actions; do not use exceptions as
+  expected control flow.
+
+Forbidden without a recorded ADR and current measured need:
+
+- dependency-injection containers, service locators, global event buses, global
+  mutable singletons, reflection-driven registration, or `SendMessage`;
+- an interface with one implementation unless it isolates a real boundary such
+  as clock, randomness, filesystem, or platform build service;
+- generic repositories, factories, builders, coordinators, registries, or
+  “systems” that only rename one constructor or method call;
+- base classes created only to share a few lines;
+- stringly typed commands when a small enum/record already describes the action;
+- catch-all `try/catch`, swallowed exceptions, or success returned after a
+  partial import/save;
+- per-object `Update()` loops when one owner can update a bounded collection;
+- runtime `FindObjectOfType`, hierarchy-name searches, or scene-name logic;
+- LINQ or allocations inside per-frame/player-input loops without profiling;
+- coroutines for domain time, saves, story delivery, or authoritative state;
+- pooling, jobs, ECS, Addressables, custom render features, or caching layers
+  before profiling demonstrates the problem; and
+- names such as `ComprehensiveDynamicPortalStateSynchronizationCoordinator`.
+
+Soft size warnings, not fragmentation targets:
+
+- A method above roughly 40 lines deserves a readability pass.
+- A production class above roughly 250 lines deserves an ownership pass.
+- More than three constructor dependencies deserves an ownership/composition
+  check.
+- A change that adds more infrastructure than behavior should be reduced.
+
+Do not satisfy these warnings by making one-line wrapper files. Cohesion is more
+important than a number.
+
+### 0.7 Small-subagent execution recipe
+
+For each packet, use this exact sequence:
+
+1. **Restate:** write one sentence describing the observable outcome.
+2. **Inspect:** list production callers, data inputs, existing tests, and the
+   smallest intended write set.
+3. **Classify:** put pure rules in Domain, parsing/assets in Content/Editor,
+   scene binding in Runtime, and pixels/audio/UI in Presentation.
+4. **Prove first:** add the smallest failing test or reproducible fixture when
+   feasible.
+5. **Implement directly:** build only enough code/assets to pass the packet.
+6. **Integrate:** exercise the production composition root; a detached prefab or
+   isolated helper is not integrated.
+7. **Simplify:** remove duplication, speculative hooks, excess comments, noisy
+   logs, unused serialization, and unnecessary abstractions.
+8. **Verify:** run focused checks, applicable shared checks, and a packaged path
+   when the packet requires it.
+9. **Handoff:** update state/ledger and provide the record below.
+10. **Stop:** do not opportunistically start dependent work.
+
+Handoff format:
+
+```text
+Packet: MIG-##
+Delivered outcome: one sentence
+Files changed: exact paths
+Behavior path: input -> owner -> output
+IDs/schema changed: none or exact list
+Verification: exact command and PASS/FAIL
+Artifacts: exact paths or none
+Human review: HR-### APPROVED/REJECTED or not required
+Known limits: exact limits
+Remaining work: none or exact next work
+```
+
+“Implemented,” “ported,” “works,” and “tests pass” are incomplete handoffs
+without the behavior path and exact evidence.
 
 ---
 
@@ -338,6 +443,86 @@ Boot sequence:
 
 Do not use arbitrary Script Execution Order to make this work. Express order in
 one asynchronous bootstrap coordinator and test every failure stage.
+
+### 3.4 C# and Unity asset conventions
+
+MIG-05 turns these conventions into project guardrails.
+
+#### C# shape
+
+- One primary type per file; filename matches the type.
+- Namespace follows the owning assembly and feature, for example
+  `Quarantine.Domain.Journal` or `Quarantine.Runtime.House`.
+- Public types/members use `PascalCase`; parameters/locals/private fields use
+  `camelCase`. Serialized private fields use the same private-field convention
+  selected in `unity/.editorconfig`.
+- Use `var` when the right-hand type is obvious; write the type when it clarifies
+  a domain distinction.
+- Use collection interfaces/read-only views at public boundaries. Do not return
+  a mutable internal list or dictionary.
+- Validate constructor/import inputs once. Do not scatter repeated null/ID
+  checks through every frame.
+- Use exhaustive `switch` statements for commands, states, and event kinds so a
+  new enum value fails loudly during development.
+- Use named constants for product values. Do not hide unexplained numbers in
+  scene scripts.
+- Keep log messages short and actionable: subsystem, stable ID, failure. Do not
+  log every frame or every successful interaction.
+
+#### MonoBehaviour shape
+
+- A `MonoBehaviour` adapts Unity lifecycle/input/scene objects to a plain owner;
+  it does not contain campaign rules.
+- Serialized references are private and explicit. Cache required components at
+  `Awake`; do not repeatedly query them.
+- Subscribe and unsubscribe symmetrically in one visible lifecycle pair.
+- `Update` reads input or advances presentation only. Domain time advances once
+  through the session adapter.
+- `OnValidate` may validate the component's own fields. Global ID/reference
+  validation belongs to the importer/build validator.
+- Visual tweens/coroutines must be cancel-safe on disable, scene unload, snapshot
+  replacement, and reduced-motion mode.
+- Development diagnostics are compiled or enabled explicitly and cannot become
+  a hidden dependency of normal boot.
+
+#### Prefab, scene, and `.meta` safety
+
+- Never manufacture or edit `.meta` GUIDs.
+- Do not hand-edit serialized scene/prefab YAML for convenience. Use the Unity
+  Editor or a deterministic Editor tool, then inspect the serialized diff.
+- Do not reserialize unrelated scenes/assets or accept mass GUID/import-setting
+  churn.
+- A generated scene/prefab must state its generator and source hash in an
+  importer-owned record, not a comment pasted into every object.
+- Human-authored prefabs and generated catalogues live in separate directories;
+  sync/import tools may delete only files in their owned generated set.
+- Scene references use serialized object references plus stable content IDs.
+  Object names remain readable but are never identity.
+
+#### Tests
+
+- Test one behavior per test; name it as `Action_Condition_Result`.
+- Prefer Arrange/Act/Assert with little fixture magic.
+- Assert public results, ordered events, snapshots, bindings, or visible state;
+  do not inspect private fields through reflection.
+- A fake implements only the boundary the test needs. Do not build a reusable
+  fake framework before two real consumers need it.
+- Keep deterministic seeds, times, IDs, and expected values visible in the test.
+- A PlayMode test must fail if it accidentally uses a test-only command path
+  instead of production input/session composition.
+
+#### Review questions
+
+Before handoff, the owner answers:
+
+1. Can a reader find the state owner in under a minute?
+2. Is there a shorter implementation with the same tested behavior?
+3. Did this packet add an abstraction for a hypothetical second use?
+4. Are lifecycle, failure, cancellation, and save effects explicit?
+5. Can the next subagent change the feature without reading unrelated systems?
+
+If answers 1, 2, 4, or 5 are “no,” simplify before review. If answer 3 is “yes,”
+remove the abstraction or record the current second use.
 
 ---
 
@@ -795,12 +980,45 @@ fixtures even before implementations pass.
 Evidence: none.
 Remainder: none.
 
+### MIG-05 — Install minimal-code guardrails
+
+ID: MIG-05
+State: OPEN
+Owner: unassigned
+Depends on: MIG-01
+Outcome: the Unity project enforces assembly direction, stable formatting, clean
+asset ownership, and the minimal-code rules that can be checked mechanically.
+Inputs: sections 0.6, 0.7, 3.2, and 3.4; scaffolded Unity project.
+Files: `unity/.editorconfig`, assembly definitions, focused architecture/build
+validation tests, `unity/Docs/Decisions/CodeRules.md` containing only rules that
+cannot live in configuration/tests.
+Do not touch: gameplay behavior, shared content, scenes, third-party analyzers.
+Steps:
+
+1. Add a small `.editorconfig` that formats C# consistently without reformatting
+   generated/vendor files.
+2. Make assembly references enforce Domain -> Content -> Runtime -> Presentation
+   direction declared in section 3.2.
+3. Add a test/build validator rejecting `Resources/`, duplicate production
+   composition roots, forbidden Domain Unity references, and generated files
+   outside owned directories.
+4. Add one intentionally invalid fixture for each guard and prove clear errors.
+5. Document only non-mechanical rules and link back to this plan rather than
+   copying it.
+6. Run one cleanup review on the scaffold so the reference code demonstrates
+   direct naming, narrow APIs, and no needless interface/framework.
+
+Checks: formatting check, EditMode architecture tests, batch compile, Windows
+development build.
+Evidence: none.
+Remainder: none.
+
 ### MIG-10 — Port time, day, resources, and difficulty
 
 ID: MIG-10
 State: OPEN
 Owner: unassigned
-Depends on: MIG-03, MIG-04
+Depends on: MIG-03, MIG-04, MIG-05
 Outcome: Unity Domain reproduces accepted clock, resource, sleep, weather, and
 difficulty rules without UnityEngine.
 Inputs: accepted migration-map rows and fixtures.
@@ -825,7 +1043,7 @@ Remainder: none.
 ID: MIG-11
 State: OPEN
 Owner: unassigned
-Depends on: MIG-03, MIG-04
+Depends on: MIG-03, MIG-04, MIG-05
 Outcome: write, uncertainty, comparison, correction, corroboration, lock, night
 drift, and revision history match the accepted product rules.
 Inputs: vocabulary/catalogues, journal migration rows/fixtures.
@@ -848,7 +1066,7 @@ Remainder: none.
 ID: MIG-12
 State: OPEN
 Owner: unassigned
-Depends on: MIG-03, MIG-10, MIG-11; product STORY-01 and STORY-02 closed
+Depends on: MIG-03, MIG-05, MIG-10, MIG-11; product STORY-01 and STORY-02 closed
 Outcome: screenplay events, visitor choices, callbacks, residues, and exactly-once
 delivery mutate one domain narrative state.
 Inputs: compiled canonical story/dialogue catalogues and accepted fixtures.
@@ -1422,6 +1640,18 @@ Every failure artifact includes Unity patch, commit/build, platform/hardware,
 seed, content index hash, save/fixture, scene, quality, resolution, logs, last
 commands/events, screenshot when visible, and replay procedure.
 
+Every code packet also receives a minimal-code review. The reviewer rejects:
+
+- unused public APIs, speculative extension points, or placeholder methods;
+- a new interface/factory/manager without a current second use or real boundary;
+- domain logic in Unity lifecycle methods;
+- hidden scene lookup, static mutable state, or duplicate state ownership;
+- broad comments/XML summaries that repeat the code;
+- tests that only reproduce implementation details; and
+- a large mechanical/reformat diff mixed with behavior.
+
+A mechanically green packet remains `PARTIAL` until this review is clean.
+
 ---
 
 ## 12. Risks
@@ -1440,6 +1670,7 @@ commands/events, screenshot when visible, and replay procedure.
 | URISK-10 | OPEN | Visual effects recreate prototype contradictions. | Clean baseline first; rupture-only distortion; human approval. |
 | URISK-11 | OPEN | Ported pacing copies a stale 96-minute day. | Product duration policy plus Day 1/act human timing evidence. |
 | URISK-12 | OPEN | This plan becomes another append-only document. | Section 0.5, stable packets, compact ledger, ADRs for implementation detail. |
+| URISK-13 | OPEN | Subagents produce framework-heavy, generated-looking C#. | Sections 0.6/3.4, MIG-05 guardrails, minimal-code review on every packet. |
 
 ---
 
@@ -1500,6 +1731,7 @@ Packet bodies in section 7 own detail. Keep this table synchronized.
 | MIG-02 | OPEN | unassigned | U1 | none |
 | MIG-03 | OPEN | unassigned | U1 | none |
 | MIG-04 | OPEN | unassigned | U1 | none |
+| MIG-05 | OPEN | unassigned | U0 | minimal-code guardrails |
 | MIG-10 | OPEN | unassigned | U1 | none |
 | MIG-11 | OPEN | unassigned | U1 | none |
 | MIG-12 | OPEN | unassigned | U1 | product story dependencies |
@@ -1529,6 +1761,8 @@ Packet bodies in section 7 own detail. Keep this table synchronized.
 The transition is complete only when:
 
 - the pinned Unity project builds reproducibly from a clean checkout;
+- production C# follows the minimal-code rule with no unneeded framework,
+  duplicate owner, global state, or generated-looking scaffolding;
 - canonical shared content imports deterministically with no hand-edited copy;
 - one Unity-free domain owns all authoritative run state;
 - all eight domestic rooms and three levels agree across scene, collision,

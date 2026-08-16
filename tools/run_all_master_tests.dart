@@ -3,7 +3,7 @@ import 'dart:io';
 /// Master regression runner executing all 16 test suites across the repository.
 void main() async {
   print('========================================================================');
-  print(' THE QUARANTINE — MASTER REGRESSION TEST BATTERY (17 SUITES)');
+  print(' THE QUARANTINE — MASTER REGRESSION EVIDENCE BATTERY (17 SUITES)');
   print('========================================================================\n');
 
   final testSuites = [
@@ -60,7 +60,7 @@ void main() async {
 
   stopwatch.stop();
   print('\n========================================================================');
-  print(' MASTER REGRESSION SUMMARY: ALL $passedCount / ${testSuites.length} TEST SUITES PASSED');
+  print(' MASTER REGRESSION SUMMARY: $passedCount / ${testSuites.length} TEST SUITES PASSED');
   print(' Total Execution Time: ${stopwatch.elapsedMilliseconds} ms');
   print('========================================================================\n');
 }

@@ -1,0 +1,365 @@
+{
+  "status": "failed",
+  "exitCode": 5,
+  "scenario": "days-1-3",
+  "runId": "run-1786907288537",
+  "failure": {
+    "kind": "infrastructure",
+    "message": "FormatException: embodied evidence assertions are incomplete: browser-days-1-3-pixeldart-canonical-embodied.json"
+  },
+  "events": 22,
+  "traceBytes": 7850,
+  "droppedEvents": 0,
+  "history": [
+    {
+      "seq": 0,
+      "type": "run.start",
+      "tick": 0,
+      "data": {
+        "scenario": "days-1-3"
+      }
+    },
+    {
+      "seq": 1,
+      "type": "runner.lifecycle",
+      "tick": 0,
+      "data": {
+        "phase": "starting-server",
+        "browser": "firefox"
+      }
+    },
+    {
+      "seq": 2,
+      "type": "runner.lifecycle",
+      "tick": 0,
+      "data": {
+        "phase": "server-ready",
+        "baseUrl": "http://127.0.0.1:8090"
+      }
+    },
+    {
+      "seq": 3,
+      "type": "runner.config",
+      "tick": 0,
+      "data": {
+        "mode": "run",
+        "scenario": "days-1-3",
+        "serverRoot": "dist/web",
+        "port": 8090,
+        "baseUrl": "http://127.0.0.1:8090",
+        "browser": "firefox",
+        "renderer": "pixeldart",
+        "profile": "safe",
+        "viewport": {
+          "width": 800,
+          "height": 500
+        },
+        "seed": 7,
+        "fixedDelta": 0.016666666666666666,
+        "timeoutTicks": 900,
+        "artifacts": "artifacts/automation",
+        "headless": true,
+        "resolvedRun": {
+          "schemaVersion": 2,
+          "canonical": {
+            "mode": "run",
+            "scenario": "days-1-3",
+            "serverRoot": "dist/web",
+            "port": 8090,
+            "baseUrl": "http://127.0.0.1:8090",
+            "browser": "firefox",
+            "renderer": "pixeldart",
+            "profile": "safe",
+            "viewport": {
+              "width": 800,
+              "height": 500
+            },
+            "seed": 7,
+            "fixedDelta": 0.016666666666666666,
+            "timeoutTicks": 900,
+            "artifacts": "artifacts/automation",
+            "headless": true
+          },
+          "compatibilityAliases": {}
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "type": "artifact",
+      "tick": 4,
+      "data": {
+        "name": "browser-stdout.log",
+        "bytes": 7345,
+        "contentType": "text/plain"
+      }
+    },
+    {
+      "seq": 5,
+      "type": "artifact",
+      "tick": 5,
+      "data": {
+        "name": "browser-stderr.log",
+        "bytes": 0,
+        "contentType": "text/plain"
+      }
+    },
+    {
+      "seq": 6,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical.png",
+        "bytes": 85216,
+        "contentType": "image/png"
+      }
+    },
+    {
+      "seq": 7,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical.json",
+        "bytes": 2913,
+        "contentType": "application/json",
+        "captureSchemaVersion": "1",
+        "captureScenario": "days-1-3",
+        "captureRoute": "pixeldart-canonical",
+        "capturePath": "/?renderer=pixeldart",
+        "captureRequestedRenderer": "pixeldart",
+        "captureRequestedProfile": "safe",
+        "captureNegotiatedProfile": "high",
+        "captureProfileNegotiation": "capability-negotiated",
+        "captureScreenshot": "browser-days-1-3-pixeldart-canonical.png",
+        "captureWidth": 800,
+        "captureHeight": 500,
+        "resolvedRunSchemaVersion": "2",
+        "resolvedRenderer": "pixeldart",
+        "resolvedProfile": "safe"
+      }
+    },
+    {
+      "seq": 8,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical.digest.json",
+        "bytes": 353,
+        "contentType": "application/json",
+        "schemaVersion": "1",
+        "screenshot": "browser-days-1-3-pixeldart-canonical.png",
+        "metadata": "browser-days-1-3-pixeldart-canonical.json",
+        "screenshotSha256": "509ac13f013e49d0841fa2cd89105d308575372435f5a4dd82cb38e9fa134f4a",
+        "metadataSha256": "5dd133465f699ff646a21447c5dd0c5cbd8f07e3ca10374c9153dfd5c247161c"
+      }
+    },
+    {
+      "seq": 9,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-embodied-capture.png",
+        "bytes": 100761,
+        "contentType": "image/png"
+      }
+    },
+    {
+      "seq": 10,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-embodied-capture.json",
+        "bytes": 2947,
+        "contentType": "application/json",
+        "captureSchemaVersion": "1",
+        "captureScenario": "days-1-3",
+        "captureRoute": "pixeldart-canonical",
+        "capturePath": "/?renderer=pixeldart",
+        "captureRequestedRenderer": "pixeldart",
+        "captureRequestedProfile": "safe",
+        "captureNegotiatedProfile": "high",
+        "captureProfileNegotiation": "capability-negotiated",
+        "captureScreenshot": "browser-days-1-3-pixeldart-canonical-embodied-capture.png",
+        "captureWidth": 800,
+        "captureHeight": 500,
+        "resolvedRunSchemaVersion": "2",
+        "resolvedRenderer": "pixeldart",
+        "resolvedProfile": "safe"
+      }
+    },
+    {
+      "seq": 11,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-embodied-capture.digest.json",
+        "bytes": 387,
+        "contentType": "application/json",
+        "schemaVersion": "1",
+        "screenshot": "browser-days-1-3-pixeldart-canonical-embodied-capture.png",
+        "metadata": "browser-days-1-3-pixeldart-canonical-embodied-capture.json",
+        "screenshotSha256": "84cd76298b4f1ed8187758370e3f22a412c07ec432217142f685997250c592ef",
+        "metadataSha256": "db5893a8c9c1c913364286fae7a8f7283ca1ce09473796b38a03e4635717a628"
+      }
+    },
+    {
+      "seq": 12,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-day-1.png",
+        "bytes": 98305,
+        "contentType": "image/png"
+      }
+    },
+    {
+      "seq": 13,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-day-1.json",
+        "bytes": 2925,
+        "contentType": "application/json",
+        "captureSchemaVersion": "1",
+        "captureScenario": "days-1-3",
+        "captureRoute": "pixeldart-canonical",
+        "capturePath": "/?renderer=pixeldart",
+        "captureRequestedRenderer": "pixeldart",
+        "captureRequestedProfile": "safe",
+        "captureNegotiatedProfile": "high",
+        "captureProfileNegotiation": "capability-negotiated",
+        "captureScreenshot": "browser-days-1-3-pixeldart-canonical-day-1.png",
+        "captureWidth": 800,
+        "captureHeight": 500,
+        "resolvedRunSchemaVersion": "2",
+        "resolvedRenderer": "pixeldart",
+        "resolvedProfile": "safe"
+      }
+    },
+    {
+      "seq": 14,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-day-1.digest.json",
+        "bytes": 365,
+        "contentType": "application/json",
+        "schemaVersion": "1",
+        "screenshot": "browser-days-1-3-pixeldart-canonical-day-1.png",
+        "metadata": "browser-days-1-3-pixeldart-canonical-day-1.json",
+        "screenshotSha256": "75d26f26460f01c248a43733a30d9fbce7a7f78e5eba7a54c89cd15f4ee9886e",
+        "metadataSha256": "c2a998501dfe3e5a4a0dd4c4a22f15288d53f1570fb4aa639c3dd0bd84a0a0c5"
+      }
+    },
+    {
+      "seq": 15,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-day-2.png",
+        "bytes": 170712,
+        "contentType": "image/png"
+      }
+    },
+    {
+      "seq": 16,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-day-2.json",
+        "bytes": 2925,
+        "contentType": "application/json",
+        "captureSchemaVersion": "1",
+        "captureScenario": "days-1-3",
+        "captureRoute": "pixeldart-canonical",
+        "capturePath": "/?renderer=pixeldart",
+        "captureRequestedRenderer": "pixeldart",
+        "captureRequestedProfile": "safe",
+        "captureNegotiatedProfile": "high",
+        "captureProfileNegotiation": "capability-negotiated",
+        "captureScreenshot": "browser-days-1-3-pixeldart-canonical-day-2.png",
+        "captureWidth": 800,
+        "captureHeight": 500,
+        "resolvedRunSchemaVersion": "2",
+        "resolvedRenderer": "pixeldart",
+        "resolvedProfile": "safe"
+      }
+    },
+    {
+      "seq": 17,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-day-2.digest.json",
+        "bytes": 365,
+        "contentType": "application/json",
+        "schemaVersion": "1",
+        "screenshot": "browser-days-1-3-pixeldart-canonical-day-2.png",
+        "metadata": "browser-days-1-3-pixeldart-canonical-day-2.json",
+        "screenshotSha256": "fb1f36bd7d362a7fdc7d0e219fd6fbfc6717280dfa0f064fc0ea36ab0e4d896e",
+        "metadataSha256": "db1cb384c87e887501ceba0f01e9e02c177ed6c6641dd9c4d4bd47b52b2ed285"
+      }
+    },
+    {
+      "seq": 18,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-day-3.png",
+        "bytes": 118749,
+        "contentType": "image/png"
+      }
+    },
+    {
+      "seq": 19,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-day-3.json",
+        "bytes": 2925,
+        "contentType": "application/json",
+        "captureSchemaVersion": "1",
+        "captureScenario": "days-1-3",
+        "captureRoute": "pixeldart-canonical",
+        "capturePath": "/?renderer=pixeldart",
+        "captureRequestedRenderer": "pixeldart",
+        "captureRequestedProfile": "safe",
+        "captureNegotiatedProfile": "high",
+        "captureProfileNegotiation": "capability-negotiated",
+        "captureScreenshot": "browser-days-1-3-pixeldart-canonical-day-3.png",
+        "captureWidth": 800,
+        "captureHeight": 500,
+        "resolvedRunSchemaVersion": "2",
+        "resolvedRenderer": "pixeldart",
+        "resolvedProfile": "safe"
+      }
+    },
+    {
+      "seq": 20,
+      "type": "artifact.external",
+      "tick": 0,
+      "data": {
+        "name": "browser-days-1-3-pixeldart-canonical-day-3.digest.json",
+        "bytes": 365,
+        "contentType": "application/json",
+        "schemaVersion": "1",
+        "screenshot": "browser-days-1-3-pixeldart-canonical-day-3.png",
+        "metadata": "browser-days-1-3-pixeldart-canonical-day-3.json",
+        "screenshotSha256": "54f0069fd3f374dff5887e99d552dacb7bf3dd287c47785750edc10a450ec378",
+        "metadataSha256": "aca7ef0cac3426e6c7e990678f50ac6ffa87b52edba7cf5290f5c8b275b2ab4d"
+      }
+    },
+    {
+      "seq": 21,
+      "type": "run.failure",
+      "tick": 0,
+      "data": {
+        "kind": "infrastructure",
+        "message": "FormatException: embodied evidence assertions are incomplete: browser-days-1-3-pixeldart-canonical-embodied.json"
+      }
+    }
+  ],
+  "cleanup": {
+    "server": "closed-or-unavailable"
+  }
+}

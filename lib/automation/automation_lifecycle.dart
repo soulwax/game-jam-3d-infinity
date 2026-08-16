@@ -24,7 +24,12 @@ final class AutomationCleanupLedger {
     Object? firstError;
     for (final action in _actions.reversed) {
       try {
-        await action();
+        await action().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () => throw TimeoutException(
+            'automation cleanup action timed out',
+          ),
+        );
       } catch (error) {
         firstError ??= error;
       }

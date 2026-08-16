@@ -143,11 +143,11 @@ void main() {
   check(SaveIntegrityValidator.validate(), 'Save integrity validator validation failed');
   print('[✓] Performance & Frame Pacing: DRS Scaler, Zero-Alloc Scratch Pool & Save Integrity validated');
 
-  // 10. Section 27 Gold Master Asset Audit & Production Verification Track (GM)
-  check(GoldMasterAssetAuditor.validate(), 'Gold master asset audit failed');
-  check(ReleaseCertificationBadge.validate(), 'Release certification badge failed');
-  final manifest = ReleaseCertificationBadge.generateManifest();
-  print('[✓] Gold Master Certification: Signed Release Manifest generated (${manifest['releaseChecksum']})');
+  // 10. Section 27 content evidence and production verification track (GM)
+  check(ProductionAssetAuditor.validate(), 'Production content audit failed');
+  check(ReleaseEvidenceManifest.validate(), 'Release evidence manifest failed');
+  final manifest = ReleaseEvidenceManifest.generateManifest();
+  print('[✓] Production evidence manifest generated (${manifest['schema']})');
 
   // 11. Section 28 Accessibility Excellence & Immersion Polish Track (PL)
   check(AccessibilityExcellenceCoordinator.validate(), 'Accessibility coordinator validation failed');
@@ -155,8 +155,8 @@ void main() {
   check(VictorianArchiveBrowser.validate(), 'Victorian archive browser validation failed');
   print('[✓] Accessibility & Polish: Speed Multipliers, Cinematic Letterboxing & Archive Browser validated');
 
-  // 12. Section 29 Masterplan Final Completion & Production Lock Track (PR)
-  print('[✓] Masterplan Final Completion: 17 Regression Test Suites & Production Lock certified');
+  // 12. Section 29 regression evidence track (PR)
+  print('[✓] Regression evidence collected; release decision remains external');
 
   // 13. Section 30 Pixeldart Capabilities & Wise Governance Track (PX)
   check(PixeldartCapabilityMatrix.validate(), 'Pixeldart capability matrix validation failed');
@@ -165,11 +165,10 @@ void main() {
   print('[✓] Pixeldart Capabilities & Governance: WebGPU/WebGL2 Tiering, ACES HDR & VRAM Caching validated');
 
   print('\n========================================================================');
-  print(' RELEASE CERTIFICATION RESULT: READY FOR PRODUCTION SHIP (ALL 13 GATES CERTIFIED)');
+  print(' RELEASE EVIDENCE RESULT: AUDIT COMPLETE (HUMAN RELEASE REVIEW REQUIRED)');
   print('========================================================================');
   print('Game: ${manifest['gameTitle']}');
-  print('Version: ${manifest['releaseVersion']}');
-  print('Checksum: ${manifest['releaseChecksum']}');
-  print('Certified Gates: 13 / 13');
-  print('Masterplan Status: 100% COMPLETE & VERIFIED\n');
+  print('Evidence schema: ${manifest['schema']}');
+  print('Evidence gates: ${manifest['evidenceGates']}');
+  print('Masterplan status: not inferred by automated tooling\n');
 }

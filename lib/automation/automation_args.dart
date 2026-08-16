@@ -37,7 +37,7 @@ final class AutomationArgs {
   static const defaultPort = 8090;
   static const defaultBaseUrl = 'http://127.0.0.1:8090';
   static const defaultBrowser = AutomationBrowser.firefox;
-  static const defaultRenderer = AutomationRenderer.auto;
+  static const defaultRenderer = AutomationRenderer.pixeldart;
   static const defaultProfile = AutomationProfile.safe;
   static const defaultViewportWidth = 800;
   static const defaultViewportHeight = 500;
@@ -213,7 +213,7 @@ Options:
   --port <n|auto>       Server port (default: 8090; auto selects a free port).
   --base-url <url>      HTTP base URL (default: http://127.0.0.1:8090).
   --browser <name>      firefox or chromium (default: firefox).
-  --renderer <name>     auto, legacy, pixeldart, or next alias (default: auto).
+  --renderer <name>     pixeldart (default: pixeldart).
   --profile <name>      safe, standard, high, or clean alias (default: safe).
   --viewport <WxH>      Viewport size (default: 800x500).
   --seed <integer>      Deterministic scenario seed (default: 7).
@@ -380,11 +380,10 @@ AutomationBrowser _parseBrowser(String value) => switch (value) {
 int _parsePort(String value) => value == 'auto' ? 0 : int.parse(value);
 
 AutomationRenderer _parseRenderer(String value) => switch (value) {
-  'auto' => AutomationRenderer.auto,
-  'legacy' => AutomationRenderer.legacy,
   'pixeldart' => AutomationRenderer.pixeldart,
-  'next' => AutomationRenderer.pixeldart,
-  _ => throw FormatException('unsupported renderer'),
+  _ => throw FormatException(
+    'unsupported renderer; production automation requires pixeldart',
+  ),
 };
 
 AutomationProfile _parseProfile(String value) => switch (value) {

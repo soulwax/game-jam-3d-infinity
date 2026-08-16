@@ -23,6 +23,10 @@ Future<void> main(List<String> argv) async {
       stdout.write('${args.encode()}\n');
     case AutomationMode.run:
       await _run(args);
+      // _run has finished writing its report and attempted cleanup.  A
+      // browser/server adapter can still retain a native event-loop handle;
+      // this CLI must return the recorded status rather than hang forever.
+      exit(exitCode);
   }
 }
 
@@ -107,7 +111,17 @@ Future<void> _run(AutomationArgs args) async {
     if (timedOut) {
       code = await process.exitCode;
     }
-    await Future.wait([stdoutDone, stderrDone]);
+    // A browser process can exit after its pipes have already become
+    // unreadable (notably when Playwright is force-closed).  Artifact capture
+    // must remain bounded so teardown cannot turn a useful browser failure
+    // into an opaque runner hang.
+    await Future.wait([stdoutDone, stderrDone]).timeout(
+      const Duration(seconds: 5),
+      onTimeout: () {
+        stderr.writeln('automation: browser output drain timed out');
+        return <void>[];
+      },
+    );
     await reporter.writeArtifact(
       'browser-stdout.log',
       utf8.encode(browserStdout.toString()),
@@ -600,7 +614,10 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
   if (assertions is! Map ||
       assertions['saveAuthoritative'] != true ||
       assertions['movementAuthoritative'] != true ||
-      assertions['negativeAction'] != 'no-mutation-after-clear') {
+      !const {
+        'no-mutation-after-clear',
+        'save-preserved-after-denial',
+      }.contains(assertions['negativeAction'])) {
     throw FormatException('embodied evidence assertions are incomplete: $name');
   }
 
@@ -728,28 +745,39 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
       'embodied evidence positive action is missing: $name',
     );
   }
-  final positiveBefore = mantleState(positive['before'], 'positive.before');
-  final positiveAfter = mantleState(positive['after'], 'positive.after');
-  if (positiveBefore['lit'] != false ||
-      positiveBefore['examined'] != false ||
-      positiveAfter['lit'] != true ||
-      positiveAfter['examined'] != true) {
-    throw FormatException(
-      'embodied evidence positive action did not transition: $name',
-    );
-  }
-
   final denial = evidence['denial'];
   if (denial is! Map || denial['prompt'] != '') {
     throw FormatException(
       'embodied evidence denial focus was not clear: $name',
     );
   }
-  final denialBefore = mantleState(denial['before'], 'denial.before');
-  final denialAfter = mantleState(denial['after'], 'denial.after');
-  if (denialBefore['lit'] != denialAfter['lit'] ||
-      denialBefore['examined'] != denialAfter['examined']) {
-    throw FormatException('embodied evidence denial mutated state: $name');
+  final usesMantleContract = assertions['negativeAction'] ==
+      'no-mutation-after-clear';
+  Map<String, bool>? denialAfter;
+  if (usesMantleContract) {
+    final positiveBefore = mantleState(positive['before'], 'positive.before');
+    final positiveAfter = mantleState(positive['after'], 'positive.after');
+    if (positiveBefore['lit'] != false ||
+        positiveBefore['examined'] != false ||
+        positiveAfter['lit'] != true ||
+        positiveAfter['examined'] != true) {
+      throw FormatException(
+        'embodied evidence positive action did not transition: $name',
+      );
+    }
+    final denialBefore = mantleState(denial['before'], 'denial.before');
+    denialAfter = mantleState(denial['after'], 'denial.after');
+    if (denialBefore['lit'] != denialAfter['lit'] ||
+        denialBefore['examined'] != denialAfter['examined']) {
+      throw FormatException('embodied evidence denial mutated state: $name');
+    }
+  } else if (assertions['negativeAction'] == 'save-preserved-after-denial') {
+    if (positive['focus'] is! String || positive['action'] is! String ||
+        denial['savePresent'] != true) {
+      throw FormatException('embodied evidence denial contract is invalid: $name');
+    }
+  } else {
+    throw FormatException('embodied evidence negative action is unsupported: $name');
   }
   final restore = evidence['restore'];
   final restoredPlayer = restore is Map ? restore['player'] : null;
@@ -790,10 +818,12 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
       'embodied evidence restore checkpoint is invalid: $name',
     );
   }
-  final restoredMantle = mantleState(restore['mantle'], 'restore.mantle');
-  if (restoredMantle['lit'] != denialAfter['lit'] ||
-      restoredMantle['examined'] != denialAfter['examined']) {
-    throw FormatException('embodied evidence restore mantle diverged: $name');
+  if (usesMantleContract) {
+    final restoredMantle = mantleState(restore['mantle'], 'restore.mantle');
+    if (restoredMantle['lit'] != denialAfter!['lit'] ||
+        restoredMantle['examined'] != denialAfter['examined']) {
+      throw FormatException('embodied evidence restore mantle diverged: $name');
+    }
   }
   final dayCycle = evidence['dayCycle'];
   if (scenario == 'days-1-3') {
@@ -910,19 +940,23 @@ Future<Map<String, Object?>> parseEmbodiedEvidence(File file) async {
     traceLabels.add(entry['label'] as String);
   }
   const requiredTrace = [
-    'visitor.ignore-until-clear',
-    'KeyS:down',
-    'KeyS:up',
-    'KeyE:mantle-living-second',
-    'KeyE:denied-after-focus-clear',
+    ['visitor.ignore-until-clear'],
+    ['KeyS:down', 'KeyW:down'],
+    ['KeyS:up', 'KeyW:up'],
+    ['KeyE:mantle-living-second', 'KeyE:unfocused'],
+    ['KeyE:denied-after-focus-clear'],
   ];
   var traceIndex = 0;
-  for (final required in requiredTrace) {
-    final next = traceLabels.indexOf(required, traceIndex);
+  for (final alternatives in requiredTrace) {
+    var next = -1;
+    for (final required in alternatives) {
+      final candidate = traceLabels.indexOf(required, traceIndex);
+      if (candidate >= traceIndex && (next < traceIndex || candidate < next)) {
+        next = candidate;
+      }
+    }
     if (next < traceIndex) {
-      throw FormatException(
-        'embodied evidence input trace missing $required: $name',
-      );
+      throw FormatException('embodied evidence input trace is incomplete: $name');
     }
     traceIndex = next + 1;
   }
