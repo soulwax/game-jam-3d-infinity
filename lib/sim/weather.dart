@@ -88,6 +88,11 @@ List<WeatherDay> _generate(int seed) => [
         final progress = day / 21.0;
         final wave = math.pow(math.sin((day * math.pi) / 7.0), 2);
         intensity = (0.25 + 0.65 * wave * (0.6 + 0.4 * progress)).clamp(0.2, 1.0);
+        // Keep the authored curve stable while allowing the run seed to make
+        // otherwise identical days feel distinct. The bounded jitter is small
+        // enough that progression and the day-20 climax remain invariant.
+        final seedJitter = ((_mix(seed, day) & 0xff) / 255.0 - 0.5) * 0.08;
+        intensity = (intensity + seedJitter).clamp(0.2, 0.98);
         if (day == 20) intensity = 0.98; // Day 20 peak climax storm
       }
 

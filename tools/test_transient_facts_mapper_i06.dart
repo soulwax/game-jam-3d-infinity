@@ -5,6 +5,7 @@
 //  2. Cold ambient temperature (< 5.0 °C) enqueues player breath fog.
 //  3. Active gaslight mantles enqueue flame and smoke transients.
 //  4. Room with window in dry weather enqueues sunbeam dust motes.
+//  5. Rainy windows enqueue a bounded set of glass droplet cues.
 
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/presentation/transient_depth_route.dart';
@@ -17,6 +18,7 @@ void check(bool condition, String message) {
 
 void main() {
   final camPos = Vec3(0, 1.65, 0);
+  final dryWeather = const WeatherDay(day: 1, rain: false, rainIntensity: 0.0, daylightHours: 12.0);
 
   // 1. Rainy Window Room
   final rainyWeather = const WeatherDay(day: 3, rain: true, rainIntensity: 0.85, daylightHours: 12.0);
@@ -34,9 +36,24 @@ void main() {
   );
 
   check(rainTransients.any((t) => t.type == TransientType.rain), 'Rainy weather enqueues rain transients');
+  final glass = rainTransients.where((t) => t.type == TransientType.glass).toList();
+  check(glass.length == 3, 'Rainy window emits three bounded glass droplet cues');
+  check(
+    glass.every((t) => t.depthDistance >= 1.04 && t.depthDistance <= 1.08),
+    'Glass droplet cues stay on the window depth plane',
+  );
+
+  final dryWindowTransients = TransientFactsMapper.mapFactsToTransients(
+    weather: dryWeather,
+    room: roomWindow,
+    cameraPosition: camPos,
+  );
+  check(
+    !dryWindowTransients.any((t) => t.type == TransientType.glass),
+    'Dry window does not emit glass droplet cues',
+  );
 
   // 2. Cold Room (< 5°C) -> Player Breath Fog
-  final dryWeather = const WeatherDay(day: 1, rain: false, rainIntensity: 0.0, daylightHours: 12.0);
   final coldRoom = const RoomConditionFacts(
     roomId: 'cellar',
     hasWindow: false,
@@ -50,7 +67,12 @@ void main() {
     cameraPosition: camPos,
   );
 
-  check(coldTransients.any((t) => t.type == TransientType.breath), 'Cold room (< 5°C) enqueues player breath fog');
+  final breath = coldTransients.where((t) => t.type == TransientType.breath).toList();
+  check(breath.length == 4, 'Cold room emits a bounded four-particle breath plume');
+  check(
+    breath.every((t) => t.depthDistance >= 0.42 && t.depthDistance <= 0.54),
+    'breath particles remain camera-relative and depth bounded',
+  );
 
   // 3. Lit Gaslight Mantle -> Flame & Smoke Motes
   final mantleRoom = const RoomConditionFacts(

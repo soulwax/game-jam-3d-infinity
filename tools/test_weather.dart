@@ -14,6 +14,12 @@ void main() {
   _expect(a.encode() == b.encode(), 'same seed is byte-identical');
   _expect(a.encode() != c.encode(), 'different seed changes weather facts');
   _expect(
+    a.days.asMap().entries.any(
+      (entry) => entry.value.rainIntensity != c.days[entry.key].rainIntensity,
+    ),
+    'different seed changes generated rain intensities',
+  );
+  _expect(
     a.forDay(1).daylightHours > a.forDay(21).daylightHours,
     'daylight shortens monotonically',
   );

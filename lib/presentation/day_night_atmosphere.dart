@@ -32,6 +32,8 @@ class DayNightAtmosphereParams {
   final Color3 fogColor;
   final double directionalIntensity;
   final double ambientIntensity;
+  final double fogDensity;
+  final double fogHeightFalloff;
   final double windowLightLeakFactor;
   final double windowSurfaceWetness;
 
@@ -49,6 +51,8 @@ class DayNightAtmosphereParams {
     required this.fogColor,
     required this.directionalIntensity,
     required this.ambientIntensity,
+    this.fogDensity = 0.012,
+    this.fogHeightFalloff = 0.60,
     required this.windowLightLeakFactor,
     required this.windowSurfaceWetness,
   });
@@ -71,6 +75,8 @@ class DayNightAtmosphereParams {
     'fogColor': [fogColor.r, fogColor.g, fogColor.b],
     'directionalIntensity': directionalIntensity,
     'ambientIntensity': ambientIntensity,
+    'fogDensity': fogDensity,
+    'fogHeightFalloff': fogHeightFalloff,
     'windowLightLeakFactor': windowLightLeakFactor,
     'windowSurfaceWetness': windowSurfaceWetness,
   };
@@ -144,8 +150,15 @@ class DayNightAtmosphereEngine {
       elevationDeg = -18.0; // Below horizon at night
     }
 
-    // Azimuth sweeps from East (90°) at sunrise to South (180°) at 12:00 to West (270°) at sunset
-    final azimuthDeg = 90.0 + (normHour / 24.0) * 360.0;
+    // Azimuth follows the authored solar arc: east at sunrise, south at solar
+    // noon, and west at sunset. Clamp the night arc to the nearest horizon so
+    // a short winter day does not make the sun jump behind the camera.
+    final daylightProgress = normHour <= sunriseHour
+        ? 0.0
+        : normHour >= sunsetHour
+        ? 1.0
+        : (normHour - sunriseHour) / (sunsetHour - sunriseHour);
+    final azimuthDeg = 90.0 + daylightProgress * 180.0;
 
     final elRad = _degToRad(elevationDeg);
     final azRad = _degToRad(azimuthDeg);
@@ -246,6 +259,8 @@ class DayNightAtmosphereEngine {
     // Surface wetness builds with rain intensity and cold temperature differential
     final tempColdFactor = ((20.0 - temperatureCelsius) / 15.0).clamp(0.0, 1.0);
     final wetness = (rain * 0.75 + tempColdFactor * 0.25).clamp(0.0, 1.0);
+    final fogDensity = 0.0015 + rain * 0.014 + tempColdFactor * 0.003;
+    final fogHeightFalloff = 0.04 + rain * 0.08 + tempColdFactor * 0.02;
 
     return DayNightAtmosphereParams(
       phase: phase,
@@ -261,6 +276,8 @@ class DayNightAtmosphereEngine {
       fogColor: fog,
       directionalIntensity: dirIntensity,
       ambientIntensity: ambIntensity,
+      fogDensity: fogDensity,
+      fogHeightFalloff: fogHeightFalloff,
       windowLightLeakFactor: windowLeak,
       windowSurfaceWetness: wetness,
     );

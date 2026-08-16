@@ -991,6 +991,21 @@ final class _PixeldartWebRuntime implements RendererRuntime {
               flash.intensity * 4.5)
         : (atmos.directionalIntensity * atmos.windowLightLeakFactor);
 
+    // Atmosphere owns the physical baseline. Shader-lab values remain an
+    // explicit artistic multiplier, so changing weather/time cannot be
+    // silently erased by a stale debug default.
+    const defaultFogDensity = 0.012;
+    const defaultFogHeightFalloff = 0.60;
+    final tunedFogDensity = _shaderTuning.getValue('fog_density');
+    final tunedFogHeightFalloff =
+        _shaderTuning.getValue('fog_height_falloff');
+    final fogDensity = atmos.fogDensity *
+        (tunedFogDensity / defaultFogDensity).clamp(0.0, 8.0).toDouble();
+    final fogHeightFalloff = atmos.fogHeightFalloff *
+        (tunedFogHeightFalloff / defaultFogHeightFalloff)
+            .clamp(0.0, 8.0)
+            .toDouble();
+
     _environment = px.FrameEnvironment(
       ambientColor: px.LinearColor(
         atmos.skyAmbientColor.r,
@@ -1018,8 +1033,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       ),
       fogStart: fogStart / (1.0 + effectiveRain * 0.45),
       fogEnd: fogEnd / (1.0 + effectiveRain * 0.16),
-      fogHeightFalloff: _shaderTuning.getValue('fog_height_falloff'),
-      fogDensity: _shaderTuning.getValue('fog_density'),
+      fogHeightFalloff: fogHeightFalloff,
+      fogDensity: fogDensity,
     );
   }
 

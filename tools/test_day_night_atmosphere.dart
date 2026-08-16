@@ -46,8 +46,7 @@ void main() {
           hour: 7.0,
           rainIntensity: 0.0,
           shutterOpen: true,
-        ).sunElevationDegrees ==
-        0.0,
+        ).sunElevationDegrees.abs() < 1e-9,
     '07:00 is the authored sunrise horizon',
   );
   check(noon.phase == TimeOfDayPhase.noon, '12:00 is noon');
@@ -57,9 +56,47 @@ void main() {
           hour: 19.0,
           rainIntensity: 0.0,
           shutterOpen: true,
-        ).sunElevationDegrees ==
-        0.0,
+        ).sunElevationDegrees.abs() < 1e-9,
     '19:00 is the authored sunset horizon',
+  );
+  final sunriseArc = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 7.0,
+    rainIntensity: 0.0,
+    shutterOpen: true,
+  );
+  final sunsetArc = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 19.0,
+    rainIntensity: 0.0,
+    shutterOpen: true,
+  );
+  check(
+    (sunriseArc.sunAzimuthDegrees - 90.0).abs() < 1e-9,
+    'sunrise azimuth starts at east',
+  );
+  check(
+    (DayNightAtmosphereEngine.evaluateAtmosphere(
+              hour: 13.0,
+              rainIntensity: 0.0,
+              shutterOpen: true,
+            ).sunAzimuthDegrees -
+            180.0)
+        .abs() <
+        1e-9,
+    'solar noon azimuth follows the authored 13:00 noon',
+  );
+  check(
+    (sunsetArc.sunAzimuthDegrees - 270.0).abs() < 1e-9,
+    'sunset azimuth ends at west',
+  );
+  final shortDaySunrise = DayNightAtmosphereEngine.evaluateAtmosphere(
+    hour: 8.0,
+    daylightHours: 10.0,
+    rainIntensity: 0.0,
+    shutterOpen: true,
+  );
+  check(
+    (shortDaySunrise.sunAzimuthDegrees - 90.0).abs() < 1e-9,
+    'short daylight arc keeps sunrise at east',
   );
   check(night.phase == TimeOfDayPhase.night, '23:00 is night');
 
@@ -114,6 +151,14 @@ void main() {
   check(
     rainyNoon.windowSurfaceWetness > dryNoon.windowSurfaceWetness,
     'Rain increases window surface wetness mask',
+  );
+  check(
+    rainyNoon.fogDensity > dryNoon.fogDensity,
+    'Rain increases atmosphere fog density',
+  );
+  check(
+    rainyNoon.fogHeightFalloff > dryNoon.fogHeightFalloff,
+    'Rain increases atmosphere fog height falloff',
   );
 
   // 6. Test JSON export

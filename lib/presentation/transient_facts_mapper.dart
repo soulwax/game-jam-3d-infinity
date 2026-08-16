@@ -46,20 +46,54 @@ class TransientFactsMapper {
           ),
         );
       }
+
+      // A few shallow, camera-relative droplets give the window plane a
+      // readable wet surface without pretending to simulate fluid motion.
+      // The primary wetness/refraction work remains in the renderer shader.
+      const droplets = [
+        (x: -0.28, y: 0.18, z: 1.06, radius: 0.055, opacity: 0.24),
+        (x: 0.09, y: 0.34, z: 1.08, radius: 0.040, opacity: 0.18),
+        (x: 0.31, y: -0.02, z: 1.04, radius: 0.048, opacity: 0.21),
+      ];
+      for (final droplet in droplets) {
+        items.add(
+          TransientDepthItem(
+            id: nextId++,
+            type: TransientType.glass,
+            position: cameraPosition +
+                Vec3(droplet.x, droplet.y, droplet.z),
+            boundsRadius: droplet.radius,
+            depthDistance: droplet.z,
+            baseOpacity: droplet.opacity * weather.rainIntensity,
+          ),
+        );
+      }
     }
 
     // 2. Breath Fog (if ambient temperature < 5°C and player inside)
     if (room.ambientTemperatureCelsius < 5.0 && room.playerInside) {
-      items.add(
-        TransientDepthItem(
-          id: nextId++,
-          type: TransientType.breath,
-          position: cameraPosition + Vec3(0.0, -0.15, 0.45),
-          boundsRadius: 0.20,
-          depthDistance: 0.45,
-          baseOpacity: 0.45,
-        ),
-      );
+      // A short, deterministic plume reads as exhalation better than one
+      // opaque billboard. Keep the offsets camera-relative and bounded so the
+      // host can animate/fade them without introducing simulation state.
+      const offsets = [
+        (x: -0.06, y: -0.15, z: 0.42, opacity: 0.45),
+        (x: 0.05, y: -0.13, z: 0.45, opacity: 0.38),
+        (x: -0.02, y: -0.08, z: 0.49, opacity: 0.30),
+        (x: 0.04, y: -0.03, z: 0.54, opacity: 0.22),
+      ];
+      for (final offset in offsets) {
+        items.add(
+          TransientDepthItem(
+            id: nextId++,
+            type: TransientType.breath,
+            position: cameraPosition +
+                Vec3(offset.x, offset.y, offset.z),
+            boundsRadius: 0.16,
+            depthDistance: offset.z,
+            baseOpacity: offset.opacity,
+          ),
+        );
+      }
     }
 
     // 3. Flame & Smoke Motes (if gaslight mantle is lit)
