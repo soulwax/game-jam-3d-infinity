@@ -1,7 +1,7 @@
 {
   "schema": "pixeldart-model-package-v1",
   "assetId": "living-room",
-  "packageHash": "c2964ca7556a327d9eec1ce128093d246fb413bf83deaf0dc88441d5062e62df",
+  "packageHash": "dd4916f99c4eb04ccc1e22d4eb12a36300a5e115996bd2100502e93b81bbda8e",
   "sourceFormat": "glb",
   "parts": [
     {
@@ -9,238 +9,680 @@
       "materialSlot": 0,
       "lodFiles": {
         "LOD0": "mesh-000.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          -1.0
+        ],
+        "max": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-001",
       "materialSlot": 1,
       "lodFiles": {
         "LOD0": "mesh-001.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          -1.0
+        ],
+        "max": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-002",
       "materialSlot": 2,
       "lodFiles": {
         "LOD0": "mesh-002.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          1.2366602420806885,
+          -1.0,
+          -1.0
+        ],
+        "max": [
+          3.2366602420806885,
+          1.0,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-003",
       "materialSlot": 3,
       "lodFiles": {
         "LOD0": "mesh-003.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          0.0
+        ],
+        "max": [
+          1.0,
+          1.0,
+          0.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-004",
       "materialSlot": 4,
       "lodFiles": {
         "LOD0": "mesh-004.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.020499348640441895,
+          -0.9448795318603516,
+          -0.9448795318603516
+        ],
+        "max": [
+          -0.020499348640441895,
+          0.9448795318603516,
+          0.9448795318603516
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-005",
       "materialSlot": 5,
       "lodFiles": {
         "LOD0": "mesh-005.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0163660049438477,
+          -0.9390489459037781,
+          -0.9390488862991333
+        ],
+        "max": [
+          1.0000001192092896,
+          0.9390489459037781,
+          0.9390488862991333
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-006",
       "materialSlot": 6,
       "lodFiles": {
         "LOD0": "mesh-006.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.9166667461395264,
+          -4.246425151824951,
+          -0.9932758808135986
+        ],
+        "max": [
+          0.9166667461395264,
+          6.272566318511963,
+          0.9968230724334717
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-007",
       "materialSlot": 7,
       "lodFiles": {
         "LOD0": "mesh-007.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0000001192092896,
+          -1.0000004768371582,
+          -1.0
+        ],
+        "max": [
+          1.0000003576278687,
+          1.0,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-008",
       "materialSlot": 8,
       "lodFiles": {
         "LOD0": "mesh-008.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          -1.0
+        ],
+        "max": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-009",
       "materialSlot": 9,
       "lodFiles": {
         "LOD0": "mesh-009.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          -1.0000001192092896
+        ],
+        "max": [
+          1.0,
+          1.0,
+          1.0000001192092896
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-010",
       "materialSlot": 10,
       "lodFiles": {
         "LOD0": "mesh-010.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          -1.0
+        ],
+        "max": [
+          3.2366602420806885,
+          1.0,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-011",
       "materialSlot": 11,
       "lodFiles": {
         "LOD0": "mesh-011.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.9000000357627869,
+          -0.8999998569488525,
+          -0.7011975049972534
+        ],
+        "max": [
+          0.8999999761581421,
+          0.9000002145767212,
+          -0.7011975049972534
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-012",
       "materialSlot": 12,
       "lodFiles": {
         "LOD0": "mesh-012.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.833238124847412,
+          -1.0,
+          -1.0
+        ],
+        "max": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-013",
       "materialSlot": 13,
       "lodFiles": {
         "LOD0": "mesh-013.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0999995470046997,
+          -16.999971389770508
+        ],
+        "max": [
+          1.0,
+          1.100000023841858,
+          16.999971389770508
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-014",
       "materialSlot": 14,
       "lodFiles": {
         "LOD0": "mesh-014.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          -8.870537757873535
+        ],
+        "max": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-015",
       "materialSlot": 15,
       "lodFiles": {
         "LOD0": "mesh-015.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          -1.0
+        ],
+        "max": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-016",
       "materialSlot": 16,
       "lodFiles": {
         "LOD0": "mesh-016.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.965266227722168,
+          -0.24027293920516968,
+          -0.9652661681175232
+        ],
+        "max": [
+          0.965266227722168,
+          -0.24027293920516968,
+          0.9652661681175232
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-017",
       "materialSlot": 17,
       "lodFiles": {
         "LOD0": "mesh-017.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.9728900194168091,
+          -0.0002549886703491211,
+          -0.9728900194168091
+        ],
+        "max": [
+          0.9728900194168091,
+          -0.0002549886703491211,
+          0.9728900194168091
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-018",
       "materialSlot": 18,
       "lodFiles": {
         "LOD0": "mesh-018.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.19605034589767456,
+          -0.9133022427558899,
+          -0.9133023023605347
+        ],
+        "max": [
+          -0.19605034589767456,
+          0.9133022427558899,
+          0.9133021831512451
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-019",
       "materialSlot": 19,
       "lodFiles": {
         "LOD0": "mesh-019.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.19605034589767456,
+          -0.9133022427558899,
+          -0.9133023023605347
+        ],
+        "max": [
+          -0.19605034589767456,
+          0.9133022427558899,
+          0.9133021831512451
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-020",
       "materialSlot": 20,
       "lodFiles": {
         "LOD0": "mesh-020.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.19605034589767456,
+          -0.9133022427558899,
+          -0.9133023023605347
+        ],
+        "max": [
+          -0.19605034589767456,
+          0.9133022427558899,
+          0.9133021831512451
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-021",
       "materialSlot": 21,
       "lodFiles": {
         "LOD0": "mesh-021.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0000007152557373,
+          -1.0,
+          -1.0
+        ],
+        "max": [
+          1.0,
+          1.0000003576278687,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-022",
       "materialSlot": 22,
       "lodFiles": {
         "LOD0": "mesh-022.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          -1.0
+        ],
+        "max": [
+          1.0,
+          1.0,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-023",
       "materialSlot": 23,
       "lodFiles": {
         "LOD0": "mesh-023.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          0.0
+        ],
+        "max": [
+          1.0,
+          1.0,
+          0.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-024",
       "materialSlot": 24,
       "lodFiles": {
         "LOD0": "mesh-024.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -5.0,
+          -1.0
+        ],
+        "max": [
+          1.0,
+          3.9169418811798096,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-025",
       "materialSlot": 25,
       "lodFiles": {
         "LOD0": "mesh-025.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.9833334684371948,
+          -0.9895835518836975,
+          -1.0000001192092896
+        ],
+        "max": [
+          0.9833334684371948,
+          0.9895835518836975,
+          1.0000001192092896
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-026",
       "materialSlot": 26,
       "lodFiles": {
         "LOD0": "mesh-026.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0000001192092896,
+          -1.0000001192092896,
+          -1.0000001192092896
+        ],
+        "max": [
+          1.0000001192092896,
+          1.0000001192092896,
+          1.0000001192092896
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-027",
       "materialSlot": 27,
       "lodFiles": {
         "LOD0": "mesh-027.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          -1.0
+        ],
+        "max": [
+          1.0,
+          4.052245616912842,
+          1.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-028",
       "materialSlot": 28,
       "lodFiles": {
         "LOD0": "mesh-028.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.9166667461395264,
+          -4.246425151824951,
+          -0.9932758808135986
+        ],
+        "max": [
+          0.9166667461395264,
+          6.272566318511963,
+          0.9968230724334717
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-029",
       "materialSlot": 29,
       "lodFiles": {
         "LOD0": "mesh-029.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -3.9967024326324463,
+          -2.4291627407073975,
+          -1.0000001192092896
+        ],
+        "max": [
+          4.665288925170898,
+          5.233214378356934,
+          15.416587829589844
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-030",
       "materialSlot": 30,
       "lodFiles": {
         "LOD0": "mesh-030.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.3477466404438019,
+          -0.5,
+          -0.05430086702108383
+        ],
+        "max": [
+          0.3477466404438019,
+          0.5,
+          0.06914804130792618
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-031",
       "materialSlot": 31,
       "lodFiles": {
         "LOD0": "mesh-031.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -0.3074224889278412,
+          -0.09530948847532272,
+          0.0
+        ],
+        "max": [
+          0.3074224889278412,
+          0.5,
+          0.0
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-032",
       "materialSlot": 32,
       "lodFiles": {
         "LOD0": "mesh-032.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          -1.0,
+          -1.0,
+          -6.63133690181894e-8
+        ],
+        "max": [
+          0.2898997664451599,
+          1.0,
+          2.6743621965412412e-14
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     },
     {
       "id": "mesh-033",
       "materialSlot": 33,
       "lodFiles": {
         "LOD0": "mesh-033.qmesh"
-      }
+      },
+      "bounds": {
+        "min": [
+          0.2898995578289032,
+          -1.0,
+          -6.63133690181894e-8
+        ],
+        "max": [
+          1.0,
+          1.0,
+          3.271928505910182e-8
+        ]
+      },
+      "boundsSource": "vertex-payload-v1"
     }
   ],
   "materials": [
@@ -298,5 +740,6 @@
     "sourceFormat": "glb",
     "originalSourceFormat": "fbx",
     "originalSourceSha256": "383a2269f797231bd38d5ab04d1bab685c0526b43b2cb920442d91b85bd96359"
-  }
+  },
+  "combinedBoundsSource": "vertex-payload-v1"
 }

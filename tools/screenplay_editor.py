@@ -114,6 +114,30 @@ VOICE_DEFAULTS = {
 }
 
 
+def _ui_text(value: str) -> str:
+    """Keep imported labels readable across Tk/font/encoding combinations."""
+    decoded = re.sub(
+        r"\\u([0-9a-fA-F]{4})",
+        lambda match: chr(int(match.group(1), 16)),
+        value,
+    )
+    replacements = {
+        0x2013: "-",
+        0x2014: "-",
+        0x2212: "-",
+        0x2192: "->",
+        0x25BE: "",
+        0x2022: "*",
+        0x00B7: "|",
+        0x2026: "...",
+        0x2018: "'",
+        0x2019: "'",
+        0x201C: '"',
+        0x201D: '"',
+    }
+    return "".join(replacements.get(ord(character), character) for character in decoded)
+
+
 def _shared_tts_cues() -> tuple[str, ...]:
     """Read cue names from the same catalog consumed by scripts/tts.py."""
     corpus_path = Path(__file__).resolve().parent.parent / "scripts" / "corpus.py"
@@ -648,9 +672,6 @@ class Editor(tk.Tk if tk is not None else object):
         right.columnconfigure(0, weight=1)
         right.rowconfigure(4, weight=1)
         ttk.Label(right, text="Choices", style="PanelHeading.TLabel").grid(row=0, column=0, sticky="w")
-        ttk.Label(right, text="Define what the player can do next.", style="Muted.TLabel").grid(
-            row=0, column=0, sticky="e"
-        )
         self.branch_list = ttk.Combobox(right, state="readonly")
         self.branch_list.grid(row=1, column=0, sticky="ew")
         self.branch_list.bind("<<ComboboxSelected>>", self._branch_selected)
@@ -839,7 +860,7 @@ class Editor(tk.Tk if tk is not None else object):
         else:
             self._load_beat(None)
         self.branch_list["values"] = [
-            f"Choice {number + 1} - {branch.prompt[:52]}"
+                f"Choice {number + 1} - {_ui_text(branch.prompt[:52])}"
             for number, branch in enumerate(self.scene.branches)
         ]
         if self.scene.branches:
@@ -868,7 +889,7 @@ class Editor(tk.Tk if tk is not None else object):
     @staticmethod
     def _beat_label(beat: Beat) -> str:
         who = f"{beat.speaker}: " if beat.speaker else ""
-        return f"{beat.kind.title()} - {who}{beat.text[:70]}"
+        return f"{beat.kind.title()} - {who}{_ui_text(beat.text[:70])}"
 
     def _beat_selected(self, _event: object = None) -> None:
         selection = self.beat_list.curselection()
@@ -1483,7 +1504,7 @@ class Editor(tk.Tk if tk is not None else object):
         self.branch.prompt = new_prompt
         if changed and self.scene is not None:
             branch_values = [
-                f"Choice {number + 1} - {candidate.prompt[:52]}"
+                f"Choice {number + 1} - {_ui_text(candidate.prompt[:52])}"
                 for number, candidate in enumerate(self.scene.branches)
             ]
             selected = self.branch_list.current()
@@ -1495,7 +1516,7 @@ class Editor(tk.Tk if tk is not None else object):
 
     @staticmethod
     def _option_label(option: Option) -> str:
-        return f"{option.label[:58]}  ->  {option.next_scene}"
+        return f"{_ui_text(option.label[:58])}  ->  {option.next_scene}"
 
     def _option_selected(self, _event: object = None) -> None:
         selection = self.option_list.curselection()
@@ -1515,7 +1536,7 @@ class Editor(tk.Tk if tk is not None else object):
 
     @staticmethod
     def _scene_choice_label(scene: Scene) -> str:
-        return f"Day {scene.day:02d} - {scene.title}"
+        return f"Day {scene.day:02d} - {_ui_text(scene.title)}"
 
     def _scene_choice_label_for_id(self, scene_id: str) -> str:
         if scene_id == "END":
@@ -1596,13 +1617,13 @@ class Editor(tk.Tk if tk is not None else object):
         if self.scene is None:
             return
         preview = tk.Toplevel(self)
-        preview.title(f"Preview - Day {self.scene.day:02d}: {self.scene.title}")
+        preview.title(f"Preview - Day {self.scene.day:02d}: {_ui_text(self.scene.title)}")
         preview.geometry("620x560")
         preview.columnconfigure(0, weight=1)
         preview.rowconfigure(0, weight=1)
         text = tk.Text(preview, wrap="word", padx=18, pady=18)
         text.grid(row=0, column=0, sticky="nsew")
-        text.insert("end", f"DAY {self.scene.day}\n{self.scene.title}\n\n")
+        text.insert("end", f"DAY {self.scene.day}\n{_ui_text(self.scene.title)}\n\n")
         for beat in self.scene.beats:
             if beat.speaker:
                 text.insert("end", f"{beat.speaker.upper()}\n{beat.text}\n\n")
@@ -1611,7 +1632,7 @@ class Editor(tk.Tk if tk is not None else object):
         for branch in self.scene.branches:
             text.insert("end", f"{branch.prompt}\n")
             for option in branch.options:
-                text.insert("end", f"  * {option.label}\n")
+                text.insert("end", f"  * {_ui_text(option.label)}\n")
             text.insert("end", "\n")
         text.configure(state="disabled")
 
@@ -1852,9 +1873,9 @@ class Editor(tk.Tk if tk is not None else object):
                     axis_x + 12,
                     (y + end_y) / 2,
                     text=(
-                        f"{start_hour:04.1f}-{end_hour:04.1f}  {event.label[:24]}"
+                        f"{start_hour:04.1f}-{end_hour:04.1f}  {_ui_text(event.label[:24])}"
                         if end_hour != start_hour
-                        else f"{event.hour:04.1f}  {event.label[:28]}"
+                        else f"{event.hour:04.1f}  {_ui_text(event.label[:28])}"
                     ),
                     anchor="w",
                     fill="#333333",
@@ -2298,7 +2319,7 @@ class Editor(tk.Tk if tk is not None else object):
             if event.random_from is not None and event.random_to is not None
             else f"{event.hour:04.1f}"
         )
-        return f"Day {event.day:02d} - {timing} - {event.kind.title()} - {event.label[:42]}"
+        return f"Day {event.day:02d} - {timing} - {event.kind.title()} - {_ui_text(event.label[:42])}"
 
     def _event_internal_name(self, label: str) -> str:
         stem = re.sub(r"[^a-z0-9]+", "-", label.lower()).strip("-") or "event"

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:pixeldart/assets/assets.dart';
+import 'package:pixeldart/rendering/assets/qmesh.dart';
 
 void check(bool value, String message) {
   if (!value) throw StateError('FAIL: $message');
@@ -66,6 +67,51 @@ Future<void> main() async {
     package.payloads.length == manifest.parts.length,
     'every promoted part has one runtime payload',
   );
+  // Bounds must describe each part's own position payload. A stale combined
+  // scene bound makes frustum culling and inspection framing unnecessarily
+  // broad, and can hide real placement errors.
+  for (final rawPart in (jsonDecode(
+    await File('$root/manifest.json').readAsString(),
+  ) as Map<String, dynamic>)['parts'] as List<dynamic>) {
+    final part = rawPart as Map<String, dynamic>;
+    final lod = (part['lodFiles'] as Map<String, dynamic>)['LOD0'] as String;
+    final bytes = Uint8List.fromList(await File('$root/$lod').readAsBytes());
+    final mesh = decodeQmesh(bytes);
+    final view = ByteData.sublistView(bytes);
+    final stride = view.getUint16(6, Endian.little);
+    final count = view.getUint32(8, Endian.little);
+    final min = [double.infinity, double.infinity, double.infinity];
+    final max = [double.negativeInfinity, double.negativeInfinity, double.negativeInfinity];
+    for (var vertex = 0; vertex < count; vertex++) {
+      final base = 36 + vertex * stride * 4;
+      for (var axis = 0; axis < 3; axis++) {
+        final value = view.getFloat32(base + axis * 4, Endian.little);
+        if (value < min[axis]) min[axis] = value;
+        if (value > max[axis]) max[axis] = value;
+      }
+    }
+    for (var axis = 0; axis < 3; axis++) {
+      final headerMin = view.getFloat32(12 + axis * 4, Endian.little);
+      final headerMax = view.getFloat32(24 + axis * 4, Endian.little);
+      final decodedMin = switch (axis) {
+        0 => mesh.localBounds.min.x,
+        1 => mesh.localBounds.min.y,
+        _ => mesh.localBounds.min.z,
+      };
+      final decodedMax = switch (axis) {
+        0 => mesh.localBounds.max.x,
+        1 => mesh.localBounds.max.y,
+        _ => mesh.localBounds.max.z,
+      };
+      check(
+        (headerMin - min[axis]).abs() < 0.00001 &&
+            (headerMax - max[axis]).abs() < 0.00001 &&
+            (decodedMin - min[axis]).abs() < 0.00001 &&
+            (decodedMax - max[axis]).abs() < 0.00001,
+        '${part['id']} bounds match its vertex payload',
+      );
+    }
+  }
   final inventory =
       jsonDecode(await File('assets/house/inventory.json').readAsString())
           as Map<String, dynamic>;
@@ -87,6 +133,26 @@ Future<void> main() async {
         placement['assetId'] == 'living-room',
     'promoted package is placed in the reachable living room',
   );
+  final inventoryScale = (inventory['modelScale'] as num).toDouble();
+  final placementScale =
+      (((placement['transform'] as Map)['scale'] as List).first as num)
+          .toDouble();
+  final packageBounds = manifest.combinedBounds;
+  final authoredBounds = authoredAsset['bounds'] as Map<String, dynamic>;
+  final authoredMin = (authoredBounds['min'] as List).cast<num>();
+  final authoredMax = (authoredBounds['max'] as List).cast<num>();
+  for (var axis = 0; axis < 3; axis++) {
+    final packagedSize =
+        (packageBounds[axis + 3] - packageBounds[axis]) *
+        placementScale *
+        inventoryScale;
+    final authoredSize =
+        authoredMax[axis].toDouble() - authoredMin[axis].toDouble();
+    check(
+      (packagedSize - authoredSize).abs() <= 0.05,
+      'promoted FBX ${['x', 'y', 'z'][axis]} size aligns with inventory bounds',
+    );
+  }
   check(
     placement['role'] == 'renderer-reference',
     'promoted placement remains presentation-owned',

@@ -22,12 +22,18 @@ SPEC.loader.exec_module(EDITOR)
 def main() -> None:
     source = ROOT / "text" / "story.screenplay"
     script = EDITOR.parse_script(source)
+    editor_source = EDITOR_PATH.read_text(encoding="utf-8")
+    assert all(ord(character) < 128 for character in editor_source)
     assert EDITOR.validate_script(script) == []
     assert len(script.sources) == 33
     assert [scene.day for scene in script.scenes] == list(range(1, 22))
     assert len({scene.scene_id for scene in script.scenes}) == 21
     assert sum(len(branch.options) for scene in script.scenes for branch in scene.branches) == 55
     assert {"hesitant", "broken-radio", "under-breath"}.issubset(set(EDITOR.CUES))
+    label = EDITOR.Editor._scene_choice_label(script.scenes[0])
+    assert label == "Day 01 - Hospitality"
+    assert EDITOR.Editor._option_label(script.scenes[0].branches[0].options[0]).endswith("->  day-02")
+    assert EDITOR._ui_text(r"literal \u2014 arrow \u2192") == "literal - arrow ->"
 
     encoded = EDITOR.encode_script(script)
     with tempfile.TemporaryDirectory(prefix="screenplay-editor-") as directory:

@@ -13,7 +13,7 @@
   "runtimePackage": {
     "format": "normalized-glb-qmsh",
     "path": "web/res/models/living-room/manifest.json",
-    "packageSha256": "c2964ca7556a327d9eec1ce128093d246fb413bf83deaf0dc88441d5062e62df",
+    "packageSha256": "dd4916f99c4eb04ccc1e22d4eb12a36300a5e115996bd2100502e93b81bbda8e",
     "sourceFormat": "glb",
     "note": "The browser ships the normalized runtime package; the raw FBX remains offline-only."
   }

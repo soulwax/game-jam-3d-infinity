@@ -326,6 +326,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'volumetricIntensity': _environment.volumetricIntensity,
         'volumetricDustDensity': _environment.volumetricDustDensity,
         'volumetricAnisotropy': _environment.volumetricAnisotropy,
+        'reflectionIntensity': _environment.reflectionIntensity,
+        'reflectionConfidence': _environment.reflectionConfidence,
       },
     };
   }
@@ -549,6 +551,19 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         debugLabel: 'texture:$key',
       );
     }
+    // Source-owned statuette maps are 8192px. Cap browser uploads at 4096px
+    // while retaining mipmaps and anisotropic filtering for close inspection.
+    for (final key in const ['porcelain-albedo', 'porcelain-normal', 'glass']) {
+      final isGlass = key == 'glass';
+      _textures[key] = _renderer.resources.registerTexture(
+        width: isGlass ? 256 : 4096,
+        height: isGlass ? 256 : 4096,
+        hasMips: true,
+        minFilter: pxweb.GpuTextureFilter.linearMipmapLinear,
+        anisotropy: 8,
+        debugLabel: 'texture:$key',
+      );
+    }
     _publishTextureResidency();
     _publishMaterialResidency();
     _sceneMaterial = _registerMaterial(
@@ -735,6 +750,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _inventoryDescriptors.clear();
     _lastVisibilityKey = null;
     _inventoryMeshes.clear();
+    var promotedBoundsAligned = true;
     for (final placement in _inventoryPlacements) {
       final assetKey = placement.assetId.toLowerCase();
       if (sparseTestChambers && assetKey.contains('stair')) {
@@ -751,6 +767,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       if (_packageBindingAdapter != null &&
           _promotedRegistry!.contains(asset.id)) {
         final promotedPackage = _promotedRegistry!.resolve(asset.id).package;
+        promotedBoundsAligned =
+            promotedBoundsAligned &&
+            _promotedBoundsAlignWithInventory(
+              promotedPackage.manifest.combinedBounds,
+              asset,
+              placement.transform.scale.x * inventory.modelScale,
+            );
         final position = placement.runtimePosition(inventory.modelScale);
         final rotation = px.Quat.axisAngle(
           const px.Vec3(0, 1, 0),
@@ -830,7 +853,40 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'data-renderer-promoted-material-policy',
       'semantic-pbr-v1',
     );
+    _canvas.setAttribute(
+      'data-renderer-promoted-bounds-alignment',
+      promotedBoundsAligned ? 'pass' : 'mismatch',
+    );
     _publishPromotedModelDiagnostics();
+  }
+
+  bool _promotedBoundsAlignWithInventory(
+    List<double> packageBounds,
+    InventoryAsset asset,
+    double effectiveScale,
+  ) {
+    if (packageBounds.length != 6 ||
+        !effectiveScale.isFinite ||
+        effectiveScale <= 0) {
+      return false;
+    }
+    final packageSize = [
+      packageBounds[3] - packageBounds[0],
+      packageBounds[4] - packageBounds[1],
+      packageBounds[5] - packageBounds[2],
+    ];
+    final inventorySize = [
+      asset.bounds.max.x - asset.bounds.min.x,
+      asset.bounds.max.y - asset.bounds.min.y,
+      asset.bounds.max.z - asset.bounds.min.z,
+    ];
+    for (var axis = 0; axis < 3; axis++) {
+      final scaled = packageSize[axis] * effectiveScale;
+      if (!scaled.isFinite || (scaled - inventorySize[axis]).abs() > 0.05) {
+        return false;
+      }
+    }
+    return true;
   }
 
   /// Converts source material names into renderer-owned physically plausible
@@ -842,25 +898,60 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     if (existing != null) return existing;
     final name = sourceName.toLowerCase();
     final isPorcelain = assetId == 'porcelain-mermaid';
-    final isGlass = name.contains('kaca') ||
+    final isGlass =
+        name.contains('kaca') ||
         name.contains('gelas') ||
         name.contains('cermin');
     final isMetal = name.contains('aluminium') || name.contains('kerangka');
-    final isTextile = name.contains('sofa') ||
+    final isTextile =
+        name.contains('sofa') ||
         name.contains('cusion') ||
         name.contains('carpet');
-    final isWood = name.contains('floor') ||
+    final isWood =
+        name.contains('floor') ||
         name.contains('lemari') ||
         name.contains('meja') ||
         name.contains('tiang');
-    final isEmissive = name.contains('emmision') ||
-        name.contains('netflix') ||
-        name == 'tv';
+    final isWall =
+        name.contains('wall') ||
+        name.contains('roof') ||
+        name.contains('tegel');
+    final isEmissive =
+        name.contains('emmision') || name.contains('netflix') || name == 'tv';
     final definition = px.MaterialDefinition(
       key: 'quarantine-promoted-${key.toLowerCase().replaceAll(' ', '-')}',
-      tintR: isGlass ? 0.78 : isPorcelain ? 0.92 : isMetal ? 0.72 : 1.0,
-      tintG: isGlass ? 0.88 : isPorcelain ? 0.90 : isMetal ? 0.75 : 1.0,
-      tintB: isGlass ? 0.98 : isPorcelain ? 0.88 : isMetal ? 0.78 : 1.0,
+      albedoTexture: isPorcelain
+          ? _textures['porcelain-albedo']
+          : isGlass
+          ? _textures['glass']
+          : isWall
+          ? _textures['wall-plaster']
+          : isWood
+          ? _textures['floor-linoleum']
+          : null,
+      normalTexture: isPorcelain ? _textures['porcelain-normal'] : null,
+      normalStrength: isPorcelain ? 0.72 : 1.0,
+      tintR: isGlass
+          ? 0.78
+          : isPorcelain
+          ? 0.92
+          : isMetal
+          ? 0.72
+          : 1.0,
+      tintG: isGlass
+          ? 0.88
+          : isPorcelain
+          ? 0.90
+          : isMetal
+          ? 0.75
+          : 1.0,
+      tintB: isGlass
+          ? 0.98
+          : isPorcelain
+          ? 0.88
+          : isMetal
+          ? 0.78
+          : 1.0,
       roughness: isPorcelain
           ? 0.22
           : isGlass
@@ -873,7 +964,11 @@ final class _PixeldartWebRuntime implements RendererRuntime {
           ? 0.48
           : 0.68,
       metallic: isMetal ? 0.82 : 0.0,
-      clearcoatStrength: isPorcelain ? 0.74 : isGlass ? 0.18 : 0.0,
+      clearcoatStrength: isPorcelain
+          ? 0.74
+          : isGlass
+          ? 0.18
+          : 0.0,
       clearcoatRoughness: isPorcelain ? 0.16 : 0.2,
       emissiveStrength: isEmissive ? 0.72 : 0.0,
       alphaMode: isGlass ? px.AlphaMode.blended : px.AlphaMode.opaque,
@@ -1671,7 +1766,33 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       metallicScale: metallicScale,
       specularScale: specularScale,
       shadowBias: shadowBias,
+      reflectionColor: px.EnvironmentResponse.resolve(
+        skyColor: px.LinearColor(
+          atmos.skyAmbientColor.r,
+          atmos.skyAmbientColor.g,
+          atmos.skyAmbientColor.b,
+        ),
+        keyLightColor: dirCol,
+        keyLightIntensity: dirIntensity,
+        sourceRadiance: px.LinearColor(sourceFog.x, sourceFog.y, sourceFog.z),
+      ),
+      reflectionIntensity: (reflectionStrength * 0.42)
+          .clamp(0.0, 1.0)
+          .toDouble(),
+      // No real probe/history hit is submitted yet; the shader applies a
+      // conservative fallback confidence rather than claiming SSR.
+      reflectionConfidence: 0.0,
     );
+    _canvas
+      ..setAttribute(
+        'data-renderer-reflection-intensity',
+        _environment.reflectionIntensity.toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-reflection-confidence',
+        _environment.reflectionConfidence.toStringAsFixed(4),
+      )
+      ..setAttribute('data-renderer-reflection-mode', 'environment-fallback');
   }
 
   void setCamera(Camera camera) {
@@ -2687,6 +2808,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'grime',
         'floor-linoleum',
         'ceiling-stained',
+        'porcelain-albedo',
+        'porcelain-normal',
+        'glass',
       ])
         if (urls[key] case final url?) _loadTexture(key, url),
     ]);
@@ -2698,16 +2822,34 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     try {
       final image = web.HTMLImageElement()..src = url;
       await image.decode().toDart;
+      // TextureStore descriptors are fixed-size GPU allocations. Uploading
+      // decoded pixels at the source resolution is invalid when an authored
+      // source map is larger than its declared residency target (notably the
+      // 512px glass map versus its 256px slot). Render into the exact
+      // descriptor dimensions so the retained handle and GPU payload agree.
+      final targetSize = switch (key) {
+        'grime' => 512,
+        'porcelain-albedo' || 'porcelain-normal' => 4096,
+        _ => 256,
+      };
+      final targetWidth = targetSize;
+      final targetHeight = targetSize;
       final canvas = web.HTMLCanvasElement()
-        ..width = image.naturalWidth
-        ..height = image.naturalHeight;
+        ..width = targetWidth
+        ..height = targetHeight;
       final context = canvas.getContext('2d');
       if (context is! web.CanvasRenderingContext2D) {
         throw StateError('2D canvas context unavailable for $key');
       }
-      context.drawImage(image, 0, 0);
+      context.drawImageScaled(
+        image,
+        0,
+        0,
+        targetWidth.toDouble(),
+        targetHeight.toDouble(),
+      );
       final pixels = context
-          .getImageData(0, 0, image.naturalWidth, image.naturalHeight)
+          .getImageData(0, 0, targetWidth, targetHeight)
           .data
           .toDart;
       _renderer.resources.updateTexturePixels(
@@ -5120,6 +5262,12 @@ void _updateSetting(String key, String raw) {
 Future<void> _loadTextures(JSObject? data) async {
   final urls = <String, String>{};
   _collectUrls(data?['tex'] as JSObject?, urls);
+  urls.addAll(const {
+    'porcelain-albedo':
+        'res/house/models/porcelain-mermaid-statuette/textures/retopo_Transferred%20Texture%20from%20Mesh.jpeg',
+    'porcelain-normal':
+        'res/house/models/porcelain-mermaid-statuette/textures/retopo_Normal%20Map%20from%20Mesh.jpeg',
+  });
   await Future.wait([
     _pixeldartRuntime?.loadTextures(urls) ?? Future<void>.value(),
   ]);
