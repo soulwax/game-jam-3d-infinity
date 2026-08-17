@@ -254,6 +254,7 @@ final class WeatherAudioFrame {
 /// stable for the same frame facts.
 final class WeatherAudioEngine {
   int _lastLightningStrike = -1;
+  int _lastTransientBucket = -1;
 
   WeatherAudioFrame resolve(WeatherAudioInput input) {
     input.validate();
@@ -348,7 +349,8 @@ final class WeatherAudioEngine {
       );
     }
 
-    final isHail = input.precipitationKind == PrecipitationKind.hail ||
+    final isHail =
+        input.precipitationKind == PrecipitationKind.hail ||
         input.precipitationKind == PrecipitationKind.sleet;
     final impactEnergy = (input.surfaceImpactEnergy01 * intensity)
         .clamp(0.0, 1.0)
@@ -361,10 +363,12 @@ final class WeatherAudioEngine {
           id: 'structure-hail-impact',
           kind: WeatherAudioLayerKind.surfaceImpact,
           cue: 'weather-hail-roof',
-          gainLinear: (impactEnergy * (0.16 + 0.38 * (1.0 - open)) *
-                  (0.35 + 0.65 * wall))
-              .clamp(0.0, 1.0)
-              .toDouble(),
+          gainLinear:
+              (impactEnergy *
+                      (0.16 + 0.38 * (1.0 - open)) *
+                      (0.35 + 0.65 * wall))
+                  .clamp(0.0, 1.0)
+                  .toDouble(),
           lowPassHz: 760 + 1_500 * transmission,
           highPassHz: 48,
           stereoPan: 0,
@@ -438,8 +442,8 @@ final class WeatherAudioEngine {
           id: 'interior-coffee-roomtone',
           kind: WeatherAudioLayerKind.interiorTexture,
           cue: 'weather-interior-coffee',
-          gainLinear: 0.018 * input.internalWarmth01 *
-              (0.55 + 0.45 * (1.0 - open)),
+          gainLinear:
+              0.018 * input.internalWarmth01 * (0.55 + 0.45 * (1.0 - open)),
           lowPassHz: 2_600,
           highPassHz: 110,
           stereoPan: 0,
@@ -450,6 +454,64 @@ final class WeatherAudioEngine {
     }
 
     final events = <WeatherAudioEvent>[];
+    // Transient details are scheduled from simulation time, not wall-clock
+    // randomness. At 60 fps a bucket is roughly half a second; cadence is
+    // deliberately sparse so a hailstorm has texture without becoming a
+    // machine-gun of one-shots.
+    final transientBucket = input.frameIndex ~/ 30;
+    if (transientBucket != _lastTransientBucket) {
+      _lastTransientBucket = transientBucket;
+      final transientPan = _stableUnit(input.seed, transientBucket, 17) * 2 - 1;
+      final transientRate =
+          0.92 + _stableUnit(input.seed, transientBucket, 23) * 0.16;
+      if (transientBucket > 0 &&
+          isHail &&
+          impactEnergy > 0.12 &&
+          transientBucket.isEven) {
+        events.add(
+          WeatherAudioEvent(
+            id: 'hail-impact-$transientBucket',
+            cue: 'weather-hail-tick',
+            delaySeconds: 0,
+            gainLinear: (0.08 + impactEnergy * 0.24).clamp(0.0, 1.0).toDouble(),
+            playbackRate: transientRate,
+            stereoPan: transientPan,
+          ),
+        );
+      }
+      if (transientBucket > 0 &&
+          windowResonance > 0.2 &&
+          transientBucket % 3 == 0) {
+        events.add(
+          WeatherAudioEvent(
+            id: 'window-rattle-$transientBucket',
+            cue: 'weather-window-tick',
+            delaySeconds: 0,
+            gainLinear: (0.035 + windowResonance * 0.12)
+                .clamp(0.0, 1.0)
+                .toDouble(),
+            playbackRate:
+                0.94 + _stableUnit(input.seed, transientBucket, 31) * 0.12,
+            stereoPan: transientPan * 0.55,
+          ),
+        );
+      }
+      if (transientBucket > 0 &&
+          input.internalWarmth01 > 0.5 &&
+          transientBucket % 15 == 0) {
+        events.add(
+          WeatherAudioEvent(
+            id: 'coffee-clink-$transientBucket',
+            cue: 'weather-coffee-clink',
+            delaySeconds: 0,
+            gainLinear: 0.025 + input.internalWarmth01 * 0.035,
+            playbackRate:
+                0.98 + _stableUnit(input.seed, transientBucket, 43) * 0.08,
+            stereoPan: transientPan * 0.25,
+          ),
+        );
+      }
+    }
     if (input.lightningFlashActive &&
         input.lightningStrikeSequence != _lastLightningStrike) {
       _lastLightningStrike = input.lightningStrikeSequence;
@@ -488,5 +550,15 @@ final class WeatherAudioEngine {
     return frame;
   }
 
-  void reset() => _lastLightningStrike = -1;
+  void reset() {
+    _lastLightningStrike = -1;
+    _lastTransientBucket = -1;
+  }
+
+  double _stableUnit(int seed, int bucket, int salt) {
+    var value = seed ^ (bucket * 0x45d9f3b) ^ (salt * 0x27d4eb2d);
+    value = (value ^ (value >> 16)) * 0x45d9f3b;
+    value = (value ^ (value >> 16)) & 0x7fffffff;
+    return value / 0x7fffffff;
+  }
 }

@@ -213,6 +213,22 @@ def coffee(seconds: float) -> list[tuple[float, float]]:
     return samples
 
 
+def transient_tick(seconds: float, seed: int, frequency: float) -> list[tuple[float, float]]:
+    """Short deterministic source for event scheduling in the Dart resolver."""
+    count = int(seconds * RATE)
+    rng = random.Random(seed)
+    samples: list[tuple[float, float]] = []
+    pan = rng.random() * 2.0 - 1.0
+    for i in range(count):
+        t = i / RATE
+        envelope = math.exp(-t * (16.0 + rng.random() * 8.0))
+        tone = math.sin(2.0 * math.pi * frequency * t)
+        noise = (rng.random() * 2.0 - 1.0) * math.exp(-t * 42.0)
+        value = (tone * 0.76 + noise * 0.24) * envelope
+        samples.append((value * (1.0 - max(0.0, pan)), value * (1.0 + min(0.0, pan))))
+    return samples
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--out", type=Path, default=Path("web/res/sfx/weather"))
@@ -239,6 +255,9 @@ def main() -> None:
         "weather-interior-drip": drip(args.seconds),
         "weather-interior-warmth": warmth(args.seconds),
         "weather-interior-coffee": coffee(args.seconds),
+        "weather-hail-tick": transient_tick(0.42, 0xA11, 620.0),
+        "weather-window-tick": transient_tick(0.34, 0x71C, 94.0),
+        "weather-coffee-clink": transient_tick(0.28, 0xC11, 1_940.0),
     }
     for name, samples in recipes.items():
         write_wav(args.out / f"{name}.wav", samples)

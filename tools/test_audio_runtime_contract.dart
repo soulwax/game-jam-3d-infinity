@@ -1,7 +1,8 @@
 import 'dart:io';
 
 void main() {
-  final source = '${File('web/main.dart').readAsStringSync()}\n'
+  final source =
+      '${File('web/main.dart').readAsStringSync()}\n'
       '${File('lib/engine/audio.dart').readAsStringSync()}\n'
       '${File('lib/engine/weather_audio.dart').readAsStringSync()}';
   const required = [
@@ -23,6 +24,9 @@ void main() {
     'weather-hail-roof',
     'weather-window-rattle',
     'weather-interior-coffee',
+    'weather-hail-tick',
+    'weather-window-tick',
+    'weather-coffee-clink',
     'reverbSend01',
     'stereoPan',
     'playDelayed',

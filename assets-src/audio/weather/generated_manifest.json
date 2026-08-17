@@ -15,7 +15,10 @@
     "weather-thunder-roll": "deterministic-procedural",
     "weather-interior-drip": "deterministic-procedural",
     "weather-interior-warmth": "deterministic-procedural",
-    "weather-interior-coffee": "deterministic-procedural"
+    "weather-interior-coffee": "deterministic-procedural",
+    "weather-hail-tick": "deterministic-procedural",
+    "weather-window-tick": "deterministic-procedural",
+    "weather-coffee-clink": "deterministic-procedural"
   },
   "runtime": "Dart WeatherAudioEngine resolves layering, aperture transmission, and timing"
 }

@@ -14,6 +14,7 @@ WeatherAudioInput _input({
   int strike = 0,
   bool flash = false,
   double impactEnergy = 0.7,
+  int frame = 1,
 }) => WeatherAudioInput(
   precipitationKind: kind,
   precipitationIntensity01: 0.9,
@@ -32,7 +33,7 @@ WeatherAudioInput _input({
   internalWarmth01: 0.8,
   surfaceImpactEnergy01: impactEnergy,
   dtSeconds: 1 / 60,
-  frameIndex: 1,
+  frameIndex: frame,
   seed: 42,
 );
 
@@ -83,6 +84,23 @@ void main() {
   _expect(
     !noImpact.layers.any((layer) => layer.id == 'structure-hail-impact'),
     'zero impact energy must silence structural hail impacts',
+  );
+
+  final transientEngine = WeatherAudioEngine();
+  final hailTransient = transientEngine.resolve(_input(frame: 60));
+  _expect(
+    hailTransient.events.any((event) => event.cue == 'weather-hail-tick'),
+    'hail impact bucket must schedule a short structural tick',
+  );
+  final repeatedTransient = transientEngine.resolve(_input(frame: 60));
+  _expect(
+    repeatedTransient.events.isEmpty,
+    'the same transient bucket must not retrigger every render frame',
+  );
+  final coffeeTransient = transientEngine.resolve(_input(frame: 450));
+  _expect(
+    coffeeTransient.events.any((event) => event.cue == 'weather-coffee-clink'),
+    'warm room bucket must schedule an occasional cup texture',
   );
 
   final firstStrike = engine.resolve(_input(strike: 7, flash: true));

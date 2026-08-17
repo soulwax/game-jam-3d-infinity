@@ -68,8 +68,9 @@ from corpus import (BROADCAST, ALT, ABSENT, DIRECTIVES, CUES, KIND_DEFAULTS,
                     SPEAKERS, Part, Unit, parse, resolve, pick, chunk_text,
                     split_words)
 
-if hasattr(sys.stdout, "reconfigure"):
-    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+reconfigure_stdout = getattr(sys.stdout, "reconfigure", None)
+if callable(reconfigure_stdout):
+    reconfigure_stdout(encoding="utf-8", errors="replace")
 
 ROOT = Path(__file__).resolve().parent.parent
 TEXT_DIR = ROOT / "text"
@@ -1125,9 +1126,17 @@ def render(plan: Plan, a: argparse.Namespace, out_dir: Path,
                     marker_target_part_idx = part_idx
                     break
 
-            marker_data = marker_info.get(marker_target_part_idx)
+            marker_data = (
+                marker_info.get(marker_target_part_idx)
+                if marker_target_part_idx is not None
+                else None
+            )
 
-            if marker_data is not None and a.backend == "edge":
+            if (
+                marker_data is not None
+                and marker_target_part_idx is not None
+                and a.backend == "edge"
+            ):
                 marker_pos, resolved = marker_data
                 try:
                     jobs_for_part = plan.jobs[marker_target_part_idx]
@@ -1283,7 +1292,7 @@ def build(units: list[Unit], a: argparse.Namespace) -> None:
 
 def main() -> None:
     p = argparse.ArgumentParser(
-        description=__doc__.split("\n")[0],
+        description=(__doc__ or "").split("\n")[0],
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=("tones:    " + "  ".join(TONES)
                 + "\nsets:     " + "  ".join(SETS)

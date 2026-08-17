@@ -189,6 +189,11 @@ thunder at `distance / 343 m/s`, and the same strike cannot retrigger on every
 render frame. Downloaded listening references and licence records live under
 `assets-src/audio/weather/reference/` and are not runtime dependencies.
 
+The resolver also schedules sparse, deterministic hail ticks, window-hardware
+ticks, and occasional cup clinks from simulation frame buckets. These short
+events are separate assets, so a long ambience loop is never abused as a
+one-shot; event cadence remains stable in replay and capture.
+
 The CapsLock Shader Lab has a dedicated **WEATHER** tab for live physical
 particle density and scale, snow coverage, volumetric scattering, lightning
 exposure, and wet-surface reflection experiments. These controls feed the

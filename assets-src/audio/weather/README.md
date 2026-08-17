@@ -25,9 +25,11 @@ and resolved by `lib/engine/weather_audio.dart`:
   into WebAudio instead of dropping those resolved values.
 
 The source generator also emits `weather-hail-roof`, `weather-window-rattle`,
-and `weather-interior-coffee`. They are deterministic reference textures, not
-recorded ambience; hosts can replace them with authored material without
-changing the acoustic resolver contract.
+and `weather-interior-coffee`. It also emits short `weather-hail-tick`,
+`weather-window-tick`, and `weather-coffee-clink` sources for sparse transient
+events. They are deterministic reference textures, not recorded ambience;
+hosts can replace them with authored material without changing the acoustic
+resolver contract.
 
 Downloaded listening references and their licence records live in
 `reference/README.md`; they are not runtime dependencies.
