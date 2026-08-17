@@ -2,9 +2,15 @@
 
 This is the canonical project history. I keep entries short and focused
 on changes players or contributors can feel. Detailed renderer notes belong in
-`tmp/RENFERER_WORK.md`; planning decisions belong in `tmp/MASTERPLAN.md`.
+`external/docs/RENFERER_WORK.md`; planning decisions belong in
+`external/docs/MASTERPLAN.md`.
 
 ## Unreleased
+
+## [0.2.0.1] — 2026-08-17
+
+- Relocated the planning and operational documentation repository from `tmp/`
+  to the explicit `external/docs` submodule path while preserving its history.
 
 ## [0.2.0.0] — 2026-08-17
 

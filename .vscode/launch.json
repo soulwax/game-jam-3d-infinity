@@ -24,7 +24,7 @@
       "name": "Debug asset fetcher",
       "type": "dart",
       "request": "launch",
-      "program": "tmp/tools/fetch_assets.dart",
+      "program": "external/docs/tools/fetch_assets.dart",
       "cwd": "${workspaceFolder}"
     }
   ]

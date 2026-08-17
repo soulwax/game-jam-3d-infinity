@@ -3,10 +3,10 @@
   "tasks": [
     {
       "label": "fetch-assets",
-      "detail": "Download CC0/CC-BY assets from the internet into web/res/ and regenerate tmp/ASSETS.md",
+      "detail": "Download CC0/CC-BY assets from the internet into web/res/ and regenerate external/docs/ASSETS.md",
       "type": "shell",
       "command": "dart",
-      "args": ["run", "tmp/tools/fetch_assets.dart"],
+      "args": ["run", "external/docs/tools/fetch_assets.dart"],
       "problemMatcher": []
     },
     {

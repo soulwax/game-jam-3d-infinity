@@ -4,7 +4,7 @@
 >
 > Repository audit: 2026-08-16
 >
-> Product authority: `tmp/MASTERPLAN.md`
+> Product authority: `external/docs/MASTERPLAN.md`
 >
 > Target: Unity 6.3 LTS, URP, Windows x64 first
 >
@@ -14,7 +14,7 @@ This document explains how to move *The Quarantine* from its current Dart/WebGL
 implementation into Unity without turning the port into a second, contradictory
 game. It owns Unity architecture, migration order, parity evidence, and the
 handoff from Dart. It does not own story meaning, game vision, room purpose,
-visual approval, or release criteria; those remain in `tmp/MASTERPLAN.md`.
+visual approval, or release criteria; those remain in `external/docs/MASTERPLAN.md`.
 
 The transition is a controlled replacement. Unity must first reproduce one
 small, truthful product slice. It must not begin by copying every Dart class,
@@ -29,7 +29,7 @@ unproven scene.
 
 When sources disagree, use this order:
 
-1. `tmp/MASTERPLAN.md` owns the horror game, player loop, campaign, evidence
+1. `external/docs/MASTERPLAN.md` owns the horror game, player loop, campaign, evidence
    standards, and human-review gates.
 2. This document owns the Unity migration and Unity project structure.
 3. `text/story.screenplay` owns the 21-day dramatic graph.
@@ -40,7 +40,7 @@ When sources disagree, use this order:
 7. Dart tests prove only the behavior they execute; their names are not canon.
 8. Unity scenes and generated ScriptableObjects are consumers, never independent
    authoring sources.
-9. `tmp/HUMAN_AGILE_GUIDE.md` describes human cadence, WIP, review, and handoff;
+9. `external/docs/HUMAN_AGILE_GUIDE.md` describes project cadence, WIP, review, and handoff;
    it is operational guidance and cannot redefine a packet or product decision.
 
 If this document conflicts with the product masterplan, stop and fix this
@@ -307,7 +307,7 @@ human explicitly chooses otherwise.
 | Area | State | Repository truth | Unity consequence |
 |---|---|---|---|
 | Unity project | `ABSENT` | No `unity/` project exists. | Scaffold, package lock, CI, and ownership come first. |
-| Product vision | `VERIFIED` | `tmp/MASTERPLAN.md` defines the game and ordered product gaps. | Unity implements that plan, not the old showcase direction. |
+| Product vision | `VERIFIED` | `external/docs/MASTERPLAN.md` defines the game and ordered product gaps. | Unity implements that plan, not the old showcase direction. |
 | House runtime | `CONTRADICTED` | Dart runs eight all-ground renderer chambers; authored JSON describes a cellar/ground/first-floor house. | Import JSON; never port showcase geometry. |
 | House content | `PARTIAL` | Eight rooms, nine intended portals, stairs, inventory, materials, soundscape, routes, and captures exist as data. | Validate scale/topology before scene work. |
 | Production models | `MOSTLY ABSENT` | Inventory references roughly 60 assets; almost all model sources are missing. One porcelain OBJ source exists. | Greybox with labeled proxies; asset intake is a separate human-reviewed lane. |
@@ -352,7 +352,7 @@ human explicitly chooses otherwise.
 ├── assets/house/                    # shared authored house source
 ├── text/                            # shared authored narrative source
 ├── tools/unity/                     # deterministic sync and headless helpers
-├── tmp/MASTERPLAN.md                # product authority; separate docs repo
+├── external/docs/MASTERPLAN.md      # product authority; separate docs repo
 ├── UNITY_PLAN.md                    # this migration authority
 └── unity/
     ├── Assets/_Quarantine/
@@ -768,7 +768,7 @@ Runtime TTS is forbidden.
 
 Port a Dart behavior only when at least one of these is true:
 
-- it implements a product rule in `tmp/MASTERPLAN.md`;
+- it implements a product rule in `external/docs/MASTERPLAN.md`;
 - it is exercised by the current production browser path and agrees with canon;
 - it is necessary to read existing shared content or saves; or
 - a human explicitly accepts it as intended behavior.
@@ -812,7 +812,7 @@ a Windows development or release build where stated.
 
 ### 5.4 Human-eyes gate
 
-Every visible Unity packet follows `tmp/MASTERPLAN.md` section 9.2. The reviewer
+Every visible Unity packet follows `external/docs/MASTERPLAN.md` section 9.2. The reviewer
 must be a real human engineer and record:
 
 ```text
@@ -862,7 +862,7 @@ Owner: unassigned
 Depends on: none
 Outcome: one reviewed charter records platforms, Unity version policy, source
 authorities, Dart freeze/retirement gates, and ownership.
-Inputs: `tmp/MASTERPLAN.md`, this plan, current repository status.
+Inputs: `external/docs/MASTERPLAN.md`, this plan, current repository status.
 Files: `unity/Docs/Decisions/000-transition-charter.md` after scaffold, or a
 temporary reviewed record under `docs/unity/` before scaffold.
 Do not touch: code, story, assets.

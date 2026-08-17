@@ -4,3 +4,6 @@
 [submodule "external/project-agile-web"]
 	path = external/project-agile-web
 	url = git@github.com:soulwax/project-agile-web.git
+[submodule "external/docs"]
+	path = external/docs
+	url = git@github.com:soulwax/the-quarantine-tmp.git
