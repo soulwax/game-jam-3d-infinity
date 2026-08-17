@@ -189,6 +189,12 @@ thunder at `distance / 343 m/s`, and the same strike cannot retrigger on every
 render frame. Downloaded listening references and licence records live under
 `assets-src/audio/weather/reference/` and are not runtime dependencies.
 
+The CapsLock Shader Lab has a dedicated **WEATHER** tab for live physical
+particle density and scale, snow coverage, volumetric scattering, lightning
+exposure, and wet-surface reflection experiments. These controls feed the
+resolved particle, fog, lighting, and material paths rather than painting a
+screen-space weather overlay.
+
 For precise creative experiments, use `--line-file` instead of fighting shell
 quoting; UTF-8 punctuation is preserved. `--rate +6%` and `--pitch -2Hz` give
 small direct performance adjustments without creating a new named tone. The

@@ -55,7 +55,7 @@ final class WeatherAudioInput {
     required this.roomAbsorption01,
     required this.roomVolumeM3,
     required this.internalWarmth01,
-    required this.surfaceImpactEnergy01,
+    this.surfaceImpactEnergy01 = 0,
     required this.dtSeconds,
     required this.frameIndex,
     required this.seed,

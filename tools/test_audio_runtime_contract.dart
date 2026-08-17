@@ -1,7 +1,9 @@
 import 'dart:io';
 
 void main() {
-  final source = File('web/main.dart').readAsStringSync();
+  final source = '${File('web/main.dart').readAsStringSync()}\n'
+      '${File('lib/engine/audio.dart').readAsStringSync()}\n'
+      '${File('lib/engine/weather_audio.dart').readAsStringSync()}';
   const required = [
     'data-audio-planner',
     'data-audio-spatial-active',
@@ -18,6 +20,11 @@ void main() {
     'data-audio-weather-layers',
     'data-audio-weather-events',
     'applyWeatherLayers',
+    'weather-hail-roof',
+    'weather-window-rattle',
+    'weather-interior-coffee',
+    'reverbSend01',
+    'stereoPan',
     'playDelayed',
     '_pendingSounds.clear()',
   ];
