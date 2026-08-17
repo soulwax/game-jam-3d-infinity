@@ -986,11 +986,15 @@ class CanvasP5GuiEngine {
         diagCardY + 5.0,
       );
 
-      ctx.fillStyle = P5Palette.brightAmber.toJS;
+      ctx.fillStyle = state.debugViewsAvailable
+          ? P5Palette.brightAmber.toJS
+          : P5Palette.mutedGrey.toJS;
       ctx.font = '13px "Georgia", serif';
       ctx.shadowBlur = 0.0;
       ctx.fillText(
-        'Press [A / ←] Prev Pass  •  [D / →] Next Pass  •  [R] Disable Diagnostics',
+        state.debugViewsAvailable
+            ? 'Press [A / ←] Prev Pass  •  [D / →] Next Pass  •  [R] Disable Diagnostics'
+            : _fitText(state.debugViewsReason, diagCardW - 48.0),
         curX,
         diagCardY + 42.0,
       );
@@ -1024,6 +1028,7 @@ class CanvasP5GuiEngine {
       for (int i = _shaderScrollOffset; i < visibleEnd; i++) {
         final item = items[i];
         final isSelected = state.selectedItemIndex == i;
+        final isLive = item.isLive;
         final visibleIndex = i - _shaderScrollOffset;
         final itemY = contentTopY + visibleIndex * spacing + itemH * 0.5;
         final itemW = boxW - 80.0;
@@ -1036,9 +1041,11 @@ class CanvasP5GuiEngine {
           height: itemH,
           skewAngleRad: -0.02,
           fillColor: isSelected
-              ? P5Palette.charcoalDark
+              ? (isLive ? P5Palette.charcoalDark : P5Palette.inkBlack)
               : P5Palette.inkBlackTranslucent,
-          borderColor: isSelected ? P5Palette.amberGold : P5Palette.mutedGrey,
+          borderColor: isSelected && isLive
+              ? P5Palette.amberGold
+              : P5Palette.mutedGrey,
           borderWidth: isSelected ? 2.2 : 1.0,
           cutCornerSize: 6.0,
           shadow: isSelected,
@@ -1056,7 +1063,10 @@ class CanvasP5GuiEngine {
 
         ctx.save();
         ctx.fillStyle =
-            (isSelected ? P5Palette.brightAmber : P5Palette.boneWhite).toJS;
+            (isLive
+                    ? (isSelected ? P5Palette.brightAmber : P5Palette.boneWhite)
+                    : P5Palette.mutedGrey)
+                .toJS;
         ctx.font = 'bold 14px "Cinzel", serif';
         ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
@@ -1064,15 +1074,23 @@ class CanvasP5GuiEngine {
         ctx.fillText(
           _fitText(
             item.label.toUpperCase(),
-            itemW - (item.isToggle ? 122.0 : 250.0),
+            itemW - (item.isToggle ? 250.0 : 340.0),
           ),
           itemX - itemW * 0.5 + labelOffset,
           itemY,
         );
 
         final controlRightX = itemX + itemW * 0.5 - 20.0;
+        final statusX = controlRightX - (item.isToggle ? 110.0 : 265.0);
+        ctx.fillStyle =
+            (isLive ? P5Palette.brightAmber : P5Palette.mutedGrey).toJS;
+        ctx.font = 'bold 9px "Courier New", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText(isLive ? 'LIVE' : 'N/A', statusX, itemY);
         if (item.isToggle) {
-          final isToggledOn = item.boolValue;
+          final isToggledOn = item.isLive
+              ? (item.effectiveBoolValue ?? item.boolValue)
+              : false;
           final badgeW = 74.0;
           final badgeH = 24.0;
           drawBrushPanel(
@@ -1081,8 +1099,10 @@ class CanvasP5GuiEngine {
             width: badgeW,
             height: badgeH,
             skewAngleRad: -0.04,
-            fillColor: isToggledOn ? P5Palette.crimsonRed : P5Palette.inkBlack,
-            borderColor: isToggledOn
+            fillColor: isLive && isToggledOn
+                ? P5Palette.crimsonRed
+                : P5Palette.inkBlack,
+            borderColor: isLive && isToggledOn
                 ? P5Palette.boneWhite
                 : P5Palette.mutedGrey,
             borderWidth: 1.5,
@@ -1094,7 +1114,7 @@ class CanvasP5GuiEngine {
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText(
-            item.formattedValue,
+            item.effectiveFormattedValue,
             controlRightX - badgeW * 0.5,
             itemY,
           );
@@ -1111,10 +1131,19 @@ class CanvasP5GuiEngine {
             sliderH,
           );
 
-          final frac = ((item.currentValue - item.min) / (item.max - item.min))
-              .clamp(0.0, 1.0);
+          final frac = isLive
+              ? ((item.currentValue - item.min) / (item.max - item.min)).clamp(
+                  0.0,
+                  1.0,
+                )
+              : 0.0;
           ctx.fillStyle =
-              (isSelected ? P5Palette.amberGold : P5Palette.crimsonRed).toJS;
+              (isLive
+                      ? (isSelected
+                            ? P5Palette.amberGold
+                            : P5Palette.crimsonRed)
+                      : P5Palette.mutedGrey)
+                  .toJS;
           ctx.fillRect(
             sliderX - sliderW * 0.5,
             itemY - sliderH * 0.5,
@@ -1122,13 +1151,15 @@ class CanvasP5GuiEngine {
             sliderH,
           );
 
-          ctx.fillStyle = P5Palette.boneWhite.toJS;
-          ctx.fillRect(
-            sliderX - sliderW * 0.5 + sliderW * frac - 3.0,
-            itemY - 7.0,
-            6.0,
-            14.0,
-          );
+          if (isLive) {
+            ctx.fillStyle = P5Palette.boneWhite.toJS;
+            ctx.fillRect(
+              sliderX - sliderW * 0.5 + sliderW * frac - 3.0,
+              itemY - 7.0,
+              6.0,
+              14.0,
+            );
+          }
 
           // Min/Max range bounds text
           ctx.fillStyle = P5Palette.mutedGrey.toJS;
@@ -1148,11 +1179,16 @@ class CanvasP5GuiEngine {
           );
 
           ctx.fillStyle =
-              (isSelected ? P5Palette.brightAmber : P5Palette.boneWhite).toJS;
+              (isLive
+                      ? (isSelected
+                            ? P5Palette.brightAmber
+                            : P5Palette.boneWhite)
+                      : P5Palette.mutedGrey)
+                  .toJS;
           ctx.font = 'bold 13px "Courier New", monospace';
           ctx.textAlign = 'right';
           ctx.textBaseline = 'middle';
-          ctx.fillText(item.formattedValue, controlRightX, itemY);
+          ctx.fillText(item.effectiveFormattedValue, controlRightX, itemY);
         }
         ctx.restore();
       }
@@ -1182,17 +1218,29 @@ class CanvasP5GuiEngine {
       }
     }
 
-    // 6. Footer Navigation Instructions
+    // 6. Footer navigation and resolved-control truth.
     final footerY = curY + boxH * 0.5 - 24.0;
+    final selected = state.currentSelectedItem;
+    final resolvedLine =
+        state.selectedCategoryIndex == ShaderTuningCategory.debugView.index
+        ? (state.debugViewsAvailable
+              ? 'LIVE DEBUG ATTACHMENTS • ACTIVE PASS: ${state.debugMode.name}'
+              : state.debugViewsReason)
+        : (selected == null
+              ? ''
+              : (selected.isLive
+                    ? 'LIVE • REQUESTED ${selected.formattedValue} • EFFECTIVE ${selected.effectiveFormattedValue}'
+                    : 'N/A • ${selected.availabilityReason ?? 'Not installed'}'));
     ctx.save();
     ctx.fillStyle = P5Palette.mutedGrey.toJS;
     ctx.font = '12px "Cinzel", sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
+    ctx.fillText(_fitText(resolvedLine, boxW - 72.0), curX, footerY - 10.0);
     ctx.fillText(
-      '[W / S / ↑ / ↓] Navigate  •  [A / D / ← / →] Coarse  •  [Q / E] Fine (1/5)  •  [1 - 5] Tabs  •  [R / Shift+R] Reset  •  [CAPS LOCK / ESC] Close',
+      '[W / S / ↑ / ↓] Navigate  •  [A / D / ← / →] Adjust Live  •  [Q / E] Fine  •  [1 - 5] Tabs  •  [R / Shift+R] Reset  •  [CAPS LOCK / ESC] Close',
       curX,
-      footerY,
+      footerY + 10.0,
     );
     ctx.restore();
 

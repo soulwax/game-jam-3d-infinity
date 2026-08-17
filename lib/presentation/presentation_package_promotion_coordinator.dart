@@ -20,14 +20,26 @@ final class PresentationPackagePromotionCoordinator {
   Future<PresentationModelPackageRegistry> loadIndex(
     PresentationModelPackageIndex index, {
     required Future<String> Function(String manifestPath) fetchManifest,
-    required Future<Uint8List> Function(String assetId, String path) fetchPayload,
+    required Future<Uint8List> Function(String assetId, String path)
+    fetchPayload,
   }) async {
     final records = <PresentationModelPackageRecord>[];
     for (final assetId in index.assetIds) {
       final entry = index.resolve(assetId);
       final manifest = ModelPackageManifest.fromJson(
-        jsonDecode(await fetchManifest(entry.manifestPath)) as Map<String, dynamic>,
+        jsonDecode(await fetchManifest(entry.manifestPath))
+            as Map<String, dynamic>,
       );
+      if (manifest.assetId != entry.assetId) {
+        throw FormatException(
+          'promoted manifest asset ID does not match index: ${entry.assetId}',
+        );
+      }
+      if (manifest.sourceFormat != entry.sourceFormat) {
+        throw FormatException(
+          'promoted manifest source format does not match index: ${entry.assetId}',
+        );
+      }
       records.add(
         await loader.load(
           assetId: entry.assetId,

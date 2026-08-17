@@ -37,11 +37,12 @@ final class PresentationInventoryAdapter {
 
   List<String> missingPackages(HouseInventory inventory) => [
     for (final asset in inventory.assets)
-      if (!registry.contains(asset.id)) asset.id,
+      if (asset.status == 'production' && !registry.contains(asset.id)) asset.id,
   ];
 
   /// Build/promotion gate: production inventory may not ship with unresolved
-  /// package IDs that would silently become proxy geometry.
+  /// package IDs that would silently become proxy geometry. Explicit proxies
+  /// and invisible anchors remain valid until their promotion packet exists.
   void requireAllPackages(HouseInventory inventory) {
     final missing = missingPackages(inventory);
     if (missing.isNotEmpty) {

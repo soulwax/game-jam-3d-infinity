@@ -46,6 +46,9 @@ import 'package:quarantine/house/house.dart';
 import 'package:quarantine/house/inventory.dart';
 import 'package:quarantine/house/inventory_interaction.dart';
 import 'package:quarantine/presentation/model_package_index.dart';
+import 'package:quarantine/presentation/presentation_package_binding_adapter.dart';
+import 'package:quarantine/presentation/presentation_package_promotion_coordinator.dart';
+import 'package:quarantine/presentation/model_package_registry.dart';
 import 'package:quarantine/house/soundscape.dart';
 import 'package:quarantine/house/exterior_mesh_adapter.dart';
 import 'package:quarantine/house/exterior_pvs.dart';
@@ -108,8 +111,6 @@ const double _fixedDt = 1 / 120;
 const int _maxSteps = 10;
 const double _maxFrameTime = 0.25;
 
-const double _bgHue = 0.0;
-
 final BackendSelector _backendSelector = BackendSelector();
 late BackendSelection _backendSelection;
 late RendererBackend _presentationBackend;
@@ -161,6 +162,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   final Map<String, px.MaterialHandle> _roomMaterials = {};
   final Map<String, Map<String, px.MaterialHandle>> _roomSurfaceMaterials = {};
   final Map<String, px.MaterialHandle> _inventoryMaterials = {};
+  final px.ModelCache _modelCache = px.ModelCache();
+  final Map<String, px.ModelPackageSceneBinding> _promotedBindings = {};
+  PresentationPackageBindingAdapter? _packageBindingAdapter;
+  PresentationModelPackageRegistry? _promotedRegistry;
   final Map<String, px.MaterialDefinition> _materialDefinitions = {};
   px.MaterialHandle? _sceneMaterial;
   px.CameraView? _cameraView;
@@ -168,9 +173,17 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   px.PostProcessState _post = px.PostProcessState.off;
   double _rainIntensity = 0;
   double _rainWindowVisibility = 1;
+  int _rainParticleRequestedCount = 0;
   int _rainParticleCount = 0;
+  int _rainParticleBudget = 0;
+  int _rainParticleFrustumVisible = 0;
+  int _rainParticleFrustumCulled = 0;
+  bool _rainParticleCapped = false;
   px.MeshHandle? _rainParticleMesh;
   px.MaterialHandle? _rainParticleMaterial;
+  double _effectiveShaderLabHour = 7;
+  double _effectiveFogDensity = 0;
+  double _effectiveFogHeightFalloff = 0;
   double _surfaceWetness = 0;
   px.FrameStats? _lastFrameStats;
   double _lastFrameMs = 0;
@@ -608,6 +621,14 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       inventory.placements,
     );
     if (!_initialized) return;
+    for (final binding in _promotedBindings.values) {
+      binding.dispose();
+    }
+    _promotedBindings.clear();
+    _packageBindingAdapter?.dispose();
+    _packageBindingAdapter = _promotedRegistry == null
+        ? null
+        : PresentationPackageBindingAdapter(_promotedRegistry!);
     for (final entry in _inventoryItemsById.entries) {
       _world.removeItem(entry.value);
       final descriptor = _inventoryDescriptors[entry.key];
@@ -631,6 +652,34 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       final room = _houseForInventory?.byId(placement.roomId);
       if (room == null) continue;
       final asset = inventory.assetFor(placement.assetId);
+      if (_packageBindingAdapter != null &&
+          _promotedRegistry!.contains(asset.id)) {
+        final position = placement.runtimePosition(inventory.modelScale);
+        final rotation = px.Quat.axisAngle(
+          const px.Vec3(0, 1, 0),
+          placement.transform.rotation.y * math.pi / 180,
+        );
+        final binding = px.ModelPackageSceneBinding(
+          package: _promotedRegistry!.resolve(asset.id).package,
+          cache: _modelCache,
+          resources: _renderer.resources,
+          world: _world,
+          materialForSlot: (_) => _inventoryMaterial(asset.kind),
+          transform: px.Transform(
+            translation: px.Vec3(
+              room.origin.x + position.x,
+              room.origin.y + position.y,
+              room.origin.z + position.z,
+            ),
+            rotation: rotation,
+            scale: placement.transform.scale.x * inventory.modelScale,
+          ),
+          visibilityMask: -1,
+        )..attach();
+        _packageBindingAdapter!.attach(inventory, placement, (_) => binding);
+        _promotedBindings[placement.id] = binding;
+        continue;
+      }
       final mesh = _renderer.resources.registerMesh(
         _inventoryProxyMesh(asset, placement, inventory.modelScale),
         debugLabel: 'inventory:${placement.id}',
@@ -660,18 +709,79 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _inventoryDescriptors[placement.id] = descriptor;
       _inventoryItemsById[placement.id] = _world.addItem(descriptor);
     }
+    final promotedCount = _promotedBindings.length;
+    final proxyCount = _inventoryItemsById.length;
     _canvas.setAttribute(
       'data-renderer-inventory-items',
-      '${_inventoryItemsById.length}',
+      '${proxyCount + promotedCount}',
     );
-    // RPA-05 is not closed yet: until promoted packages are wired into this
-    // presentation path, every authored placement is intentionally a proxy.
-    // Publish that state so browser evidence cannot mistake placeholder
-    // geometry for an accepted model package.
-    _canvas.setAttribute('data-renderer-inventory-resolution', 'proxy');
     _canvas.setAttribute(
-      'data-renderer-inventory-proxy-count',
-      '${_inventoryItemsById.length}',
+      'data-renderer-inventory-resolution',
+      promotedCount == 0 ? 'proxy' : 'mixed',
+    );
+    _canvas.setAttribute('data-renderer-inventory-proxy-count', '$proxyCount');
+    _canvas.setAttribute(
+      'data-renderer-inventory-promoted-count',
+      '$promotedCount',
+    );
+    _publishPromotedModelDiagnostics();
+  }
+
+  void _publishPromotedModelDiagnostics() {
+    final bindings = [
+      for (final entry in _promotedBindings.entries)
+        {'placementId': entry.key, ...entry.value.diagnostics().toJson()},
+    ];
+    _canvas.setAttribute(
+      'data-renderer-model-package-diagnostics',
+      jsonEncode({
+        'schema': 'pixeldart-model-package-diagnostic-v1',
+        'enabled': bindings.isNotEmpty,
+        'attached':
+            bindings.isNotEmpty &&
+            bindings.every((binding) => binding['attached'] == true),
+        'bindingCount': bindings.length,
+        'bindings': bindings,
+      }),
+    );
+  }
+
+  Future<void> loadPromotedPackages(PresentationModelPackageIndex index) async {
+    final registry = await const PresentationPackagePromotionCoordinator()
+        .loadIndex(
+          index,
+          fetchManifest: (path) async {
+            final response = await web.window
+                .fetch('res/models/$path'.toJS)
+                .toDart;
+            if (!response.ok) {
+              throw StateError(
+                'package manifest HTTP ${response.status}: $path',
+              );
+            }
+            return (await response.text().toDart).toString();
+          },
+          fetchPayload: (assetId, path) async {
+            final response = await web.window
+                .fetch('res/models/$assetId/$path'.toJS)
+                .toDart;
+            if (!response.ok) {
+              throw StateError(
+                'package payload HTTP ${response.status}: $assetId/$path',
+              );
+            }
+            return Uint8List.view((await response.arrayBuffer().toDart).toDart);
+          },
+        );
+    _promotedRegistry = registry;
+    if (_houseInventory != null) setInventory(_houseInventory!);
+    // Keep the index contract stable: `validated` means the promoted index
+    // passed schema and license checks. Runtime loading has its own signal.
+    _canvas.setAttribute('data-renderer-model-packages', 'validated');
+    _canvas.setAttribute('data-renderer-model-packages-runtime', 'loaded');
+    _canvas.setAttribute(
+      'data-renderer-model-package-count',
+      '${registry.assetIds.length}',
     );
   }
 
@@ -727,11 +837,14 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     for (final placement in _inventoryPlacements) {
       final item = _inventoryItemsById[placement.id];
       final base = _inventoryDescriptors[placement.id];
+      final promoted = _promotedBindings[placement.id];
+      final roomVisible = visible.contains(placement.roomId);
+      if (promoted != null) {
+        promoted.setVisibilityMask(roomVisible ? -1 : 0);
+        continue;
+      }
       if (item == null || base == null) continue;
-      _world.updateItem(
-        item,
-        _withVisibility(base, visible.contains(placement.roomId) ? -1 : 0),
-      );
+      _world.updateItem(item, _withVisibility(base, roomVisible ? -1 : 0));
     }
     final exteriorVisible = ExteriorPvs().cellsForRoom(currentRoomId);
     _canvas.setAttribute(
@@ -947,18 +1060,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final hour = requestedHour >= 0.0
         ? requestedHour.clamp(0.0, 23.999)
         : (currentHour ?? (sunAngle > 0 ? (7.0 + sunAngle * 12.0) : 22.0));
+    _effectiveShaderLabHour = hour;
     final atmos = DayNightAtmosphereEngine.evaluateAtmosphere(
       hour: hour,
       rainIntensity: weather.rainIntensity,
       shutterOpen: daylightThroughWindow,
       daylightHours: weather.daylightHours,
-    );
-
-    // Wire atmosphere facts & CapsLock shader tuning overrides directly to renderer uniforms
-    _tuningBridge.applyState(_shaderTuning);
-    _canvas.setAttribute(
-      'data-renderer-shader-overrides',
-      jsonEncode(_tuningBridge.activeOverrides),
     );
 
     final effectiveRain = (_shaderTuning.getValue('rain_override') >= 0.0)
@@ -979,7 +1086,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
             .clamp(0.0, 1.0)
             .toDouble();
     final isDay = solarDaylight > 0.001;
-    final dirVec = isDay
+    final baselineDirVec = isDay
         ? px.Vec3(
             atmos.sunDirection.x,
             atmos.sunDirection.y,
@@ -990,6 +1097,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
             atmos.moonDirection.y,
             atmos.moonDirection.z,
           );
+    final dirVec = flash.active && flash.hasValidSource
+        ? px.Vec3(
+            flash.sourceDirectionX,
+            flash.sourceDirectionY,
+            flash.sourceDirectionZ,
+          )
+        : baselineDirVec;
     final baseDirCol = isDay
         ? px.LinearColor(atmos.sunColor.r, atmos.sunColor.g, atmos.sunColor.b)
         : px.LinearColor(
@@ -1006,26 +1120,47 @@ final class _PixeldartWebRuntime implements RendererRuntime {
           )
         : baseDirCol;
 
+    final lightningDistanceAttenuation = flash.distanceAttenuation
+        .clamp(0.12, 2.0)
+        .toDouble();
     final dirIntensity = flash.active
-        ? (atmos.directionalIntensity * atmos.windowLightLeakFactor +
-              flash.intensity * 4.5)
+        ? (atmos.directionalIntensity * atmos.windowLightLeakFactor * 0.12 +
+              flash.intensity * 4.5 * lightningDistanceAttenuation)
         : (atmos.directionalIntensity * atmos.windowLightLeakFactor);
+
+    _canvas
+      ..setAttribute('data-renderer-lightning-active', flash.active.toString())
+      ..setAttribute(
+        'data-renderer-lightning-source-distance-m',
+        flash.sourceDistanceMeters.toStringAsFixed(1),
+      )
+      ..setAttribute(
+        'data-renderer-lightning-source-direction',
+        '${flash.sourceDirectionX.toStringAsFixed(3)},'
+            '${flash.sourceDirectionY.toStringAsFixed(3)},'
+            '${flash.sourceDirectionZ.toStringAsFixed(3)}',
+      );
 
     // Atmosphere owns the physical baseline. Shader-lab values remain an
     // explicit artistic multiplier, so changing weather/time cannot be
     // silently erased by a stale debug default.
     const defaultFogDensity = 0.012;
     const defaultFogHeightFalloff = 0.60;
+    final fogEnabled = _shaderTuning.getBool('fog_enable');
     final tunedFogDensity = _shaderTuning.getValue('fog_density');
     final tunedFogHeightFalloff = _shaderTuning.getValue('fog_height_falloff');
-    final fogDensity =
-        atmos.fogDensity *
-        (tunedFogDensity / defaultFogDensity).clamp(0.0, 8.0).toDouble();
-    final fogHeightFalloff =
-        atmos.fogHeightFalloff *
-        (tunedFogHeightFalloff / defaultFogHeightFalloff)
-            .clamp(0.0, 8.0)
-            .toDouble();
+    final fogDensity = fogEnabled
+        ? atmos.fogDensity *
+              (tunedFogDensity / defaultFogDensity).clamp(0.0, 8.0).toDouble()
+        : 0.0;
+    final fogHeightFalloff = fogEnabled
+        ? atmos.fogHeightFalloff *
+              (tunedFogHeightFalloff / defaultFogHeightFalloff)
+                  .clamp(0.0, 8.0)
+                  .toDouble()
+        : 0.0;
+    _effectiveFogDensity = fogDensity;
+    _effectiveFogHeightFalloff = fogHeightFalloff;
 
     _environment = px.FrameEnvironment(
       ambientColor: px.LinearColor(
@@ -1153,6 +1288,100 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       reducedMotion: reducedMotion,
     );
     _rainWindowVisibility = rainWindowVisibility.clamp(0.0, 1.0).toDouble();
+    _resolveShaderLabFrame();
+  }
+
+  void _resolveShaderLabFrame() {
+    final liveItems = <String>{
+      'time_override',
+      'rain_override',
+      'wetness_override',
+      'fog_enable',
+      'fog_density',
+      'fog_height_falloff',
+      'post_exposure',
+      'post_vignette',
+      'post_film_grain',
+      'post_affine_warp',
+      'post_vertex_snap',
+    };
+    final unavailable = <String, String>{
+      for (final item in _shaderTuning.items)
+        item.id: 'No resolved Pixeldart frame mapping is installed',
+    };
+
+    void requireFeature(String feature, Iterable<String> ids) {
+      if (_profile.installs(feature)) {
+        liveItems.addAll(ids);
+        return;
+      }
+      for (final id in ids) {
+        unavailable[id] =
+            'Requires $feature; ${_profile.kind.name} does not install it';
+      }
+    }
+
+    requireFeature(px.PipelineFeatures.ssao, const [
+      'shadow_ssdo_enable',
+      'shadow_ao_intensity',
+    ]);
+    requireFeature(px.PipelineFeatures.bloom, const ['post_bloom']);
+    requireFeature(px.PipelineFeatures.dof, const ['post_depth_of_field']);
+    requireFeature(px.PipelineFeatures.grade, const ['post_color_grade']);
+    requireFeature(px.PipelineFeatures.ps1, const [
+      'post_dither',
+      'post_quantization_bits',
+    ]);
+    requireFeature(px.PipelineFeatures.vhs, const [
+      'post_vhs_chroma',
+      'post_vhs_noise',
+    ]);
+
+    _shaderTuning.resolveFrame(
+      liveItemIds: liveItems,
+      effectiveValues: {
+        'time_override': _effectiveShaderLabHour,
+        'rain_override': _rainIntensity,
+        'wetness_override': _surfaceWetness,
+        'fog_density': _effectiveFogDensity,
+        'fog_height_falloff': _effectiveFogHeightFalloff,
+        'post_exposure': _post.exposure,
+        'post_bloom': _post.bloomStrength,
+        'post_vignette': _post.vignette,
+        'post_film_grain': _post.grain,
+        'post_dither': _post.ditherStrength,
+        'post_depth_of_field': _post.depthOfFieldStrength,
+        'post_color_grade': _post.colorGradeStrength,
+        'post_affine_warp': _post.affineWarpStrength,
+        'post_vertex_snap': _post.vertexSnapGrid,
+        'post_quantization_bits': _post.quantizationBits.toDouble(),
+        'post_vhs_chroma': _post.vhsChromaWeight,
+        'post_vhs_noise': _post.vhsNoiseWeight,
+      },
+      effectiveToggles: {
+        'fog_enable': _effectiveFogDensity > 0,
+        'shadow_ssdo_enable': _post.ssaoStrength > 0,
+      },
+      unavailableReasons: unavailable,
+      debugViewsReason:
+          'No resolved debug attachments are exposed by the active Pixeldart profile',
+    );
+    _tuningBridge.applyState(_shaderTuning);
+    _canvas.setAttribute(
+      'data-renderer-shader-overrides',
+      jsonEncode(_tuningBridge.activeOverrides),
+    );
+    _canvas.setAttribute(
+      'data-renderer-shader-lab',
+      jsonEncode(_shaderTuning.diagnosticSnapshot()),
+    );
+    // Keep a canonical experiment document beside the diagnostic snapshot so
+    // browser automation and a future copy/import UI can replay the exact
+    // requested controls without scraping presentation text.
+    _canvas.setAttribute(
+      'data-renderer-shader-lab-document',
+      _shaderTuning.encode(),
+    );
   }
 
   void _installRainParticleResources() {
@@ -1266,7 +1495,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   }
 
   void _submitRainParticles(px.RenderEncoder frame, px.FrameInput input) {
+    _rainParticleRequestedCount = 0;
     _rainParticleCount = 0;
+    _rainParticleBudget = _rainParticleBudgetForProfile;
+    _rainParticleFrustumVisible = 0;
+    _rainParticleFrustumCulled = 0;
+    _rainParticleCapped = false;
     final mesh = _rainParticleMesh;
     final material = _rainParticleMaterial;
     if (mesh == null ||
@@ -1275,9 +1509,18 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         _rainWindowVisibility <= 0.01) {
       return;
     }
-    final count = (8 + _rainIntensity * 32 * _rainWindowVisibility)
+    final requestedCount = (8 + _rainIntensity * 32 * _rainWindowVisibility)
         .round()
         .clamp(0, 40);
+    final budget = px.AtmosphericParticleBudget(
+      requestedCount: requestedCount,
+      maximumCount: _rainParticleBudgetForProfile,
+    );
+    budget.validate();
+    final count = budget.effectiveCount;
+    _rainParticleRequestedCount = budget.requestedCount;
+    _rainParticleBudget = budget.maximumCount;
+    _rainParticleCapped = budget.wasCapped;
     final gust = math.sin(_timeSeconds * 0.7) * 0.18;
     final field = px.AtmosphericParticleField(
       mesh: mesh,
@@ -1285,13 +1528,21 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       anchor: px.AtmosphericParticleAnchor.camera,
       origin: const px.Vec3(0, 3, 0),
       halfExtents: const px.Vec3(2.75, 3, 2.75),
-      initialVelocity: px.Vec3(gust, -5.4, 0.12),
-      acceleration: const px.Vec3(0, -2.6, 0),
+      initialVelocity: px.Vec3(gust, -2.0, 0.12),
+      acceleration: const px.Vec3(0, -9.81, 0),
+      // Small rain drops approach an empirical terminal fall speed while
+      // retaining the local gust as their horizontal air velocity.
+      terminalVelocity: px.Vec3(gust, -8.8, 0.12),
+      dragCoefficient: 4.5,
       lifetimeSeconds: 0.9,
       particleCount: count,
       seed: _noiseSeed,
       instanceFamilyKey: 0x7261696e,
+      alignToVelocity: true,
     );
+    final stats = field.frameStats(input);
+    _rainParticleFrustumVisible = stats.visibleCount;
+    _rainParticleFrustumCulled = stats.culledCount;
     _rainParticleCount = field.submit(frame, input);
   }
 
@@ -1334,6 +1585,22 @@ final class _PixeldartWebRuntime implements RendererRuntime {
 
   int get rainParticleCount => _rainParticleCount;
 
+  int get rainParticleRequestedCount => _rainParticleRequestedCount;
+
+  int get rainParticleBudget => _rainParticleBudget;
+
+  int get rainParticleFrustumVisible => _rainParticleFrustumVisible;
+
+  int get rainParticleFrustumCulled => _rainParticleFrustumCulled;
+
+  bool get rainParticleCapped => _rainParticleCapped;
+
+  int get _rainParticleBudgetForProfile => switch (_profile.kind) {
+    px.QualityProfileKind.high => 40,
+    px.QualityProfileKind.standard => 24,
+    _ => 8,
+  };
+
   @override
   void handleInput(RendererInputAction action) {}
 
@@ -1348,6 +1615,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   @override
   void dispose() {
     if (!_initialized) return;
+    for (final binding in _promotedBindings.values) {
+      binding.dispose();
+    }
+    _promotedBindings.clear();
+    _packageBindingAdapter?.dispose();
+    _modelCache.clear();
     _renderer.dispose();
     _device.dispose();
     _initialized = false;
@@ -1885,12 +2158,6 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _materialDefinitions[definition.key] = definition;
     return handle;
   }
-
-  px.LinearColor _color(int rgb) => px.LinearColor(
-    ((rgb >> 16) & 0xff) / 255,
-    ((rgb >> 8) & 0xff) / 255,
-    (rgb & 0xff) / 255,
-  );
 }
 
 final class _PixeldartDecoration {
@@ -3170,12 +3437,12 @@ Future<void> main() async {
           }
           if (e.code == 'KeyQ') {
             e.preventDefault();
-            _shaderTuning.currentSelectedItem?.decrementFine();
+            _shaderTuning.decrementFineCurrent();
             return;
           }
           if (e.code == 'KeyE') {
             e.preventDefault();
-            _shaderTuning.currentSelectedItem?.incrementFine();
+            _shaderTuning.incrementFineCurrent();
             return;
           }
           if (e.code == 'KeyR') {
@@ -3430,6 +3697,10 @@ void _publishAutomationPlayerState() {
       'hour': _session.snapshot.hour,
     }),
   );
+  _canvas.setAttribute(
+    'data-story-journal-entry-count',
+    '${_session.snapshot.journalEntryCount}',
+  );
   final portals = <String, Object?>{};
   for (final portal in _house.portals) {
     portals[portal.id] = {
@@ -3571,8 +3842,9 @@ void _loadManifest() async {
 }
 
 /// Discover the build-time promoted package handoff without making proxy
-/// geometry look like a successful package load. Binding remains a separate
-/// presentation step owned by RPA-05.
+/// geometry look like a successful package load. Validated packages are then
+/// bound by the presentation runtime; unresolved placements remain explicit
+/// proxies rather than silently borrowing source paths.
 Future<void> _loadPromotedModelIndex() async {
   const url = 'res/models/index.json';
   try {
@@ -3586,6 +3858,7 @@ Future<void> _loadPromotedModelIndex() async {
       'data-renderer-model-package-count',
       '${index.assetIds.length}',
     );
+    await _pixeldartRuntime?.loadPromotedPackages(index);
   } catch (error) {
     _canvas.setAttribute('data-renderer-model-packages', 'unavailable');
     _canvas.setAttribute('data-renderer-model-package-error', '$error');
@@ -4161,6 +4434,26 @@ void _raf(num ts) {
         _canvas.setAttribute(
           'data-renderer-rain-particles',
           '${runtime.rainParticleCount}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-particles-requested',
+          '${runtime.rainParticleRequestedCount}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-particles-budget',
+          '${runtime.rainParticleBudget}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-particles-capped',
+          '${runtime.rainParticleCapped}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-particles-frustum-visible',
+          '${runtime.rainParticleFrustumVisible}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-particles-frustum-culled',
+          '${runtime.rainParticleFrustumCulled}',
         );
       }
     }

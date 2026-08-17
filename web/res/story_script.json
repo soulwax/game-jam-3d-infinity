@@ -35,7 +35,169 @@
     "text/visitors/watchman.txt",
     "text/visitors/widow.txt"
   ],
-  "events": [],
+  "events": [
+    {
+      "id": "day-01-wake",
+      "kind": "broadcast",
+      "day": 1,
+      "hour": 7.0,
+      "label": "Wake and begin the day."
+    },
+    {
+      "id": "day-01-threshold",
+      "kind": "visitor",
+      "day": 1,
+      "hour": 10.0,
+      "label": "The first threshold is available."
+    },
+    {
+      "id": "day-02-wake",
+      "kind": "broadcast",
+      "day": 2,
+      "hour": 7.0,
+      "label": "Wake after the first sleep."
+    },
+    {
+      "id": "day-02-consequence",
+      "kind": "aftermath",
+      "day": 2,
+      "hour": 12.0,
+      "label": "The first consequence settles."
+    },
+    {
+      "id": "day-03-beat",
+      "kind": "visitor",
+      "day": 3,
+      "hour": 10.0,
+      "label": "Day 3 authored beat becomes available."
+    },
+    {
+      "id": "day-04-beat",
+      "kind": "visitor",
+      "day": 4,
+      "hour": 10.0,
+      "label": "Day 4 authored beat becomes available."
+    },
+    {
+      "id": "day-05-beat",
+      "kind": "visitor",
+      "day": 5,
+      "hour": 10.0,
+      "label": "Day 5 authored beat becomes available."
+    },
+    {
+      "id": "day-06-beat",
+      "kind": "visitor",
+      "day": 6,
+      "hour": 10.0,
+      "label": "Day 6 authored beat becomes available."
+    },
+    {
+      "id": "day-07-beat",
+      "kind": "visitor",
+      "day": 7,
+      "hour": 10.0,
+      "label": "Day 7 authored beat becomes available."
+    },
+    {
+      "id": "day-08-beat",
+      "kind": "visitor",
+      "day": 8,
+      "hour": 10.0,
+      "label": "Day 8 authored beat becomes available."
+    },
+    {
+      "id": "day-09-beat",
+      "kind": "visitor",
+      "day": 9,
+      "hour": 10.0,
+      "label": "Day 9 authored beat becomes available."
+    },
+    {
+      "id": "day-10-beat",
+      "kind": "visitor",
+      "day": 10,
+      "hour": 10.0,
+      "label": "Day 10 authored beat becomes available."
+    },
+    {
+      "id": "day-11-beat",
+      "kind": "visitor",
+      "day": 11,
+      "hour": 10.0,
+      "label": "Day 11 authored beat becomes available."
+    },
+    {
+      "id": "day-12-beat",
+      "kind": "visitor",
+      "day": 12,
+      "hour": 10.0,
+      "label": "Day 12 authored beat becomes available."
+    },
+    {
+      "id": "day-13-beat",
+      "kind": "visitor",
+      "day": 13,
+      "hour": 10.0,
+      "label": "Day 13 authored beat becomes available."
+    },
+    {
+      "id": "day-14-beat",
+      "kind": "visitor",
+      "day": 14,
+      "hour": 10.0,
+      "label": "Day 14 authored beat becomes available."
+    },
+    {
+      "id": "day-15-beat",
+      "kind": "visitor",
+      "day": 15,
+      "hour": 10.0,
+      "label": "Day 15 authored beat becomes available."
+    },
+    {
+      "id": "day-16-beat",
+      "kind": "visitor",
+      "day": 16,
+      "hour": 10.0,
+      "label": "Day 16 authored beat becomes available."
+    },
+    {
+      "id": "day-17-beat",
+      "kind": "visitor",
+      "day": 17,
+      "hour": 10.0,
+      "label": "Day 17 authored beat becomes available."
+    },
+    {
+      "id": "day-18-beat",
+      "kind": "visitor",
+      "day": 18,
+      "hour": 10.0,
+      "label": "Day 18 authored beat becomes available."
+    },
+    {
+      "id": "day-19-beat",
+      "kind": "visitor",
+      "day": 19,
+      "hour": 10.0,
+      "label": "Day 19 authored beat becomes available."
+    },
+    {
+      "id": "day-20-beat",
+      "kind": "visitor",
+      "day": 20,
+      "hour": 10.0,
+      "label": "Day 20 authored beat becomes available."
+    },
+    {
+      "id": "day-21-ending",
+      "kind": "ending",
+      "day": 21,
+      "hour": 20.0,
+      "label": "Day 21 ending evaluation becomes available."
+    }
+  ],
   "scenes": [
     {
       "id": "day-01",

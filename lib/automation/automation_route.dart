@@ -106,6 +106,33 @@ final class AutomationRoutePlan {
       portals: const ['hall-living', 'kitchen-living', 'hall-kitchen', 'hall-landing', 'landing-bedroom', 'landing-bedroom'],
     );
   }
+
+  /// Authored upper-floor branch circuit used by HOUSE-03 route evidence.
+  factory AutomationRoutePlan.upperCircuit(House house) {
+    return AutomationRoutePlan.fromTopology(
+      id: 'upper-circuit',
+      house: house,
+      rooms: const [
+        'hall', 'landing', 'bedroom', 'landing', 'bathroom', 'landing',
+        'spare-room', 'landing',
+      ],
+      portals: const [
+        'hall-landing', 'landing-bedroom', 'landing-bedroom',
+        'landing-bathroom', 'landing-bathroom', 'landing-spare',
+        'landing-spare',
+      ],
+    );
+  }
+
+  /// Cellar return route; a closed/stuck portal is diagnosed explicitly.
+  factory AutomationRoutePlan.cellarReturn(House house) {
+    return AutomationRoutePlan.fromTopology(
+      id: 'cellar-return',
+      house: house,
+      rooms: const ['hall', 'cellar', 'hall'],
+      portals: const ['hall-cellar', 'hall-cellar'],
+    );
+  }
 }
 
 enum AutomationRouteIssueCode {

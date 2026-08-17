@@ -48,7 +48,9 @@ function parseArgs(argv) {
     url: process.env.HUMAN_VISUAL_URL || 'http://127.0.0.1:8090/',
     out: process.env.HUMAN_VISUAL_OUT || 'artifacts/human-visual-confirmation',
     headed: false,
-    readySelector: 'canvas',
+    // The page has auxiliary canvases; the game canvas is the human-review
+    // surface and is the only reliable readiness target.
+    readySelector: '#game',
     profiles: DEFAULT_PROFILES,
     states: DEFAULT_STATES,
     viewports: DEFAULT_VIEWPORTS,
@@ -132,7 +134,33 @@ async function captureMatrix(options) {
           await page.setViewportSize({ width: viewport.width, height: viewport.height });
           const url = appendReviewQuery(options.url, profile, state);
           await page.goto(url, { waitUntil: 'networkidle' });
-          await page.waitForSelector(options.readySelector, { timeout: 15000 });
+          await page.waitForFunction((selector) => {
+            const element = document.querySelector(selector);
+            if (!(element instanceof HTMLElement || element instanceof HTMLCanvasElement)) {
+              return false;
+            }
+            const rect = element.getBoundingClientRect();
+            return rect.width > 0 && rect.height > 0;
+          }, options.readySelector, { timeout: 15000, polling: 50 });
+          await page.waitForTimeout(1000);
+          const observed = await page.locator('#game').evaluate((canvas) => ({
+            boot: canvas.getAttribute('data-boot-phase'),
+            packages: canvas.getAttribute('data-renderer-model-packages'),
+            runtime: canvas.getAttribute('data-renderer-model-packages-runtime'),
+            count: canvas.getAttribute('data-renderer-model-package-count'),
+            error: canvas.getAttribute('data-renderer-model-package-error'),
+            diagnostics: canvas.getAttribute('data-renderer-model-package-diagnostics'),
+          }));
+          let attached = false;
+          try {
+            const diagnostics = JSON.parse(observed.diagnostics || '{}');
+            attached = diagnostics.bindingCount >= 1 && diagnostics.attached === true;
+          } catch (_) {
+            attached = false;
+          }
+          if (observed.packages !== 'validated' || observed.runtime !== 'loaded' || !attached) {
+            throw new Error(`promoted model binding did not settle: ${JSON.stringify({ observed })}`);
+          }
           await page.waitForTimeout(250);
           const id = `${viewport.id}-${profile}-${state}`;
           const file = path.join(output, `browser-human-${safeToken(id)}.png`);
@@ -160,6 +188,10 @@ async function captureMatrix(options) {
               viewport,
               sourceUrl: url,
               browser: { name: 'firefox', version: browser.version() },
+              promotedModel: 'living-room',
+              promotedModelDiagnostics: await page.locator('#game').getAttribute(
+                'data-renderer-model-package-diagnostics',
+              ),
             },
           });
           captures.push({ id, viewport, profile, state, screenshot: bundle.file, metadata: bundle.metadataFile, digest: bundle.digestFile });

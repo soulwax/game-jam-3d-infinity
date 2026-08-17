@@ -33,6 +33,16 @@
           "status": "generated"
         },
         {
+          "path": "models/living-room/**",
+          "reason": "promoted living-room package present for renderer integration; provenance and external license record still require final audit",
+          "status": "unverified"
+        },
+        {
+          "path": "models/porcelain-mermaid/**",
+          "reason": "promoted OBJ reference package present for renderer integration; provenance and external license record still require final audit",
+          "status": "unverified"
+        },
+        {
           "path": "vo/**",
           "reason": "TTS-rendered voice clips; unmanifested and provenance unrecorded, tracked as board card Q0 section 6",
           "status": "unverified"

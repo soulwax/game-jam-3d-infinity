@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math' as math;
 
 /// Discrete debug visualization modes for inspecting shader passes.
@@ -20,6 +21,11 @@ enum ShaderDebugMode {
     ShaderDebugMode.wireframeOnly => 'Geometric Wireframe',
   };
 }
+
+/// A lab control is editable only when the active renderer profile resolves it
+/// into a real frame field or installed pass. This prevents a development
+/// panel from presenting metadata-only controls as working renderer features.
+enum ShaderTuningAvailability { live, unavailable }
 
 /// Category grouping for shader tuning items.
 enum ShaderTuningCategory {
@@ -51,6 +57,10 @@ class ShaderTuningItem {
   final double defaultValue;
   double currentValue;
   bool boolValue;
+  ShaderTuningAvailability availability = ShaderTuningAvailability.unavailable;
+  String? availabilityReason;
+  double? effectiveValue;
+  bool? effectiveBoolValue;
 
   ShaderTuningItem({
     required this.id,
@@ -105,6 +115,28 @@ class ShaderTuningItem {
     }
   }
 
+  bool get isLive => availability == ShaderTuningAvailability.live;
+
+  bool get differsFromBaseline => isToggle
+      ? boolValue != (defaultValue > 0.5)
+      : (currentValue - defaultValue).abs() > 1e-9;
+
+  void resolve({
+    required bool live,
+    String? reason,
+    double? effectiveNumeric,
+    bool? effectiveToggle,
+  }) {
+    availability = live
+        ? ShaderTuningAvailability.live
+        : ShaderTuningAvailability.unavailable;
+    availabilityReason = live
+        ? null
+        : reason ?? 'Not installed by this profile';
+    effectiveValue = live ? (effectiveNumeric ?? currentValue) : null;
+    effectiveBoolValue = live ? (effectiveToggle ?? boolValue) : null;
+  }
+
   String get formattedValue {
     if (isToggle) {
       return boolValue ? '[ON]' : '[OFF]';
@@ -117,16 +149,28 @@ class ShaderTuningItem {
       return currentValue.toStringAsFixed(3);
     }
   }
+
+  String get effectiveFormattedValue {
+    if (!isLive) return 'N/A';
+    if (isToggle) return (effectiveBoolValue ?? boolValue) ? '[ON]' : '[OFF]';
+    final value = effectiveValue ?? currentValue;
+    if (step >= 0.1) return value.toStringAsFixed(1);
+    if (step >= 0.01) return value.toStringAsFixed(2);
+    return value.toStringAsFixed(3);
+  }
 }
 
 /// Central state coordinator for CapsLock shader tuning menu.
 class ShaderTuningState {
+  static const String schema = 'pixeldart-shader-lab-v1';
   bool isOpen = false;
   int selectedCategoryIndex = 0;
   int selectedItemIndex = 0;
   double menuAnimProgress = 0.0; // 0.0 closed, 1.0 open
 
   ShaderDebugMode debugMode = ShaderDebugMode.none;
+  bool debugViewsAvailable = false;
+  String debugViewsReason = 'No renderer debug attachments are installed';
 
   late final List<ShaderTuningItem> items;
 
@@ -636,22 +680,36 @@ class ShaderTuningState {
 
   void incrementCurrent() {
     if (selectedCategoryIndex == ShaderTuningCategory.debugView.index) {
+      if (!debugViewsAvailable) return;
       final nextIdx = (debugMode.index + 1) % ShaderDebugMode.values.length;
       debugMode = ShaderDebugMode.values[nextIdx];
     } else {
-      currentSelectedItem?.increment();
+      final item = currentSelectedItem;
+      if (item?.isLive ?? false) item!.increment();
     }
   }
 
   void decrementCurrent() {
     if (selectedCategoryIndex == ShaderTuningCategory.debugView.index) {
+      if (!debugViewsAvailable) return;
       final prevIdx =
           (debugMode.index - 1 + ShaderDebugMode.values.length) %
           ShaderDebugMode.values.length;
       debugMode = ShaderDebugMode.values[prevIdx];
     } else {
-      currentSelectedItem?.decrement();
+      final item = currentSelectedItem;
+      if (item?.isLive ?? false) item!.decrement();
     }
+  }
+
+  void incrementFineCurrent() {
+    final item = currentSelectedItem;
+    if (item?.isLive ?? false) item!.incrementFine();
+  }
+
+  void decrementFineCurrent() {
+    final item = currentSelectedItem;
+    if (item?.isLive ?? false) item!.decrementFine();
   }
 
   void resetCurrentCategory() {
@@ -669,6 +727,167 @@ class ShaderTuningState {
     for (final item in items) {
       item.reset();
     }
+  }
+
+  /// Updates control truth from the active profile and the latest resolved
+  /// frame. Callers pass only generic renderer facts; this state does not
+  /// infer game meaning from a control name.
+  void resolveFrame({
+    required Set<String> liveItemIds,
+    Map<String, double> effectiveValues = const {},
+    Map<String, bool> effectiveToggles = const {},
+    Map<String, String> unavailableReasons = const {},
+    bool debugViewsAvailable = false,
+    String? debugViewsReason,
+  }) {
+    for (final item in items) {
+      final live = liveItemIds.contains(item.id);
+      item.resolve(
+        live: live,
+        reason: unavailableReasons[item.id],
+        effectiveNumeric: effectiveValues[item.id],
+        effectiveToggle: effectiveToggles[item.id],
+      );
+    }
+    this.debugViewsAvailable = debugViewsAvailable;
+    this.debugViewsReason = debugViewsAvailable
+        ? ''
+        : (debugViewsReason ?? 'No renderer debug attachments are installed');
+    if (!debugViewsAvailable) debugMode = ShaderDebugMode.none;
+  }
+
+  Map<String, Object?> diagnosticSnapshot() => {
+    'liveCount': items.where((item) => item.isLive).length,
+    'unavailableCount': items.where((item) => !item.isLive).length,
+    'debugViewsAvailable': debugViewsAvailable,
+    'selectedCategory': ShaderTuningCategory.values[selectedCategoryIndex].name,
+    'selectedItem': currentSelectedItem?.id,
+  };
+
+  /// Stable grouped counts for the developer diagnostics panel.
+  Map<String, Map<String, int>> diagnosticGroups() {
+    final result = <String, Map<String, int>>{};
+    for (final item in items) {
+      final group = item.category.name;
+      final counts = result.putIfAbsent(
+        group,
+        () => {'live': 0, 'unavailable': 0},
+      );
+      counts[item.isLive ? 'live' : 'unavailable'] =
+          counts[item.isLive ? 'live' : 'unavailable']! + 1;
+    }
+    return {
+      for (final entry in result.entries)
+        entry.key: Map.unmodifiable(entry.value),
+    };
+  }
+
+  /// Returns a stable, requested-value-only experiment document. Effective
+  /// values are included as evidence when available, but are never imported
+  /// as requests because they may be profile- or frame-dependent.
+  Map<String, Object?> toMap() {
+    final ordered = [...items]..sort((a, b) => a.id.compareTo(b.id));
+    return {
+      'schema': schema,
+      'version': 1,
+      'debugMode': debugMode.name,
+      'controls': [
+        for (final item in ordered)
+          {
+            'id': item.id,
+            'requested': item.isToggle ? item.boolValue : item.currentValue,
+            'effective': item.isLive
+                ? (item.isToggle
+                      ? (item.effectiveBoolValue ?? item.boolValue)
+                      : (item.effectiveValue ?? item.currentValue))
+                : null,
+          },
+      ],
+    };
+  }
+
+  String encode() => jsonEncode(toMap());
+
+  /// Canonical untouched document used as a reproducible comparison baseline.
+  /// It is constructed independently so calling this never resets live state.
+  String baselineEncode() => ShaderTuningState().encode();
+
+  /// IDs whose requested values differ from their authored baseline.
+  List<String> get modifiedControlIds => ([
+    for (final item in items)
+      if (item.differsFromBaseline) item.id,
+  ]..sort());
+
+  /// Imports requested values atomically. Unknown, missing, malformed, or
+  /// out-of-range controls reject before any existing lab state changes.
+  void importJson(String source) {
+    final decoded = jsonDecode(source);
+    if (decoded is! Map) {
+      throw const FormatException('Shader Lab document must be an object');
+    }
+    if (decoded['schema'] != schema || decoded['version'] != 1) {
+      throw const FormatException('unsupported Shader Lab document schema');
+    }
+    final rawControls = decoded['controls'];
+    if (rawControls is! List || rawControls.length != items.length) {
+      throw const FormatException(
+        'Shader Lab document controls are incomplete',
+      );
+    }
+
+    final byId = {for (final item in items) item.id: item};
+    final stagedValues = <String, Object?>{};
+    for (final raw in rawControls) {
+      if (raw is! Map ||
+          raw['id'] is! String ||
+          !raw.containsKey('requested')) {
+        throw const FormatException('malformed Shader Lab control');
+      }
+      final id = raw['id'] as String;
+      final item = byId[id];
+      if (item == null || stagedValues.containsKey(id)) {
+        throw FormatException('unknown or duplicate Shader Lab control: $id');
+      }
+      final requested = raw['requested'];
+      if (item.isToggle) {
+        if (requested is! bool) {
+          throw FormatException('toggle $id requires a boolean request');
+        }
+        stagedValues[id] = requested;
+      } else {
+        if (requested is! num || !requested.toDouble().isFinite) {
+          throw FormatException('numeric control $id requires a finite number');
+        }
+        final value = requested.toDouble();
+        if (value < item.min || value > item.max) {
+          throw FormatException(
+            'numeric control $id is outside [${item.min}, ${item.max}]',
+          );
+        }
+        stagedValues[id] = value;
+      }
+    }
+
+    final debugName = decoded['debugMode'];
+    if (debugName is! String ||
+        !ShaderDebugMode.values.any((mode) => mode.name == debugName)) {
+      throw const FormatException('invalid Shader Lab debug mode');
+    }
+    if (debugName != ShaderDebugMode.none.name && !debugViewsAvailable) {
+      throw const FormatException('requested debug mode is not available');
+    }
+
+    for (final item in items) {
+      final value = stagedValues[item.id]!;
+      if (item.isToggle) {
+        item.boolValue = value as bool;
+      } else {
+        item.currentValue = value as double;
+      }
+    }
+    debugMode = ShaderDebugMode.values.firstWhere(
+      (mode) => mode.name == debugName,
+    );
   }
 
   double getValue(String id) {

@@ -1,1 +1,1 @@
-{"schema":"quarantine-promoted-models-v1","entries":[]}
+{"schema":"quarantine-promoted-models-v1","entries":[{"assetId":"living-room","licenseId":"licensed-room-source","manifestPath":"living-room/manifest.json","sourceFormat":"glb"},{"assetId":"porcelain-mermaid","licenseId":"licensed-porcelain-source","manifestPath":"porcelain-mermaid/manifest.json","sourceFormat":"obj"}]}

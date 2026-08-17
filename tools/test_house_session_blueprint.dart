@@ -26,15 +26,36 @@ void main() {
     houseSeed: 42,
     houseBlueprint: blueprint,
   );
-  expectValue(created.house.byId('living-room') != null, 'create injects blueprint');
-  expectValue(created.house.byId('living-room')!.floor.name == 'ground', 'authored floor survives create');
+  expectValue(
+    created.house.byId('living-room') != null,
+    'create injects blueprint',
+  );
+  expectValue(
+    created.house.byId('living-room')!.floor.name == 'ground',
+    'authored floor survives create',
+  );
 
   final restored = GameSession.restore(
     vocabulary: vocabulary,
     snapshot: created.toSaveSnapshot(),
     houseBlueprint: blueprint,
   );
-  expectValue(restored.house.byId('cellar') != null, 'restore injects blueprint');
-  expectValue(restored.house.rooms.length == 8, 'restore keeps authored room count');
+  expectValue(
+    restored.house.byId('cellar') != null,
+    'restore injects blueprint',
+  );
+  expectValue(
+    restored.house.rooms.length == 8,
+    'restore keeps authored room count',
+  );
+  expectValue(
+    restored.house.portals.map((portal) => portal.id).toList().join(',') ==
+        created.house.portals.map((portal) => portal.id).toList().join(','),
+    'restore must preserve authored portal topology',
+  );
+  expectValue(
+    restored.house.stairs.length == created.house.stairs.length,
+    'restore must preserve authored stair topology',
+  );
   print('house session blueprint injection passed');
 }

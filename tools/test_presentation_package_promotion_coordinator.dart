@@ -40,11 +40,35 @@ Future<void> main() async {
       sourceFormat: 'obj',
     ),
   ]);
-  final registry = await const PresentationPackagePromotionCoordinator().loadIndex(
-    index,
-    fetchManifest: (_) async => jsonEncode(manifest.toJson()),
-    fetchPayload: (_, path) async => Uint8List.fromList(emitted.payloads[path]!),
+  final registry = await const PresentationPackagePromotionCoordinator()
+      .loadIndex(
+        index,
+        fetchManifest: (_) async => jsonEncode(manifest.toJson()),
+        fetchPayload: (_, path) async =>
+            Uint8List.fromList(emitted.payloads[path]!),
+      );
+  check(
+    registry.contains('coordinator-fixture'),
+    'coordinator registers loaded package',
   );
-  check(registry.contains('coordinator-fixture'), 'coordinator registers loaded package');
+  var mismatchRejected = false;
+  try {
+    await const PresentationPackagePromotionCoordinator().loadIndex(
+      PresentationModelPackageIndex([
+        const PresentationModelPackageIndexEntry(
+          assetId: 'coordinator-fixture',
+          licenseId: 'fixture-rights-cleared',
+          manifestPath: 'models/coordinator/manifest.json',
+          sourceFormat: 'glb',
+        ),
+      ]),
+      fetchManifest: (_) async => jsonEncode(manifest.toJson()),
+      fetchPayload: (_, path) async =>
+          Uint8List.fromList(emitted.payloads[path]!),
+    );
+  } on FormatException {
+    mismatchRejected = true;
+  }
+  check(mismatchRejected, 'index/manifest source mismatch was accepted');
   print('Presentation package promotion coordinator tests passed.');
 }

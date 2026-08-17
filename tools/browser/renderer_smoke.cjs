@@ -516,6 +516,25 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
             rainWindowVisibility: result.rainWindowVisibility == null
               ? null
               : Number(result.rainWindowVisibility),
+            rainParticles: result.rainParticleCount == null
+              ? null
+              : {
+                  submitted: Number(result.rainParticleCount),
+                  requested: Number(result.rainParticleRequested),
+                  budget: Number(result.rainParticleBudget),
+                  capped: result.rainParticleCapped === 'true',
+                  frustumVisible: Number(result.rainParticleFrustumVisible),
+                  frustumCulled: Number(result.rainParticleFrustumCulled),
+                },
+            lightning: result.lightningActive == null
+              ? null
+              : {
+                  active: result.lightningActive === 'true',
+                  sourceDistanceM: Number(result.lightningSourceDistanceM),
+                  sourceDirection: (result.lightningSourceDirection || '')
+                    .split(',')
+                    .map(Number),
+                },
           }
         : null,
       fixture: captureSelection?.fixture ?? null,
@@ -763,6 +782,31 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         null,
         { timeout: 10000 },
       );
+      await page.waitForTimeout(1000);
+      const packageReadiness = await page.locator('#game').evaluate((canvas) => {
+        const packageCount = Number(
+          canvas.getAttribute('data-renderer-model-package-count') || 0,
+        );
+        let attached = false;
+        try {
+          const diagnostics = JSON.parse(
+            canvas.getAttribute('data-renderer-model-package-diagnostics') || '{}',
+          );
+          attached = diagnostics.attached === true &&
+            diagnostics.bindingCount === packageCount;
+        } catch (_) {
+          attached = false;
+        }
+        return {
+          packageCount,
+          runtime: canvas.getAttribute('data-renderer-model-packages-runtime'),
+          attached,
+        };
+      });
+      if (packageReadiness.packageCount > 0 &&
+          (packageReadiness.runtime !== 'loaded' || !packageReadiness.attached)) {
+        throw new Error(`${name}: promoted model binding was not ready ${JSON.stringify(packageReadiness)}`);
+      }
       await page.waitForTimeout(100);
       await page.evaluate(() => {
         const choice = document.querySelector('.door.visible button');
@@ -800,6 +844,15 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         captureWeather: canvas.getAttribute('data-automation-capture-weather'),
         captureShutters: canvas.getAttribute('data-automation-capture-shutters'),
         rainWindowVisibility: canvas.getAttribute('data-automation-rain-window-visibility'),
+        rainParticleCount: canvas.getAttribute('data-renderer-rain-particles'),
+        rainParticleRequested: canvas.getAttribute('data-renderer-rain-particles-requested'),
+        rainParticleBudget: canvas.getAttribute('data-renderer-rain-particles-budget'),
+        rainParticleCapped: canvas.getAttribute('data-renderer-rain-particles-capped'),
+        rainParticleFrustumVisible: canvas.getAttribute('data-renderer-rain-particles-frustum-visible'),
+        rainParticleFrustumCulled: canvas.getAttribute('data-renderer-rain-particles-frustum-culled'),
+        lightningActive: canvas.getAttribute('data-renderer-lightning-active'),
+        lightningSourceDistanceM: canvas.getAttribute('data-renderer-lightning-source-distance-m'),
+        lightningSourceDirection: canvas.getAttribute('data-renderer-lightning-source-direction'),
         houseManifest: canvas.getAttribute('data-house-manifest'),
         houseManifestSource: canvas.getAttribute('data-house-manifest-source'),
         houseInventory: canvas.getAttribute('data-house-inventory'),
@@ -810,6 +863,7 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         inventoryProxyCount: canvas.getAttribute('data-renderer-inventory-proxy-count'),
         modelPackages: canvas.getAttribute('data-renderer-model-packages'),
         modelPackageCount: canvas.getAttribute('data-renderer-model-package-count'),
+        modelPackageDiagnostics: canvas.getAttribute('data-renderer-model-package-diagnostics'),
         houseSoundscape: canvas.getAttribute('data-house-soundscape'),
         houseSoundscapeSource: canvas.getAttribute('data-house-soundscape-source'),
         houseSoundEmitterCount: canvas.getAttribute('data-house-sound-emitter-count'),
@@ -817,6 +871,9 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         audioSpatialActive: canvas.getAttribute('data-audio-spatial-active'),
         audioMusicStarted: canvas.getAttribute('data-audio-music-started'),
         audioRoomIr: canvas.getAttribute('data-audio-room-ir'),
+        storyJournalEntryCount: canvas.getAttribute('data-story-journal-entry-count'),
+        storyLastEvent: canvas.getAttribute('data-story-last-event'),
+        storyLastEventKind: canvas.getAttribute('data-story-last-event-kind'),
         door: (() => {
           const door = document.querySelector('.door');
           return {
@@ -948,12 +1005,30 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
           result,
         })}`);
       }
-      if (result.inventoryResolution !== 'proxy' ||
-          Number(result.inventoryProxyCount) !== Number(result.inventoryItems)) {
-        throw new Error(`${name}: inventory proxy state was not explicit ${JSON.stringify(result)}`);
+      if (result.inventoryResolution !== 'mixed' ||
+          Number(result.inventoryProxyCount) >= Number(result.inventoryItems)) {
+        throw new Error(`${name}: promoted inventory state was not explicit ${JSON.stringify(result)}`);
       }
-      if (result.modelPackages !== 'validated' || Number(result.modelPackageCount) !== 0) {
-        throw new Error(`${name}: promoted model index was not validated ${JSON.stringify(result)}`);
+      if (result.modelPackages !== 'validated' ||
+          Number(result.modelPackageCount) !== 2) {
+        throw new Error(`${name}: promoted model index was not validated with an accepted entry ${JSON.stringify(result)}`);
+      }
+      let modelDiagnostics;
+      try {
+        modelDiagnostics = JSON.parse(result.modelPackageDiagnostics || '{}');
+      } catch (error) {
+        throw new Error(`${name}: promoted model diagnostics were not JSON ${JSON.stringify(result)}`);
+      }
+      const boundAssets = (modelDiagnostics.bindings || [])
+        .map((binding) => binding.assetId)
+        .sort();
+      if (modelDiagnostics.bindingCount !== 2 ||
+          modelDiagnostics.attached !== true ||
+          JSON.stringify(boundAssets) !== JSON.stringify(['living-room', 'porcelain-mermaid'])) {
+        throw new Error(`${name}: promoted model was not attached to the retained scene ${JSON.stringify({
+          diagnostics: modelDiagnostics,
+          result,
+        })}`);
       }
       if (result.houseSoundscape !== 'validated' ||
           !['res/house/soundscape.json', '/res/house/soundscape.json'].includes(
@@ -973,6 +1048,10 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       }
       if (result.audioPlanner !== 'validated') {
         throw new Error(`${name}: acoustic planner was not wired ${JSON.stringify(result)}`);
+      }
+      if (result.storyJournalEntryCount === null ||
+          !/^\d+$/.test(result.storyJournalEntryCount)) {
+        throw new Error(`${name}: story journal telemetry was not published ${JSON.stringify(result)}`);
       }
       const visitorDialog = result.door.role === 'dialog' &&
         result.door.modal === 'true';
@@ -1076,6 +1155,27 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
             expected: expectedRainWindowVisibility,
             observed: result.rainWindowVisibility,
           })}`);
+        }
+        if (fixture.weather === 'rain') {
+          const particleValues = [
+            result.rainParticleCount,
+            result.rainParticleRequested,
+            result.rainParticleBudget,
+            result.rainParticleFrustumVisible,
+            result.rainParticleFrustumCulled,
+          ].map(Number);
+          if (!particleValues.every(Number.isFinite) ||
+              particleValues[0] > particleValues[1] ||
+              particleValues[0] > particleValues[2] ||
+              particleValues[3] + particleValues[4] !== particleValues[0]) {
+            throw new Error(`${name}: rain particle telemetry was not reconciled ${JSON.stringify({
+              submitted: result.rainParticleCount,
+              requested: result.rainParticleRequested,
+              budget: result.rainParticleBudget,
+              frustumVisible: result.rainParticleFrustumVisible,
+              frustumCulled: result.rainParticleFrustumCulled,
+            })}`);
+          }
         }
         if (!poseReached(capturedPlayer, visualCaptureSelection.camera, {
           positionTolerance: 0.08,

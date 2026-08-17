@@ -1,0 +1,298 @@
+{
+  "schema": "pixeldart-model-package-v1",
+  "assetId": "living-room",
+  "packageHash": "6f695c24c57c64f17b4f277384a006f909da7144b1514b06d046bdabaa408dc8",
+  "sourceFormat": "glb",
+  "parts": [
+    {
+      "id": "mesh-000",
+      "materialSlot": 0,
+      "lodFiles": {
+        "LOD0": "mesh-000.qmesh"
+      }
+    },
+    {
+      "id": "mesh-001",
+      "materialSlot": 1,
+      "lodFiles": {
+        "LOD0": "mesh-001.qmesh"
+      }
+    },
+    {
+      "id": "mesh-002",
+      "materialSlot": 2,
+      "lodFiles": {
+        "LOD0": "mesh-002.qmesh"
+      }
+    },
+    {
+      "id": "mesh-003",
+      "materialSlot": 3,
+      "lodFiles": {
+        "LOD0": "mesh-003.qmesh"
+      }
+    },
+    {
+      "id": "mesh-004",
+      "materialSlot": 4,
+      "lodFiles": {
+        "LOD0": "mesh-004.qmesh"
+      }
+    },
+    {
+      "id": "mesh-005",
+      "materialSlot": 5,
+      "lodFiles": {
+        "LOD0": "mesh-005.qmesh"
+      }
+    },
+    {
+      "id": "mesh-006",
+      "materialSlot": 6,
+      "lodFiles": {
+        "LOD0": "mesh-006.qmesh"
+      }
+    },
+    {
+      "id": "mesh-007",
+      "materialSlot": 7,
+      "lodFiles": {
+        "LOD0": "mesh-007.qmesh"
+      }
+    },
+    {
+      "id": "mesh-008",
+      "materialSlot": 8,
+      "lodFiles": {
+        "LOD0": "mesh-008.qmesh"
+      }
+    },
+    {
+      "id": "mesh-009",
+      "materialSlot": 9,
+      "lodFiles": {
+        "LOD0": "mesh-009.qmesh"
+      }
+    },
+    {
+      "id": "mesh-010",
+      "materialSlot": 10,
+      "lodFiles": {
+        "LOD0": "mesh-010.qmesh"
+      }
+    },
+    {
+      "id": "mesh-011",
+      "materialSlot": 11,
+      "lodFiles": {
+        "LOD0": "mesh-011.qmesh"
+      }
+    },
+    {
+      "id": "mesh-012",
+      "materialSlot": 12,
+      "lodFiles": {
+        "LOD0": "mesh-012.qmesh"
+      }
+    },
+    {
+      "id": "mesh-013",
+      "materialSlot": 13,
+      "lodFiles": {
+        "LOD0": "mesh-013.qmesh"
+      }
+    },
+    {
+      "id": "mesh-014",
+      "materialSlot": 14,
+      "lodFiles": {
+        "LOD0": "mesh-014.qmesh"
+      }
+    },
+    {
+      "id": "mesh-015",
+      "materialSlot": 15,
+      "lodFiles": {
+        "LOD0": "mesh-015.qmesh"
+      }
+    },
+    {
+      "id": "mesh-016",
+      "materialSlot": 16,
+      "lodFiles": {
+        "LOD0": "mesh-016.qmesh"
+      }
+    },
+    {
+      "id": "mesh-017",
+      "materialSlot": 17,
+      "lodFiles": {
+        "LOD0": "mesh-017.qmesh"
+      }
+    },
+    {
+      "id": "mesh-018",
+      "materialSlot": 18,
+      "lodFiles": {
+        "LOD0": "mesh-018.qmesh"
+      }
+    },
+    {
+      "id": "mesh-019",
+      "materialSlot": 19,
+      "lodFiles": {
+        "LOD0": "mesh-019.qmesh"
+      }
+    },
+    {
+      "id": "mesh-020",
+      "materialSlot": 20,
+      "lodFiles": {
+        "LOD0": "mesh-020.qmesh"
+      }
+    },
+    {
+      "id": "mesh-021",
+      "materialSlot": 21,
+      "lodFiles": {
+        "LOD0": "mesh-021.qmesh"
+      }
+    },
+    {
+      "id": "mesh-022",
+      "materialSlot": 22,
+      "lodFiles": {
+        "LOD0": "mesh-022.qmesh"
+      }
+    },
+    {
+      "id": "mesh-023",
+      "materialSlot": 23,
+      "lodFiles": {
+        "LOD0": "mesh-023.qmesh"
+      }
+    },
+    {
+      "id": "mesh-024",
+      "materialSlot": 24,
+      "lodFiles": {
+        "LOD0": "mesh-024.qmesh"
+      }
+    },
+    {
+      "id": "mesh-025",
+      "materialSlot": 25,
+      "lodFiles": {
+        "LOD0": "mesh-025.qmesh"
+      }
+    },
+    {
+      "id": "mesh-026",
+      "materialSlot": 26,
+      "lodFiles": {
+        "LOD0": "mesh-026.qmesh"
+      }
+    },
+    {
+      "id": "mesh-027",
+      "materialSlot": 27,
+      "lodFiles": {
+        "LOD0": "mesh-027.qmesh"
+      }
+    },
+    {
+      "id": "mesh-028",
+      "materialSlot": 28,
+      "lodFiles": {
+        "LOD0": "mesh-028.qmesh"
+      }
+    },
+    {
+      "id": "mesh-029",
+      "materialSlot": 29,
+      "lodFiles": {
+        "LOD0": "mesh-029.qmesh"
+      }
+    },
+    {
+      "id": "mesh-030",
+      "materialSlot": 30,
+      "lodFiles": {
+        "LOD0": "mesh-030.qmesh"
+      }
+    },
+    {
+      "id": "mesh-031",
+      "materialSlot": 31,
+      "lodFiles": {
+        "LOD0": "mesh-031.qmesh"
+      }
+    },
+    {
+      "id": "mesh-032",
+      "materialSlot": 32,
+      "lodFiles": {
+        "LOD0": "mesh-032.qmesh"
+      }
+    },
+    {
+      "id": "mesh-033",
+      "materialSlot": 33,
+      "lodFiles": {
+        "LOD0": "mesh-033.qmesh"
+      }
+    }
+  ],
+  "materials": [
+    "Aluminium",
+    "Book",
+    "Book2",
+    "Carpet",
+    "Cermin",
+    "Cusion",
+    "DefaultMaterial",
+    "Emmision",
+    "Floor",
+    "Gelas",
+    "InsideBook",
+    "Jam",
+    "Kaca",
+    "KerangkaLemari",
+    "Lemari",
+    "Meja",
+    "Netflix",
+    "Picture",
+    "Picture2",
+    "Picture3",
+    "Picture4",
+    "PictureBorder",
+    "Roof",
+    "Side Wall",
+    "SideTegel",
+    "Sofa",
+    "Sofa Kecil",
+    "TV",
+    "TiangMeja",
+    "Tree",
+    "Tree Branch",
+    "Tree07_4K",
+    "Wall",
+    "Wall Down"
+  ],
+  "textures": [],
+  "lods": ["LOD0"],
+  "combinedBounds": [
+    -3.9967024326324463,
+    -5.0,
+    -16.999971389770508,
+    4.665288925170898,
+    6.272566318511963,
+    16.999971389770508
+  ],
+  "sockets": {},
+  "provenance": {
+    "promotion": "approved",
+    "licenseId": "licensed-room-source",
+    "sourceFormat": "glb"
+  }
+}

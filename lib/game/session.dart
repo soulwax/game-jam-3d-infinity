@@ -293,11 +293,16 @@ class GameSession {
     final deliveredKey = 'event.${event.id}';
     if (_narrative.hasFlag(deliveredKey)) return false;
     _narrative.flags[deliveredKey] = 'true';
+    // Keep the consumer decision in the authoritative save, not only in the
+    // browser DOM. Presentation systems can react to this stable seam later.
+    _narrative.flags['event.${event.id}.consumer'] = event.kind;
+    _narrative.flags['last-authored-event'] = event.id;
     for (final effect in event.effects) {
       final separator = effect.indexOf('=');
       if (separator <= 0 || separator == effect.length - 1) continue;
-      _narrative.flags[effect.substring(0, separator)] =
-          effect.substring(separator + 1);
+      _narrative.flags[effect.substring(0, separator)] = effect.substring(
+        separator + 1,
+      );
     }
     return true;
   }
@@ -384,6 +389,37 @@ class GameSession {
     );
     return entry;
   }
+
+  /// Records a threshold encounter through the same authoritative journal
+  /// path used by the UI. The visitor identity is retained as provenance so a
+  /// later callback can cite the original encounter without new game state.
+  Entry? writeVisitorJournal(
+    String visitor,
+    Map<String, String> fields,
+    double shakiness,
+  ) {
+    if (visitor.trim().isEmpty) {
+      throw ArgumentError.value(visitor, 'visitor', 'must not be empty');
+    }
+    return writeJournal(fields, shakiness, corroborator: 'visitor:$visitor');
+  }
+
+  bool correctJournal(
+    int ordinal,
+    Map<String, String> fields,
+    double shakiness,
+  ) {
+    final accepted = _journal.correct(ordinal, fields, shakiness);
+    _record(
+      accepted
+          ? GameSessionEventType.journalWritten
+          : GameSessionEventType.journalRejected,
+      entryOrdinal: accepted ? ordinal : null,
+    );
+    return accepted;
+  }
+
+  bool lockJournal(int ordinal) => _journal.lock(ordinal);
 
   bool spendHours(int cost) {
     _requireNonNegative(cost, 'cost');

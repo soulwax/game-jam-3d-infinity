@@ -22,29 +22,7 @@ void main() {
   final errors = validator.validate(ground);
   _expect(errors.isEmpty, 'ground route clears canonical geometry: $errors');
 
-  final upper = AutomationRoutePlan.fromTopology(
-    id: 'upper-circuit',
-    house: house,
-    rooms: const [
-      'hall',
-      'landing',
-      'bedroom',
-      'landing',
-      'bathroom',
-      'landing',
-      'spare-room',
-      'landing',
-    ],
-    portals: const [
-      'hall-landing',
-      'landing-bedroom',
-      'landing-bedroom',
-      'landing-bathroom',
-      'landing-bathroom',
-      'landing-spare',
-      'landing-spare',
-    ],
-  );
+  final upper = AutomationRoutePlan.upperCircuit(house);
   _expect(validator.validate(upper).isEmpty, 'upper route clears geometry');
   final authoredUpper = AutomationScenario.decode(
     File(
@@ -80,12 +58,7 @@ void main() {
     'authored upper route has both-way branch checkpoints',
   );
 
-  final cellar = AutomationRoutePlan.fromTopology(
-    id: 'cellar-return',
-    house: house,
-    rooms: const ['hall', 'cellar', 'hall'],
-    portals: const ['hall-cellar', 'hall-cellar'],
-  );
+  final cellar = AutomationRoutePlan.cellarReturn(house);
   final cellarDiagnostics = validator.diagnose(cellar);
   _expect(
     cellarDiagnostics.any(

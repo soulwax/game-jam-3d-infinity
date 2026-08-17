@@ -1,0 +1,133 @@
+{
+  "status": "failed",
+  "exitCode": 5,
+  "scenario": "ground-circuit",
+  "runId": "run-1786923165359",
+  "failure": {
+    "kind": "assertion",
+    "message": "browser smoke exited with code 1"
+  },
+  "events": 8,
+  "traceBytes": 1569,
+  "droppedEvents": 0,
+  "history": [
+    {
+      "seq": 0,
+      "type": "run.start",
+      "tick": 0,
+      "data": {
+        "scenario": "ground-circuit"
+      }
+    },
+    {
+      "seq": 1,
+      "type": "runner.lifecycle",
+      "tick": 0,
+      "data": {
+        "phase": "starting-server",
+        "browser": "firefox"
+      }
+    },
+    {
+      "seq": 2,
+      "type": "runner.lifecycle",
+      "tick": 0,
+      "data": {
+        "phase": "server-ready",
+        "baseUrl": "http://127.0.0.1:8090"
+      }
+    },
+    {
+      "seq": 3,
+      "type": "runner.config",
+      "tick": 0,
+      "data": {
+        "mode": "run",
+        "scenario": "ground-circuit",
+        "serverRoot": "dist/web",
+        "port": 8090,
+        "baseUrl": "http://127.0.0.1:8090",
+        "browser": "firefox",
+        "renderer": "pixeldart",
+        "profile": "high",
+        "viewport": {
+          "width": 960,
+          "height": 540
+        },
+        "seed": 7,
+        "fixedDelta": 0.016666666666666666,
+        "timeoutTicks": 900,
+        "artifacts": "artifacts/automation/physics-only-rain-pass",
+        "headless": true,
+        "resolvedRun": {
+          "schemaVersion": 2,
+          "canonical": {
+            "mode": "run",
+            "scenario": "ground-circuit",
+            "serverRoot": "dist/web",
+            "port": 8090,
+            "baseUrl": "http://127.0.0.1:8090",
+            "browser": "firefox",
+            "renderer": "pixeldart",
+            "profile": "high",
+            "viewport": {
+              "width": 960,
+              "height": 540
+            },
+            "seed": 7,
+            "fixedDelta": 0.016666666666666666,
+            "timeoutTicks": 900,
+            "artifacts": "artifacts/automation/physics-only-rain-pass",
+            "headless": true
+          },
+          "compatibilityAliases": {}
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "type": "artifact",
+      "tick": 4,
+      "data": {
+        "name": "browser-stdout.log",
+        "bytes": 715,
+        "contentType": "text/plain"
+      }
+    },
+    {
+      "seq": 5,
+      "type": "artifact",
+      "tick": 5,
+      "data": {
+        "name": "browser-stderr.log",
+        "bytes": 673,
+        "contentType": "text/plain"
+      }
+    },
+    {
+      "seq": 6,
+      "type": "runner.browser-exit",
+      "tick": 0,
+      "data": {
+        "exitCode": 1,
+        "stdoutBytes": 715,
+        "watchdogSeconds": 120.0,
+        "timedOut": false
+      }
+    },
+    {
+      "seq": 7,
+      "type": "run.failure",
+      "tick": 0,
+      "data": {
+        "kind": "assertion",
+        "message": "browser smoke exited with code 1"
+      }
+    }
+  ],
+  "replayCommand": "dart run tools/automation.dart run --scenario ground-circuit",
+  "cleanup": {
+    "server": "closed",
+    "browser": "closed"
+  }
+}

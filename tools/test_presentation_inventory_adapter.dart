@@ -47,6 +47,7 @@ void main() {
         'source': '/never/read/source.obj',
         'proxy': 'room-fixture',
         'pivot': 'floor-center',
+        'status': 'production',
         'bounds': {'min': [-1, 0, -1], 'max': [1, 1, 1]},
       },
       {
@@ -55,6 +56,7 @@ void main() {
         'source': '/never/read/missing.glb',
         'proxy': 'room-fixture',
         'pivot': 'floor-center',
+        'status': 'production',
         'bounds': {'min': [-1, 0, -1], 'max': [1, 1, 1]},
       },
     ],

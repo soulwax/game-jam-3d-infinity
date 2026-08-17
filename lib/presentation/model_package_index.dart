@@ -19,8 +19,9 @@ final class PresentationModelPackageIndexEntry {
 final class PresentationModelPackageIndex {
   final Map<String, PresentationModelPackageIndexEntry> _entries;
 
-  PresentationModelPackageIndex(Iterable<PresentationModelPackageIndexEntry> entries)
-    : _entries = _validate(entries);
+  PresentationModelPackageIndex(
+    Iterable<PresentationModelPackageIndexEntry> entries,
+  ) : _entries = _validate(entries);
 
   factory PresentationModelPackageIndex.decode(String source) {
     final raw = jsonDecode(source);
@@ -28,7 +29,8 @@ final class PresentationModelPackageIndex {
       throw const FormatException('unsupported promoted model index schema');
     }
     final records = raw['entries'];
-    if (records is! List) throw const FormatException('promoted model index entries are required');
+    if (records is! List)
+      throw const FormatException('promoted model index entries are required');
     return PresentationModelPackageIndex([
       for (final value in records)
         if (value is Map)
@@ -39,7 +41,9 @@ final class PresentationModelPackageIndex {
             sourceFormat: value['sourceFormat'] as String? ?? '',
           )
         else
-          (throw const FormatException('promoted model index entry is malformed')),
+          (throw const FormatException(
+            'promoted model index entry is malformed',
+          )),
     ]);
   }
 
@@ -70,21 +74,31 @@ final class PresentationModelPackageIndex {
     final result = <String, PresentationModelPackageIndexEntry>{};
     for (final entry in entries) {
       if (!RegExp(r'^[a-z0-9]+(?:-[a-z0-9]+)*$').hasMatch(entry.assetId)) {
-        throw FormatException('promoted model index ID is invalid: ${entry.assetId}');
+        throw FormatException(
+          'promoted model index ID is invalid: ${entry.assetId}',
+        );
       }
       if (result.containsKey(entry.assetId)) {
-        throw FormatException('duplicate promoted model index ID: ${entry.assetId}');
+        throw FormatException(
+          'duplicate promoted model index ID: ${entry.assetId}',
+        );
       }
       if (entry.licenseId.trim().isEmpty ||
           entry.licenseId == 'unknown' ||
           entry.licenseId == 'unlicensed') {
-        throw FormatException('promoted model index rights are unknown: ${entry.assetId}');
+        throw FormatException(
+          'promoted model index rights are unknown: ${entry.assetId}',
+        );
       }
       if (!{'obj', 'gltf', 'glb', 'fbx'}.contains(entry.sourceFormat)) {
-        throw FormatException('promoted model index source format is invalid: ${entry.assetId}');
+        throw FormatException(
+          'promoted model index source format is invalid: ${entry.assetId}',
+        );
       }
       if (!_safeManifestPath(entry.manifestPath)) {
-        throw FormatException('promoted model index manifest path is unsafe: ${entry.assetId}');
+        throw FormatException(
+          'promoted model index manifest path is unsafe: ${entry.assetId}',
+        );
       }
       result[entry.assetId] = entry;
     }
@@ -93,11 +107,14 @@ final class PresentationModelPackageIndex {
 }
 
 bool _safeManifestPath(String path) {
-  if (path.isEmpty || path.startsWith('/') || path.contains('://')) return false;
+  if (path.isEmpty || path.startsWith('/') || path.contains('://'))
+    return false;
   if (path.toLowerCase().endsWith('.obj') ||
       path.toLowerCase().endsWith('.mtl') ||
       path.toLowerCase().endsWith('.fbx')) {
     return false;
   }
-  return path.split('/').every((segment) => segment.isNotEmpty && segment != '..');
+  return path
+      .split('/')
+      .every((segment) => segment.isNotEmpty && segment != '..');
 }

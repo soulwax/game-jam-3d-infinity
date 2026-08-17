@@ -1,5 +1,18 @@
 import 'screenplay.dart';
 
+/// Runtime-owned consumers for authored events. Keeping this vocabulary next
+/// to the cursor makes an event with no executable destination impossible to
+/// add silently.
+enum AuthoredEventConsumer { broadcast, visitor, aftermath, ending }
+
+AuthoredEventConsumer authoredEventConsumerFor(String kind) => switch (kind) {
+  'broadcast' => AuthoredEventConsumer.broadcast,
+  'visitor' => AuthoredEventConsumer.visitor,
+  'aftermath' => AuthoredEventConsumer.aftermath,
+  'ending' => AuthoredEventConsumer.ending,
+  _ => throw FormatException('screenplay event has no consumer: $kind'),
+};
+
 /// Runtime read-model for the event plan authored by the screenplay editor.
 ///
 /// It deliberately does not mutate the game or narrative state. The game loop
@@ -7,15 +20,23 @@ import 'screenplay.dart';
 /// existing authoritative systems.
 class GameEventOrchestrator {
   GameEventOrchestrator(StoryScreenplay screenplay)
-      : _events = List<ScreenplayEvent>.unmodifiable(
-          [...screenplay.events]
-            ..sort((a, b) {
-              final day = a.day.compareTo(b.day);
-              if (day != 0) return day;
-              final hour = a.hour.compareTo(b.hour);
-              return hour != 0 ? hour : a.id.compareTo(b.id);
-            }),
-        );
+    : _events = List<ScreenplayEvent>.unmodifiable(
+        [...screenplay.events]..sort((a, b) {
+          final day = a.day.compareTo(b.day);
+          if (day != 0) return day;
+          final hour = a.hour.compareTo(b.hour);
+          return hour != 0 ? hour : a.id.compareTo(b.id);
+        }),
+      ) {
+    validateConsumers();
+  }
+
+  /// Validates the editor/runtime boundary once at startup.
+  void validateConsumers() {
+    for (final event in _events) {
+      authoredEventConsumerFor(event.kind);
+    }
+  }
 
   final List<ScreenplayEvent> _events;
 
@@ -41,9 +62,9 @@ class GameEventOrchestrator {
   }
 
   List<ScreenplayEvent> eventsForDay(int day) => [
-        for (final event in _events)
-          if (event.day == day) event,
-      ];
+    for (final event in _events)
+      if (event.day == day) event,
+  ];
 
   /// Returns events crossed between two clock readings, including the event
   /// at [fromHour] and excluding the event at [toHour].
@@ -79,8 +100,7 @@ class GameEventCursor {
     this.plan, {
     this.runSeed = 0,
     Iterable<String> delivered = const [],
-  })
-      : _delivered = {...delivered};
+  }) : _delivered = {...delivered};
 
   final GameEventOrchestrator plan;
   final int runSeed;
@@ -105,15 +125,15 @@ class GameEventCursor {
 
   static GameEventCursor fromJson(
     GameEventOrchestrator plan,
-    Object? raw,
-    {int runSeed = 0}
-  ) {
+    Object? raw, {
+    int runSeed = 0,
+  }) {
     if (raw is! Map || raw['delivered'] is! List) {
       return GameEventCursor(plan, runSeed: runSeed);
     }
-    final delivered = (raw['delivered'] as List)
-        .whereType<String>()
-        .where((id) => plan.byId(id) != null);
+    final delivered = (raw['delivered'] as List).whereType<String>().where(
+      (id) => plan.byId(id) != null,
+    );
     return GameEventCursor(plan, runSeed: runSeed, delivered: delivered);
   }
 }

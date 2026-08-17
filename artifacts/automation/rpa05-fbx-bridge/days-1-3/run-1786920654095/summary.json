@@ -1,0 +1,100 @@
+{
+  "status": "failed",
+  "exitCode": 5,
+  "scenario": "days-1-3",
+  "runId": "run-1786920654095",
+  "failure": {
+    "kind": "infrastructure",
+    "message": "ProcessException: No such file or directory\n  Command: node tools/browser/renderer_smoke.cjs"
+  },
+  "events": 5,
+  "traceBytes": 1245,
+  "droppedEvents": 0,
+  "history": [
+    {
+      "seq": 0,
+      "type": "run.start",
+      "tick": 0,
+      "data": {
+        "scenario": "days-1-3"
+      }
+    },
+    {
+      "seq": 1,
+      "type": "runner.lifecycle",
+      "tick": 0,
+      "data": {
+        "phase": "starting-server",
+        "browser": "firefox"
+      }
+    },
+    {
+      "seq": 2,
+      "type": "runner.lifecycle",
+      "tick": 0,
+      "data": {
+        "phase": "server-ready",
+        "baseUrl": "http://127.0.0.1:45205"
+      }
+    },
+    {
+      "seq": 3,
+      "type": "runner.config",
+      "tick": 0,
+      "data": {
+        "mode": "run",
+        "scenario": "days-1-3",
+        "serverRoot": "dist/web",
+        "port": 0,
+        "baseUrl": "http://127.0.0.1:8090",
+        "browser": "firefox",
+        "renderer": "pixeldart",
+        "profile": "safe",
+        "viewport": {
+          "width": 800,
+          "height": 500
+        },
+        "seed": 7,
+        "fixedDelta": 0.016666666666666666,
+        "timeoutTicks": 900,
+        "artifacts": "artifacts/automation/rpa05-fbx-bridge",
+        "headless": true,
+        "resolvedRun": {
+          "schemaVersion": 2,
+          "canonical": {
+            "mode": "run",
+            "scenario": "days-1-3",
+            "serverRoot": "dist/web",
+            "port": 0,
+            "baseUrl": "http://127.0.0.1:8090",
+            "browser": "firefox",
+            "renderer": "pixeldart",
+            "profile": "safe",
+            "viewport": {
+              "width": 800,
+              "height": 500
+            },
+            "seed": 7,
+            "fixedDelta": 0.016666666666666666,
+            "timeoutTicks": 900,
+            "artifacts": "artifacts/automation/rpa05-fbx-bridge",
+            "headless": true
+          },
+          "compatibilityAliases": {}
+        }
+      }
+    },
+    {
+      "seq": 4,
+      "type": "run.failure",
+      "tick": 0,
+      "data": {
+        "kind": "infrastructure",
+        "message": "ProcessException: No such file or directory\n  Command: node tools/browser/renderer_smoke.cjs"
+      }
+    }
+  ],
+  "cleanup": {
+    "server": "closed-or-unavailable"
+  }
+}

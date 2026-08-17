@@ -1,0 +1,51 @@
+{
+  "status": "failed",
+  "exitCode": 5,
+  "scenario": "ground-circuit",
+  "runId": "run-1786923165359",
+  "resolvedRun": {
+    "mode": "run",
+    "scenario": "ground-circuit",
+    "serverRoot": "dist/web",
+    "port": 8090,
+    "baseUrl": "http://127.0.0.1:8090",
+    "browser": "firefox",
+    "renderer": "pixeldart",
+    "profile": "high",
+    "viewport": {
+      "width": 960,
+      "height": 540
+    },
+    "seed": 7,
+    "fixedDelta": 0.016666666666666666,
+    "timeoutTicks": 900,
+    "artifacts": "artifacts/automation/physics-only-rain-pass",
+    "headless": true,
+    "resolvedRun": {
+      "schemaVersion": 2,
+      "canonical": {
+        "mode": "run",
+        "scenario": "ground-circuit",
+        "serverRoot": "dist/web",
+        "port": 8090,
+        "baseUrl": "http://127.0.0.1:8090",
+        "browser": "firefox",
+        "renderer": "pixeldart",
+        "profile": "high",
+        "viewport": {
+          "width": 960,
+          "height": 540
+        },
+        "seed": 7,
+        "fixedDelta": 0.016666666666666666,
+        "timeoutTicks": 900,
+        "artifacts": "artifacts/automation/physics-only-rain-pass",
+        "headless": true
+      },
+      "compatibilityAliases": {}
+    }
+  },
+  "summary": "summary.json",
+  "trace": "trace.jsonl",
+  "junit": "junit.xml"
+}

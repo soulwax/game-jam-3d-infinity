@@ -224,7 +224,7 @@ House buildHouseFromBlueprint(AuthoredHouseManifest blueprint, int seed) {
             ),
         ],
         portalIds: List.unmodifiable(room.portalIds),
-        mantles: const [],
+        mantles: _authoredMantles(room.id),
         objects: const [],
         surfaceWall: room.surfaceWall,
         surfaceFloor: room.surfaceFloor,
@@ -268,6 +268,33 @@ House buildHouseFromBlueprint(AuthoredHouseManifest blueprint, int seed) {
   house.indexAuthoredBlueprint();
   return house;
 }
+
+/// Mantles are authored interaction anchors, not renderer decoration. Keep
+/// their stable IDs and room-local positions in the blueprint construction
+/// seam so focus, lighting, save state, and visual fixtures share one graph.
+List<Mantle> _authoredMantles(String roomId) => switch (roomId) {
+  'living-room' => [
+      Mantle(
+        id: 'mantle-living',
+        name: 'living-room gas mantle',
+        localAt: Vec3(3.70, 1.45, 0.80),
+        lit: true,
+      ),
+      Mantle(
+        id: 'mantle-living-second',
+        name: 'second living-room gas mantle',
+        localAt: Vec3(1.00, 1.45, 2.40),
+      ),
+    ],
+  'hall' => [
+      Mantle(
+        id: 'mantle-hall',
+        name: 'hall gas mantle',
+        localAt: Vec3(1.20, 1.45, 0.30),
+      ),
+    ],
+  _ => const <Mantle>[],
+};
 
 final class AuthoredLevel {
   final String id;

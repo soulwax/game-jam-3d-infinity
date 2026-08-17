@@ -1,0 +1,37 @@
+{
+  "captureContractVersion": 1,
+  "taskId": "RPA-05-HUMAN",
+  "purpose": "human-visual-confirmation",
+  "surface": "game",
+  "state": "bright",
+  "sourceMethod": "browser",
+  "safeArea": "full-frame",
+  "theme": "default",
+  "locale": "en",
+  "motion": "settled",
+  "quality": "safe",
+  "audience": "development",
+  "seed": null,
+  "privacyCheck": "pass",
+  "rightsStatus": "licensed-or-original",
+  "altText": "Human review capture: desktop-1080, safe profile, bright state.",
+  "notes": "Requested profile/state is encoded in the URL; verify the effective runtime state in-app. Machine-captured evidence; aesthetic approval remains human-owned.",
+  "schemaVersion": 1,
+  "reviewCaptureId": "desktop-1080-safe-bright",
+  "requestedRenderer": "pixeldart",
+  "profile": "safe",
+  "visualState": "bright",
+  "viewport": {
+    "id": "desktop-1080",
+    "width": 1920,
+    "height": 1080
+  },
+  "sourceUrl": "http://127.0.0.1:8081/?renderer=pixeldart&profile=safe&visualState=bright",
+  "browser": {
+    "name": "firefox",
+    "version": "153.0"
+  },
+  "promotedModel": "living-room",
+  "promotedModelDiagnostics": "{\"schema\":\"pixeldart-model-package-diagnostic-v1\",\"enabled\":true,\"attached\":true,\"bindingCount\":1,\"bindings\":[{\"placementId\":\"placement-living-fbx-room\",\"schema\":\"pixeldart-model-package-diagnostic-v1\",\"assetId\":\"living-room\",\"activeLod\":\"LOD0\",\"attached\":true,\"itemCount\":34,\"meshCount\":34,\"cacheReferenceCount\":34}]}",
+  "screenshot": "browser-human-desktop-1080-safe-bright.png"
+}

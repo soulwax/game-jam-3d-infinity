@@ -59,6 +59,13 @@ final class HouseInventory {
     return null;
   }
 
+  /// Returns the production assets that still need a promoted package.
+  List<String> missingProductionPackages(Set<String> promotedAssetIds) => [
+    for (final asset in assets)
+      if (asset.status == 'production' && !promotedAssetIds.contains(asset.id))
+        asset.id,
+  ]..sort();
+
   InventoryAsset assetFor(String assetId) => assets.firstWhere(
     (asset) => asset.id == assetId,
     orElse: () => throw StateError('inventory asset missing: $assetId'),
@@ -87,6 +94,11 @@ final class HouseInventory {
           asset.bounds.min.y > asset.bounds.max.y ||
           asset.bounds.min.z > asset.bounds.max.z) {
         throw StateError('invalid bounds for inventory asset ${asset.id}');
+      }
+      if (!{'production', 'proxy', 'invisible-anchor'}.contains(asset.status)) {
+        throw StateError(
+          'invalid inventory asset status ${asset.id}: ${asset.status}',
+        );
       }
     }
     final placementIds = <String>{};
@@ -150,6 +162,9 @@ final class InventoryAsset {
   final String source;
   final String proxy;
   final String pivot;
+
+  /// Presentation readiness; omitted legacy records remain explicit proxies.
+  final String status;
   final InventoryBounds bounds;
 
   const InventoryAsset({
@@ -158,6 +173,7 @@ final class InventoryAsset {
     required this.source,
     required this.proxy,
     required this.pivot,
+    this.status = 'proxy',
     required this.bounds,
   });
 
@@ -169,6 +185,7 @@ final class InventoryAsset {
       source: _string(map, 'source'),
       proxy: _string(map, 'proxy'),
       pivot: _string(map, 'pivot'),
+      status: map['status'] as String? ?? 'proxy',
       bounds: InventoryBounds.fromJson(map['bounds']),
     );
   }

@@ -1,3 +1,6 @@
 [submodule "external/pixeldart"]
 	path = external/pixeldart
 	url = git@github.com:soulwax/pixeldart.git
+[submodule "external/project-agile-web"]
+	path = external/project-agile-web
+	url = git@github.com:soulwax/project-agile-web.git

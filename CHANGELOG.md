@@ -6,6 +6,13 @@ on changes players or contributors can feel. Detailed renderer notes belong in
 
 ## Unreleased
 
+## [0.2.0.0] — 2026-08-17
+
+- Published the Svelte project-agile web board as a private, Vercel-ready
+  submodule with login protection and interactive plan content.
+- Added the latest Pixeldart atmospheric presentation pipeline and renderer
+  contracts, then rebuilt the parent release with the WASM target.
+
 - Added a deterministic Pixeldart rain-streak effect driven by weather
   intensity, with a zero-intensity no-op and a focused renderer contract.
 - Added deterministic weather capture plumbing and a day-3 rain hero pair;
