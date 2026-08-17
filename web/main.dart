@@ -8,6 +8,7 @@ import 'dart:typed_data';
 import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/audio.dart';
 import 'package:quarantine/engine/audio_planner.dart';
+import 'package:quarantine/engine/weather_audio.dart';
 import 'package:quarantine/engine/camera.dart';
 import 'package:quarantine/engine/fps_motion.dart';
 import 'package:quarantine/engine/locomotion_controller.dart';
@@ -31,6 +32,7 @@ import 'package:quarantine/presentation/pixeldart_resource_governor.dart';
 import 'package:quarantine/presentation/pixeldart_shader_pipeline_exporter.dart';
 import 'package:quarantine/presentation/renderer_backend.dart';
 import 'package:quarantine/presentation/day_night_atmosphere.dart';
+import 'package:quarantine/presentation/solar_daylight.dart';
 import 'package:quarantine/presentation/realistic_thunderstorm_engine.dart';
 import 'package:quarantine/presentation/shader_tuning_bridge.dart';
 import 'package:quarantine/presentation/shader_tuning_state.dart';
@@ -179,6 +181,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   WeatherPhysicsSnapshot? _weatherPhysics;
   WarmClearanceSnapshot? _weatherWarmClearance;
   List<WarmObjectSource> _warmSources = const [];
+  List<WarmObjectSource> get warmSources => _warmSources;
   List<WeatherCollisionBox> _weatherObstacles = const [];
   int _weatherImpactCount = 0;
   double _weatherSettledMassKg = 0;
@@ -301,6 +304,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _device = deviceLease;
     _queriedCapabilities = _device.device.queryCapabilities();
     _profile = _capabilityBridge.runtimeProfile(_queriedCapabilities);
+    // The game opts into the renderer's cinematic participating-media path
+    // on capable high-quality adapters. Pixeldart's library default remains
+    // the lighter clean profile for downstream hosts that do not request it.
+    if (_profile.kind == px.QualityProfileKind.high) {
+      _profile = px.QualityProfile.cinematic;
+    }
     final surface = px.SurfaceMetrics(
       cssWidth: width,
       cssHeight: height,
@@ -437,7 +446,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   Future<void> applyGraphicsProfile(GraphicsSettingsProfile settings) async {
     if (!_initialized) return;
     final requestedProfile = switch (settings.preset) {
-      GraphicsPreset.high => px.QualityProfile.clean,
+      GraphicsPreset.high => px.QualityProfile.cinematic,
       GraphicsPreset.safe => px.QualityProfile.safe,
       GraphicsPreset.standard => px.QualityProfile.minimal,
       GraphicsPreset.custom => _profile,
@@ -1145,23 +1154,68 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final effectiveWetness = (_shaderTuning.getValue('wetness_override') >= 0.0)
         ? _shaderTuning.getValue('wetness_override')
         : atmos.windowSurfaceWetness;
-    _surfaceWetness = effectiveWetness.clamp(0.0, 1.0).toDouble();
+    final reflectionStrength = _shaderTuning
+        .getValue('weather_reflection_strength')
+        .clamp(0.0, 2.0)
+        .toDouble();
+    _surfaceWetness = (effectiveWetness * reflectionStrength)
+        .clamp(0.0, 1.0)
+        .toDouble();
+
+    // Pixeldart owns the geometric solar contract. The game supplies a
+    // latitude and an authored daylight duration, then keeps artistic tuning
+    // bounded around the physically resolved state. Declination is solved
+    // from the daylight duration so the 21-day weather arc produces gradual,
+    // phase-correct sunrise and sunset instead of clock-band jumps.
+    final solar = px.SolarCycleEngine.evaluate(
+      px.SolarCycleInput(
+        timeHours: hour,
+        solarNoonHours: 13.0,
+        latitudeRadians: 51.5 * math.pi / 180.0,
+        solarDeclinationRadians: SolarDaylightModel.declinationForDaylightHours(
+          weather.daylightHours,
+        ),
+        cloudCover01: effectiveRain * 0.92,
+        precipitation01: effectiveRain,
+        aerosolTurbidity: 2.0 + weather.windSpeedMps * 0.03,
+        relativeHumidity01: (0.68 + effectiveRain * 0.22)
+            .clamp(0.0, 1.0)
+            .toDouble(),
+        solarIntensity: 1.0,
+        baseFogDensity: 0.0015,
+        fogHeightFalloff: 0.06,
+      ),
+    );
+    _canvas
+      ..setAttribute('data-renderer-solar-phase', solar.phase.name)
+      ..setAttribute(
+        'data-renderer-solar-sunrise-hours',
+        solar.sunriseHours.toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-solar-sunset-hours',
+        solar.sunsetHours.toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-solar-elevation-deg',
+        (solar.sunElevationRadians * 180.0 / math.pi).toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-solar-transmittance',
+        solar.cloudTransmittance.toStringAsFixed(4),
+      );
 
     _thunderstormEngine.update(0.0166, rainIntensity: effectiveRain);
     final flash = _thunderstormEngine.flashState;
 
     final solarDaylight =
-        (math.sin(math.max(0.0, atmos.sunElevationDegrees) * math.pi / 180.0) /
+        (math.sin(math.max(0.0, solar.sunElevationRadians)) /
                 math.sin(65.0 * math.pi / 180.0))
             .clamp(0.0, 1.0)
             .toDouble();
     final isDay = solarDaylight > 0.001;
     final baselineDirVec = isDay
-        ? px.Vec3(
-            atmos.sunDirection.x,
-            atmos.sunDirection.y,
-            atmos.sunDirection.z,
-          )
+        ? solar.sunDirection
         : px.Vec3(
             atmos.moonDirection.x,
             atmos.moonDirection.y,
@@ -1175,7 +1229,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
           )
         : baselineDirVec;
     final baseDirCol = isDay
-        ? px.LinearColor(atmos.sunColor.r, atmos.sunColor.g, atmos.sunColor.b)
+        ? solar.sunColor
         : px.LinearColor(
             atmos.moonColor.r,
             atmos.moonColor.g,
@@ -1193,10 +1247,18 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final lightningDistanceAttenuation = flash.distanceAttenuation
         .clamp(0.12, 2.0)
         .toDouble();
+    final solarDirectionalIntensity = isDay
+        ? solar.directionalIntensity
+        : atmos.directionalIntensity;
+    final lightningExposure = _shaderTuning
+        .getValue('weather_lightning_intensity')
+        .clamp(0.0, 2.0)
+        .toDouble();
     final dirIntensity = flash.active
-        ? (atmos.directionalIntensity * atmos.windowLightLeakFactor * 0.12 +
-              flash.intensity * 4.5 * lightningDistanceAttenuation)
-        : (atmos.directionalIntensity * atmos.windowLightLeakFactor);
+        ? (solarDirectionalIntensity * atmos.windowLightLeakFactor * 0.12 +
+              flash.intensity * 4.5 * lightningDistanceAttenuation *
+                  lightningExposure)
+        : (solarDirectionalIntensity * atmos.windowLightLeakFactor);
 
     _canvas
       ..setAttribute('data-renderer-lightning-active', flash.active.toString())
@@ -1223,12 +1285,17 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final fogEnabled = _shaderTuning.getBool('fog_enable');
     final tunedFogDensity = _shaderTuning.getValue('fog_density');
     final tunedFogHeightFalloff = _shaderTuning.getValue('fog_height_falloff');
+    final fogScattering = _shaderTuning
+        .getValue('weather_fog_scattering')
+        .clamp(0.0, 2.0)
+        .toDouble();
     final fogDensity = fogEnabled
-        ? atmos.fogDensity *
-              (tunedFogDensity / defaultFogDensity).clamp(0.0, 8.0).toDouble()
+        ? solar.fogDensity *
+              (tunedFogDensity / defaultFogDensity).clamp(0.0, 8.0).toDouble() *
+              fogScattering
         : 0.0;
     final fogHeightFalloff = fogEnabled
-        ? atmos.fogHeightFalloff *
+        ? solar.fogHeightFalloff *
               (tunedFogHeightFalloff / defaultFogHeightFalloff)
                   .clamp(0.0, 8.0)
                   .toDouble()
@@ -1289,6 +1356,28 @@ final class _PixeldartWebRuntime implements RendererRuntime {
           );
     final sourceField = _volumetricSourceField;
     final sourceFog = sourceField?.radiance ?? px.Vec3.zero;
+    final thermalSources = <px.ThermalSource>[
+      for (var i = 0; i < _warmSources.length && i < 4; i++)
+        () {
+          final source = _warmSources[i];
+          final thermalContrast =
+              ((source.surfaceTemperatureCelsius -
+                          weather.outsideTemperatureCelsius) /
+                      60.0)
+                  .clamp(0.0, 1.0)
+                  .toDouble();
+          return px.ThermalSource(
+            id: 'warm:$i',
+            position: px.Vec3(
+              source.position.x,
+              source.position.y,
+              source.position.z,
+            ),
+            radiusMeters: source.radiusM,
+            dissolution01: thermalContrast,
+          );
+        }(),
+    ];
     if (sourceField != null) {
       _canvas
         ..setAttribute(
@@ -1328,6 +1417,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       ),
       pointLights: points,
       spotLights: spots,
+      volumetricSources: volumetricSources,
+      thermalSources: thermalSources,
       clearColor: const px.LinearColor(0.008, 0.012, 0.024),
       fogColor: px.LinearColor(
         atmos.fogColor.r * 0.08 + sourceFog.x.clamp(0.0, 8.0) * 0.015,
@@ -1453,6 +1544,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'post_film_grain',
       'post_affine_warp',
       'post_vertex_snap',
+      'weather_particles_enable',
+      'weather_particle_density',
+      'weather_particle_size',
+      'weather_snow_accumulation',
+      'weather_fog_scattering',
+      'weather_lightning_intensity',
+      'weather_reflection_strength',
     };
     final unavailable = <String, String>{
       for (final item in _shaderTuning.items)
@@ -1503,6 +1601,17 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'post_color_grade': _post.colorGradeStrength,
         'post_affine_warp': _post.affineWarpStrength,
         'post_vertex_snap': _post.vertexSnapGrid,
+        'weather_particle_density': _shaderTuning
+            .getValue('weather_particle_density'),
+        'weather_particle_size': _shaderTuning.getValue('weather_particle_size'),
+        'weather_snow_accumulation': _shaderTuning
+            .getValue('weather_snow_accumulation'),
+        'weather_fog_scattering': _shaderTuning
+            .getValue('weather_fog_scattering'),
+        'weather_lightning_intensity': _shaderTuning
+            .getValue('weather_lightning_intensity'),
+        'weather_reflection_strength': _shaderTuning
+            .getValue('weather_reflection_strength'),
         'post_quantization_bits': _post.quantizationBits.toDouble(),
         'post_vhs_chroma': _post.vhsChromaWeight,
         'post_vhs_noise': _post.vhsNoiseWeight,
@@ -1510,6 +1619,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       effectiveToggles: {
         'fog_enable': _effectiveFogDensity > 0,
         'shadow_ssdo_enable': _post.ssaoStrength > 0,
+        'weather_particles_enable': _shaderTuning
+            .getBool('weather_particles_enable'),
       },
       unavailableReasons: unavailable,
       debugViewsReason:
@@ -1577,7 +1688,11 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _surfaceDissolution = 0;
       return;
     }
-    _surfaceSnowCoverage = (snapshot.snowDepthM / 0.08)
+    final snowScale = _shaderTuning
+        .getValue('weather_snow_accumulation')
+        .clamp(0.0, 2.0)
+        .toDouble();
+    _surfaceSnowCoverage = (snapshot.snowDepthM / 0.08 * snowScale)
         .clamp(0.0, 1.0)
         .toDouble();
     _surfaceDissolution = snapshot.materialDissolution01
@@ -1778,6 +1893,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _weatherReboundEnergyJoules = 0;
     final physics = _weatherPhysics;
     final kind = physics?.precipitationKind ?? PrecipitationKind.none;
+    if (!_shaderTuning.getBool('weather_particles_enable')) return;
+    final particleDensity = _shaderTuning
+        .getValue('weather_particle_density')
+        .clamp(0.0, 2.0)
+        .toDouble();
+    final particleScale = _shaderTuning
+        .getValue('weather_particle_size')
+        .clamp(0.25, 2.0)
+        .toDouble();
     final profile =
         physics?.particleProfile ??
         WeatherParticleProfile.forKind(PrecipitationKind.none);
@@ -1806,7 +1930,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _ => 32.0,
     };
     final requestedCount =
-        (8 + _rainIntensity * countScale * _rainWindowVisibility).round().clamp(
+        (8 + _rainIntensity * countScale * particleDensity *
+                _rainWindowVisibility)
+            .round()
+            .clamp(
           0,
           40,
         );
@@ -1838,7 +1965,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       particleCount: count,
       seed: _noiseSeed,
       instanceFamilyKey: 0x77656174 + kind.index,
-      particleScale: profile.particleScale,
+      particleScale: profile.particleScale * particleScale,
       alignToVelocity: profile.alignToVelocity,
     );
     final stats = field.frameStats(input);
@@ -1862,7 +1989,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         startPosition: _toGameVec3(previous.position),
         endPosition: _toGameVec3(current.position),
         velocityMps: _toGameVec3(current.velocity),
-        particleRadiusM: 0.02 * profile.particleScale,
+        particleRadiusM: 0.02 * profile.particleScale * particleScale,
         particleMassKg: profile.particleMassKg,
         obstacles: _weatherObstacles,
       );
@@ -1876,7 +2003,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       input,
       (kinematics) => !_insideWeatherObstacle(
         _toGameVec3(kinematics.position),
-        0.02 * profile.particleScale,
+        0.02 * profile.particleScale * particleScale,
       ),
     );
   }
@@ -2631,6 +2758,7 @@ HouseInventory? _houseInventory;
 final Map<String, WeatherSurfaceAccumulator> _weatherSurfacesByRoom = {};
 AudioPlanner? _audioPlanner;
 int _audioEventSequence = 0;
+int _weatherAudioFrameIndex = 0;
 String? _lastPlayedVisitorVoice;
 final HouseClock _houseClock = HouseClock();
 final HouseServiceSoundScheduler _houseServiceSounds =
@@ -2772,6 +2900,7 @@ final ShaderTuningState _shaderTuning = ShaderTuningState();
 final ShaderTuningBridge _tuningBridge = ShaderTuningBridge();
 final RealisticThunderstormEngine _thunderstormEngine =
     RealisticThunderstormEngine();
+final WeatherAudioEngine _weatherAudioEngine = WeatherAudioEngine();
 final GuiFlowCoordinator _guiFlowCoordinator = GuiFlowCoordinator();
 
 Panel? _activePanel;
@@ -4023,6 +4152,10 @@ void _publishRendererDiagnostics() {
       _backendSelection.rejectionReason ?? '',
     )
     ..setAttribute(
+      'data-renderer-clean-baseline',
+      _shaderTuning.modifiedControlIds.isEmpty ? 'true' : 'false',
+    )
+    ..setAttribute(
       'data-renderer-configuration',
       _pixeldartRuntime == null
           ? '{}'
@@ -4268,7 +4401,11 @@ Future<void> _loadAuthoredHouseManifest() async {
       _canvas.setAttribute('data-house-manifest-source', url);
       // The FBX-derived house is a provisional visible place for bridge and
       // play testing. It must not be reported as the finished story setting.
-      _canvas.setAttribute('data-house-role', 'provisional-visible-place');
+      _canvas.setAttribute('data-house-role', manifest.presentationScope);
+      _canvas.setAttribute(
+        'data-house-story-authority',
+        manifest.storyAuthority,
+      );
       validated = true;
       break;
     } catch (error) {
@@ -4322,6 +4459,10 @@ Future<void> _loadAuthoredHouseInventory() async {
       _canvas.setAttribute(
         'data-house-inventory-count',
         '${inventory.placements.length}',
+      );
+      _canvas.setAttribute(
+        'data-house-inventory-status-counts',
+        jsonEncode(inventory.statusCounts),
       );
       return;
     } catch (error) {
@@ -4831,6 +4972,12 @@ void _raf(num ts) {
           frameWeather.outsideTemperatureCelsius,
           inventory: _houseInventory,
         ),
+      );
+      _updateWeatherAudio(
+        frameWeather,
+        windowOpen01: _windowOpeningFraction(_currentRoom),
+        dtSeconds: frameTime,
+        warmSources: _pixeldartRuntime?.warmSources ?? const [],
       );
       final weatherSurface = _advanceWeatherSurface(
         frameWeather,
@@ -5449,6 +5596,12 @@ void _resolveEnding({bool ruptureCompleted = false}) {
 void _presentEnding(EndingState ending) {
   _ending = ending;
   _runEnded = true;
+  _canvas
+    ..setAttribute('data-ending-kind', ending.kind.name)
+    ..setAttribute(
+      'data-ending-texture-count',
+      '${NarrativeEndingTexture.forRun(_session.narrative, ending.kind).length}',
+    );
   _motion.stop();
   _openPanel(_endingPanel);
   final lines = [
@@ -5678,6 +5831,112 @@ double _rainWindowVisibility(String roomId) {
   if (windows.isEmpty) return 0.12;
   final open = windows.where((window) => window.shutterOpen).length;
   return (open / windows.length).clamp(0.12, 1.0).toDouble();
+}
+
+double _windowOpeningFraction(String roomId) {
+  final room = _house.byId(roomId);
+  final windows = room?.windows ?? const [];
+  if (windows.isEmpty) return 0.0;
+  final open = windows.where((window) => window.shutterOpen).length;
+  return (open / windows.length).clamp(0.0, 1.0).toDouble();
+}
+
+void _updateWeatherAudio(
+  WeatherDay weather, {
+  required double windowOpen01,
+  required double dtSeconds,
+  required List<WarmObjectSource> warmSources,
+}) {
+  final kind = weather.effectivePrecipitationKind;
+  final physics = WeatherPhysics.evaluate(
+    WeatherPhysicsInput(
+      weather: weather,
+      roomTemperatureCelsius: weather.outsideTemperatureCelsius,
+      relativeHumidity: (0.82 - weather.rainIntensity * 0.12)
+          .clamp(0.35, 0.98)
+          .toDouble(),
+      shelterFactor: (1.0 - windowOpen01).clamp(0.0, 1.0).toDouble(),
+      insulationResistance: 2.5,
+      internalHeatWatts: 0,
+      thermalMassJoulesPerKelvin: 18000,
+      surfaceAreaM2: 1,
+      dtSeconds: 0,
+    ),
+  );
+  final flash = _thunderstormEngine.flashState;
+  final warmth = warmSources.fold<double>(
+    0.0,
+    (sum, source) => sum + source.heatOutputWatts,
+  );
+  final frame = _weatherAudioEngine.resolve(
+    WeatherAudioInput(
+      precipitationKind: kind,
+      precipitationIntensity01: weather.rainIntensity,
+      windSpeedMps: physics.effectiveWindSpeedMps,
+      temperatureCelsius: weather.outsideTemperatureCelsius,
+      relativeHumidity01: (0.82 - weather.rainIntensity * 0.12)
+          .clamp(0.35, 0.98)
+          .toDouble(),
+      windowOpen01: windowOpen01,
+      wallTransmission01: 1.0 - (0.75 * (1.0 - windowOpen01)),
+      exteriorDistanceM: 6.0,
+      stormActivity01: kind == PrecipitationKind.none
+          ? 0.0
+          : weather.rainIntensity,
+      lightningDistanceM: flash.sourceDistanceMeters,
+      lightningStrikeSequence: _thunderstormEngine.strikeSequence,
+      lightningFlashActive: flash.active,
+      roomAbsorption01: 0.32,
+      roomVolumeM3: 180.0,
+      internalWarmth01: (warmth / 900.0).clamp(0.0, 1.0).toDouble(),
+      surfaceImpactEnergy01: (physics.impactEnergyFluxWattsPerM2 / 1000.0)
+          .clamp(0.0, 1.0)
+          .toDouble(),
+      dtSeconds: dtSeconds.clamp(0.0, 0.5).toDouble(),
+      frameIndex: _weatherAudioFrameIndex++,
+      seed: _session.runSeed,
+    ),
+  );
+  final audio = _audio;
+  audio?.applyWeatherLayers([
+    for (final layer in frame.layers)
+      if (layer.loop)
+        (
+          id: layer.id,
+          cue: layer.cue,
+          gainLinear: layer.gainLinear,
+          lowPassHz: layer.lowPassHz,
+          highPassHz: layer.highPassHz,
+          stereoPan: layer.stereoPan,
+          reverbSend01: layer.reverbSend01,
+        ),
+  ]);
+  if (audio != null) {
+    for (final event in frame.events) {
+      audio.playDelayed(
+        event.cue,
+        rate: event.playbackRate,
+        gain: event.gainLinear,
+        delaySeconds: event.delaySeconds,
+        stereoPan: event.stereoPan,
+      );
+    }
+  }
+  _canvas
+    ..setAttribute(
+      'data-audio-weather-transmission',
+      frame.exteriorTransmission01.toStringAsFixed(3),
+    )
+    ..setAttribute(
+      'data-audio-weather-cutoff-hz',
+      frame.exteriorLowPassHz.toStringAsFixed(1),
+    )
+    ..setAttribute('data-audio-weather-layers', '${frame.layers.length}')
+    ..setAttribute('data-audio-weather-events', '${frame.events.length}')
+    ..setAttribute(
+      'data-audio-weather-window-open',
+      windowOpen01.toStringAsFixed(3),
+    );
 }
 
 WeatherSurfaceSnapshot? _advanceWeatherSurface(

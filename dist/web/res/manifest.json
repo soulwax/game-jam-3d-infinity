@@ -46,6 +46,11 @@
           "path": "vo/**",
           "reason": "TTS-rendered voice clips; unmanifested and provenance unrecorded, tracked as board card Q0 section 6",
           "status": "unverified"
+        },
+        {
+          "path": "sfx/weather/manifest.json",
+          "reason": "generated procedural weather-audio recipe metadata emitted beside the generated samples",
+          "status": "generated"
         }
       ]
     }
@@ -78,6 +83,19 @@
     "range-settle": "sfx/range-settle.wav",
     "cellar-drip": "sfx/cellar-drip.wav",
     "cistern-settle": "sfx/cistern-settle.wav",
+    "weather-rain": "sfx/weather/weather-rain.wav",
+    "weather-hail": "sfx/weather/weather-hail.wav",
+    "weather-hail-roof": "sfx/weather/weather-hail-roof.wav",
+    "weather-snow": "sfx/weather/weather-snow.wav",
+    "weather-sleet": "sfx/weather/weather-sleet.wav",
+    "weather-wind": "sfx/weather/weather-wind.wav",
+    "weather-window-rattle": "sfx/weather/weather-window-rattle.wav",
+    "weather-thunder-bed": "sfx/weather/weather-thunder-bed.wav",
+    "weather-thunder-crack": "sfx/weather/weather-thunder-crack.wav",
+    "weather-thunder-roll": "sfx/weather/weather-thunder-roll.wav",
+    "weather-interior-drip": "sfx/weather/weather-interior-drip.wav",
+    "weather-interior-warmth": "sfx/weather/weather-interior-warmth.wav",
+    "weather-interior-coffee": "sfx/weather/weather-interior-coffee.wav",
     "vo-demo-new-irish-courteous": "vo/demo/demo-new-irish-courteous.ogg",
     "vo-demo-new-australian-alert": "vo/demo/demo-new-australian-alert.ogg",
     "vo-demo-new-authority-warning": "vo/demo/demo-new-authority-warning.ogg",

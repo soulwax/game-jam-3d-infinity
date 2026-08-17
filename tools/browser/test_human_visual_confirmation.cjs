@@ -16,8 +16,21 @@ const parsed = parseArgs([
 assert.strictEqual(parsed.url, 'http://localhost:8090/game');
 assert.deepStrictEqual(parsed.profiles, ['safe', 'high']);
 assert.deepStrictEqual(parsed.states, ['dark', 'bright']);
+assert.deepStrictEqual(parsed.viewports, [
+  { id: 'desktop-720', width: 1280, height: 720 },
+  { id: 'desktop-1080', width: 1920, height: 1080 },
+  { id: 'narrow', width: 390, height: 844 },
+]);
 assert.strictEqual(parsed.readySelector, '#test-canvas');
 assert.strictEqual(parsed.resume, true);
+
+const batched = parseArgs(['--viewports', 'narrow,desktop-720']);
+assert.deepStrictEqual(batched.viewports, [
+  { id: 'narrow', width: 390, height: 844 },
+  { id: 'desktop-720', width: 1280, height: 720 },
+]);
+assert.throws(() => parseArgs(['--viewports', 'unknown']), /unknown viewport/);
+assert.throws(() => parseArgs(['--viewports', 'narrow,narrow']), /duplicates/);
 
 const reviewUrl = appendReviewQuery(parsed.url, 'high', 'dark');
 assert(reviewUrl.includes('renderer=pixeldart'));

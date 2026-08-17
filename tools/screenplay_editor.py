@@ -9,6 +9,7 @@ line-oriented format used by tools/story_build.dart, not a second story format.
 from __future__ import annotations
 
 import argparse
+import copy
 import importlib.util
 import json
 import math
@@ -23,10 +24,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 try:
     import tkinter as tk
-    from tkinter import messagebox, ttk
+    from tkinter import messagebox, simpledialog, ttk
 except ImportError:  # Allows --help and clear diagnostics on headless builders.
     tk = None  # type: ignore[assignment]
     messagebox = None  # type: ignore[assignment]
+    simpledialog = None  # type: ignore[assignment]
     ttk = None  # type: ignore[assignment]
 
 
@@ -98,6 +100,10 @@ VOICE_VARIATIONS = (
     "natural", "bright", "dark", "breathy", "nasal", "strained", "childlike",
     "warm", "hollow", "metallic", "shaky", "elderly",
 )
+APPLE_EMPHASIS = ("none", "reduced", "strong")
+APPLE_VOICE_FALLBACKS = ("Default", "Alex", "Samantha", "Daniel", "Karen", "Moira")
+APPLE_VOLUMES = ("0.50", "0.70", "0.85", "1.00")
+APPLE_PAUSES = ("0", "100", "250", "500", "750", "1000")
 VOICE_DEFAULTS = {
     "broadcast": ("formal", "wireless"),
     "child": ("casual", "letterbox"),
@@ -256,6 +262,63 @@ def encode_script(script: Script) -> str:
     return "\n".join(lines).rstrip() + "\n"
 
 
+def validate_script(script: Script) -> list[str]:
+    """Return actionable structural issues before a screenplay is written."""
+    issues: list[str] = []
+    scene_ids = [scene.scene_id for scene in script.scenes]
+    event_ids = [event.event_id for event in script.events]
+    if not script.scenes:
+        issues.append("The screenplay needs at least one scene.")
+    for value, label in ((scene_ids, "scene ID"), (event_ids, "event ID")):
+        duplicates = sorted({item for item in value if value.count(item) > 1})
+        issues.extend(f"Duplicate {label}: {item}" for item in duplicates)
+    scene_set = set(scene_ids)
+    for scene in script.scenes:
+        if not scene.scene_id.strip():
+            issues.append(f"Day {scene.day}: scene ID is empty.")
+        if not scene.title.strip():
+            issues.append(f"{scene.scene_id or 'Scene'}: title is empty.")
+        for beat_number, beat in enumerate(scene.beats, 1):
+            if beat.kind not in {"action", "dialogue"}:
+                issues.append(f"{scene.scene_id}: moment {beat_number} has unknown type {beat.kind!r}.")
+            if not beat.text.strip():
+                issues.append(f"{scene.scene_id}: moment {beat_number} is empty.")
+            if beat.kind == "dialogue" and not (beat.speaker or "").strip():
+                issues.append(f"{scene.scene_id}: dialogue moment {beat_number} has no speaker.")
+        for branch in scene.branches:
+            if not branch.prompt.strip():
+                issues.append(f"{scene.scene_id}: a choice has no prompt.")
+            branch_option_ids: list[str] = []
+            for option in branch.options:
+                branch_option_ids.append(option.option_id)
+                if not option.label.strip():
+                    issues.append(f"{scene.scene_id}: answer {option.option_id or '(unnamed)'} has no label.")
+                if option.next_scene != "END" and option.next_scene not in scene_set:
+                    issues.append(f"{scene.scene_id}: answer {option.option_id} points to missing scene {option.next_scene!r}.")
+            issues.extend(
+                f"{scene.scene_id}: duplicate answer ID in choice: {item}"
+                for item in sorted({item for item in branch_option_ids if branch_option_ids.count(item) > 1})
+            )
+    for event in script.events:
+        if not event.label.strip():
+            issues.append(f"{event.event_id}: event description is empty.")
+        if event.day < 1 or event.hour < 0 or event.hour >= 24:
+            issues.append(f"{event.event_id}: event time must be day >= 1 and hour from 0 to under 24.")
+        if event.next_scene and event.next_scene != "END" and event.next_scene not in scene_set:
+            issues.append(f"{event.event_id}: event points to missing scene {event.next_scene!r}.")
+        if event.random_from is not None or event.random_to is not None:
+            if event.random_from is None or event.random_to is None or event.random_from < 0 or event.random_to >= 24 or event.random_from > event.random_to:
+                issues.append(f"{event.event_id}: random time range is invalid.")
+        for effect in event.effects:
+            if "=" not in effect or effect.startswith("=") or effect.endswith("="):
+                issues.append(f"{event.event_id}: effect must use key=value ({effect!r}).")
+        if event.source and event.source not in script.sources:
+            issues.append(f"{event.event_id}: source {event.source!r} is not listed in SOURCE records.")
+        if event.cue and event.cue not in CUES:
+            issues.append(f"{event.event_id}: unknown voice cue {event.cue!r}.")
+    return issues
+
+
 class Editor(tk.Tk if tk is not None else object):
     def __init__(self, path: Path, no_build: bool = False) -> None:
         super().__init__()
@@ -271,24 +334,45 @@ class Editor(tk.Tk if tk is not None else object):
         self.tts_play_button: ttk.Button | None = None
         self.tts_keep_button: ttk.Button | None = None
         self.tts_discard_button: ttk.Button | None = None
+        self.tts_apple_volume: ttk.Combobox | None = None
+        self.tts_apple_emphasis: ttk.Combobox | None = None
+        self.tts_apple_pause: ttk.Combobox | None = None
+        self.tts_apple_voice: ttk.Combobox | None = None
         self.review_voice_path: Path | None = None
         self.review_voice_name: str | None = None
         self.voice_player: subprocess.Popen[bytes] | None = None
         self.event_window: tk.Toplevel | None = None
         self.character_window: tk.Toplevel | None = None
         self.dirty = False
+        self._ui_sync = True
+        self.visible_scene_indices: list[int] = []
 
         self.title("The Quarantine — Screenplay Editor")
-        self.geometry("1180x760")
-        self.minsize(900, 600)
+        self.geometry("1280x820")
+        self.minsize(980, 640)
         self.protocol("WM_DELETE_WINDOW", self.close)
         self.bind("<Control-s>", lambda _event: self.save())
+        self.bind("<Control-Shift-l>", lambda _event: self._show_validation())
         self.bind("<F5>", lambda _event: self._preview())
         self.bind("<Control-e>", lambda _event: self._open_orchestrator())
         self.bind("<Control-Shift-c>", lambda _event: self._open_characters())
         self.bind("<Control-Shift-v>", lambda _event: self._generate_voice())
+        self._configure_style()
         self._make_widgets()
         self._load_scene(0)
+        self._ui_sync = False
+
+    def _configure_style(self) -> None:
+        style = ttk.Style(self)
+        if "clam" in style.theme_names():
+            style.theme_use("clam")
+        style.configure("Toolbar.TFrame", padding=(10, 8))
+        style.configure("Panel.TFrame", padding=10)
+        style.configure("PanelHeading.TLabel", font=("TkDefaultFont", 11, "bold"))
+        style.configure("Muted.TLabel", foreground="#68717a")
+        style.configure("Primary.TButton", padding=(12, 6))
+        style.configure("Danger.TButton", foreground="#8a2f2f")
+        style.configure("Status.TLabel", foreground="#68717a")
 
     @staticmethod
     def _toolbar_button(parent: tk.Misc, text: str, command: object, tip: str) -> ttk.Button:
@@ -296,23 +380,26 @@ class Editor(tk.Tk if tk is not None else object):
         previous_title = [""]
 
         def show_tip(_event: object) -> None:
-            previous_title[0] = parent.winfo_toplevel().title()
-            parent.winfo_toplevel().title(f"{previous_title[0]} · {tip}")
+            status = getattr(parent.winfo_toplevel(), "status", None)
+            if status is not None:
+                previous_title[0] = status.cget("text")
+                status.configure(text=tip)
 
         def hide_tip(_event: object) -> None:
-            parent.winfo_toplevel().title(previous_title[0] or "The Quarantine — Screenplay Editor")
+            status = getattr(parent.winfo_toplevel(), "status", None)
+            if status is not None:
+                status.configure(text=previous_title[0] or str(parent.winfo_toplevel().path))
 
         button.bind("<Enter>", show_tip)
         button.bind("<Leave>", hide_tip)
         return button
 
     def _make_widgets(self) -> None:
-        self.columnconfigure(1, weight=1)
-        self.columnconfigure(2, weight=1)
+        self.columnconfigure(0, weight=1)
         self.rowconfigure(1, weight=1)
 
-        toolbar = ttk.Frame(self, padding=(8, 6))
-        toolbar.grid(row=0, column=0, columnspan=3, sticky="ew")
+        toolbar = ttk.Frame(self, style="Toolbar.TFrame")
+        toolbar.grid(row=0, column=0, sticky="ew")
         toolbar.columnconfigure(8, weight=1)
 
         def separator(column: int) -> None:
@@ -320,46 +407,86 @@ class Editor(tk.Tk if tk is not None else object):
                 row=0, column=column, sticky="ns", padx=7
             )
 
-        self._toolbar_button(toolbar, "Save", self.save, "save and validate").grid(row=0, column=0, padx=2)
-        self._toolbar_button(toolbar, "Preview", self._preview, "preview the selected scene").grid(row=0, column=1, padx=2)
-        separator(2)
-        self._toolbar_button(toolbar, "Game events", self._open_orchestrator, "open the day and time planner").grid(row=0, column=3, padx=2)
-        self._toolbar_button(toolbar, "Characters", self._open_characters, "edit or add story characters").grid(row=0, column=4, padx=2)
-        self._toolbar_button(toolbar, "Voice line", self._generate_voice, "generate voice for the selected line").grid(row=0, column=5, padx=2)
-        separator(6)
+        save_button = self._toolbar_button(toolbar, "Save", self.save, "Save and validate (Ctrl+S)")
+        save_button.configure(style="Primary.TButton")
+        save_button.grid(row=0, column=0, padx=2)
+        self._toolbar_button(toolbar, "Preview", self._preview, "Preview the selected scene (F5)").grid(row=0, column=1, padx=2)
+        self._toolbar_button(toolbar, "Check", self._show_validation, "Check the screenplay without saving (Ctrl+Shift+L)").grid(row=0, column=2, padx=2)
+        separator(3)
+        self._toolbar_button(toolbar, "Game events", self._open_orchestrator, "open the day and time planner").grid(row=0, column=4, padx=2)
+        self._toolbar_button(toolbar, "Characters", self._open_characters, "edit or add story characters").grid(row=0, column=5, padx=2)
+        self._toolbar_button(toolbar, "Voice line", self._generate_voice, "generate voice for the selected line").grid(row=0, column=6, padx=2)
+        separator(7)
         more = ttk.Menubutton(toolbar, text="More ▾")
         more_menu = tk.Menu(more, tearoff=False)
         more_menu.add_command(label="Characters", command=self._open_characters)
+        more_menu.add_command(label="New scene", command=self._new_scene)
+        more_menu.add_command(label="Duplicate scene", command=self._duplicate_scene)
         more_menu.add_separator()
         more_menu.add_command(label="Restore last save", command=self._restore_backup)
         more_menu.add_command(label="What am I editing?", command=self._help)
         more_menu.add_separator()
         more_menu.add_command(label="Quit", command=self.close)
         more["menu"] = more_menu
-        more.grid(row=0, column=7, padx=2)
+        more.grid(row=0, column=8, padx=2)
 
-        left = ttk.Frame(self, padding=8)
-        left.grid(row=1, column=0, sticky="ns")
-        ttk.Label(left, text="Scenes").pack(anchor="w")
-        self.scene_list = tk.Listbox(left, width=28, exportselection=False)
-        self.scene_list.pack(fill="y", expand=True)
-        for scene in self.script.scenes:
-            self.scene_list.insert("end", self._scene_choice_label(scene))
+        workspace = ttk.Panedwindow(self, orient="horizontal")
+        workspace.grid(row=1, column=0, sticky="nsew")
+
+        left = ttk.Frame(workspace, style="Panel.TFrame", width=250)
+        left.rowconfigure(3, weight=1)
+        left.columnconfigure(0, weight=1)
+        ttk.Label(left, text="Scenes", style="PanelHeading.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(left, text="Select a day to edit its story.", style="Muted.TLabel").grid(
+            row=1, column=0, sticky="w", pady=(2, 8)
+        )
+        self.scene_filter_var = tk.StringVar()
+        scene_filter = ttk.Entry(left, textvariable=self.scene_filter_var)
+        scene_filter.grid(row=2, column=0, sticky="ew", pady=(0, 6))
+        scene_filter.insert(0, "")
+        scene_filter.configure(width=24)
+        scene_filter.bind("<KeyRelease>", lambda _event: self._refresh_scene_list())
+        scene_list_frame = ttk.Frame(left)
+        scene_list_frame.grid(row=3, column=0, sticky="nsew")
+        scene_list_frame.rowconfigure(0, weight=1)
+        scene_list_frame.columnconfigure(0, weight=1)
+        self.scene_list = tk.Listbox(scene_list_frame, width=28, exportselection=False, activestyle="none")
+        self.scene_list.grid(row=0, column=0, sticky="nsew")
+        scene_scroll = ttk.Scrollbar(scene_list_frame, orient="vertical", command=self.scene_list.yview)
+        scene_scroll.grid(row=0, column=1, sticky="ns")
+        self.scene_list.configure(yscrollcommand=scene_scroll.set)
+        self._refresh_scene_list()
         self.scene_list.bind("<<ListboxSelect>>", self._scene_selected)
+        scene_buttons = ttk.Frame(left)
+        scene_buttons.grid(row=4, column=0, sticky="ew", pady=(6, 0))
+        scene_buttons.columnconfigure(0, weight=1)
+        scene_buttons.columnconfigure(1, weight=1)
+        ttk.Button(scene_buttons, text="New scene", command=self._new_scene).grid(row=0, column=0, sticky="ew", padx=(0, 3))
+        ttk.Button(scene_buttons, text="Duplicate", command=self._duplicate_scene).grid(row=0, column=1, sticky="ew", padx=(3, 0))
 
-        center = ttk.Frame(self, padding=8)
-        center.grid(row=1, column=1, sticky="nsew")
+        center = ttk.Frame(workspace, style="Panel.TFrame")
         center.columnconfigure(0, weight=1)
         center.rowconfigure(4, weight=1)
         center.rowconfigure(8, weight=1)
-        ttk.Label(center, text="Scene").grid(row=0, column=0, sticky="w")
+        ttk.Label(center, text="Scene", style="PanelHeading.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(center, text="Name this day, then shape its moments below.", style="Muted.TLabel").grid(
+            row=0, column=0, sticky="e"
+        )
         self.title_var = tk.StringVar()
-        ttk.Entry(center, textvariable=self.title_var).grid(row=1, column=0, sticky="ew")
+        self.title_entry = ttk.Entry(center, textvariable=self.title_var)
+        self.title_entry.grid(row=1, column=0, sticky="ew", pady=(4, 0))
         ttk.Label(center, text="Story moments").grid(
             row=2, column=0, sticky="w", pady=(12, 2)
         )
-        self.beat_list = tk.Listbox(center, height=7, exportselection=False)
-        self.beat_list.grid(row=4, column=0, sticky="nsew")
+        beat_list_frame = ttk.Frame(center)
+        beat_list_frame.grid(row=4, column=0, sticky="nsew")
+        beat_list_frame.rowconfigure(0, weight=1)
+        beat_list_frame.columnconfigure(0, weight=1)
+        self.beat_list = tk.Listbox(beat_list_frame, height=7, exportselection=False, activestyle="none")
+        self.beat_list.grid(row=0, column=0, sticky="nsew")
+        beat_scroll = ttk.Scrollbar(beat_list_frame, orient="vertical", command=self.beat_list.yview)
+        beat_scroll.grid(row=0, column=1, sticky="ns")
+        self.beat_list.configure(yscrollcommand=beat_scroll.set)
         self.beat_list.bind("<<ListboxSelect>>", self._beat_selected)
         beat_form = ttk.LabelFrame(center, text="Selected moment", padding=6)
         beat_form.grid(row=5, column=0, sticky="ew", pady=6)
@@ -369,7 +496,8 @@ class Editor(tk.Tk if tk is not None else object):
         ttk.Label(beat_form, text="Type").grid(row=0, column=0, sticky="w")
         self.beat_speaker_var = tk.StringVar()
         ttk.Label(beat_form, text="Speaker").grid(row=1, column=0, sticky="w")
-        ttk.Entry(beat_form, textvariable=self.beat_speaker_var).grid(row=1, column=1, sticky="ew")
+        self.beat_speaker_entry = ttk.Entry(beat_form, textvariable=self.beat_speaker_var)
+        self.beat_speaker_entry.grid(row=1, column=1, sticky="ew")
         self.beat_text = tk.Text(beat_form, height=5, wrap="word", undo=True)
         self.beat_text.grid(row=2, column=0, columnspan=2, sticky="ew", pady=4)
         voice_frame = ttk.LabelFrame(beat_form, text="Voice this line", padding=4)
@@ -386,29 +514,50 @@ class Editor(tk.Tk if tk is not None else object):
         self.tts_set.grid(row=2, column=1, sticky="ew")
         ttk.Label(voice_frame, text="Engine").grid(row=3, column=0, sticky="w")
         self.tts_backend = ttk.Combobox(
-            voice_frame, values=("auto", "edge", "gtts"), state="readonly"
+            voice_frame, values=("auto", "edge", "apple", "gtts"), state="readonly"
         )
         self.tts_backend.grid(row=3, column=1, sticky="ew")
-        ttk.Label(voice_frame, text="Character").grid(row=4, column=0, sticky="w")
+        self.tts_backend.bind("<<ComboboxSelected>>", self._update_apple_controls, add="+")
+        ttk.Label(voice_frame, text="Apple voice").grid(row=4, column=0, sticky="w")
+        self.tts_apple_voice = ttk.Combobox(
+            voice_frame, values=self._apple_voice_choices(), state="disabled"
+        )
+        self.tts_apple_voice.grid(row=4, column=1, sticky="ew")
+        ttk.Label(voice_frame, text="Character").grid(row=5, column=0, sticky="w")
         self.tts_variation = ttk.Combobox(
             voice_frame, values=VOICE_VARIATIONS, state="readonly"
         )
-        self.tts_variation.grid(row=4, column=1, sticky="ew")
-        ttk.Label(voice_frame, text="Cue").grid(row=5, column=0, sticky="w")
+        self.tts_variation.grid(row=5, column=1, sticky="ew")
+        ttk.Label(voice_frame, text="Cue").grid(row=6, column=0, sticky="w")
         self.tts_cue = ttk.Combobox(
             voice_frame, values=("none",) + CUES, state="readonly"
         )
-        self.tts_cue.grid(row=5, column=1, sticky="ew")
-        ttk.Label(voice_frame, text="Quick style").grid(row=6, column=0, sticky="w")
+        self.tts_cue.grid(row=6, column=1, sticky="ew")
+        ttk.Label(voice_frame, text="Apple volume").grid(row=7, column=0, sticky="w")
+        self.tts_apple_volume = ttk.Combobox(
+            voice_frame, values=APPLE_VOLUMES, state="disabled"
+        )
+        self.tts_apple_volume.grid(row=7, column=1, sticky="ew")
+        ttk.Label(voice_frame, text="Apple emphasis").grid(row=8, column=0, sticky="w")
+        self.tts_apple_emphasis = ttk.Combobox(
+            voice_frame, values=APPLE_EMPHASIS, state="disabled"
+        )
+        self.tts_apple_emphasis.grid(row=8, column=1, sticky="ew")
+        ttk.Label(voice_frame, text="Apple pause (ms)").grid(row=9, column=0, sticky="w")
+        self.tts_apple_pause = ttk.Combobox(
+            voice_frame, values=APPLE_PAUSES, state="disabled"
+        )
+        self.tts_apple_pause.grid(row=9, column=1, sticky="ew")
+        ttk.Label(voice_frame, text="Quick style").grid(row=10, column=0, sticky="w")
         self.tts_preset = ttk.Combobox(
             voice_frame,
             values=("Custom", "Natural visitor", "Official broadcast", "Close whisper", "Urgent", "Distant"),
             state="readonly",
         )
-        self.tts_preset.grid(row=6, column=1, sticky="ew")
+        self.tts_preset.grid(row=10, column=1, sticky="ew")
         self.tts_preset.bind("<<ComboboxSelected>>", self._apply_tts_preset)
         voice_buttons = ttk.Frame(voice_frame)
-        voice_buttons.grid(row=7, column=0, columnspan=2, sticky="e", pady=(4, 0))
+        voice_buttons.grid(row=11, column=0, columnspan=2, sticky="e", pady=(4, 0))
         self.tts_button = ttk.Button(
             voice_buttons, text="Generate review", command=self._generate_voice
         )
@@ -426,7 +575,7 @@ class Editor(tk.Tk if tk is not None else object):
         )
         self.tts_discard_button.pack(side="left", padx=2)
         self.tts_status = ttk.Label(voice_frame, text="Choose a line, then make a clip.")
-        self.tts_status.grid(row=8, column=0, columnspan=2, sticky="w")
+        self.tts_status.grid(row=12, column=0, columnspan=2, sticky="w")
         beat_buttons = ttk.Frame(beat_form)
         beat_buttons.grid(row=4, column=0, columnspan=2, sticky="e")
         ttk.Button(beat_buttons, text="New moment", command=self._new_beat).pack(side="left", padx=2)
@@ -436,11 +585,13 @@ class Editor(tk.Tk if tk is not None else object):
             row=6, column=0, sticky="e", pady=2
         )
 
-        right = ttk.Frame(self, padding=8)
-        right.grid(row=1, column=2, sticky="nsew")
+        right = ttk.Frame(workspace, style="Panel.TFrame")
         right.columnconfigure(0, weight=1)
         right.rowconfigure(4, weight=1)
-        ttk.Label(right, text="Choices in this scene").grid(row=0, column=0, sticky="w")
+        ttk.Label(right, text="Choices", style="PanelHeading.TLabel").grid(row=0, column=0, sticky="w")
+        ttk.Label(right, text="Define what the player can do next.", style="Muted.TLabel").grid(
+            row=0, column=0, sticky="e"
+        )
         self.branch_list = ttk.Combobox(right, state="readonly")
         self.branch_list.grid(row=1, column=0, sticky="ew")
         self.branch_list.bind("<<ComboboxSelected>>", self._branch_selected)
@@ -448,9 +599,17 @@ class Editor(tk.Tk if tk is not None else object):
         prompt_frame = ttk.LabelFrame(right, text="Question for the player", padding=6)
         prompt_frame.grid(row=2, column=0, sticky="ew", pady=6)
         prompt_frame.columnconfigure(0, weight=1)
-        ttk.Entry(prompt_frame, textvariable=self.prompt_var).grid(row=0, column=0, sticky="ew")
-        self.option_list = tk.Listbox(right, height=8, exportselection=False)
-        self.option_list.grid(row=4, column=0, sticky="nsew")
+        self.prompt_entry = ttk.Entry(prompt_frame, textvariable=self.prompt_var)
+        self.prompt_entry.grid(row=0, column=0, sticky="ew")
+        option_list_frame = ttk.Frame(right)
+        option_list_frame.grid(row=4, column=0, sticky="nsew")
+        option_list_frame.rowconfigure(0, weight=1)
+        option_list_frame.columnconfigure(0, weight=1)
+        self.option_list = tk.Listbox(option_list_frame, height=8, exportselection=False, activestyle="none")
+        self.option_list.grid(row=0, column=0, sticky="nsew")
+        option_scroll = ttk.Scrollbar(option_list_frame, orient="vertical", command=self.option_list.yview)
+        option_scroll.grid(row=0, column=1, sticky="ns")
+        self.option_list.configure(yscrollcommand=option_scroll.set)
         self.option_list.bind("<<ListboxSelect>>", self._option_selected)
         option_frame = ttk.LabelFrame(right, text="Selected answer", padding=6)
         option_frame.grid(row=5, column=0, sticky="ew", pady=6)
@@ -458,7 +617,8 @@ class Editor(tk.Tk if tk is not None else object):
         self.option_id_var = tk.StringVar()
         self.option_label_var = tk.StringVar()
         ttk.Label(option_frame, text="Answer").grid(row=0, column=0, sticky="w")
-        ttk.Entry(option_frame, textvariable=self.option_label_var).grid(row=0, column=1, sticky="ew")
+        self.option_label_entry = ttk.Entry(option_frame, textvariable=self.option_label_var)
+        self.option_label_entry.grid(row=0, column=1, sticky="ew")
         ttk.Label(option_frame, text="Continue at").grid(row=1, column=0, sticky="w")
         self.next_scene_box = ttk.Combobox(option_frame, state="readonly")
         self.next_scene_box.grid(row=1, column=1, sticky="ew")
@@ -468,21 +628,133 @@ class Editor(tk.Tk if tk is not None else object):
         ttk.Button(option_buttons, text="New answer", command=self._new_option).pack(side="left", padx=2)
         ttk.Button(option_buttons, text="Save answer", command=self._save_option).pack(side="left", padx=2)
         ttk.Button(option_buttons, text="Remove answer", command=self._remove_option).pack(side="left", padx=2)
-        ttk.Button(right, text="What am I editing?", command=self._help).grid(row=6, column=0, sticky="e")
+        ttk.Button(right, text="Editing guide", command=self._help).grid(row=6, column=0, sticky="e")
+
+        workspace.add(left, weight=0)
+        workspace.add(center, weight=3)
+        workspace.add(right, weight=2)
+
+        for widget in (
+            self.title_entry,
+            self.beat_speaker_entry,
+            self.prompt_entry,
+            self.option_label_entry,
+        ):
+            widget.bind("<KeyRelease>", self._mark_dirty_event, add="+")
+        self.beat_text.bind("<KeyRelease>", self._mark_dirty_event, add="+")
+        self.beat_text.bind("<<Modified>>", self._text_modified, add="+")
+        self.beat_kind.bind("<<ComboboxSelected>>", self._mark_dirty_event, add="+")
+        self.next_scene_box.bind("<<ComboboxSelected>>", self._mark_dirty_event, add="+")
 
         bottom = ttk.Frame(self, padding=(8, 0, 8, 8))
-        bottom.grid(row=2, column=0, columnspan=3, sticky="ew")
+        bottom.grid(row=2, column=0, sticky="ew")
         bottom.columnconfigure(0, weight=1)
         self.status = ttk.Label(bottom, text=str(self.path))
         self.status.grid(row=0, column=0, sticky="w")
-        ttk.Label(bottom, text="Ctrl+S Save · F5 Preview · Ctrl+E Game events · Ctrl+Shift+V Voice").grid(
+        ttk.Label(bottom, style="Status.TLabel", text="Ctrl+S Save · F5 Preview · Ctrl+Shift+L Check · Ctrl+E Events · Ctrl+Shift+V Voice").grid(
             row=0, column=1, padx=4
         )
 
+    def _mark_dirty_event(self, _event: object = None) -> None:
+        if not self._ui_sync:
+            self._mark_dirty()
+
+    def _text_modified(self, event: object = None) -> None:
+        widget = getattr(event, "widget", self.beat_text)
+        if widget.edit_modified():
+            widget.edit_modified(False)
+            self._mark_dirty_event(event)
+
+    def _refresh_scene_list(self) -> None:
+        """Refresh the filtered scene navigator without losing the selection."""
+        current_id = self.scene.scene_id if self.scene is not None else None
+        query = self.scene_filter_var.get().strip().lower()
+        self.visible_scene_indices = [
+            index for index, scene in enumerate(self.script.scenes)
+            if not query or query in f"{scene.day} {scene.scene_id} {scene.title}".lower()
+        ]
+        self.scene_list.delete(0, "end")
+        for index in self.visible_scene_indices:
+            self.scene_list.insert("end", self._scene_choice_label(self.script.scenes[index]))
+        if current_id is not None:
+            visible = next((i for i, index in enumerate(self.visible_scene_indices) if self.script.scenes[index].scene_id == current_id), None)
+            if visible is not None:
+                self.scene_list.selection_set(visible)
+                self.scene_list.see(visible)
+
+    def _refresh_scene_destinations(self) -> None:
+        self.next_scene_box["values"] = ["END"] + [
+            self._scene_choice_label(scene) for scene in self.script.scenes
+        ]
+
+    def _new_scene_id(self, day: int, title: str) -> str:
+        preferred = f"day-{day:02d}"
+        existing = {scene.scene_id for scene in self.script.scenes}
+        if preferred not in existing:
+            return preferred
+        stem = re.sub(r"[^a-z0-9]+", "-", title.lower()).strip("-") or "scene"
+        candidate = f"{stem}-{day:02d}"
+        number = 2
+        while candidate in existing:
+            candidate = f"{stem}-{day:02d}-{number}"
+            number += 1
+        return candidate
+
+    def _new_scene(self) -> None:
+        if simpledialog is None:
+            return
+        if not self._apply_current_beat():
+            return
+        self._apply_scene()
+        default_day = max((scene.day for scene in self.script.scenes), default=0) + 1
+        day = simpledialog.askinteger("New scene", "Story day:", initialvalue=default_day, minvalue=1, parent=self)
+        if day is None:
+            return
+        title = simpledialog.askstring("New scene", "Scene title:", initialvalue=f"Day {day}", parent=self)
+        if title is None or not title.strip():
+            return
+        scene = Scene(self._new_scene_id(day, title), day, title.strip())
+        insert_at = self.scene_index + 1 if self.scene_index is not None else len(self.script.scenes)
+        self.script.scenes.insert(insert_at, scene)
+        self._refresh_scene_destinations()
+        self._mark_dirty()
+        self._load_scene(insert_at)
+        self.status["text"] = f"Created {self._scene_choice_label(scene)}. Save when ready."
+
+    def _duplicate_scene(self) -> None:
+        if self.scene is None or simpledialog is None:
+            return
+        if not self._apply_current_beat():
+            return
+        self._apply_scene()
+        source = self.scene
+        day = simpledialog.askinteger("Duplicate scene", "New story day:", initialvalue=source.day, minvalue=1, parent=self)
+        if day is None:
+            return
+        title = simpledialog.askstring("Duplicate scene", "New scene title:", initialvalue=f"Copy of {source.title}", parent=self)
+        if title is None or not title.strip():
+            return
+        duplicate = copy.deepcopy(source)
+        duplicate.day = day
+        duplicate.title = title.strip()
+        duplicate.scene_id = self._new_scene_id(day, duplicate.title)
+        insert_at = self.scene_index + 1 if self.scene_index is not None else len(self.script.scenes)
+        self.script.scenes.insert(insert_at, duplicate)
+        self._refresh_scene_destinations()
+        self._mark_dirty()
+        self._load_scene(insert_at)
+        self.status["text"] = f"Duplicated scene as {duplicate.scene_id}. Save when ready."
+
     def _scene_selected(self, _event: object = None) -> None:
         selection = self.scene_list.curselection()
-        if selection and selection[0] != self.scene_index:
-            self._load_scene(selection[0])
+        selected_index = self.visible_scene_indices[selection[0]] if selection and self.visible_scene_indices else None
+        if selected_index is not None and selected_index != self.scene_index:
+            if not self._apply_current_beat():
+                self.scene_list.selection_clear(0, "end")
+                if self.scene_index in self.visible_scene_indices:
+                    self.scene_list.selection_set(self.visible_scene_indices.index(self.scene_index))
+                return
+            self._load_scene(selected_index)
 
     def _mark_dirty(self) -> None:
         self.dirty = True
@@ -495,8 +767,9 @@ class Editor(tk.Tk if tk is not None else object):
         self._apply_scene()
         self.scene_index = index
         self.scene = self.script.scenes[index]
-        self.scene_list.selection_clear(0, "end")
-        self.scene_list.selection_set(index)
+        self._refresh_scene_list()
+        if index in self.visible_scene_indices:
+            self.scene_list.selection_set(self.visible_scene_indices.index(index))
         self.title_var.set(self.scene.title)
         self.beat_list.delete(0, "end")
         for beat in self.scene.beats:
@@ -546,13 +819,34 @@ class Editor(tk.Tk if tk is not None else object):
         self.beat_kind.set("")
         self.beat_speaker_var.set("")
         self.beat_text.delete("1.0", "end")
+        self.beat_text.edit_modified(False)
         if self.scene is None or index is None or index >= len(self.scene.beats):
             return
         beat = self.scene.beats[index]
         self.beat_kind.set(beat.kind)
         self.beat_speaker_var.set(beat.speaker or "")
         self.beat_text.insert("1.0", beat.text)
+        self.beat_text.edit_modified(False)
         self._set_tts_defaults(beat.speaker)
+
+    def _apply_current_beat(self) -> bool:
+        if self.scene is None:
+            return True
+        selection = self.beat_list.curselection()
+        if not selection:
+            return True
+        beat = self._beat_from_form()
+        if beat is None:
+            return False
+        index = selection[0]
+        previous = self.scene.beats[index]
+        if beat != previous:
+            self.scene.beats[index] = beat
+            self.beat_list.delete(index)
+            self.beat_list.insert(index, self._beat_label(beat))
+            self.beat_list.selection_set(index)
+            self._mark_dirty()
+        return True
 
     def _beat_from_form(self) -> Beat | None:
         kind = self.beat_kind.get().strip()
@@ -579,6 +873,26 @@ class Editor(tk.Tk if tk is not None else object):
                     choices.append(name)
         return choices
 
+    @staticmethod
+    def _apple_voice_choices() -> tuple[str, ...]:
+        """Return installed macOS voices when available, with safe fallbacks."""
+        if shutil.which("say") is None:
+            return APPLE_VOICE_FALLBACKS
+        try:
+            result = subprocess.run(
+                ["say", "-v", "?"], capture_output=True, text=True, check=False,
+            )
+        except OSError:
+            return APPLE_VOICE_FALLBACKS
+        voices: set[str] = set()
+        for line in (result.stdout + "\n" + result.stderr).splitlines():
+            match = re.search(r"\s+[a-z]{2}[_-][A-Z]{2}(?:[-_]#\d+)?\b", line)
+            if match:
+                name = line[:match.start()].strip()
+                if name:
+                    voices.add(name)
+        return ("Default", *sorted(voices)) if voices else APPLE_VOICE_FALLBACKS
+
     def _set_tts_defaults(self, speaker: str | None = None) -> None:
         choices = self._speaker_choices()
         self.tts_speaker["values"] = choices
@@ -592,7 +906,23 @@ class Editor(tk.Tk if tk is not None else object):
         self.tts_variation.set("natural")
         self.tts_backend.set("auto")
         self.tts_cue.set("none")
+        self.tts_apple_voice.set("Default")
+        self.tts_apple_volume.set("1.00")
+        self.tts_apple_emphasis.set("none")
+        self.tts_apple_pause.set("0")
         self.tts_preset.set("Custom")
+        self._update_apple_controls()
+
+    def _update_apple_controls(self, _event: object = None) -> None:
+        state = "readonly" if self.tts_backend.get() == "apple" else "disabled"
+        for widget in (
+            self.tts_apple_voice,
+            self.tts_apple_volume,
+            self.tts_apple_emphasis,
+            self.tts_apple_pause,
+        ):
+            if widget is not None:
+                widget.configure(state=state)
 
     def _apply_tts_preset(self, _event: object = None) -> None:
         preset = self.tts_preset.get()
@@ -685,6 +1015,14 @@ class Editor(tk.Tk if tk is not None else object):
             "--out", str(review_dir),
             "--no-manifest",
         ]
+        apple_voice = self.tts_apple_voice.get().strip()
+        if apple_voice and apple_voice != "Default":
+            command.extend(("--voice-name", apple_voice))
+        command.extend((
+            "--apple-volume", self.tts_apple_volume.get() or "1.00",
+            "--apple-emphasis", self.tts_apple_emphasis.get() or "none",
+            "--apple-pause-ms", self.tts_apple_pause.get() or "0",
+        ))
         cue = self.tts_cue.get().strip()
         if cue and cue != "none":
             command.extend(("--cue", cue))
@@ -1012,6 +1350,35 @@ class Editor(tk.Tk if tk is not None else object):
                 text.insert("end", f"  • {option.label}\n")
             text.insert("end", "\n")
         text.configure(state="disabled")
+
+    def _show_validation(self) -> None:
+        """Show structural issues without modifying the screenplay."""
+        if not self._apply_current_beat():
+            return
+        self._apply_scene()
+        self._apply_branch()
+        issues = validate_script(self.script)
+        window = tk.Toplevel(self)
+        window.title("Screenplay check")
+        window.geometry("720x440")
+        window.minsize(560, 320)
+        window.columnconfigure(0, weight=1)
+        window.rowconfigure(1, weight=1)
+        if issues:
+            heading = f"{len(issues)} issue{'s' if len(issues) != 1 else ''} need attention"
+            detail = "Fix these before saving. The editor will not replace your screenplay while these structural issues remain."
+        else:
+            heading = "Screenplay is structurally sound"
+            detail = "No duplicate IDs, broken destinations, empty moments, or invalid event references were found."
+        ttk.Label(window, text=heading, style="PanelHeading.TLabel").grid(row=0, column=0, sticky="w", padx=12, pady=(12, 2))
+        ttk.Label(window, text=detail, style="Muted.TLabel", wraplength=680).grid(row=0, column=0, sticky="w", padx=12, pady=(34, 8))
+        report = tk.Text(window, wrap="word", padx=10, pady=10, height=12)
+        report.grid(row=1, column=0, sticky="nsew", padx=12, pady=(0, 8))
+        report.insert("1.0", "\n".join(f"• {issue}" for issue in issues) if issues else "Ready for the Dart story build.")
+        report.configure(state="disabled")
+        ttk.Button(window, text="Close", command=window.destroy).grid(row=2, column=0, sticky="e", padx=12, pady=(0, 12))
+        window.transient(self)
+        window.grab_set()
 
     def _open_orchestrator(self) -> None:
         if self.event_window is not None and self.event_window.winfo_exists():
@@ -1747,9 +2114,7 @@ class Editor(tk.Tk if tk is not None else object):
         self.script = restored_script
         self.scene = None
         self.branch = None
-        self.scene_list.delete(0, "end")
-        for scene in self.script.scenes:
-            self.scene_list.insert("end", self._scene_choice_label(scene))
+        self._refresh_scene_list()
         self.next_scene_box["values"] = ["END"] + [
             self._scene_choice_label(scene) for scene in self.script.scenes
         ]
@@ -1770,8 +2135,15 @@ class Editor(tk.Tk if tk is not None else object):
         )
 
     def save(self) -> None:
+        if not self._apply_current_beat():
+            return
         self._apply_scene()
         self._apply_branch()
+        issues = validate_script(self.script)
+        if issues:
+            self.status["text"] = f"Not saved: {len(issues)} screenplay issue{'s' if len(issues) != 1 else ''}."
+            self._show_validation()
+            return
         backup = self.path.with_name(self.path.name + ".bak")
         try:
             old_text = self.path.read_text(encoding="utf-8")

@@ -912,7 +912,8 @@ class CanvasP5GuiEngine {
     ctx.fillText('◆ SHADER LAB & POST-PROCESSING SUITE ◆', curX, headerY);
     ctx.restore();
 
-    // 4. Category Tab Bar [1]..[5]
+    // 4. Category Tab Bar. Categories are data-driven so the weather lab
+    // remains a first-class tab instead of being hidden in post controls.
     final categories = ShaderTuningCategory.values;
     final tabCount = categories.length;
     final tabW = (boxW - 60.0) / tabCount;
@@ -942,7 +943,8 @@ class CanvasP5GuiEngine {
         ShaderTuningCategory.shadowsAndOcclusion => '[2] SHADOWS',
         ShaderTuningCategory.surfaceWeathering => '[3] DETAIL',
         ShaderTuningCategory.atmosphereAndPost => '[4] POST / FOG',
-        ShaderTuningCategory.debugView => '[5] PASSES',
+        ShaderTuningCategory.weatherEffects => '[5] WEATHER',
+        ShaderTuningCategory.debugView => '[6] PASSES',
       };
 
       ctx.save();

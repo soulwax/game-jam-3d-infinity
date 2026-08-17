@@ -8,6 +8,8 @@ void main() {
     'web/res/house/soundscape.json',
     'web/res/story_script.json',
     'web/res/models/index.json',
+    'tools/test_clean_visual_baseline.dart',
+    'tools/test_ending_production_contract.dart',
   ];
   final missing = [
     for (final path in required)

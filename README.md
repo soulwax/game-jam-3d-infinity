@@ -44,6 +44,19 @@ system voices installed. To render production audio with the Apple backend:
 python3 scripts/tts.py --backend apple --line "Open the door." --name door
 ```
 
+Apple renders also expose native `say` controls for volume, emphasis, and a
+leading pause:
+
+```sh
+python3 scripts/tts.py --backend apple --line "Open the door." --name door \
+  --voice-name Samantha --apple-volume 0.8 --apple-emphasis strong \
+  --apple-pause-ms 250
+```
+
+The same controls appear in the Python story editor after selecting the Apple
+engine. They are disabled for Edge and gTTS so the active backend remains
+clear.
+
 The optional Svelte project board runs independently:
 
 ```sh
@@ -159,11 +172,28 @@ The same folder also contains a `demo-lab-*` A/B set: one identical sentence
 rendered with different neural voices and character profiles, making it easy to
 compare timbre without the wording or scene context changing.
 
+### Weather sound design
+
+Weather audio is a host-owned, deterministic layer rather than a renderer
+effect. Generate the compact loop sources with:
+
+```sh
+python3 tools/generate_weather_audio.py
+```
+
+`lib/engine/weather_audio.dart` resolves those sources from precipitation,
+wind, temperature, room absorption, and window aperture. A closed window
+attenuates and low-passes rain while retaining wall-borne thunder; opening it
+admits high-frequency impacts and an interior drip layer. Lightning schedules
+thunder at `distance / 343 m/s`, and the same strike cannot retrigger on every
+render frame. Downloaded listening references and licence records live under
+`assets-src/audio/weather/reference/` and are not runtime dependencies.
+
 For precise creative experiments, use `--line-file` instead of fighting shell
 quoting; UTF-8 punctuation is preserved. `--rate +6%` and `--pitch -2Hz` give
 small direct performance adjustments without creating a new named tone. The
-cache includes the complete text and voice settings, so distinct creative
-lines cannot collide.
+cache includes the complete text and voice settings, including the Apple
+controls, so distinct creative lines cannot collide.
 
 - How to deploy (Vercel): import the repo and keep the defaults. `dist/web`
   is **committed**, so Vercel installs nothing, builds nothing, and just

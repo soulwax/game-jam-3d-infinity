@@ -68,11 +68,13 @@ class RealisticThunderstormEngine {
   double _sourceDirectionY = 1.0;
   double _sourceDirectionZ = 0.0;
   double _sourceDistanceMeters = 0.0;
+  int _strikeSequence = 0;
 
   LightningFlashState _flashState = const LightningFlashState();
 
   LightningFlashState get flashState => _flashState;
   double get thunderAudioDelaySeconds => _thunderAudioDelaySeconds;
+  int get strikeSequence => _strikeSequence;
 
   /// Updates thunderstorm simulation clock and generates dynamic lightning strobes.
   void update(double dt, {required double rainIntensity}) {
@@ -162,6 +164,7 @@ class RealisticThunderstormEngine {
         sourceDirectionZ: _sourceDirectionZ,
         sourceDistanceMeters: _sourceDistanceMeters,
       );
+      _strikeSequence++;
 
       // Next strike interval frequency scales inversely with rain intensity
       final baseInterval =
@@ -179,6 +182,7 @@ class RealisticThunderstormEngine {
     _sourceDirectionY = 1.0;
     _sourceDirectionZ = 0.0;
     _sourceDistanceMeters = 0.0;
+    _strikeSequence = 0;
     _flashState = const LightningFlashState();
   }
 }

@@ -43,6 +43,17 @@ function parseList(value, fallback) {
   return values;
 }
 
+function parseViewports(value) {
+  const ids = parseList(value, DEFAULT_VIEWPORTS.map((viewport) => viewport.id));
+  const byId = new Map(DEFAULT_VIEWPORTS.map((viewport) => [viewport.id, viewport]));
+  const unknown = ids.filter((id) => !byId.has(id));
+  if (unknown.length) {
+    fail(`unknown viewport(s): ${unknown.join(', ')}; choose from ${[...byId.keys()].join(', ')}`);
+  }
+  if (new Set(ids).size !== ids.length) fail('viewports cannot contain duplicates');
+  return ids.map((id) => ({ ...byId.get(id) }));
+}
+
 function parseArgs(argv) {
   const args = {
     url: process.env.HUMAN_VISUAL_URL || 'http://127.0.0.1:8090/',
@@ -67,11 +78,13 @@ function parseArgs(argv) {
     else if (value === '--ready-selector') args.readySelector = next();
     else if (value === '--profiles') args.profiles = parseList(next(), DEFAULT_PROFILES);
     else if (value === '--states') args.states = parseList(next(), DEFAULT_STATES);
+    else if (value === '--viewports') args.viewports = parseViewports(next());
     else if (value === '--resume') args.resume = true;
     else if (value === '--headed') args.headed = true;
     else if (value === '--help') {
       console.log('usage: node tools/browser/human_visual_confirmation.cjs [--url URL] [--out DIR] [--headed]');
-      console.log('       [--profiles safe,high] [--states normal,dark,bright] [--resume] [--ready-selector CSS]');
+      console.log('       [--profiles safe,high] [--states normal,dark,bright] [--viewports desktop-720,desktop-1080,narrow]');
+      console.log('       [--resume] [--ready-selector CSS]');
       process.exit(0);
     } else fail(`unknown argument ${value}`);
   }
@@ -117,6 +130,8 @@ function buildHumanReviewPacket({ output, captures, failures = [], runtimeErrors
       profile: capture.profile,
       state: capture.state,
       houseRole: capture.houseRole,
+      houseStoryAuthority: capture.houseStoryAuthority,
+      audio: capture.audio,
       screenshot: path.relative(process.cwd(), capture.screenshot),
       metadata: path.relative(process.cwd(), capture.metadata),
       digest: path.relative(process.cwd(), capture.digest),
@@ -205,6 +220,11 @@ async function captureMatrix(options) {
           browser = await firefox.launch({ headless: !options.headed });
           const page = await browser.newPage();
           page.on('pageerror', (error) => pageErrors.push(String(error)));
+          page.on('response', (response) => {
+            if (response.status() >= 400 && !response.url().endsWith('/favicon.ico')) {
+              pageErrors.push(`HTTP ${response.status()}: ${response.url()}`);
+            }
+          });
           await page.setViewportSize({ width: viewport.width, height: viewport.height });
           const url = appendReviewQuery(options.url, profile, state);
           await page.goto(url, { waitUntil: 'networkidle' });
@@ -228,6 +248,12 @@ async function captureMatrix(options) {
                 runtime: canvas.getAttribute('data-renderer-model-packages-runtime'),
                 count: canvas.getAttribute('data-renderer-model-package-count'),
                 houseRole: canvas.getAttribute('data-house-role'),
+                houseStoryAuthority: canvas.getAttribute('data-house-story-authority'),
+                audioPaused: canvas.getAttribute('data-audio-paused'),
+                audioMuted: canvas.getAttribute('data-audio-muted'),
+                audioCaptions: canvas.getAttribute('data-audio-captions'),
+                audioMasterMix: canvas.getAttribute('data-audio-master-mix'),
+                audioVoiceMix: canvas.getAttribute('data-audio-voice-mix'),
                 error: canvas.getAttribute('data-renderer-model-package-error'),
                 diagnostics: canvas.getAttribute('data-renderer-model-package-diagnostics'),
               };
@@ -254,7 +280,13 @@ async function captureMatrix(options) {
             attached = false;
           }
           if (observed.packages !== 'validated' || observed.runtime !== 'loaded' ||
-              !attached || observed.houseRole !== 'provisional-visible-place') {
+              !attached || observed.houseRole !== 'provisional-visible-place' ||
+              observed.houseStoryAuthority !== 'external-story-data' ||
+              !['true', 'false'].includes(observed.audioPaused) ||
+              !['true', 'false'].includes(observed.audioMuted) ||
+              !['true', 'false'].includes(observed.audioCaptions) ||
+              !Number.isFinite(Number(observed.audioMasterMix)) ||
+              !Number.isFinite(Number(observed.audioVoiceMix))) {
             throw new Error(`promoted model binding did not settle: ${JSON.stringify({ observed })}`);
           }
           await page.waitForTimeout(250);
@@ -284,6 +316,14 @@ async function captureMatrix(options) {
               sourceUrl: url,
               browser: { name: 'firefox', version: browser.version() },
               houseRole: observed.houseRole,
+              houseStoryAuthority: observed.houseStoryAuthority,
+              audio: {
+                paused: observed.audioPaused === 'true',
+                muted: observed.audioMuted === 'true',
+                captions: observed.audioCaptions === 'true',
+                masterMix: Number(observed.audioMasterMix),
+                voiceMix: Number(observed.audioVoiceMix),
+              },
               promotedModel: 'living-room',
               promotedModelDiagnostics: await page.locator('#game').getAttribute(
                 'data-renderer-model-package-diagnostics',
@@ -296,6 +336,14 @@ async function captureMatrix(options) {
             profile,
             state,
             houseRole: observed.houseRole,
+            houseStoryAuthority: observed.houseStoryAuthority,
+            audio: {
+              paused: observed.audioPaused === 'true',
+              muted: observed.audioMuted === 'true',
+              captions: observed.audioCaptions === 'true',
+              masterMix: Number(observed.audioMasterMix),
+              voiceMix: Number(observed.audioVoiceMix),
+            },
             screenshot: bundle.file,
             metadata: bundle.metadataFile,
             digest: bundle.digestFile,
@@ -340,5 +388,6 @@ module.exports = {
   REQUIRED_CHECKS,
   appendReviewQuery,
   buildHumanReviewPacket,
+  parseViewports,
   parseArgs,
 };

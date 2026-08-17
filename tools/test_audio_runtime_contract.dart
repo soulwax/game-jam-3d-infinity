@@ -13,6 +13,12 @@ void main() {
     'data-audio-captions',
     'data-audio-paused',
     'setAcousticPlanner',
+    'data-audio-weather-transmission',
+    'data-audio-weather-cutoff-hz',
+    'data-audio-weather-layers',
+    'data-audio-weather-events',
+    'applyWeatherLayers',
+    'playDelayed',
     '_pendingSounds.clear()',
   ];
   final missing = [

@@ -17,12 +17,20 @@ Future<void> main() async {
   check(manifest.assetId == 'living-room', 'living-room asset ID is stable');
   check(manifest.sourceFormat == 'glb', 'normalized source format is glb');
   check(
+    RegExp(r'^[0-9a-f]{64}$').hasMatch(manifest.packageHash),
+    'living-room package hash is a canonical SHA-256 digest',
+  );
+  check(
     manifest.lods.length == 1 && manifest.lods.single == 'LOD0',
     'manifest declares only the packaged LOD',
   );
   check(
     manifest.provenance['promotion'] == 'approved',
     'package has an approved promotion record',
+  );
+  check(
+    manifest.provenance['licenseId']?.isNotEmpty ?? false,
+    'package has a non-empty license record',
   );
 
   final package = await const ModelPackageLoader().load(
@@ -72,6 +80,11 @@ Future<void> main() async {
         porcelainManifest.lods.length == 1 &&
         porcelainManifest.lods.single == 'LOD0',
     'OBJ promotion declares its shipped LOD0 contract',
+  );
+  check(
+    RegExp(r'^[0-9a-f]{64}$').hasMatch(porcelainManifest.packageHash) &&
+        porcelainManifest.provenance['licenseId']?.isNotEmpty == true,
+    'OBJ promotion carries canonical hash and license provenance',
   );
   final porcelain = await const ModelPackageLoader().load(
     ModelPackageSource(

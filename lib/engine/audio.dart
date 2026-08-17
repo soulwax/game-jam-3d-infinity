@@ -40,6 +40,19 @@ const Map<String, String> sfxSlot = {
   'range-settle': 'transient',
   'cellar-drip': 'transient',
   'cistern-settle': 'transient',
+  'weather-rain': 'air',
+  'weather-sleet': 'air',
+  'weather-snow': 'air',
+  'weather-hail': 'air',
+  'weather-hail-roof': 'sub',
+  'weather-wind': 'air',
+  'weather-window-rattle': 'ambience',
+  'weather-thunder-bed': 'sub',
+  'weather-interior-drip': 'ambience',
+  'weather-interior-warmth': 'sub',
+  'weather-interior-coffee': 'ambience',
+  'weather-thunder-crack': 'sub',
+  'weather-thunder-roll': 'sub',
 
   'step-above-0': 'sub',
   'step-above-1': 'sub',
@@ -62,6 +75,7 @@ class Audio {
   late final web.GainNode _wet;
   late final web.ConvolverNode _verb;
   final Map<String, web.AudioBuffer> _buffers = {};
+  final Map<String, _WeatherLoop> _weatherLoops = {};
   final math.Random _rng = math.Random();
 
   String? _listenerRoom;
@@ -195,7 +209,9 @@ class Audio {
         name == 'window-wind' ||
         name == 'house-creak' ||
         name == 'timber-creak' ||
-        name == 'pipe-tick') {
+        name == 'pipe-tick' ||
+        name.startsWith('weather-interior-') ||
+        name == 'weather-window-rattle') {
       return _ambience;
     }
     return switch (sfxSlot[name]) {
@@ -259,6 +275,158 @@ class Audio {
     }).toJS;
     src.start();
     return true;
+  }
+
+  /// Plays a one-shot weather event at an acoustically meaningful delay.
+  /// Lightning uses the speed-of-sound delay resolved by the host weather
+  /// engine rather than pretending the flash and thunder are simultaneous.
+  void playDelayed(
+    String name, {
+    double rate = 1,
+    double gain = 1,
+    double delaySeconds = 0,
+    double stereoPan = 0,
+  }) {
+    final buf = _buffers[name];
+    if (buf == null) return;
+    final src = _ctx.createBufferSource()..buffer = buf;
+    src.playbackRate.value = rate;
+    final g = _ctx.createGain()..gain.value = gain;
+    final pan = _ctx.createStereoPanner()
+      ..pan.value = stereoPan.clamp(-1.0, 1.0).toDouble();
+    src.connect(g);
+    g.connect(pan);
+    pan.connect(_slotForCue(name));
+    src.onended = ((JSAny? _) {
+      src.disconnect();
+      g.disconnect();
+      pan.disconnect();
+    }).toJS;
+    final start =
+        _ctx.currentTime.toDouble() + delaySeconds.clamp(0.0, 120.0).toDouble();
+    src.start(start);
+  }
+
+  /// Reconciles the continuous weather layers without rebuilding unchanged
+  /// sources. Missing optional cues are simply omitted; the resolver remains
+  /// observable and deterministic even when a host has a reduced asset set.
+  void applyWeatherLayers(
+    Iterable<
+      ({
+        String id,
+        String cue,
+        double gainLinear,
+        double lowPassHz,
+        double highPassHz,
+        double stereoPan,
+        double reverbSend01,
+      })
+    >
+    layers,
+  ) {
+    final desired = {for (final layer in layers) layer.id: layer};
+    for (final id in _weatherLoops.keys.toList()) {
+      if (!desired.containsKey(id)) _stopWeatherLoop(id);
+    }
+    for (final layer in desired.values) {
+      final buffer = _buffers[layer.cue];
+      if (buffer == null) {
+        if (_weatherLoops.containsKey(layer.id)) _stopWeatherLoop(layer.id);
+        continue;
+      }
+      final existing = _weatherLoops[layer.id];
+      if (existing != null && existing.cue != layer.cue) {
+        _stopWeatherLoop(layer.id);
+      }
+      final loop = _weatherLoops[layer.id] ??= _startWeatherLoop(
+        layer.id,
+        layer.cue,
+        buffer,
+        stereoPan: layer.stereoPan,
+        reverbSend01: layer.reverbSend01,
+      );
+      final now = _ctx.currentTime.toDouble();
+      loop.gain.gain.cancelScheduledValues(now);
+      loop.gain.gain.setValueAtTime(loop.gain.gain.value, now);
+      loop.gain.gain.linearRampToValueAtTime(
+        layer.gainLinear.clamp(0.0, 1.0),
+        now + 0.12,
+      );
+      loop.filter.frequency.cancelScheduledValues(now);
+      loop.filter.frequency.setValueAtTime(loop.filter.frequency.value, now);
+      loop.filter.frequency.linearRampToValueAtTime(
+        layer.lowPassHz.clamp(80.0, 20000.0),
+        now + 0.12,
+      );
+      loop.highPass.frequency.cancelScheduledValues(now);
+      loop.highPass.frequency.setValueAtTime(
+        loop.highPass.frequency.value,
+        now,
+      );
+      loop.highPass.frequency.linearRampToValueAtTime(
+        layer.highPassHz.clamp(20.0, 16000.0),
+        now + 0.12,
+      );
+      loop.pan.pan.cancelScheduledValues(now);
+      loop.pan.pan.setValueAtTime(loop.pan.pan.value, now);
+      loop.pan.pan.linearRampToValueAtTime(
+        layer.stereoPan.clamp(-1.0, 1.0),
+        now + 0.12,
+      );
+      loop.sendGain.gain.cancelScheduledValues(now);
+      loop.sendGain.gain.setValueAtTime(loop.sendGain.gain.value, now);
+      loop.sendGain.gain.linearRampToValueAtTime(
+        layer.reverbSend01.clamp(0.0, 1.0),
+        now + 0.12,
+      );
+    }
+  }
+
+  _WeatherLoop _startWeatherLoop(
+    String id,
+    String cue,
+    web.AudioBuffer buffer,
+    {double stereoPan = 0, double reverbSend01 = 0}
+  ) {
+    final source = _ctx.createBufferSource()
+      ..buffer = buffer
+      ..loop = true;
+    final gain = _ctx.createGain()..gain.value = 0;
+    final highPass = _ctx.createBiquadFilter()
+      ..type = 'highpass'
+      ..frequency.value = 20;
+    final filter = _ctx.createBiquadFilter()
+      ..type = 'lowpass'
+      ..frequency.value = 20000;
+    source.connect(highPass);
+    highPass.connect(filter);
+    filter.connect(gain);
+    final pan = _ctx.createStereoPanner()..pan.value = stereoPan;
+    final sendGain = _ctx.createGain()..gain.value = reverbSend01;
+    gain.connect(pan);
+    pan.connect(_slotForCue(cue));
+    gain.connect(sendGain);
+    sendGain.connect(_send);
+    source.start();
+    return _WeatherLoop(
+      source: source,
+      gain: gain,
+      highPass: highPass,
+      filter: filter,
+      pan: pan,
+      sendGain: sendGain,
+      cue: cue,
+    );
+  }
+
+  void _stopWeatherLoop(String id) {
+    final loop = _weatherLoops.remove(id);
+    if (loop == null) return;
+    final now = _ctx.currentTime.toDouble();
+    loop.gain.gain.cancelScheduledValues(now);
+    loop.gain.gain.setValueAtTime(loop.gain.gain.value, now);
+    loop.gain.gain.linearRampToValueAtTime(0, now + 0.18);
+    Timer(const Duration(milliseconds: 220), loop.dispose);
   }
 
   void playAt(
@@ -581,6 +749,12 @@ class Audio {
   void onDoorStateChanged() {
     _updateAllOcclusionFilters();
   }
+
+  void stopAllWeatherLoops() {
+    for (final id in _weatherLoops.keys.toList()) {
+      _stopWeatherLoop(id);
+    }
+  }
 }
 
 final class _SpatialChain {
@@ -608,5 +782,35 @@ final class _SpatialChain {
     attenuationGain.disconnect();
     filter.disconnect();
     panner.disconnect();
+  }
+}
+
+final class _WeatherLoop {
+  final web.AudioBufferSourceNode source;
+  final web.GainNode gain;
+  final web.BiquadFilterNode highPass;
+  final web.BiquadFilterNode filter;
+  final web.StereoPannerNode pan;
+  final web.GainNode sendGain;
+  final String cue;
+
+  _WeatherLoop({
+    required this.source,
+    required this.gain,
+    required this.highPass,
+    required this.filter,
+    required this.pan,
+    required this.sendGain,
+    required this.cue,
+  });
+
+  void dispose() {
+    source.stop();
+    source.disconnect();
+    highPass.disconnect();
+    filter.disconnect();
+    pan.disconnect();
+    sendGain.disconnect();
+    gain.disconnect();
   }
 }

@@ -7,6 +7,11 @@ on changes players or contributors can feel. Detailed renderer notes belong in
 
 ## Unreleased
 
+## [0.2.0.3] — 2026-08-17
+
+- Rebuilt and published the WASM distribution with the current renderer,
+  weather, accessibility, story, and package-contract updates.
+
 ## [0.2.0.2] — 2026-08-17
 
 - Marked the FBX-derived house runtime and visual evidence as a provisional

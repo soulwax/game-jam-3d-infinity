@@ -71,6 +71,29 @@ void main() {
   if (pbrItems.isEmpty) {
     throw StateError('PBR category must not be empty');
   }
+  state.selectCategory(ShaderTuningCategory.weatherEffects.index);
+  final weatherItems = state.itemsInCurrentCategory;
+  if (weatherItems.length < 6 ||
+      !weatherItems.any((item) => item.id == 'weather_particles_enable') ||
+      !weatherItems.any((item) => item.id == 'weather_fog_scattering')) {
+    throw StateError(
+      'Weather Effects Lab must expose physical particle and fog controls',
+    );
+  }
+  state.resolveFrame(
+    liveItemIds: {
+      for (final item in weatherItems) item.id,
+    },
+    effectiveValues: {
+      for (final item in weatherItems)
+        if (!item.isToggle) item.id: item.defaultValue,
+    },
+    effectiveToggles: {'weather_particles_enable': true},
+  );
+  if (!weatherItems.every((item) => item.isLive)) {
+    throw StateError('Weather Effects Lab controls must resolve as live');
+  }
+  state.selectCategory(ShaderTuningCategory.pbrMaterial.index);
 
   final unavailableRoughness = pbrItems.firstWhere(
     (i) => i.id == 'pbr_roughness',

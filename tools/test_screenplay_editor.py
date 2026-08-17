@@ -22,6 +22,7 @@ SPEC.loader.exec_module(EDITOR)
 def main() -> None:
     source = ROOT / "text" / "story.screenplay"
     script = EDITOR.parse_script(source)
+    assert EDITOR.validate_script(script) == []
     assert len(script.sources) == 33
     assert [scene.day for scene in script.scenes] == list(range(1, 22))
     assert len({scene.scene_id for scene in script.scenes}) == 21
@@ -60,7 +61,10 @@ def main() -> None:
         event_path = Path(directory) / "story.screenplay"
         event_path.write_text(EDITOR.encode_script(script), encoding="utf-8")
         event_script = EDITOR.parse_script(event_path)
-        event = event_script.events[-1]
+        event = next(
+            candidate for candidate in event_script.events
+            if candidate.event_id == "event-test-01"
+        )
         assert event.kind == "visitor"
         assert event.hour == 15.5
         assert event.cue == "hesitant"
@@ -94,6 +98,16 @@ def main() -> None:
             raise AssertionError("malformed event effect was accepted")
     finally:
         malformed_event_path.unlink(missing_ok=True)
+
+    invalid = EDITOR.Script(
+        scenes=[EDITOR.Scene("day-01", 1, "Opening", branches=[EDITOR.Branch("choice", "What now?", [
+            EDITOR.Option("same", "missing-day", "Go on"),
+            EDITOR.Option("same", "END", "Stay"),
+        ])])],
+    )
+    issues = EDITOR.validate_script(invalid)
+    assert any("missing scene" in issue for issue in issues)
+    assert any("duplicate answer ID" in issue for issue in issues)
 
     print("screenplay editor data checks: ok")
 

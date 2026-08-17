@@ -541,6 +541,15 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
                   impactEnergyFluxWm2: Number(result.weatherImpactEnergyFluxWm2),
                   obstacleCount: Number(result.weatherObstacleCount),
                 },
+            solar: result.solarPhase == null
+              ? null
+              : {
+                  phase: result.solarPhase,
+                  sunriseHours: Number(result.solarSunriseHours),
+                  sunsetHours: Number(result.solarSunsetHours),
+                  elevationDegrees: Number(result.solarElevationDegrees),
+                  cloudTransmittance: Number(result.solarTransmittance),
+                },
             lightning: result.lightningActive == null
               ? null
             : {
@@ -931,6 +940,11 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         weatherSettledMassKg: canvas.getAttribute('data-renderer-weather-settled-mass-kg'),
         weatherReboundEnergyJ: canvas.getAttribute('data-renderer-weather-rebound-energy-j'),
         weatherObstacleCount: canvas.getAttribute('data-renderer-weather-obstacle-count'),
+        solarPhase: canvas.getAttribute('data-renderer-solar-phase'),
+        solarSunriseHours: canvas.getAttribute('data-renderer-solar-sunrise-hours'),
+        solarSunsetHours: canvas.getAttribute('data-renderer-solar-sunset-hours'),
+        solarElevationDegrees: canvas.getAttribute('data-renderer-solar-elevation-deg'),
+        solarTransmittance: canvas.getAttribute('data-renderer-solar-transmittance'),
         volumetricSourceCount: canvas.getAttribute('data-renderer-volumetric-source-count'),
         volumetricSourceRadiance: canvas.getAttribute('data-renderer-volumetric-source-radiance'),
         volumetricSourceDirection: canvas.getAttribute('data-renderer-volumetric-source-direction'),
@@ -944,9 +958,11 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         houseManifest: canvas.getAttribute('data-house-manifest'),
         houseManifestSource: canvas.getAttribute('data-house-manifest-source'),
         houseRole: canvas.getAttribute('data-house-role'),
+        houseStoryAuthority: canvas.getAttribute('data-house-story-authority'),
         houseInventory: canvas.getAttribute('data-house-inventory'),
         houseInventorySource: canvas.getAttribute('data-house-inventory-source'),
         houseInventoryCount: canvas.getAttribute('data-house-inventory-count'),
+        houseInventoryStatusCounts: canvas.getAttribute('data-house-inventory-status-counts'),
         inventoryItems: canvas.getAttribute('data-renderer-inventory-items'),
         inventoryResolution: canvas.getAttribute('data-renderer-inventory-resolution'),
         inventoryProxyCount: canvas.getAttribute('data-renderer-inventory-proxy-count'),
@@ -968,6 +984,8 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         storyJournalEntryCount: canvas.getAttribute('data-story-journal-entry-count'),
         storyLastEvent: canvas.getAttribute('data-story-last-event'),
         storyLastEventKind: canvas.getAttribute('data-story-last-event-kind'),
+        endingKind: canvas.getAttribute('data-ending-kind'),
+        endingTextureCount: canvas.getAttribute('data-ending-texture-count'),
         door: (() => {
           const door = document.querySelector('.door');
           return {
@@ -1044,6 +1062,9 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       }
       if (result.houseRole !== 'provisional-visible-place') {
         throw new Error(`${name}: house scope was not explicitly provisional ${JSON.stringify(result)}`);
+      }
+      if (result.houseStoryAuthority !== 'external-story-data') {
+        throw new Error(`${name}: house incorrectly claims story authority ${JSON.stringify(result)}`);
       }
       if (diagnostics.backend !== result.backend ||
           diagnostics.provenancePinned !== true ||

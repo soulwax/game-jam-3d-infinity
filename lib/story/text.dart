@@ -1,4 +1,5 @@
 import 'dart:js_interop';
+import 'dart:convert' show jsonDecode, jsonEncode;
 import 'package:web/web.dart' as web;
 
 import 'corpus.dart';
@@ -40,8 +41,36 @@ class TextLibrary {
 
   Future<void> load() async {
     try {
-      final resp = await web.window.fetch('res/text.json'.toJS).toDart;
-      final jsonText = (await resp.text().toDart).toString();
+      String? screenplayJson;
+      String jsonText;
+      Map<String, dynamic>? runtimeMap;
+      // The static game host does not own the project-management API. Keep
+      // bundled resources deterministic by probing that API only when the
+      // editor/project host explicitly opts in with ?dialogueSource=api.
+      // This preserves the live editor bridge without turning every packaged
+      // game boot into a predictable 404 followed by a fallback.
+      if (Uri.base.queryParameters['dialogueSource'] == 'api') {
+        try {
+          final runtimeResp = await web.window
+              .fetch('/api/projects/the-quarantine/dialogue'.toJS)
+              .toDart;
+          if (runtimeResp.ok) {
+            runtimeMap = _decodeRuntime(
+              (await runtimeResp.text().toDart).toString(),
+            );
+          }
+        } catch (_) {
+          // The shipped bundle remains a playable offline/degraded-mode
+          // fallback when the editor service is unavailable.
+        }
+      }
+      if (runtimeMap != null) {
+        jsonText = jsonEncode(runtimeMap['corpus']);
+        screenplayJson = jsonEncode(runtimeMap['screenplay']);
+      } else {
+        final resp = await web.window.fetch('res/text.json'.toJS).toDart;
+        jsonText = (await resp.text().toDart).toString();
+      }
       final decoded = decodeTextCorpus(jsonText);
       _broadcasts = decoded['broadcasts']!;
       _visitors = decoded['visitors']!;
@@ -63,19 +92,27 @@ class TextLibrary {
       _residues = decoded['residues'] is Map
           ? Map<String, dynamic>.from(decoded['residues'] as Map)
           : <String, dynamic>{};
-      final screenplayResp = await web.window.fetch('res/story_script.json'.toJS).toDart;
+      final screenplayResp = screenplayJson == null ? await web.window.fetch('res/story_script.json'.toJS).toDart : null;
       // Older checked-in web bundles may predate the screenplay artifact. The
       // content build produces it; keep those bundles playable while exposing
       // the absence to callers through a null screenplay.
-      if (screenplayResp.ok) {
+      if (screenplayJson != null || screenplayResp?.ok == true) {
       _screenplay = StoryScreenplay.fromJson(
-        (await screenplayResp.text().toDart).toString(),
+        screenplayJson ?? (await screenplayResp!.text().toDart).toString(),
       );
       _eventOrchestrator = GameEventOrchestrator(_screenplay!);
       }
     } catch (e) {
       throw 'Failed to load text.json: $e';
     }
+  }
+
+  Map<String, dynamic> _decodeRuntime(String source) {
+    final decoded = jsonDecode(source);
+    if (decoded is! Map || decoded['schema'] != 'quarantine.dialogue.v1' || decoded['corpus'] is! Map || decoded['screenplay'] is! Map) {
+      throw const FormatException('Invalid database dialogue package');
+    }
+    return Map<String, dynamic>.from(decoded);
   }
 
   Map<String, String>? getBroadcast(int day) {

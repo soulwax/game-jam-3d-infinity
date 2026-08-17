@@ -11,6 +11,8 @@ import 'room.dart';
 final class AuthoredHouseManifest {
   final String houseId;
   final String sourceRef;
+  final String presentationScope;
+  final String storyAuthority;
   final double modelScale;
   final List<AuthoredLevel> levels;
   final List<AuthoredRoom> rooms;
@@ -21,6 +23,8 @@ final class AuthoredHouseManifest {
   const AuthoredHouseManifest({
     required this.houseId,
     required this.sourceRef,
+    required this.presentationScope,
+    required this.storyAuthority,
     required this.modelScale,
     required this.levels,
     required this.rooms,
@@ -43,6 +47,8 @@ final class AuthoredHouseManifest {
     return AuthoredHouseManifest(
       houseId: _string(map, 'houseId'),
       sourceRef: _string(map, 'sourceRef'),
+      presentationScope: _string(map, 'presentationScope'),
+      storyAuthority: _string(map, 'storyAuthority'),
       modelScale: modelScale,
       levels: _list(
         map,
@@ -130,6 +136,16 @@ final class AuthoredHouseManifest {
     }
     if (sourceRef != 'lib/house/house.dart') {
       throw StateError('authored house source changed: $sourceRef');
+    }
+    if (presentationScope != 'provisional-visible-place') {
+      throw StateError(
+        'authored house presentation scope must remain provisional-visible-place',
+      );
+    }
+    if (storyAuthority != 'external-story-data') {
+      throw StateError(
+        'authored house story authority must remain external-story-data',
+      );
     }
     if (rooms.length != house.rooms.length ||
         portals.length != house.portals.length) {

@@ -38,7 +38,8 @@ Backends, in preference order:
          language, so --voice degrades to a pitch/formant shift.
   apple  macOS `say` voices. No dependency or network key; available when
          the script runs on macOS. --voice-name accepts an installed Apple
-         voice name, such as Alex or Samantha.
+         voice name, such as Alex or Samantha. --apple-volume,
+         --apple-emphasis, and --apple-pause-ms control native say markup.
 
 Requires ffmpeg and ffprobe on PATH.
 """
@@ -78,7 +79,7 @@ TEXT_CHOICES_FILE = ROOT / "web" / "res" / "text_choices.json"
 VENV = ROOT / "scripts" / ".venv"
 CACHE = ROOT / "scripts" / ".cache"
 SR = 24000
-CACHE_FORMAT = "tts-cache-v2"
+CACHE_FORMAT = "tts-cache-v3"
 
 
 def load_text_choices() -> dict[str, int]:
@@ -442,10 +443,14 @@ class Job:
     rate: str
     pitch: str
     path: Path
+    apple_volume: float = 1.0
+    apple_emphasis: str = "none"
+    apple_pause_ms: int = 0
 
 
 def plan_jobs(text: str, cache: Path, backend: str, voice: str, gender: str,
-              tone: Tone, limit: int) -> list[Job]:
+              tone: Tone, limit: int, apple_volume: float = 1.0,
+              apple_emphasis: str = "none", apple_pause_ms: int = 0) -> list[Job]:
     jobs = []
     normalized = normalize_tts_text(text)
     pieces = chunk_text(normalized, limit)
@@ -457,13 +462,16 @@ def plan_jobs(text: str, cache: Path, backend: str, voice: str, gender: str,
         # JSON framing avoids collisions when creative text contains pipes,
         # newlines, or other delimiter-looking punctuation.
         sig = json.dumps(
-            [CACHE_FORMAT, backend, voice, gender, tone.rate, tone.pitch, piece],
+            [CACHE_FORMAT, backend, voice, gender, tone.rate, tone.pitch,
+             apple_volume, apple_emphasis, apple_pause_ms, piece],
             ensure_ascii=False,
             separators=(",", ":"),
         )
         h = hashlib.sha256(sig.encode("utf-8")).hexdigest()[:24]
-        jobs.append(Job(piece, voice, gender, tone.rate, tone.pitch,
-                        cache / f"{h}.mp3"))
+        jobs.append(Job(
+            piece, voice, gender, tone.rate, tone.pitch,
+            cache / f"{h}.mp3", apple_volume, apple_emphasis, apple_pause_ms,
+        ))
     return jobs
 
 
@@ -536,7 +544,10 @@ def run_jobs(jobs: list[Job], backend: str, connections: int) -> None:
             tmp = job.path.with_suffix(".part")
             try:
                 if backend == "apple":
-                    synth_apple(job.text, job.voice, job.rate, job.pitch, tmp)
+                    synth_apple(
+                        job.text, job.voice, job.rate, job.pitch, tmp,
+                        job.apple_volume, job.apple_emphasis, job.apple_pause_ms,
+                    )
                 else:
                     synth_gtts(job.text, job.gender, tmp)
                 tmp.replace(job.path)
@@ -626,12 +637,48 @@ def apple_pitch(pitch: str) -> int:
     return max(0, min(100, round(50 + float(match.group(1)) * 1.5)))
 
 
-def apple_markup(text: str, rate: str, pitch: str) -> str:
+APPLE_EMPHASIS = ("none", "reduced", "strong")
+
+
+def apple_markup(
+    text: str,
+    rate: str,
+    pitch: str,
+    volume: float = 1.0,
+    emphasis: str = "none",
+    pause_ms: int = 0,
+) -> str:
+    if emphasis not in APPLE_EMPHASIS:
+        raise ValueError(f"unknown Apple emphasis {emphasis!r}")
+    if not 0.0 <= volume <= 1.0:
+        raise ValueError("Apple volume must be between 0.0 and 1.0")
+    if not 0 <= pause_ms <= 10_000:
+        raise ValueError("Apple pause must be between 0 and 10000 milliseconds")
     safe_text = text.replace("[[", "[ [").replace("]]", "] ]")
-    return f"[[rate {apple_rate(rate)}]] [[pbas {apple_pitch(pitch)}]] {safe_text}"
+    commands = [
+        f"[[rate {apple_rate(rate)}]]",
+        f"[[pbas {apple_pitch(pitch)}]]",
+        f"[[volm {volume:.3f}]]",
+    ]
+    if emphasis == "strong":
+        commands.append("[[emph +]]")
+    elif emphasis == "reduced":
+        commands.append("[[emph -]]")
+    if pause_ms:
+        commands.append(f"[[slnc {pause_ms}]]")
+    return " ".join(commands + [safe_text])
 
 
-def synth_apple(text: str, voice: str, rate: str, pitch: str, dest: Path) -> None:
+def synth_apple(
+    text: str,
+    voice: str,
+    rate: str,
+    pitch: str,
+    dest: Path,
+    volume: float = 1.0,
+    emphasis: str = "none",
+    pause_ms: int = 0,
+) -> None:
     aiff = dest.with_suffix(".aiff")
     try:
         installed = apple_voices()
@@ -640,7 +687,7 @@ def synth_apple(text: str, voice: str, rate: str, pitch: str, dest: Path) -> Non
                 f"voice {voice!r} is not installed; use 'say -v ?' to list voices")
         result = subprocess.run(
             ["say", "-v", voice, "-o", str(aiff),
-             apple_markup(text, rate, pitch)],
+             apple_markup(text, rate, pitch, volume, emphasis, pause_ms)],
             capture_output=True, text=True)
         if result.returncode:
             detail = result.stderr.strip() or result.stdout.strip()
@@ -960,7 +1007,10 @@ def plan_units(units: list[Unit], a: argparse.Namespace,
         rng = random.Random(f"{a.seed}:text:{unit.stem}")
         jobs = [[] if p.absent else
                 plan_jobs(resolve(p.text, rng, TEXT_CHOICES, unit_address(unit, p)),
-                          cache, a.backend, voice, gender, tone, a.chunk_chars)
+                          cache, a.backend, voice, gender, tone, a.chunk_chars,
+                          getattr(a, "apple_volume", 1.0),
+                          getattr(a, "apple_emphasis", "none"),
+                          getattr(a, "apple_pause_ms", 0))
                 for p in unit.parts]
         drops = str(pick(a, unit, "dropouts"))
         lead = str(pick(a, unit, "lead"))
@@ -1256,11 +1306,17 @@ def main() -> None:
 
     p.add_argument("--voice", choices=("male", "female"),
                    help="overrides the speaker's default")
-    p.add_argument("--voice-name", help="exact edge-tts voice; beats --voice")
+    p.add_argument("--voice-name", help="exact installed voice name; beats --voice")
     p.add_argument("--tone", choices=tuple(TONES),
                    help="overrides the speaker's default")
     p.add_argument("--rate", help="precise Edge rate override, e.g. +6%% or -12%%")
     p.add_argument("--pitch", help="precise Edge pitch override, e.g. +2Hz or -8Hz")
+    p.add_argument("--apple-volume", type=float, default=1.0, metavar="0..1",
+                   help="Apple say volume multiplier (default: 1.0)")
+    p.add_argument("--apple-emphasis", choices=APPLE_EMPHASIS, default="none",
+                   help="Apple say emphasis for the whole line")
+    p.add_argument("--apple-pause-ms", type=int, default=0, metavar="MS",
+                   help="Apple say silence before the line, 0-10000 ms")
     p.add_argument("--variation", choices=tuple(VARIATIONS),
                    help="timbre/age variation independent of tone and transmission")
     p.add_argument("--set", choices=tuple(SETS),
@@ -1338,6 +1394,10 @@ def main() -> None:
         p.error("--jobs must be at least 1")
     if a.connections < 1:
         p.error("--connections must be at least 1")
+    if not 0.0 <= a.apple_volume <= 1.0:
+        p.error("--apple-volume must be between 0.0 and 1.0")
+    if not 0 <= a.apple_pause_ms <= 10_000:
+        p.error("--apple-pause-ms must be between 0 and 10000")
     for name, value, suffix in (("--rate", a.rate, "%"), ("--pitch", a.pitch, "Hz")):
         if value and not re.fullmatch(r"[+-]\d+(?:\.\d+)?" + re.escape(suffix), value):
             p.error(f"{name} must look like +6{suffix} or -12{suffix}")

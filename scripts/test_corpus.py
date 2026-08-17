@@ -751,8 +751,37 @@ def test_cache_key_is_stable_and_delimiter_safe():
         first = tts.plan_jobs("A | B", cache, "gtts", "voice", "male", tone, 180)
         same = tts.plan_jobs("A | B", cache, "gtts", "voice", "male", tone, 180)
         other = tts.plan_jobs("A B", cache, "gtts", "voice", "male", tone, 180)
+        apple_variant = tts.plan_jobs(
+            "A | B", cache, "apple", "Alex", "male", tone, 180,
+            0.7, "strong", 250,
+        )
+        apple_default = tts.plan_jobs(
+            "A | B", cache, "apple", "Alex", "male", tone, 180,
+        )
         assert first[0].path == same[0].path
         assert first[0].path != other[0].path
+        assert first[0].path != apple_variant[0].path
+        assert apple_default[0].path != apple_variant[0].path
+
+
+def test_apple_markup_exposes_say_controls():
+    markup = tts.apple_markup(
+        "Open the door.", "+6%", "-2Hz", 0.7, "strong", 250,
+    )
+    assert "[[rate" in markup
+    assert "[[pbas" in markup
+    assert "[[volm 0.700]]" in markup
+    assert "[[emph +]]" in markup
+    assert "[[slnc 250]]" in markup
+    assert "Open the door." in markup
+    assert tts.apple_markup("Line", "+0%", "+0Hz", 1.0, "none", 0).count("[[") == 3
+
+    try:
+        tts.apple_markup("Line", "+0%", "+0Hz", 1.1)
+    except ValueError as error:
+        assert "volume" in str(error)
+    else:
+        raise AssertionError("invalid Apple volume was accepted")
 
 
 if __name__ == "__main__":
@@ -811,4 +840,5 @@ if __name__ == "__main__":
     test_unit_address_matches_dart_scheme()
     test_normalize_tts_text_preserves_creative_prose()
     test_cache_key_is_stable_and_delimiter_safe()
+    test_apple_markup_exposes_say_controls()
     print("All tests passed!")

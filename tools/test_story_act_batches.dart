@@ -19,6 +19,25 @@ void main() {
         'story act batch ${range.$1}-${range.$2} is not bounded',
       );
     }
+    if (!events.any((event) => event.kind == 'visitor')) {
+      throw StateError(
+        'story act batch ${range.$1}-${range.$2} has no embodied visitor beat',
+      );
+    }
+    final cursor = GameEventCursor(plan, runSeed: 7);
+    final delivered = <String>{};
+    for (var day = range.$1; day <= range.$2; day++) {
+      for (final event in cursor.advance(day: day, hour: 24)) {
+        if (!delivered.add(event.id)) {
+          throw StateError('event ${event.id} delivered twice in act batch');
+        }
+      }
+    }
+    if (delivered.length != events.length) {
+      throw StateError(
+        'act batch ${range.$1}-${range.$2} did not deliver exactly once',
+      );
+    }
   }
   print(
     'story act batches: days 2-7, 8-14, and 15-20 are bounded and scheduled',

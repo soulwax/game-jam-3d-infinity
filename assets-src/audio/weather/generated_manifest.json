@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "generator": "tools/generate_weather_audio.py",
+  "sampleRateHz": 24000,
+  "recipes": {
+    "weather-rain": "deterministic-procedural",
+    "weather-hail": "deterministic-procedural",
+    "weather-hail-roof": "deterministic-procedural",
+    "weather-snow": "deterministic-procedural",
+    "weather-sleet": "deterministic-procedural",
+    "weather-wind": "deterministic-procedural",
+    "weather-window-rattle": "deterministic-procedural",
+    "weather-thunder-bed": "deterministic-procedural",
+    "weather-thunder-crack": "deterministic-procedural",
+    "weather-thunder-roll": "deterministic-procedural",
+    "weather-interior-drip": "deterministic-procedural",
+    "weather-interior-warmth": "deterministic-procedural",
+    "weather-interior-coffee": "deterministic-procedural"
+  },
+  "runtime": "Dart WeatherAudioEngine resolves layering, aperture transmission, and timing"
+}

@@ -33,6 +33,7 @@ enum ShaderTuningCategory {
   shadowsAndOcclusion,
   surfaceWeathering,
   atmosphereAndPost,
+  weatherEffects,
   debugView;
 
   String get title => switch (this) {
@@ -40,6 +41,7 @@ enum ShaderTuningCategory {
     ShaderTuningCategory.shadowsAndOcclusion => 'Shadows & Ambient Occlusion',
     ShaderTuningCategory.surfaceWeathering => 'Surface Weathering & Normals',
     ShaderTuningCategory.atmosphereAndPost => 'Atmosphere & Post-Processing',
+    ShaderTuningCategory.weatherEffects => 'Weather Effects Lab',
     ShaderTuningCategory.debugView => 'Diagnostic Shader Passes',
   };
 }
@@ -614,6 +616,77 @@ class ShaderTuningState {
         max: 2.0,
         step: 0.05,
         defaultValue: 0.0,
+      ),
+      // 5. Weather Effects Lab. These controls intentionally map to the
+      // host's physical weather submission rather than painting overlays.
+      ShaderTuningItem(
+        id: 'weather_particles_enable',
+        label: 'Physical Weather Particles',
+        description: 'Submit collision-aware precipitation particles',
+        category: ShaderTuningCategory.weatherEffects,
+        isToggle: true,
+        defaultValue: 1.0,
+        defaultBool: true,
+      ),
+      ShaderTuningItem(
+        id: 'weather_particle_density',
+        label: 'Particle Density',
+        description: 'Requested precipitation count before profile budgeting',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 0.0,
+        max: 2.0,
+        step: 0.05,
+        defaultValue: 1.0,
+      ),
+      ShaderTuningItem(
+        id: 'weather_particle_size',
+        label: 'Particle Scale',
+        description: 'Physical drop, flake, or hailstone visual radius',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 0.25,
+        max: 2.0,
+        step: 0.05,
+        defaultValue: 1.0,
+      ),
+      ShaderTuningItem(
+        id: 'weather_snow_accumulation',
+        label: 'Snow Coverage Scale',
+        description: 'Material coverage response to settled snow mass',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 0.0,
+        max: 2.0,
+        step: 0.05,
+        defaultValue: 1.0,
+      ),
+      ShaderTuningItem(
+        id: 'weather_fog_scattering',
+        label: 'Volumetric Fog Scattering',
+        description: 'Density multiplier for weather aerosol in-scattering',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 0.0,
+        max: 2.0,
+        step: 0.05,
+        defaultValue: 1.0,
+      ),
+      ShaderTuningItem(
+        id: 'weather_lightning_intensity',
+        label: 'Lightning Exposure',
+        description: 'Bounded energy multiplier for storm flash illumination',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 0.0,
+        max: 2.0,
+        step: 0.05,
+        defaultValue: 1.0,
+      ),
+      ShaderTuningItem(
+        id: 'weather_reflection_strength',
+        label: 'Wet Surface Reflection',
+        description: 'Weather-driven glossy response on wet materials',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 0.0,
+        max: 2.0,
+        step: 0.05,
+        defaultValue: 1.0,
       ),
     ];
   }

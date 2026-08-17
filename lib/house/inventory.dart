@@ -52,6 +52,18 @@ final class HouseInventory {
   Iterable<InventoryPlacement> get pickablePlacements =>
       placements.where((placement) => placement.pickable);
 
+  Map<String, int> get statusCounts {
+    final counts = <String, int>{
+      'production': 0,
+      'proxy': 0,
+      'invisible-anchor': 0,
+    };
+    for (final asset in assets) {
+      counts[asset.status] = (counts[asset.status] ?? 0) + 1;
+    }
+    return Map.unmodifiable(counts);
+  }
+
   InventoryPlacement? pickableForFocusId(String focusId) {
     for (final placement in pickablePlacements) {
       if (placement.focusId == focusId) return placement;
