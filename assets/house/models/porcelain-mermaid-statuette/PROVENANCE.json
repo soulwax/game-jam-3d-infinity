@@ -2,7 +2,12 @@
   "schema": "pixeldart-asset-source-v1",
   "assetId": "porcelain-mermaid-statuette",
   "status": "source-only",
-  "license": "UNDECLARED_AUTHOR_SOURCE",
+  "license": "OWNER_AUTHORED_SOURCE",
+  "licenseId": "owner-authored-porcelain-source",
+  "sourceArchive": {
+    "name": "porcelain-mermaid-statuette/source/Retopo.zip",
+    "sha256": "ae3bce47fe7a46f242144a256e3b304474a2f94ef1c732c91f9dfe26ea528b0b"
+  },
   "source": {
     "model": {
       "path": "source/Retopo/Retopo.OBJ",

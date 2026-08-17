@@ -34,12 +34,14 @@ Backends, in preference order:
   edge   Microsoft Edge neural voices. Free, no key, real male and female
          voices, and honours rate/pitch. Needs the `edge-tts` package; this
          script builds scripts/.venv on first use and re-execs into it.
-  gtts   Google Translate TTS. No dependency at all, but one flat voice per
+         gtts   Google Translate TTS. No dependency at all, but one flat voice per
          language, so --voice degrades to a pitch/formant shift.
   apple  macOS `say` voices. No dependency or network key; available when
          the script runs on macOS. --voice-name accepts an installed Apple
          voice name, such as Alex or Samantha. --apple-volume,
-         --apple-emphasis, and --apple-pause-ms control native say markup.
+         --apple-emphasis, the Apple rate/pitch options, pause options, and
+         repeatable --apple-substitute and --apple-phoneme pairs control
+         native say markup.
 
 Requires ffmpeg and ffprobe on PATH.
 """
@@ -447,11 +449,23 @@ class Job:
     apple_volume: float = 1.0
     apple_emphasis: str = "none"
     apple_pause_ms: int = 0
+    apple_sentence_pause_ms: int = 0
+    apple_trailing_pause_ms: int = 0
+    apple_rate_wpm: int | None = None
+    apple_pitch_baseline: int | None = None
+    apple_substitutions: tuple[tuple[str, str], ...] = ()
+    apple_phonemes: tuple[tuple[str, str], ...] = ()
 
 
 def plan_jobs(text: str, cache: Path, backend: str, voice: str, gender: str,
               tone: Tone, limit: int, apple_volume: float = 1.0,
-              apple_emphasis: str = "none", apple_pause_ms: int = 0) -> list[Job]:
+              apple_emphasis: str = "none", apple_pause_ms: int = 0,
+              apple_sentence_pause_ms: int = 0,
+              apple_trailing_pause_ms: int = 0,
+              apple_rate_wpm: int | None = None,
+              apple_pitch_baseline: int | None = None,
+              apple_substitutions: tuple[tuple[str, str], ...] = (),
+              apple_phonemes: tuple[tuple[str, str], ...] = ()) -> list[Job]:
     jobs = []
     normalized = normalize_tts_text(text)
     pieces = chunk_text(normalized, limit)
@@ -463,8 +477,11 @@ def plan_jobs(text: str, cache: Path, backend: str, voice: str, gender: str,
         # JSON framing avoids collisions when creative text contains pipes,
         # newlines, or other delimiter-looking punctuation.
         sig = json.dumps(
-            [CACHE_FORMAT, backend, voice, gender, tone.rate, tone.pitch,
-             apple_volume, apple_emphasis, apple_pause_ms, piece],
+             [CACHE_FORMAT, backend, voice, gender, tone.rate, tone.pitch,
+             apple_volume, apple_emphasis, apple_pause_ms,
+             apple_sentence_pause_ms, apple_trailing_pause_ms,
+             apple_rate_wpm, apple_pitch_baseline, apple_substitutions,
+             apple_phonemes, piece],
             ensure_ascii=False,
             separators=(",", ":"),
         )
@@ -472,6 +489,10 @@ def plan_jobs(text: str, cache: Path, backend: str, voice: str, gender: str,
         jobs.append(Job(
             piece, voice, gender, tone.rate, tone.pitch,
             cache / f"{h}.mp3", apple_volume, apple_emphasis, apple_pause_ms,
+            apple_sentence_pause_ms, apple_trailing_pause_ms,
+            apple_rate_wpm, apple_pitch_baseline,
+            apple_substitutions,
+            apple_phonemes,
         ))
     return jobs
 
@@ -548,6 +569,10 @@ def run_jobs(jobs: list[Job], backend: str, connections: int) -> None:
                     synth_apple(
                         job.text, job.voice, job.rate, job.pitch, tmp,
                         job.apple_volume, job.apple_emphasis, job.apple_pause_ms,
+                        job.apple_sentence_pause_ms, job.apple_trailing_pause_ms,
+                        job.apple_rate_wpm, job.apple_pitch_baseline,
+                        job.apple_substitutions,
+                        job.apple_phonemes,
                     )
                 else:
                     synth_gtts(job.text, job.gender, tmp)
@@ -648,17 +673,61 @@ def apple_markup(
     volume: float = 1.0,
     emphasis: str = "none",
     pause_ms: int = 0,
+    sentence_pause_ms: int = 0,
+    trailing_pause_ms: int = 0,
+    rate_wpm: int | None = None,
+    pitch_baseline: int | None = None,
+    substitutions: tuple[tuple[str, str], ...] = (),
+    phonemes: tuple[tuple[str, str], ...] = (),
 ) -> str:
     if emphasis not in APPLE_EMPHASIS:
         raise ValueError(f"unknown Apple emphasis {emphasis!r}")
     if not 0.0 <= volume <= 1.0:
         raise ValueError("Apple volume must be between 0.0 and 1.0")
-    if not 0 <= pause_ms <= 10_000:
-        raise ValueError("Apple pause must be between 0 and 10000 milliseconds")
+    for name, value in (
+        ("pause", pause_ms),
+        ("sentence pause", sentence_pause_ms),
+        ("trailing pause", trailing_pause_ms),
+    ):
+        if not 0 <= value <= 10_000:
+            raise ValueError(f"Apple {name} must be between 0 and 10000 milliseconds")
+    if rate_wpm is not None and not 80 <= rate_wpm <= 500:
+        raise ValueError("Apple rate must be between 80 and 500 words per minute")
+    if pitch_baseline is not None and not 0 <= pitch_baseline <= 100:
+        raise ValueError("Apple pitch baseline must be between 0 and 100")
     safe_text = text.replace("[[", "[ [").replace("]]", "] ]")
+    for source, spoken in sorted(substitutions, key=lambda pair: len(pair[0]), reverse=True):
+        if (
+            not source
+            or "[[" in source
+            or "]]" in source
+            or "[[" in spoken
+            or "]]" in spoken
+        ):
+            raise ValueError("Apple pronunciation pairs must be non-empty and contain no markup")
+        safe_text = safe_text.replace(source, spoken)
+    for source, phonetic in sorted(phonemes, key=lambda pair: len(pair[0]), reverse=True):
+        if (
+            not source
+            or not phonetic
+            or "[[" in source
+            or "]]" in source
+            or "[[" in phonetic
+            or "]]" in phonetic
+        ):
+            raise ValueError("Apple phoneme pairs must be non-empty and contain no markup")
+        safe_text = safe_text.replace(
+            source, f"[[inpt PHON]]{phonetic}[[inpt TEXT]]"
+        )
+    if sentence_pause_ms:
+        safe_text = re.sub(
+            rf"([.!?]+)(?=\s|$)",
+            rf"\1 [[slnc {sentence_pause_ms}]]",
+            safe_text,
+        )
     commands = [
-        f"[[rate {apple_rate(rate)}]]",
-        f"[[pbas {apple_pitch(pitch)}]]",
+        f"[[rate {rate_wpm if rate_wpm is not None else apple_rate(rate)}]]",
+        f"[[pbas {pitch_baseline if pitch_baseline is not None else apple_pitch(pitch)}]]",
         f"[[volm {volume:.3f}]]",
     ]
     if emphasis == "strong":
@@ -667,6 +736,8 @@ def apple_markup(
         commands.append("[[emph -]]")
     if pause_ms:
         commands.append(f"[[slnc {pause_ms}]]")
+    if trailing_pause_ms:
+        safe_text = f"{safe_text} [[slnc {trailing_pause_ms}]]"
     return " ".join(commands + [safe_text])
 
 
@@ -679,6 +750,12 @@ def synth_apple(
     volume: float = 1.0,
     emphasis: str = "none",
     pause_ms: int = 0,
+    sentence_pause_ms: int = 0,
+    trailing_pause_ms: int = 0,
+    rate_wpm: int | None = None,
+    pitch_baseline: int | None = None,
+    substitutions: tuple[tuple[str, str], ...] = (),
+    phonemes: tuple[tuple[str, str], ...] = (),
 ) -> None:
     aiff = dest.with_suffix(".aiff")
     try:
@@ -688,7 +765,13 @@ def synth_apple(
                 f"voice {voice!r} is not installed; use 'say -v ?' to list voices")
         result = subprocess.run(
             ["say", "-v", voice, "-o", str(aiff),
-             apple_markup(text, rate, pitch, volume, emphasis, pause_ms)],
+             apple_markup(
+                 text, rate, pitch, volume, emphasis, pause_ms,
+                 sentence_pause_ms, trailing_pause_ms,
+                 rate_wpm, pitch_baseline,
+                 substitutions,
+                 phonemes,
+             )],
             capture_output=True, text=True)
         if result.returncode:
             detail = result.stderr.strip() or result.stdout.strip()
@@ -1011,7 +1094,13 @@ def plan_units(units: list[Unit], a: argparse.Namespace,
                           cache, a.backend, voice, gender, tone, a.chunk_chars,
                           getattr(a, "apple_volume", 1.0),
                           getattr(a, "apple_emphasis", "none"),
-                          getattr(a, "apple_pause_ms", 0))
+                          getattr(a, "apple_pause_ms", 0),
+                          getattr(a, "apple_sentence_pause_ms", 0),
+                          getattr(a, "apple_trailing_pause_ms", 0),
+                          getattr(a, "apple_rate_wpm", None),
+                          getattr(a, "apple_pitch_baseline", None),
+                          tuple(getattr(a, "apple_substitutions", ()) or ()),
+                          tuple(getattr(a, "apple_phonemes", ()) or ()))
                 for p in unit.parts]
         drops = str(pick(a, unit, "dropouts"))
         lead = str(pick(a, unit, "lead"))
@@ -1326,6 +1415,18 @@ def main() -> None:
                    help="Apple say emphasis for the whole line")
     p.add_argument("--apple-pause-ms", type=int, default=0, metavar="MS",
                    help="Apple say silence before the line, 0-10000 ms")
+    p.add_argument("--apple-sentence-pause-ms", type=int, default=0, metavar="MS",
+                   help="Apple say silence after sentence punctuation, 0-10000 ms")
+    p.add_argument("--apple-trailing-pause-ms", type=int, default=0, metavar="MS",
+                   help="Apple say silence after the line, 0-10000 ms")
+    p.add_argument("--apple-rate-wpm", type=int, metavar="WPM",
+                   help="Apple native speech rate, 80-500 words per minute")
+    p.add_argument("--apple-pitch-baseline", type=int, metavar="0-100",
+                   help="Apple native pitch baseline, 0-100")
+    p.add_argument("--apple-substitute", action="append", default=[], metavar="FROM=TO",
+                   help="Apple pronunciation replacement; repeatable")
+    p.add_argument("--apple-phoneme", action="append", default=[], metavar="FROM=PHONEMES",
+                   help="Apple phonetic replacement in say PHON mode; repeatable")
     p.add_argument("--variation", choices=tuple(VARIATIONS),
                    help="timbre/age variation independent of tone and transmission")
     p.add_argument("--set", choices=tuple(SETS),
@@ -1407,6 +1508,30 @@ def main() -> None:
         p.error("--apple-volume must be between 0.0 and 1.0")
     if not 0 <= a.apple_pause_ms <= 10_000:
         p.error("--apple-pause-ms must be between 0 and 10000")
+    for name, value in (
+        ("--apple-sentence-pause-ms", a.apple_sentence_pause_ms),
+        ("--apple-trailing-pause-ms", a.apple_trailing_pause_ms),
+    ):
+        if not 0 <= value <= 10_000:
+            p.error(f"{name} must be between 0 and 10000")
+    if a.apple_rate_wpm is not None and not 80 <= a.apple_rate_wpm <= 500:
+        p.error("--apple-rate-wpm must be between 80 and 500")
+    if a.apple_pitch_baseline is not None and not 0 <= a.apple_pitch_baseline <= 100:
+        p.error("--apple-pitch-baseline must be between 0 and 100")
+    apple_substitutions: list[tuple[str, str]] = []
+    for raw in a.apple_substitute:
+        source, separator, spoken = raw.partition("=")
+        if not separator or not source.strip() or not spoken.strip():
+            p.error("--apple-substitute must look like FROM=TO")
+        apple_substitutions.append((source, spoken))
+    a.apple_substitutions = tuple(apple_substitutions)
+    apple_phonemes: list[tuple[str, str]] = []
+    for raw in a.apple_phoneme:
+        source, separator, phonetic = raw.partition("=")
+        if not separator or not source.strip() or not phonetic.strip():
+            p.error("--apple-phoneme must look like FROM=PHONEMES")
+        apple_phonemes.append((source, phonetic))
+    a.apple_phonemes = tuple(apple_phonemes)
     for name, value, suffix in (("--rate", a.rate, "%"), ("--pitch", a.pitch, "Hz")):
         if value and not re.fullmatch(r"[+-]\d+(?:\.\d+)?" + re.escape(suffix), value):
             p.error(f"{name} must look like +6{suffix} or -12{suffix}")

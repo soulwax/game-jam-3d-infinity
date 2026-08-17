@@ -8,14 +8,18 @@ const url = `${baseUrl}/?renderer=pixeldart&profile=high&automation=1` +
 async function main() {
   const browser = await firefox.launch({ headless: true });
   try {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+    const context = await browser.newContext({
+      viewport: { width: 1280, height: 720 },
+      permissions: ['clipboard-read', 'clipboard-write'],
+    });
+    const page = await context.newPage();
     await page.goto(url, { waitUntil: 'load' });
     await page.waitForFunction(() =>
       document.querySelector('canvas')?.getAttribute(
         'data-renderer-shader-lab-document',
       ),
     );
-    const result = await page.evaluate(() => {
+    const result = await page.evaluate(async () => {
       const canvas = document.querySelector('canvas');
       const rawDocument = canvas?.getAttribute(
         'data-renderer-shader-lab-document',
@@ -40,12 +44,21 @@ async function main() {
           `effective/live mismatch: ${effectiveCount}/${diagnostics.liveCount}`,
         );
       }
+      canvas.focus();
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'CapsLock' }));
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyC' }));
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const copiedState = canvas.getAttribute('data-renderer-shader-lab-clipboard');
+      if (copiedState !== 'copied' && copiedState !== 'copy-failed') {
+        throw new Error(`copy control did not report a result: ${copiedState}`);
+      }
       return {
         schema: documentValue.schema,
         version: documentValue.version,
         controls: documentValue.controls.length,
         liveCount: diagnostics.liveCount,
         unavailableCount: diagnostics.unavailableCount,
+        clipboard: copiedState,
       };
     });
     console.log(JSON.stringify(result));

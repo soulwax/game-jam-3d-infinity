@@ -151,6 +151,7 @@ final class HouseInventory {
           (placement.heatOutputWatts > 0 && placement.thermalRadiusM <= 0)) {
         throw StateError('invalid thermal source for ${placement.id}');
       }
+      placement.physics.validate(placement.id);
       if (placement.socket != null &&
           !sockets.add('${placement.roomId}:${placement.socket}')) {
         throw StateError(
@@ -232,6 +233,7 @@ final class InventoryPlacement {
   final double surfaceTemperatureCelsius;
   final double thermalRadiusM;
   final double thermalOffsetY;
+  final InventoryPhysics physics;
 
   const InventoryPlacement({
     required this.id,
@@ -249,6 +251,7 @@ final class InventoryPlacement {
     this.surfaceTemperatureCelsius = 0,
     this.thermalRadiusM = 0,
     this.thermalOffsetY = 0,
+    this.physics = const InventoryPhysics.none(),
   });
 
   factory InventoryPlacement.fromJson(Object? raw) {
@@ -259,6 +262,10 @@ final class InventoryPlacement {
     final thermal = map['thermal'];
     final thermalMap = thermal is Map<String, dynamic>
         ? thermal
+        : const <String, dynamic>{};
+    final physics = map['physics'];
+    final physicsMap = physics is Map<String, dynamic>
+        ? physics
         : const <String, dynamic>{};
     return InventoryPlacement(
       id: _string(map, 'id'),
@@ -290,6 +297,7 @@ final class InventoryPlacement {
           : (thermalMap['offsetY'] is num
                 ? (thermalMap['offsetY'] as num).toDouble()
                 : 0),
+      physics: InventoryPhysics.fromJson(physicsMap),
     );
   }
 
@@ -317,6 +325,80 @@ final class InventoryPlacement {
     final scaleY = transform.scale.y * modelScale;
     return Vec3(asset.bounds.min.y * scaleY, asset.bounds.max.y * scaleY, 0);
   }
+}
+
+/// Physical contract for an authored inventory placement.
+///
+/// The renderer does not simulate rigid bodies. It consumes this contract for
+/// collision, weather exposure, and future interaction adapters. A heavy
+/// decorative object is therefore explicitly supported by the house without
+/// pretending that a visual mesh has mass by itself.
+final class InventoryPhysics {
+  final String bodyType;
+  final double massKg;
+  final double volumeM3;
+  final double densityKgM3;
+  final double friction;
+  final double restitution;
+  final bool collision;
+
+  const InventoryPhysics({
+    required this.bodyType,
+    required this.massKg,
+    required this.volumeM3,
+    required this.densityKgM3,
+    required this.friction,
+    required this.restitution,
+    required this.collision,
+  });
+
+  const InventoryPhysics.none()
+    : bodyType = 'none',
+      massKg = 0,
+      volumeM3 = 0,
+      densityKgM3 = 0,
+      friction = 0,
+      restitution = 0,
+      collision = false;
+
+  factory InventoryPhysics.fromJson(Map<String, dynamic> map) {
+    if (map.isEmpty) return const InventoryPhysics.none();
+    return InventoryPhysics(
+      bodyType: _string(map, 'bodyType'),
+      massKg: _number(map, 'massKg'),
+      volumeM3: _number(map, 'volumeM3'),
+      densityKgM3: _number(map, 'densityKgM3'),
+      friction: _number(map, 'friction'),
+      restitution: _number(map, 'restitution'),
+      collision: map['collision'] == true,
+    );
+  }
+
+  void validate(String placementId) {
+    if (!{'none', 'static', 'dynamic', 'kinematic'}.contains(bodyType)) {
+      throw StateError('invalid physics body type for $placementId');
+    }
+    if (!massKg.isFinite || !volumeM3.isFinite || !densityKgM3.isFinite ||
+        !friction.isFinite || !restitution.isFinite ||
+        massKg < 0 || volumeM3 < 0 || densityKgM3 < 0 || friction < 0 ||
+        restitution < 0 || restitution > 1) {
+      throw StateError('invalid physics values for $placementId');
+    }
+    if (bodyType == 'none' && (massKg != 0 || volumeM3 != 0 || collision)) {
+      throw StateError('physics none body cannot carry mass or collision: $placementId');
+    }
+    if (bodyType != 'none' &&
+        (massKg <= 0 || volumeM3 <= 0 || densityKgM3 <= 0)) {
+      throw StateError('physical body needs positive mass and density: $placementId');
+    }
+    if (bodyType != 'none' &&
+        (massKg - volumeM3 * densityKgM3).abs() >
+            math.max(0.01, massKg * 0.02)) {
+      throw StateError('mass and density disagree for $placementId');
+    }
+  }
+
+  double get weightNewtons => massKg * 9.80665;
 }
 
 final class InventoryTransform {

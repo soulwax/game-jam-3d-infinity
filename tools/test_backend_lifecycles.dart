@@ -30,6 +30,17 @@ void check(RendererBackend backend) {
   backend.submit(frame);
   backend.handleInput(const RendererInputAction(id: 'use', pressed: true));
   require(backend.diagnostics.backend.isNotEmpty, 'diagnostics missing');
+  backend.loseContext();
+  require(
+    backend.state == RendererBackendState.lost,
+    'context loss not exposed',
+  );
+  backend.submit(frame);
+  require(
+    backend.state == RendererBackendState.ready,
+    'submit did not recover a context-lost backend',
+  );
+  backend.submit(frame);
   backend.dispose();
   require(
     backend.state == RendererBackendState.disposed,

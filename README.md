@@ -44,18 +44,27 @@ system voices installed. To render production audio with the Apple backend:
 python3 scripts/tts.py --backend apple --line "Open the door." --name door
 ```
 
-Apple renders also expose native `say` controls for volume, emphasis, and a
-leading pause:
+Apple renders also expose native `say` controls for voice, volume, emphasis,
+and line pacing:
 
 ```sh
 python3 scripts/tts.py --backend apple --line "Open the door." --name door \
   --voice-name Samantha --apple-volume 0.8 --apple-emphasis strong \
-  --apple-pause-ms 250
+  --apple-pause-ms 250 --apple-sentence-pause-ms 300 \
+  --apple-trailing-pause-ms 500 --apple-rate-wpm 220 \
+  --apple-pitch-baseline 55 \
+  --apple-substitute "Quarantine=Kwarantine" \
+  --apple-substitute "Naudiz=Naw-deez" \
+  --apple-phoneme "Dagaz=dA:g a z"
 ```
 
 The same controls appear in the Python story editor after selecting the Apple
-engine. They are disabled for Edge and gTTS so the active backend remains
-clear.
+engine. Pronunciation substitutions are repeatable on the command line and
+semicolon-separated in the editor; they affect only the rendered voice, not
+the screenplay text. For exact native `say` phonetics, use
+`--apple-phoneme FROM=PHONEMES`; the editor provides a separate Phonemes field
+for the same semicolon-separated format. Apple controls are disabled for Edge
+and gTTS so the active backend remains clear.
 
 The optional Svelte project board runs independently:
 
@@ -68,6 +77,115 @@ npm run dev
 
 Open <http://127.0.0.1:5173>. Never commit `.env` or reuse these example
 credentials outside local development.
+
+## Run and diagnostics command sheet
+
+Run these commands from the repository root. The packaged `dist/web` route is
+the recommended way to inspect the current WASM game.
+
+### Start the packaged game
+
+```sh
+npm run build:wasm
+python3 -m http.server 8090 --directory dist/web
+```
+
+In another terminal on Arch Linux:
+
+```sh
+xdg-open 'http://127.0.0.1:8090/?renderer=pixeldart'
+```
+
+Live project/editor dialogue is opt-in:
+
+```sh
+xdg-open 'http://127.0.0.1:8090/?renderer=pixeldart&dialogueSource=api'
+```
+
+### Production automation
+
+The automation runner starts and stops its own server and Firefox instance:
+
+```sh
+dart run tools/automation.dart run --scenario days-1-3
+dart run tools/automation.dart run --scenario days-1-3 --headed
+dart run tools/automation.dart validate
+dart run tools/automation.dart list
+```
+
+### Human visual review captures
+
+With the packaged server running on port 8090:
+
+```sh
+node tools/browser/human_visual_confirmation.cjs \
+  --url http://127.0.0.1:8090/ \
+  --out artifacts/human-visual-confirmation/manual \
+  --viewports desktop-720 \
+  --profiles safe \
+  --states normal
+```
+
+Supported viewports are `desktop-720`, `desktop-1080`, and `narrow`. Supported
+profiles are `safe` and `high`; supported states are `normal`, `dark`, and
+`bright`. Resume an interrupted packet with:
+
+```sh
+node tools/browser/human_visual_confirmation.cjs \
+  --url http://127.0.0.1:8090/ \
+  --out artifacts/human-visual-confirmation/manual \
+  --resume
+```
+
+Packets remain `pending-human-review` until a person reviews them.
+
+### Renderer and Shader Lab diagnostics
+
+```sh
+dart run tools/test_shader_tuning_menu.dart
+node tools/browser/shader_lab_document_smoke.cjs
+node tools/browser/canonical_fbx_room_smoke.cjs
+```
+
+The browser diagnostics require the packaged server to be running. The FBX
+room smoke uses real movement, saves inside `living-room`, reloads, and waits
+for renderer package reattachment; it does not add or require a story event.
+
+### Asset and build diagnostics
+
+```sh
+npm run assets:check
+npm run assets:self-test
+dart run tools/asset_audit.dart --build
+npm run build:wasm
+npm run build
+npm run build:ship
+npm run build:prebuilt
+```
+
+### Storyline editor and TTS
+
+```sh
+python3 tools/screenplay_editor.py
+python3 tools/test_screenplay_editor.py
+dart run tools/text_build.dart
+python3 scripts/tts.py --check
+python3 scripts/tts.py --list-voices
+python3 scripts/tts.py --help
+```
+
+Preview a varied line:
+
+```sh
+python3 scripts/tts.py \
+  --backend auto \
+  --line "Open the door." \
+  --name door-test \
+  --voice female \
+  --tone frightened \
+  --variation breathy \
+  --cue hesitant
+```
 
 ### Game build
 
@@ -200,11 +318,17 @@ exposure, and wet-surface reflection experiments. These controls feed the
 resolved particle, fog, lighting, and material paths rather than painting a
 screen-space weather overlay.
 
+When the lab is open, `C` copies its canonical JSON experiment document and
+`I` imports one from the browser clipboard. Import validation is atomic; the
+canvas publishes `data-renderer-shader-lab-clipboard` as `copied`, `imported`,
+or a failure state for automation evidence.
+
 For precise creative experiments, use `--line-file` instead of fighting shell
 quoting; UTF-8 punctuation is preserved. `--rate +6%` and `--pitch -2Hz` give
 small direct performance adjustments without creating a new named tone. The
-cache includes the complete text and voice settings, including the Apple
-controls, so distinct creative lines cannot collide.
+cache includes the complete text and voice settings, including Apple
+substitutions and phoneme overrides, so distinct creative lines cannot
+collide.
 
 - How to deploy (Vercel): import the repo and keep the defaults. `dist/web`
   is **committed**, so Vercel installs nothing, builds nothing, and just

@@ -1,7 +1,7 @@
 {
   "schema": "pixeldart-model-package-v1",
   "assetId": "living-room",
-  "packageHash": "6f695c24c57c64f17b4f277384a006f909da7144b1514b06d046bdabaa408dc8",
+  "packageHash": "c2964ca7556a327d9eec1ce128093d246fb413bf83deaf0dc88441d5062e62df",
   "sourceFormat": "glb",
   "parts": [
     {
@@ -280,7 +280,9 @@
     "Wall Down"
   ],
   "textures": [],
-  "lods": ["LOD0"],
+  "lods": [
+    "LOD0"
+  ],
   "combinedBounds": [
     -3.9967024326324463,
     -5.0,
@@ -292,7 +294,9 @@
   "sockets": {},
   "provenance": {
     "promotion": "approved",
-    "licenseId": "licensed-room-source",
-    "sourceFormat": "glb"
+    "licenseId": "owner-authored-fbx-room-source",
+    "sourceFormat": "glb",
+    "originalSourceFormat": "fbx",
+    "originalSourceSha256": "383a2269f797231bd38d5ab04d1bab685c0526b43b2cb920442d91b85bd96359"
   }
 }

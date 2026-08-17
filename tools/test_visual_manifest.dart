@@ -31,6 +31,13 @@ void main() {
     manifest.captures.every((capture) => capture.viewportWidth == 960),
     'hero captures use the declared high viewport',
   );
+  const requiredEvidence = {'rendererDigest', 'domainDigest'};
+  _expect(
+    manifest.captures.every(
+      (capture) => requiredEvidence.every(capture.requiredMetadata.contains),
+    ),
+    'every hero capture declares renderer and domain evidence',
+  );
   _expect(
     manifest.captures
             .where((capture) => capture.pairId == 'hero-living-rain')
@@ -43,9 +50,11 @@ void main() {
   );
   _expect(
     manifest.captures
-        .where((capture) =>
-            capture.pairId == 'hero-living-rain' ||
-            capture.pairId == 'hero-living-shutter')
+        .where(
+          (capture) =>
+              capture.pairId == 'hero-living-rain' ||
+              capture.pairId == 'hero-living-shutter',
+        )
         .every((capture) => capture.requiredMetadata.contains('simulation')),
     'rain and shutter pairs require published simulation telemetry',
   );

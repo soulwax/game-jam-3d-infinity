@@ -131,9 +131,9 @@ class SpatialVoiceCoordinator {
       relativeAngle += 2 * math.pi;
     }
 
-    // Pan: sin of relative angle works well. If source is straight ahead (0), sin is 0.
-    // If source is 90 degrees right (pi/2), sin is 1. If 90 degrees left (-pi/2), sin is -1.
-    double stereoPan = math.sin(relativeAngle).clamp(-1.0, 1.0);
+    // Pan follows the game's authored listener convention: at yaw zero,
+    // world +X is the left channel and world -X is the right channel.
+    double stereoPan = -math.sin(relativeAngle).clamp(-1.0, 1.0);
 
     // 4. Determine filtering based on transmission mode
     double lowpass = 20000.0;

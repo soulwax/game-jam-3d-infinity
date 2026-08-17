@@ -189,6 +189,8 @@ function decodeAutomationPlayerState(raw, label = 'automation player state') {
     throw new Error(`${label} is not JSON: ${error}`);
   }
   const eye = decoded?.eye;
+  const stairProgress = decoded?.activeStairProgress;
+  const stairId = decoded?.activeStairId;
   if (!decoded || typeof decoded !== 'object' || Array.isArray(decoded) ||
       decoded.schemaVersion !== 1 || typeof decoded.phase !== 'string' ||
       typeof decoded.roomId !== 'string' || !eye ||
@@ -199,7 +201,11 @@ function decodeAutomationPlayerState(raw, label = 'automation player state') {
       typeof decoded.modal !== 'boolean' ||
       typeof decoded.inputEnabled !== 'boolean' ||
       !Number.isInteger(decoded.day) ||
-      typeof decoded.hour !== 'number' || !Number.isFinite(decoded.hour)) {
+      typeof decoded.hour !== 'number' || !Number.isFinite(decoded.hour) ||
+      (stairId !== null && stairId !== undefined && typeof stairId !== 'string') ||
+      (stairProgress !== null && stairProgress !== undefined &&
+        (typeof stairProgress !== 'number' || !Number.isFinite(stairProgress) ||
+          stairProgress < 0 || stairProgress > 1))) {
     throw new Error(`${label} has invalid fields`);
   }
   return decoded;

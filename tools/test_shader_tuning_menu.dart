@@ -116,6 +116,35 @@ void main() {
     throw StateError('resolved lab controls must publish an effective value');
   }
 
+  // The high profile's renderer bridge owns these controls end-to-end. Keep
+  // the set explicit so a future rename cannot silently turn a useful lab
+  // slider back into metadata-only state.
+  const highProfileControls = {
+    'light_ambient_mult',
+    'light_direct_mult',
+    'pbr_roughness',
+    'pbr_metallic',
+    'pbr_specular',
+    'normal_bump_strength',
+    'shadow_bias',
+    'volumetric_light_enable',
+    'volumetric_dust_density',
+  };
+  final highProfileProbe = ShaderTuningState();
+  highProfileProbe.resolveFrame(
+    liveItemIds: highProfileControls,
+    effectiveValues: {
+      for (final id in highProfileControls)
+        if (id != 'volumetric_light_enable') id: highProfileProbe.getValue(id),
+    },
+    effectiveToggles: {'volumetric_light_enable': true},
+  );
+  for (final id in highProfileControls) {
+    if (!highProfileProbe.items.firstWhere((item) => item.id == id).isLive) {
+      throw StateError('high-profile control did not resolve live: $id');
+    }
+  }
+
   state.nextCategory();
   if (state.selectedCategoryIndex != 1) {
     throw StateError('Expected category index 1 for Shadows');

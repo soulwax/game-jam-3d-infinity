@@ -555,6 +555,31 @@ final class WeatherSurfaceAccumulator {
     _validateState();
   }
 
+  Map<String, double> toJson() => {
+    'snowDepthM': snowDepthM,
+    'waterFilmDepthM': waterFilmDepthM,
+    'materialDissolution01': materialDissolution01,
+  };
+
+  static WeatherSurfaceAccumulator fromJson(Object? raw) {
+    if (raw is! Map) {
+      throw const FormatException('weather surface state must be an object');
+    }
+    double number(String key) {
+      final value = raw[key];
+      if (value is! num || !value.isFinite) {
+        throw FormatException('weather surface $key must be finite');
+      }
+      return value.toDouble();
+    }
+
+    return WeatherSurfaceAccumulator(
+      snowDepthM: number('snowDepthM'),
+      waterFilmDepthM: number('waterFilmDepthM'),
+      materialDissolution01: number('materialDissolution01'),
+    );
+  }
+
   WeatherSurfaceSnapshot advance({
     required WeatherPhysicsSnapshot weather,
     required double surfaceTemperatureCelsius,

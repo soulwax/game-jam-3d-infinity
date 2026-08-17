@@ -1,7 +1,7 @@
 {
   "schema": "pixeldart-model-package-v1",
   "assetId": "porcelain-mermaid",
-  "packageHash": "25fd28bf769fe294816ac760d981181f9218a6a562e2f9dd4d4249ac912fd5a0",
+  "packageHash": "d2a483b1fd722e4736a34381138c0817881ecd828c11348503b1a2340764d815",
   "sourceFormat": "obj",
   "parts": [
     {
@@ -16,7 +16,9 @@
     "Default_OBJ"
   ],
   "textures": [],
-  "lods": ["LOD0"],
+  "lods": [
+    "LOD0"
+  ],
   "combinedBounds": [
     -44.578457,
     -43.055336,
@@ -28,7 +30,8 @@
   "sockets": {},
   "provenance": {
     "promotion": "approved",
-    "licenseId": "licensed-porcelain-source",
-    "sourceFormat": "obj"
+    "licenseId": "owner-authored-porcelain-source",
+    "sourceFormat": "obj",
+    "sourceSha256": "156ffab0ccd6494615daef6f7b485464cfd02e074a533e08baf366f79f58a097"
   }
 }

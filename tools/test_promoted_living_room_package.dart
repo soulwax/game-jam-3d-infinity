@@ -29,8 +29,29 @@ Future<void> main() async {
     'package has an approved promotion record',
   );
   check(
-    manifest.provenance['licenseId']?.isNotEmpty ?? false,
-    'package has a non-empty license record',
+    manifest.provenance['licenseId'] == 'owner-authored-fbx-room-source',
+    'package has the owner-authored FBX license record',
+  );
+  check(
+    manifest.provenance['originalSourceFormat'] == 'fbx' &&
+        manifest.provenance['originalSourceSha256'] ==
+            '383a2269f797231bd38d5ab04d1bab685c0526b43b2cb920442d91b85bd96359',
+    'package pins the original FBX source hash',
+  );
+  final roomProvenance = jsonDecode(
+    await File('assets/house/models/living-room/PROVENANCE.json').readAsString(),
+  ) as Map<String, dynamic>;
+  final roomSource = roomProvenance['source'] as Map<String, dynamic>;
+  final roomRuntime = roomProvenance['runtimePackage'] as Map<String, dynamic>;
+  check(
+    roomProvenance['license'] == 'OWNER_AUTHORED_SOURCE' &&
+        roomProvenance['licenseId'] == 'owner-authored-fbx-room-source' &&
+        roomSource['format'] == 'fbx' &&
+        roomSource['offlineOnly'] == true &&
+        roomSource['sha256'] ==
+            '383a2269f797231bd38d5ab04d1bab685c0526b43b2cb920442d91b85bd96359' &&
+        roomRuntime['packageSha256'] == manifest.packageHash,
+    'FBX ownership and normalized runtime provenance are consistent',
   );
 
   final package = await const ModelPackageLoader().load(
@@ -83,8 +104,11 @@ Future<void> main() async {
   );
   check(
     RegExp(r'^[0-9a-f]{64}$').hasMatch(porcelainManifest.packageHash) &&
-        porcelainManifest.provenance['licenseId']?.isNotEmpty == true,
-    'OBJ promotion carries canonical hash and license provenance',
+        porcelainManifest.provenance['licenseId'] ==
+            'owner-authored-porcelain-source' &&
+        porcelainManifest.provenance['sourceSha256'] ==
+            '156ffab0ccd6494615daef6f7b485464cfd02e074a533e08baf366f79f58a097',
+    'OBJ promotion carries canonical hash and owner-authored provenance',
   );
   final porcelain = await const ModelPackageLoader().load(
     ModelPackageSource(

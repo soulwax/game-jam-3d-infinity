@@ -14,6 +14,7 @@ final class AuthoredHouseManifest {
   final String presentationScope;
   final String storyAuthority;
   final double modelScale;
+  final AuthoredResidence? residence;
   final List<AuthoredLevel> levels;
   final List<AuthoredRoom> rooms;
   final List<AuthoredPortal> portals;
@@ -26,6 +27,7 @@ final class AuthoredHouseManifest {
     required this.presentationScope,
     required this.storyAuthority,
     required this.modelScale,
+    required this.residence,
     required this.levels,
     required this.rooms,
     required this.portals,
@@ -50,6 +52,9 @@ final class AuthoredHouseManifest {
       presentationScope: _string(map, 'presentationScope'),
       storyAuthority: _string(map, 'storyAuthority'),
       modelScale: modelScale,
+      residence: map['residence'] == null
+          ? null
+          : AuthoredResidence.fromJson(map['residence'], modelScale),
       levels: _list(
         map,
         'levels',
@@ -82,6 +87,24 @@ final class AuthoredHouseManifest {
     final levelIds = levels.map((level) => level.id).toSet();
     final roomIds = rooms.map((room) => room.id).toSet();
     final portalById = {for (final portal in portals) portal.id: portal};
+    final home = residence;
+    if (home != null) {
+      if (!roomIds.contains(home.roomId)) {
+        throw FormatException(
+          'residence.roomId references unknown room ${home.roomId}',
+        );
+      }
+      if (home.returnPortalId != null &&
+          !portalById.containsKey(home.returnPortalId)) {
+        throw FormatException(
+          'residence.returnPortalId references unknown portal '
+          '${home.returnPortalId}',
+        );
+      }
+      if (home.restAnchor != null && home.restAnchor!.isEmpty) {
+        throw const FormatException('residence.restAnchor cannot be empty');
+      }
+    }
     for (final room in rooms) {
       if (!levelIds.contains(room.levelId)) {
         throw FormatException(
@@ -208,6 +231,37 @@ final class AuthoredHouseManifest {
   }
 }
 
+/// The playable home anchor is house data, not story data. Coordinates use the
+/// same authored scale as rooms and portals; the runtime supplies the player
+/// eye height so a visual layout cannot accidentally dictate capsule height.
+final class AuthoredResidence {
+  final String roomId;
+  final List<double> spawn;
+  final String? restAnchor;
+  final String? returnPortalId;
+
+  const AuthoredResidence({
+    required this.roomId,
+    required this.spawn,
+    required this.restAnchor,
+    required this.returnPortalId,
+  });
+
+  factory AuthoredResidence.fromJson(Object? raw, double scale) {
+    final map = _object(raw, 'residence');
+    return AuthoredResidence(
+      roomId: _string(map, 'roomId'),
+      spawn: _scaledVec3(map['spawn'], 'residence.spawn', scale),
+      restAnchor: map['restAnchor'] is String
+          ? map['restAnchor'] as String
+          : null,
+      returnPortalId: map['returnPortalId'] is String
+          ? map['returnPortalId'] as String
+          : null,
+    );
+  }
+}
+
 typedef HouseBlueprint = AuthoredHouseManifest;
 
 /// Installs a validated semantic blueprint into a fresh runtime house. Asset
@@ -281,6 +335,16 @@ House buildHouseFromBlueprint(AuthoredHouseManifest blueprint, int seed) {
       ),
     );
   }
+  if (blueprint.residence case final residence?) {
+    house
+      ..residenceRoomId = residence.roomId
+      ..residenceRestAnchor = residence.restAnchor
+      ..residenceSpawn = Vec3(
+        residence.spawn[0],
+        residence.spawn[1],
+        residence.spawn[2],
+      );
+  }
   house.indexAuthoredBlueprint();
   return house;
 }
@@ -290,25 +354,25 @@ House buildHouseFromBlueprint(AuthoredHouseManifest blueprint, int seed) {
 /// seam so focus, lighting, save state, and visual fixtures share one graph.
 List<Mantle> _authoredMantles(String roomId) => switch (roomId) {
   'living-room' => [
-      Mantle(
-        id: 'mantle-living',
-        name: 'living-room gas mantle',
-        localAt: Vec3(3.70, 1.45, 0.80),
-        lit: true,
-      ),
-      Mantle(
-        id: 'mantle-living-second',
-        name: 'second living-room gas mantle',
-        localAt: Vec3(1.00, 1.45, 2.40),
-      ),
-    ],
+    Mantle(
+      id: 'mantle-living',
+      name: 'living-room gas mantle',
+      localAt: Vec3(3.70, 1.45, 0.80),
+      lit: true,
+    ),
+    Mantle(
+      id: 'mantle-living-second',
+      name: 'second living-room gas mantle',
+      localAt: Vec3(1.00, 1.45, 2.40),
+    ),
+  ],
   'hall' => [
-      Mantle(
-        id: 'mantle-hall',
-        name: 'hall gas mantle',
-        localAt: Vec3(1.20, 1.45, 0.30),
-      ),
-    ],
+    Mantle(
+      id: 'mantle-hall',
+      name: 'hall gas mantle',
+      localAt: Vec3(1.20, 1.45, 0.30),
+    ),
+  ],
   _ => const <Mantle>[],
 };
 

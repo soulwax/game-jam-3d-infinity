@@ -7,6 +7,7 @@ import 'panel.dart';
 
 class GraphicsSettingsPanel extends Panel {
   void Function(GraphicsSettingsProfile profile)? onChanged;
+  void Function()? onLoadOptimizedDefaults;
   void Function()? onBack;
   final Map<String, web.HTMLSelectElement> _selects = {};
   web.HTMLInputElement? _dynamic;
@@ -107,13 +108,35 @@ class GraphicsSettingsPanel extends Panel {
     modelPackageToggle
       ..appendChild(_modelPackageDiagnostics!)
       ..appendChild(
-        buildElement(document, 'span', text: 'Model package diagnostics (debug)'),
+        buildElement(
+          document,
+          'span',
+          text: 'Model package diagnostics (debug)',
+        ),
       );
     grid.appendChild(modelPackageToggle);
     root.appendChild(grid);
     _status = buildElement(document, 'p', cls: 'settings-copy');
     _status!.setAttribute('aria-live', 'polite');
     root.appendChild(_status!);
+    final optimized =
+        buildElement(
+                document,
+                'button',
+                cls: 'door-continue',
+                text: 'Load Optimized Defaults',
+              )
+              as web.HTMLButtonElement
+          ..setAttribute('type', 'button')
+          ..id = 'settings.graphics.optimized-defaults'
+          ..setAttribute('aria-label', 'load optimized graphics defaults');
+    optimized.addEventListener(
+      'click',
+      ((JSAny? _) {
+        onLoadOptimizedDefaults?.call();
+      }).toJS,
+    );
+    root.appendChild(optimized);
     final back =
         buildElement(document, 'button', cls: 'door-continue', text: 'back')
               as web.HTMLButtonElement

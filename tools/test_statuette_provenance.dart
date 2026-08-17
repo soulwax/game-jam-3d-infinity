@@ -14,6 +14,11 @@ void main() {
   check(root['schema'] == 'pixeldart-asset-source-v1', 'schema is pinned');
   check(root['assetId'] == 'porcelain-mermaid-statuette', 'asset id is stable');
   check(
+    root['license'] == 'OWNER_AUTHORED_SOURCE' &&
+        root['licenseId'] == 'owner-authored-porcelain-source',
+    'statuette ownership provenance is explicit',
+  );
+  check(
     root['status'] == 'source-only',
     'raw source cannot become runtime implicitly',
   );

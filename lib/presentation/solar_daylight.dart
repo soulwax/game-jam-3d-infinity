@@ -54,4 +54,15 @@ final class SolarDaylightModel {
     if (cosineHour >= 1.0) return 0.0;
     return math.acos(cosineHour) * 24.0 / math.pi;
   }
+
+  /// Smooths horizon visibility before it is mixed with moonlight. The solar
+  /// evaluator already accounts for refraction; this extra smoothstep keeps
+  /// dawn and dusk free of a hard light-source switch between frames.
+  static double solarHorizonBlend(double horizonVisibility01) {
+    if (!horizonVisibility01.isFinite) {
+      throw ArgumentError.value(horizonVisibility01, 'horizonVisibility01');
+    }
+    final value = horizonVisibility01.clamp(0.0, 1.0).toDouble();
+    return value * value * (3.0 - 2.0 * value);
+  }
 }

@@ -11,6 +11,10 @@ class House {
   final List<StairTransition> stairs = [];
   final Map<String, Room> _byId = {};
   final Map<String, Portal> _portalById = {};
+  String? residenceRoomId;
+  Vec3? residenceSpawn;
+  String? residenceRestAnchor;
+
   /// Creates an empty mutable graph. Production callers must install the
   /// validated authored blueprint through [buildHouseFromBlueprint].
   House.empty(this.seed);
@@ -33,6 +37,13 @@ class House {
 
   /// Spawn anchor derived from the same profile that scales the house.
   Vec3 defaultPlayerEye(double eyeHeight) => houseScaleProfile.spawn(eyeHeight);
+
+  Vec3? residencePlayerEye(double eyeHeight) {
+    final spawn = residenceSpawn;
+    if (spawn == null) return null;
+    return Vec3(spawn.x, eyeHeight, spawn.z);
+  }
+
   void _index() {
     for (final room in rooms) {
       if (_byId.containsKey(room.id)) {

@@ -3,17 +3,29 @@ import 'package:quarantine/ui/gameplay_dialogue_coordinator.dart';
 import 'package:quarantine/ui/dialogue_choice_presenter.dart';
 
 void main() {
-  print('========================================================================');
-  print(' THE QUARANTINE — CANVAS P5 GUI & NUMERIC DIALOGUE CHOICES TEST SUITE');
-  print('========================================================================');
+  print(
+    '========================================================================',
+  );
+  print(
+    ' THE QUARANTINE — CANVAS P5 GUI & NUMERIC DIALOGUE CHOICES TEST SUITE',
+  );
+  print(
+    '========================================================================',
+  );
 
   // 1. Test Numeric Dialogue Key Routing (1-N)
-  print('Testing Numeric Dialogue Key Routing (Digit1..DigitN, Numpad1..NumpadN)...');
+  print(
+    'Testing Numeric Dialogue Key Routing (Digit1..DigitN, Numpad1..NumpadN)...',
+  );
   final coordinator = GameplayDialogueCoordinator();
   coordinator.setDialogue(
     speaker: 'Dr. Evans',
     text: 'Please step back from the threshold.',
-    responseChoices: ['Open the door', 'Speak through letterbox', 'Remain silent'],
+    responseChoices: [
+      'Open the door',
+      'Speak through letterbox',
+      'Remain silent',
+    ],
   );
 
   int? selectedChoiceIndex;
@@ -25,20 +37,32 @@ void main() {
 
   // Test Digit1 -> 0 ('Open the door')
   final consumed1 = coordinator.handleKey('Digit1');
-  if (!consumed1 || selectedChoiceIndex != 0 || selectedChoiceText != 'Open the door') {
-    throw StateError('Digit1 failed to select choice 0: $selectedChoiceIndex, $selectedChoiceText');
+  if (!consumed1 ||
+      selectedChoiceIndex != 0 ||
+      selectedChoiceText != 'Open the door') {
+    throw StateError(
+      'Digit1 failed to select choice 0: $selectedChoiceIndex, $selectedChoiceText',
+    );
   }
 
   // Test Digit3 -> 2 ('Remain silent')
   final consumed3 = coordinator.handleKey('Digit3');
-  if (!consumed3 || selectedChoiceIndex != 2 || selectedChoiceText != 'Remain silent') {
-    throw StateError('Digit3 failed to select choice 2: $selectedChoiceIndex, $selectedChoiceText');
+  if (!consumed3 ||
+      selectedChoiceIndex != 2 ||
+      selectedChoiceText != 'Remain silent') {
+    throw StateError(
+      'Digit3 failed to select choice 2: $selectedChoiceIndex, $selectedChoiceText',
+    );
   }
 
   // Test Numpad2 -> 1 ('Speak through letterbox')
   final consumedNum2 = coordinator.handleKey('Numpad2');
-  if (!consumedNum2 || selectedChoiceIndex != 1 || selectedChoiceText != 'Speak through letterbox') {
-    throw StateError('Numpad2 failed to select choice 1: $selectedChoiceIndex, $selectedChoiceText');
+  if (!consumedNum2 ||
+      selectedChoiceIndex != 1 ||
+      selectedChoiceText != 'Speak through letterbox') {
+    throw StateError(
+      'Numpad2 failed to select choice 1: $selectedChoiceIndex, $selectedChoiceText',
+    );
   }
 
   // Test Out-of-bounds Digit (Digit9 when only 3 choices exist) -> false
@@ -51,7 +75,8 @@ void main() {
   print('Testing Typewriter Text Reveal Calculation...');
   coordinator.setDialogue(
     speaker: 'Visitor',
-    text: 'A very long dialogue sentence to test typewriter pacing and characters.',
+    text:
+        'A very long dialogue sentence to test typewriter pacing and characters.',
     responseChoices: const [],
   );
   if (coordinator.textRevealProgress != 0.0) {
@@ -61,8 +86,11 @@ void main() {
   // Advance by 0.5s at 35 chars/sec
   coordinator.update(0.5);
   final renderState1 = coordinator.toRenderState();
-  if (renderState1.revealedText.isEmpty || renderState1.revealedText.length >= coordinator.fullText.length) {
-    throw StateError('Intermediate revealedText length unexpected: "${renderState1.revealedText}"');
+  if (renderState1.revealedText.isEmpty ||
+      renderState1.revealedText.length >= coordinator.fullText.length) {
+    throw StateError(
+      'Intermediate revealedText length unexpected: "${renderState1.revealedText}"',
+    );
   }
 
   // Advance to completion (3.0s)
@@ -93,8 +121,16 @@ void main() {
   // 4. Test Formatted Dialogue Option Presenter with Numeric Badges
   print('Testing DialogueChoicePresenter Numeric Option Formatting...');
   const rawOptions = [
-    DialogueResponseOption(id: 'opt-agree', text: 'I understand.', isSilence: false),
-    DialogueResponseOption(id: 'opt-question', text: 'Who sent you?', isSilence: false),
+    DialogueResponseOption(
+      id: 'opt-agree',
+      text: 'I understand.',
+      isSilence: false,
+    ),
+    DialogueResponseOption(
+      id: 'opt-question',
+      text: 'Who sent you?',
+      isSilence: false,
+    ),
     DialogueResponseOption(id: 'opt-silence', text: '...', isSilence: true),
   ];
   final formatted = DialogueChoicePresenter.formatOptions(rawOptions);
@@ -111,7 +147,24 @@ void main() {
     throw StateError('Silence option must map to Space shortcut');
   }
 
-  print('========================================================================');
-  print('✓ CANVAS P5 GUI & NUMERIC DIALOGUE CHOICES CERTIFIED (4/4 SUB-SYSTEMS)');
-  print('========================================================================');
+  // 5. Test the temperature HUD scale and its safety clamps.
+  print('Testing Temperature Gauge Range and Clamping...');
+  if (temperatureGaugeFraction(-30.0) != 0.0 ||
+      temperatureGaugeFraction(50.0) != 1.0 ||
+      temperatureGaugeFraction(10.0) != 0.5 ||
+      temperatureGaugeFraction(-80.0) != 0.0 ||
+      temperatureGaugeFraction(90.0) != 1.0 ||
+      temperatureGaugeFraction(double.nan) != 0.5) {
+    throw StateError('Temperature gauge normalization is incorrect');
+  }
+
+  print(
+    '========================================================================',
+  );
+  print(
+    '✓ CANVAS P5 GUI & NUMERIC DIALOGUE CHOICES CERTIFIED (5/5 SUB-SYSTEMS)',
+  );
+  print(
+    '========================================================================',
+  );
 }

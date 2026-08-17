@@ -39,7 +39,7 @@
         },
         {
           "path": "models/porcelain-mermaid/**",
-          "reason": "promoted OBJ reference package present for renderer integration; provenance and external license record still require final audit",
+          "reason": "promoted owner-authored OBJ reference package present for renderer integration; raw source remains offline-only",
           "status": "unverified"
         },
         {

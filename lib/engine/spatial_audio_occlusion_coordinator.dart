@@ -83,11 +83,13 @@ class SpatialAudioOcclusionCoordinator {
     // 2. Spatial stereo panning (-1.0 left, +1.0 right)
     final cosYaw = math.cos(listenerYaw);
     final sinYaw = math.sin(listenerYaw);
-    // Transform delta to listener relative coordinates where screen-right is +X.
+    // Transform delta to listener relative coordinates. The game's audio
+    // convention maps world +X to the left channel at yaw zero, matching the
+    // authored listener/capture contract and the visitor voice bridge.
     final relX = delta.x * cosYaw - delta.z * sinYaw;
     final relZ = delta.x * sinYaw + delta.z * cosYaw;
     final relAngle = math.atan2(relX, relZ);
-    final pan = math.sin(relAngle).clamp(-1.0, 1.0);
+    final pan = -math.sin(relAngle).clamp(-1.0, 1.0);
 
     // 3. Acoustic occlusion filter cutoff calculation
     double cutoffHz = 20000.0; // Unoccluded full bandwidth

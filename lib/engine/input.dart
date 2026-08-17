@@ -59,6 +59,7 @@ class Input {
     window.addEventListener('mousedown', _onMouseDown.toJS);
     window.addEventListener('mouseup', _onMouseUp.toJS);
     window.addEventListener('wheel', _onWheel.toJS);
+    window.addEventListener('blur', _onWindowBlur.toJS);
     _document.addEventListener('pointerlockchange', _onLockChange.toJS);
   }
 
@@ -73,8 +74,7 @@ class Input {
 
   void setBindings(Map<String, String> bindings) {
     setActionBindings({
-      for (final entry in bindings.entries)
-        entry.key: [entry.value],
+      for (final entry in bindings.entries) entry.key: [entry.value],
     });
   }
 
@@ -130,8 +130,7 @@ class Input {
     if (_isActionDown('moveRight')) x += 1;
     if (_isActionDown('moveForward')) z += 1;
     if (_isActionDown('moveBack')) z -= 1;
-    final v = Vec3(x, 0, z) +
-        (_gameplayEnabled ? _gamepadMove : Vec3(0, 0, 0));
+    final v = Vec3(x, 0, z) + (_gameplayEnabled ? _gamepadMove : Vec3(0, 0, 0));
     _moveThisFrame = v.x != 0 || v.z != 0;
     return v.length > 1 ? v.normalized : v;
   }
@@ -150,8 +149,7 @@ class Input {
           _pressed.add(code);
           break;
         }
-        if (_gamepadHeld.contains(code) &&
-            !_gamepadSuppressed.contains(code)) {
+        if (_gamepadHeld.contains(code) && !_gamepadSuppressed.contains(code)) {
           _gamepadPressed.add(code);
           break;
         }
@@ -221,8 +219,8 @@ class Input {
     // Wheel tokens are one-frame synthetic edges; remove them from _held so the
     // next frame starts clean even if no 'wheel' event fires.
     _held
-        ..remove('WheelUp')
-        ..remove('WheelDown');
+      ..remove('WheelUp')
+      ..remove('WheelDown');
     _pressed.clear();
     _gamepadPressed.clear();
     _moveThisFrame = false;
@@ -293,6 +291,16 @@ class Input {
     _locked = _document.getProperty<JSAny?>('pointerLockElement'.toJS) != null;
     _mouseDx = 0;
     _mouseDy = 0;
+    // A key-up event is not guaranteed when the browser exits pointer lock
+    // (Esc, a browser gesture, or a focus change can interrupt the sequence).
+    // Do not carry movement into the next focus session.
+    if (!_locked) _clearGameplayState();
+  }
+
+  void _onWindowBlur(JSAny? _) {
+    // Browsers may blur the window without changing pointer lock first. Clear
+    // both keyboard and mouse state so refocusing always starts neutral.
+    _clearGameplayState();
   }
 
   double _movement(web.MouseEvent e, String name) =>

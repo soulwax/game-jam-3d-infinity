@@ -5,7 +5,7 @@ import 'time.dart';
 
 enum SleepQuality { long, short }
 
-enum SleepLocation { bed, chair, floor }
+enum SleepLocation { bed, chair, sofa, floor }
 
 class SleepRecord {
   final int day;

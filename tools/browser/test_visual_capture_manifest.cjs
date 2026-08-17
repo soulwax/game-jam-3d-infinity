@@ -57,6 +57,8 @@ assert.strictEqual(
     phase: 'running',
     roomId: 'hall',
     eye: { x: 1, y: 1.65, z: 2 },
+    activeStairId: null,
+    activeStairProgress: null,
     yaw: 0,
     pitch: 0,
     modal: false,

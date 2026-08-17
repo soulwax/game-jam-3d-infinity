@@ -458,7 +458,10 @@ class CanvasP5GuiEngine {
       final spacing = compact ? 35.0 : 39.0;
       // Reserve the secondary HUD lane so the first response never hides
       // beneath the room/objective/clock chrome on compact screens.
-      final viewportTop = compact ? 104.0 : 92.0;
+      // Compact HUDs reserve the right-hand temperature instrument lane;
+      // starting choices below it prevents long response strips from
+      // occluding the gauge on narrow screens.
+      final viewportTop = compact ? 174.0 : 92.0;
       final viewportBottom = boxY - boxH * 0.5 - 18.0;
       final viewportHeight = math.max(0.0, viewportBottom - viewportTop);
       final visibleCount = math.max(
@@ -773,6 +776,102 @@ class CanvasP5GuiEngine {
       ctx.fillText(_fitText(objectiveText, objW - 28.0), objX, objY);
       ctx.restore();
     }
+  }
+
+  /// Draws the compact ambient-temperature gauge used by the gameplay HUD.
+  ///
+  /// The game supplies the resolved local temperature; this surface only
+  /// presents it. The fixed -30..50 C scale matches the authored weather
+  /// envelope while the marker remains safely clamped for extreme test data.
+  void drawTemperatureGauge({
+    required double screenWidth,
+    required double screenHeight,
+    required double temperatureCelsius,
+  }) {
+    const minimumCelsius = -30.0;
+    const maximumCelsius = 50.0;
+    final fraction = temperatureGaugeFraction(
+      temperatureCelsius,
+      minimumCelsius: minimumCelsius,
+      maximumCelsius: maximumCelsius,
+    );
+    final compact = screenWidth < 640.0 || screenHeight < 540.0;
+    final panelW = compact ? 108.0 : 116.0;
+    final panelH = compact ? 68.0 : 72.0;
+    final panelX = screenWidth - panelW * 0.5 - 24.0;
+    // The objective banner ends at y=84; leave a small, stable gap before
+    // this second right-hand HUD lane begins.
+    final panelY = compact ? 122.0 : 126.0;
+
+    drawBrushPanel(
+      x: panelX,
+      y: panelY,
+      width: panelW,
+      height: panelH,
+      skewAngleRad: -0.055,
+      fillColor: P5Palette.inkBlackTranslucent,
+      borderColor: P5Palette.boneWhite,
+      borderWidth: 1.2,
+      cutCornerSize: 7.0,
+    );
+
+    final boundedTemperature = temperatureCelsius.isFinite
+        ? temperatureCelsius.clamp(minimumCelsius, maximumCelsius).toDouble()
+        : 0.0;
+    final valueText =
+        '${boundedTemperature >= 0 ? '+' : ''}${boundedTemperature.toStringAsFixed(0)}°C';
+    final trackW = panelW - 22.0;
+    final trackH = 10.0;
+    final trackLeft = panelX - trackW * 0.5;
+    final trackTop = panelY + 10.0;
+
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = P5Palette.amberGold.toJS;
+    ctx.font = 'bold 9px "Courier New", monospace';
+    ctx.fillText('AIR TEMPERATURE', panelX, panelY - 21.0);
+
+    // Four restrained colour bands read as a continuous cold-to-hot scale at
+    // HUD size while avoiding a noisy screen-space gradient.
+    const bandColors = <String>[
+      '#4b8fc5',
+      '#79c8d5',
+      '#d7c77a',
+      '#df824f',
+      '#d43b3b',
+    ];
+    final bandW = trackW / bandColors.length;
+    for (var i = 0; i < bandColors.length; i++) {
+      ctx.fillStyle = bandColors[i].toJS;
+      ctx.fillRect(trackLeft + i * bandW, trackTop, bandW + 0.5, trackH);
+    }
+    ctx.strokeStyle = P5Palette.boneWhite.toJS;
+    ctx.lineWidth = 1.0;
+    ctx.strokeRect(trackLeft, trackTop, trackW, trackH);
+
+    final markerX = trackLeft + trackW * fraction;
+    ctx.strokeStyle = P5Palette.inkBlack.toJS;
+    ctx.lineWidth = 4.0;
+    ctx.beginPath();
+    ctx.moveTo(markerX, trackTop - 4.0);
+    ctx.lineTo(markerX, trackTop + trackH + 4.0);
+    ctx.stroke();
+    ctx.strokeStyle = P5Palette.boneWhite.toJS;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(markerX, trackTop - 4.0);
+    ctx.lineTo(markerX, trackTop + trackH + 4.0);
+    ctx.stroke();
+
+    ctx.fillStyle = P5Palette.boneWhite.toJS;
+    ctx.font = 'bold 14px "Cinzel", serif';
+    ctx.fillText(valueText, panelX, panelY + 31.0);
+    ctx.fillStyle = P5Palette.mutedGrey.toJS;
+    ctx.font = '8px "Courier New", monospace';
+    ctx.fillText('-30', trackLeft + 9.0, panelY + 24.0);
+    ctx.fillText('50', trackLeft + trackW - 8.0, panelY + 24.0);
+    ctx.restore();
   }
 
   /// Renders contextual key hints and action prompts upholding UX best practices.

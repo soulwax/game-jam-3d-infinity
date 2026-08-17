@@ -28,6 +28,25 @@ class GraphicsSettingsProfile {
     this.modelPackageDiagnostics = false,
   });
 
+  /// Audited baseline for the current Pixeldart/WebGL path: native 1080p
+  /// framing, MSAA4 when the adapter supports it, high texture/shadow data,
+  /// sRGB presentation, deterministic display-rate pacing, and diagnostics
+  /// limited to errors so telemetry does not compete with frame time. Runtime
+  /// capability negotiation may lower this effective profile, but never
+  /// changes the requested values stored here.
+  static const optimizedDefaults = GraphicsSettingsProfile(
+    preset: GraphicsPreset.high,
+    renderScale: '1.00',
+    dynamicResolution: false,
+    frameTarget: 'display',
+    antialiasing: 'msaa4',
+    textureQuality: 'high',
+    outputEncoding: 'srgb',
+    diagnosticLevel: 'errors',
+    shadowQuality: 'profile',
+    modelPackageDiagnostics: false,
+  );
+
   GraphicsSettingsProfile copyWith({
     GraphicsPreset? preset,
     String? renderScale,

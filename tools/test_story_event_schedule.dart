@@ -8,6 +8,15 @@ void main() {
     File('web/res/story_script.json').readAsStringSync(),
   );
   final plan = GameEventOrchestrator(screenplay);
+  final genericLabels = {'required beat', 'placeholder', 'todo', 'tbd'};
+  for (final event in screenplay.events) {
+    final label = event.label.trim().toLowerCase();
+    if (label.length < 8 || genericLabels.contains(label)) {
+      throw StateError(
+        'event ${event.id} has placeholder semantics: ${event.label}',
+      );
+    }
+  }
   final cursor = GameEventCursor(plan, runSeed: 42017);
   final first = cursor.advance(day: 1, hour: 24);
   if (first.isEmpty) throw StateError('day 1 has no authored events');

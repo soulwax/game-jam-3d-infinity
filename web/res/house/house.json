@@ -9,6 +9,7 @@
   "inventoryPath": "assets/house/inventory.json",
   "soundscapePath": "assets/house/soundscape.json",
   "surfaceMaterialsPath": "assets/house/materials.json",
+  "residence": {"roomId":"living-room","spawn":[1.55,0,2.35],"restAnchor":"placement-living-sofa","returnPortalId":"hall-living"},
   "levels": [
     {"id":"cellar","kind":"below-grade","floorY":-2.0},
     {"id":"ground","kind":"ground","floorY":0.0},

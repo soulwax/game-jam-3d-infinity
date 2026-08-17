@@ -31,9 +31,19 @@ async function main() {
     const telemetry = await page.locator('#game').evaluate((canvas) => ({
       captions: canvas.getAttribute('data-audio-captions'),
       paused: canvas.getAttribute('data-audio-paused'),
+      reducedMotion: canvas.getAttribute('data-accessibility-reduced-motion'),
+      photosensitivitySafe: canvas.getAttribute('data-accessibility-photosensitivity-safe'),
+      uiScale: canvas.getAttribute('data-accessibility-ui-scale'),
+      reducedEffects: canvas.getAttribute('data-accessibility-reduced-effects'),
+      focusVisible: canvas.getAttribute('data-accessibility-focus-visible'),
     }));
     if (!['true', 'false'].includes(telemetry.captions) ||
-        !['true', 'false'].includes(telemetry.paused)) {
+        !['true', 'false'].includes(telemetry.paused) ||
+        !['true', 'false'].includes(telemetry.reducedMotion) ||
+        !['true', 'false'].includes(telemetry.photosensitivitySafe) ||
+        !['true', 'false'].includes(telemetry.reducedEffects) ||
+        !['true', 'false'].includes(telemetry.focusVisible) ||
+        Number.isNaN(Number(telemetry.uiScale))) {
       throw new Error(`keyboard smoke missing accessibility telemetry: ${JSON.stringify(telemetry)}`);
     }
     if (errors.length) throw new Error(errors.join('; '));

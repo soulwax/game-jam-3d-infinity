@@ -62,6 +62,7 @@ import 'package:quarantine/house/scale_profile.dart';
 import 'package:quarantine/house/surface_materials.dart';
 import 'package:quarantine/journal/entry.dart' show Vocabulary;
 import 'package:quarantine/sim/interaction.dart';
+import 'package:quarantine/sim/day.dart';
 import 'package:quarantine/sim/rupture.dart';
 import 'package:quarantine/sim/time.dart';
 import 'package:quarantine/sim/weather.dart';
@@ -123,6 +124,32 @@ _PixeldartWebRuntime? _pixeldartRuntime;
 late WeatherSchedule _weatherSchedule;
 Future<void>? _graphicsProfileTransaction;
 
+Future<void> _copyShaderLabDocument() async {
+  try {
+    await web.window.navigator.clipboard
+        .writeText(_shaderTuning.encode())
+        .toDart;
+    _canvas.setAttribute('data-renderer-shader-lab-clipboard', 'copied');
+    _canvas.removeAttribute('data-renderer-shader-lab-clipboard-error');
+  } catch (error) {
+    _canvas.setAttribute('data-renderer-shader-lab-clipboard', 'copy-failed');
+    _canvas.setAttribute('data-renderer-shader-lab-clipboard-error', '$error');
+  }
+}
+
+Future<void> _importShaderLabDocument() async {
+  try {
+    final raw = await web.window.navigator.clipboard.readText().toDart;
+    final source = raw.toString();
+    _shaderTuning.importJson(source);
+    _canvas.setAttribute('data-renderer-shader-lab-clipboard', 'imported');
+    _canvas.removeAttribute('data-renderer-shader-lab-clipboard-error');
+  } catch (error) {
+    _canvas.setAttribute('data-renderer-shader-lab-clipboard', 'import-failed');
+    _canvas.setAttribute('data-renderer-shader-lab-clipboard-error', '$error');
+  }
+}
+
 final class _RoomSurfaceSpec {
   final String surface;
   final Float32List vertices;
@@ -153,6 +180,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   final Map<String, px.InstanceId> _inventoryItemsById = {};
   final Map<String, px.RetainedItemDescriptor> _inventoryDescriptors = {};
   final List<px.MeshHandle> _inventoryMeshes = [];
+  String? _lastVisibilityKey;
   final Map<String, px.InstanceId> _exteriorShellItems = {};
   final Map<String, px.RetainedItemDescriptor> _exteriorShellDescriptors = {};
   final Map<String, String> _exteriorShellCells = {};
@@ -167,6 +195,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   final Map<String, px.MaterialHandle> _roomMaterials = {};
   final Map<String, Map<String, px.MaterialHandle>> _roomSurfaceMaterials = {};
   final Map<String, px.MaterialHandle> _inventoryMaterials = {};
+  final Map<String, px.MaterialHandle> _promotedMaterials = {};
   final px.ModelCache _modelCache = px.ModelCache();
   final Map<String, px.ModelPackageSceneBinding> _promotedBindings = {};
   PresentationPackageBindingAdapter? _packageBindingAdapter;
@@ -286,10 +315,17 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       },
       'atmosphere': {
         'rainSubmitted': _rainParticleCount,
+        'rainRequested': _rainParticleRequestedCount,
+        'rainBudget': _rainParticleBudget,
         'rainFrustumVisible': _rainParticleFrustumVisible,
         'rainFrustumCulled': _rainParticleFrustumCulled,
+        'rainCapped': _rainParticleCapped,
         'weatherPhase': weatherPhase,
         'volumetricSources': volumetricSourceCount,
+        'volumetricSampleCount': _environment.volumetricSampleCount,
+        'volumetricIntensity': _environment.volumetricIntensity,
+        'volumetricDustDensity': _environment.volumetricDustDensity,
+        'volumetricAnisotropy': _environment.volumetricAnisotropy,
       },
     };
   }
@@ -582,8 +618,14 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     }
     _publishMaterialResidency();
     for (final room in house.rooms) {
+      // living-room is now presented by the promoted FBX package. Keep the
+      // authored room topology and collision in the game, but do not draw the
+      // retired procedural shell underneath the canonical model.
+      if (room.id == 'living-room') continue;
       _installRoomSurfaces(house, room);
     }
+    _canvas.setAttribute('data-renderer-legacy-living-room-shell', 'removed');
+    _canvas.setAttribute('data-renderer-canonical-room-shell', 'living-room');
     _publishHouseMaterialBindings(house);
     _canvas.setAttribute(
       'data-renderer-house-model-scale',
@@ -691,6 +733,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     }
     _inventoryItemsById.clear();
     _inventoryDescriptors.clear();
+    _lastVisibilityKey = null;
     _inventoryMeshes.clear();
     for (final placement in _inventoryPlacements) {
       final assetKey = placement.assetId.toLowerCase();
@@ -707,17 +750,23 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       final asset = inventory.assetFor(placement.assetId);
       if (_packageBindingAdapter != null &&
           _promotedRegistry!.contains(asset.id)) {
+        final promotedPackage = _promotedRegistry!.resolve(asset.id).package;
         final position = placement.runtimePosition(inventory.modelScale);
         final rotation = px.Quat.axisAngle(
           const px.Vec3(0, 1, 0),
           placement.transform.rotation.y * math.pi / 180,
         );
         final binding = px.ModelPackageSceneBinding(
-          package: _promotedRegistry!.resolve(asset.id).package,
+          package: promotedPackage,
           cache: _modelCache,
           resources: _renderer.resources,
           world: _world,
-          materialForSlot: (_) => _inventoryMaterial(asset.kind),
+          materialForSlot: (slot) => _promotedMaterial(
+            asset.id,
+            promotedPackage.manifest.materials.length > slot
+                ? promotedPackage.manifest.materials[slot]
+                : 'DefaultMaterial',
+          ),
           transform: px.Transform(
             translation: px.Vec3(
               room.origin.x + position.x,
@@ -777,7 +826,64 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'data-renderer-inventory-promoted-count',
       '$promotedCount',
     );
+    _canvas.setAttribute(
+      'data-renderer-promoted-material-policy',
+      'semantic-pbr-v1',
+    );
     _publishPromotedModelDiagnostics();
+  }
+
+  /// Converts source material names into renderer-owned physically plausible
+  /// responses. The package remains source-neutral; this is presentation
+  /// policy for the current house and can evolve without changing the mesh.
+  px.MaterialHandle _promotedMaterial(String assetId, String sourceName) {
+    final key = '$assetId:$sourceName';
+    final existing = _promotedMaterials[key];
+    if (existing != null) return existing;
+    final name = sourceName.toLowerCase();
+    final isPorcelain = assetId == 'porcelain-mermaid';
+    final isGlass = name.contains('kaca') ||
+        name.contains('gelas') ||
+        name.contains('cermin');
+    final isMetal = name.contains('aluminium') || name.contains('kerangka');
+    final isTextile = name.contains('sofa') ||
+        name.contains('cusion') ||
+        name.contains('carpet');
+    final isWood = name.contains('floor') ||
+        name.contains('lemari') ||
+        name.contains('meja') ||
+        name.contains('tiang');
+    final isEmissive = name.contains('emmision') ||
+        name.contains('netflix') ||
+        name == 'tv';
+    final definition = px.MaterialDefinition(
+      key: 'quarantine-promoted-${key.toLowerCase().replaceAll(' ', '-')}',
+      tintR: isGlass ? 0.78 : isPorcelain ? 0.92 : isMetal ? 0.72 : 1.0,
+      tintG: isGlass ? 0.88 : isPorcelain ? 0.90 : isMetal ? 0.75 : 1.0,
+      tintB: isGlass ? 0.98 : isPorcelain ? 0.88 : isMetal ? 0.78 : 1.0,
+      roughness: isPorcelain
+          ? 0.22
+          : isGlass
+          ? 0.12
+          : isMetal
+          ? 0.28
+          : isTextile
+          ? 0.92
+          : isWood
+          ? 0.48
+          : 0.68,
+      metallic: isMetal ? 0.82 : 0.0,
+      clearcoatStrength: isPorcelain ? 0.74 : isGlass ? 0.18 : 0.0,
+      clearcoatRoughness: isPorcelain ? 0.16 : 0.2,
+      emissiveStrength: isEmissive ? 0.72 : 0.0,
+      alphaMode: isGlass ? px.AlphaMode.blended : px.AlphaMode.opaque,
+      alphaCutoff: isGlass ? 0.02 : 0.5,
+      doubleSided: isGlass,
+      receivesShadow: !isEmissive,
+    );
+    final handle = _registerMaterial(definition);
+    _promotedMaterials[key] = handle;
+    return handle;
   }
 
   void _publishPromotedModelDiagnostics() {
@@ -853,6 +959,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         visible.add(adjacent);
       }
     }
+    // Visibility is a retained-scene concern. Rewriting every descriptor on
+    // every animation frame is both wasteful and particularly costly for a
+    // promoted FBX package with many parts. Include the resolved PVS set in
+    // the key so a portal state change still invalidates the cache.
+    final visibilityKey = (visible.toList()..sort()).join('|');
+    if (_lastVisibilityKey == visibilityKey) return;
+    _lastVisibilityKey = visibilityKey;
     for (final entry in _roomSurfaceItemsByRoom.entries) {
       final mask = visible.contains(entry.key) ? -1 : 0;
       final items = entry.value;
@@ -1201,6 +1314,20 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         (solar.sunElevationRadians * 180.0 / math.pi).toStringAsFixed(4),
       )
       ..setAttribute(
+        'data-renderer-solar-twilight-factor',
+        solar.twilightFactor01.toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-solar-horizon-visibility',
+        solar.horizonVisibility01.toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-solar-horizon-blend',
+        SolarDaylightModel.solarHorizonBlend(
+          solar.horizonVisibility01,
+        ).toStringAsFixed(4),
+      )
+      ..setAttribute(
         'data-renderer-solar-transmittance',
         solar.cloudTransmittance.toStringAsFixed(4),
       );
@@ -1214,13 +1341,23 @@ final class _PixeldartWebRuntime implements RendererRuntime {
             .clamp(0.0, 1.0)
             .toDouble();
     final isDay = solarDaylight > 0.001;
-    final baselineDirVec = isDay
-        ? solar.sunDirection
-        : px.Vec3(
-            atmos.moonDirection.x,
-            atmos.moonDirection.y,
-            atmos.moonDirection.z,
-          );
+    final solarHorizonBlend = SolarDaylightModel.solarHorizonBlend(
+      solar.horizonVisibility01,
+    );
+    final moonDirection = px.Vec3(
+      atmos.moonDirection.x,
+      atmos.moonDirection.y,
+      atmos.moonDirection.z,
+    );
+    final blendedDirection = px.Vec3(
+      solar.sunDirection.x * solarHorizonBlend +
+          moonDirection.x * (1.0 - solarHorizonBlend),
+      solar.sunDirection.y * solarHorizonBlend +
+          moonDirection.y * (1.0 - solarHorizonBlend),
+      solar.sunDirection.z * solarHorizonBlend +
+          moonDirection.z * (1.0 - solarHorizonBlend),
+    ).normalized;
+    final baselineDirVec = blendedDirection;
     final dirVec = flash.active && flash.hasValidSource
         ? px.Vec3(
             flash.sourceDirectionX,
@@ -1228,13 +1365,16 @@ final class _PixeldartWebRuntime implements RendererRuntime {
             flash.sourceDirectionZ,
           )
         : baselineDirVec;
-    final baseDirCol = isDay
-        ? solar.sunColor
-        : px.LinearColor(
-            atmos.moonColor.r,
-            atmos.moonColor.g,
-            atmos.moonColor.b,
-          );
+    final moonColor = px.LinearColor(
+      atmos.moonColor.r,
+      atmos.moonColor.g,
+      atmos.moonColor.b,
+    );
+    final baseDirCol = px.LinearColor(
+      moonColor.r + (solar.sunColor.r - moonColor.r) * solarHorizonBlend,
+      moonColor.g + (solar.sunColor.g - moonColor.g) * solarHorizonBlend,
+      moonColor.b + (solar.sunColor.b - moonColor.b) * solarHorizonBlend,
+    );
 
     final dirCol = flash.active
         ? px.LinearColor(
@@ -1247,16 +1387,18 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final lightningDistanceAttenuation = flash.distanceAttenuation
         .clamp(0.12, 2.0)
         .toDouble();
-    final solarDirectionalIntensity = isDay
-        ? solar.directionalIntensity
-        : atmos.directionalIntensity;
+    final solarDirectionalIntensity =
+        solar.directionalIntensity * solarHorizonBlend +
+        atmos.directionalIntensity * (1.0 - solarHorizonBlend);
     final lightningExposure = _shaderTuning
         .getValue('weather_lightning_intensity')
         .clamp(0.0, 2.0)
         .toDouble();
     final dirIntensity = flash.active
         ? (solarDirectionalIntensity * atmos.windowLightLeakFactor * 0.12 +
-              flash.intensity * 4.5 * lightningDistanceAttenuation *
+              flash.intensity *
+                  4.5 *
+                  lightningDistanceAttenuation *
                   lightningExposure)
         : (solarDirectionalIntensity * atmos.windowLightLeakFactor);
 
@@ -1285,6 +1427,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final fogEnabled = _shaderTuning.getBool('fog_enable');
     final tunedFogDensity = _shaderTuning.getValue('fog_density');
     final tunedFogHeightFalloff = _shaderTuning.getValue('fog_height_falloff');
+    final fogDistanceScale = _shaderTuning
+        .getValue('fog_distance_scale')
+        .clamp(0.25, 2.0)
+        .toDouble();
     final fogScattering = _shaderTuning
         .getValue('weather_fog_scattering')
         .clamp(0.0, 2.0)
@@ -1300,6 +1446,61 @@ final class _PixeldartWebRuntime implements RendererRuntime {
                   .clamp(0.0, 8.0)
                   .toDouble()
         : 0.0;
+    final volumetricEnabled = _shaderTuning.getBool('volumetric_light_enable');
+    final volumetricIntensity = volumetricEnabled
+        ? (_shaderTuning.getValue('volumetric_shaft_intensity') / 0.10)
+              .clamp(0.0, 8.0)
+              .toDouble()
+        : 0.0;
+    final volumetricSampleCount = _shaderTuning
+        .getValue('volumetric_precision')
+        .round()
+        .clamp(4, 24);
+    final volumetricDustDensity = _shaderTuning
+        .getValue('volumetric_dust_density')
+        .clamp(0.0, 0.25)
+        .toDouble();
+    final volumetricAnisotropy =
+        (_shaderTuning.getValue('volumetric_scattering') + effectiveRain * 0.10)
+            .clamp(-0.85, 0.85)
+            .toDouble();
+    final ambientLightScale = _shaderTuning
+        .getValue('light_ambient_mult')
+        .clamp(0.0, 3.0)
+        .toDouble();
+    final directLightScale = _shaderTuning
+        .getValue('light_direct_mult')
+        .clamp(0.0, 3.0)
+        .toDouble();
+    final normalStrengthScale = _shaderTuning
+        .getValue('normal_bump_strength')
+        .clamp(0.0, 2.0)
+        .toDouble();
+    final roughnessScale = _shaderTuning
+        .getValue('pbr_roughness')
+        .clamp(0.0, 2.0)
+        .toDouble();
+    final metallicScale = _shaderTuning
+        .getValue('pbr_metallic')
+        .clamp(0.0, 2.0)
+        .toDouble();
+    final specularScale = _shaderTuning
+        .getValue('pbr_specular')
+        .clamp(0.0, 3.0)
+        .toDouble();
+    final shadowBias = _shaderTuning
+        .getValue('shadow_bias')
+        .clamp(0.0001, 0.01)
+        .toDouble();
+    final weatherShadowRadius =
+        1.0 +
+        (1.0 - solar.cloudTransmittance).clamp(0.0, 1.0) * 1.4 +
+        effectiveRain * 0.25;
+    final shadowFilterRadius =
+        (weatherShadowRadius /
+                _shaderTuning.getValue('shadow_csm_hardness').clamp(0.1, 3.0))
+            .clamp(0.0, 3.0)
+            .toDouble();
     _effectiveFogDensity = fogDensity;
     _effectiveFogHeightFalloff = fogHeightFalloff;
 
@@ -1339,23 +1540,30 @@ final class _PixeldartWebRuntime implements RendererRuntime {
           id: 'lightning:active',
           position: camera.eye + sourceDirection * flash.sourceDistanceMeters,
           color: px.Vec3(flash.colorR, flash.colorG, flash.colorB),
-          luminousIntensity: flash.intensity * 120000.0,
+          luminousIntensity: flash.intensity * 120000.0 * lightningExposure,
           referenceDistance: 1000.0,
           cutoffDistance: math.max(1100.0, flash.sourceDistanceMeters * 1.25),
         ),
       );
     }
+    final sourceMediumScattering = fogEnabled
+        ? fogDensity + volumetricDustDensity
+        : 0.0;
     _volumetricSourceField = camera == null
         ? null
         : px.VolumetricMediaEngine.evaluateSourceField(
             rayOrigin: camera.eye,
             rayDirection: camera.forward,
             rayLength: math.min(camera.far, 64.0),
-            scatteringCoeff: fogDensity,
+            scatteringCoeff: sourceMediumScattering,
             sources: volumetricSources,
           );
     final sourceField = _volumetricSourceField;
     final sourceFog = sourceField?.radiance ?? px.Vec3.zero;
+    _canvas.setAttribute(
+      'data-renderer-volumetric-medium-scattering',
+      sourceMediumScattering.toStringAsFixed(6),
+    );
     final thermalSources = <px.ThermalSource>[
       for (var i = 0; i < _warmSources.length && i < 4; i++)
         () {
@@ -1407,8 +1615,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       ambientIntensity: math.max(
         ambientFloor,
         atmos.ambientIntensity *
-            (isDay ? solarDaylight : 1.0) *
-            atmos.windowLightLeakFactor,
+                (isDay ? solarDaylight : 1.0) *
+                atmos.windowLightLeakFactor +
+            solar.twilightFactor01 * (0.022 + 0.018 * (1.0 - effectiveRain)),
       ),
       directionalLight: px.DirectionalLight(
         direction: dirVec,
@@ -1421,14 +1630,47 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       thermalSources: thermalSources,
       clearColor: const px.LinearColor(0.008, 0.012, 0.024),
       fogColor: px.LinearColor(
-        atmos.fogColor.r * 0.08 + sourceFog.x.clamp(0.0, 8.0) * 0.015,
-        atmos.fogColor.g * 0.08 + sourceFog.y.clamp(0.0, 8.0) * 0.015,
-        atmos.fogColor.b * 0.08 + sourceFog.z.clamp(0.0, 8.0) * 0.015,
+        atmos.fogColor.r * 0.08 +
+            solar.fogColor.r * 0.035 +
+            sourceFog.x.clamp(0.0, 8.0) * 0.015,
+        atmos.fogColor.g * 0.08 +
+            solar.fogColor.g * 0.035 +
+            sourceFog.y.clamp(0.0, 8.0) * 0.015,
+        atmos.fogColor.b * 0.08 +
+            solar.fogColor.b * 0.035 +
+            sourceFog.z.clamp(0.0, 8.0) * 0.015,
       ),
-      fogStart: fogStart / (1.0 + effectiveRain * 0.45),
-      fogEnd: fogEnd / (1.0 + effectiveRain * 0.16),
+      fogStart: fogStart * fogDistanceScale / (1.0 + effectiveRain * 0.45),
+      fogEnd: fogEnd * fogDistanceScale / (1.0 + effectiveRain * 0.16),
       fogHeightFalloff: fogHeightFalloff,
       fogDensity: fogDensity,
+      // Rain and suspended moisture forward-scatter more strongly and tint
+      // the medium toward the authored sky colour. These remain neutral
+      // renderer controls; the host owns the weather-to-medium mapping.
+      volumetricAlbedo: px.LinearColor(
+        (0.72 + atmos.fogColor.r * 0.28).clamp(0.0, 1.0).toDouble(),
+        (0.76 + atmos.fogColor.g * 0.24).clamp(0.0, 1.0).toDouble(),
+        (0.82 + atmos.fogColor.b * 0.18).clamp(0.0, 1.0).toDouble(),
+      ),
+      volumetricHeightFalloff: fogHeightFalloff,
+      volumetricDustDensity: volumetricDustDensity,
+      volumetricAnisotropy: volumetricAnisotropy,
+      volumetricJitter: (0.22 + effectiveRain * 0.18)
+          .clamp(0.0, 0.5)
+          .toDouble(),
+      // Cloud cover enlarges the effective solar emitter; precipitation adds
+      // a small moisture veil. Soften penumbrae without blurring clear-sky
+      // contact shadows.
+      volumetricIntensity: volumetricIntensity,
+      volumetricSampleCount: volumetricSampleCount,
+      shadowFilterRadius: shadowFilterRadius,
+      ambientLightScale: ambientLightScale,
+      directLightScale: directLightScale,
+      normalStrengthScale: normalStrengthScale,
+      roughnessScale: roughnessScale,
+      metallicScale: metallicScale,
+      specularScale: specularScale,
+      shadowBias: shadowBias,
     );
   }
 
@@ -1539,6 +1781,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'fog_enable',
       'fog_density',
       'fog_height_falloff',
+      'fog_distance_scale',
       'post_exposure',
       'post_vignette',
       'post_film_grain',
@@ -1551,6 +1794,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'weather_fog_scattering',
       'weather_lightning_intensity',
       'weather_reflection_strength',
+      'light_ambient_mult',
+      'light_direct_mult',
     };
     final unavailable = <String, String>{
       for (final item in _shaderTuning.items)
@@ -1572,6 +1817,21 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'shadow_ssdo_enable',
       'shadow_ao_intensity',
     ]);
+    requireFeature(px.PipelineFeatures.shadows, const ['shadow_csm_hardness']);
+    requireFeature(px.PipelineFeatures.shadows, const [
+      'pbr_roughness',
+      'pbr_metallic',
+      'pbr_specular',
+      'normal_bump_strength',
+      'shadow_bias',
+    ]);
+    requireFeature(px.PipelineFeatures.volumetric, const [
+      'volumetric_light_enable',
+      'volumetric_shaft_intensity',
+      'volumetric_precision',
+      'volumetric_dust_density',
+      'volumetric_scattering',
+    ]);
     requireFeature(px.PipelineFeatures.bloom, const ['post_bloom']);
     requireFeature(px.PipelineFeatures.dof, const ['post_depth_of_field']);
     requireFeature(px.PipelineFeatures.grade, const ['post_color_grade']);
@@ -1592,6 +1852,20 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'wetness_override': _surfaceWetness,
         'fog_density': _effectiveFogDensity,
         'fog_height_falloff': _effectiveFogHeightFalloff,
+        'fog_distance_scale': _shaderTuning.getValue('fog_distance_scale'),
+        'shadow_ao_intensity': _post.ssaoStrength,
+        'shadow_csm_hardness': _shaderTuning.getValue('shadow_csm_hardness'),
+        'light_ambient_mult': _environment.ambientLightScale,
+        'light_direct_mult': _environment.directLightScale,
+        'pbr_roughness': _environment.roughnessScale,
+        'pbr_metallic': _environment.metallicScale,
+        'pbr_specular': _environment.specularScale,
+        'normal_bump_strength': _environment.normalStrengthScale,
+        'shadow_bias': _environment.shadowBias,
+        'volumetric_shaft_intensity': _environment.volumetricIntensity * 0.10,
+        'volumetric_precision': _environment.volumetricSampleCount.toDouble(),
+        'volumetric_dust_density': _environment.volumetricDustDensity,
+        'volumetric_scattering': _environment.volumetricAnisotropy,
         'post_exposure': _post.exposure,
         'post_bloom': _post.bloomStrength,
         'post_vignette': _post.vignette,
@@ -1601,17 +1875,24 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'post_color_grade': _post.colorGradeStrength,
         'post_affine_warp': _post.affineWarpStrength,
         'post_vertex_snap': _post.vertexSnapGrid,
-        'weather_particle_density': _shaderTuning
-            .getValue('weather_particle_density'),
-        'weather_particle_size': _shaderTuning.getValue('weather_particle_size'),
-        'weather_snow_accumulation': _shaderTuning
-            .getValue('weather_snow_accumulation'),
-        'weather_fog_scattering': _shaderTuning
-            .getValue('weather_fog_scattering'),
-        'weather_lightning_intensity': _shaderTuning
-            .getValue('weather_lightning_intensity'),
-        'weather_reflection_strength': _shaderTuning
-            .getValue('weather_reflection_strength'),
+        'weather_particle_density': _shaderTuning.getValue(
+          'weather_particle_density',
+        ),
+        'weather_particle_size': _shaderTuning.getValue(
+          'weather_particle_size',
+        ),
+        'weather_snow_accumulation': _shaderTuning.getValue(
+          'weather_snow_accumulation',
+        ),
+        'weather_fog_scattering': _shaderTuning.getValue(
+          'weather_fog_scattering',
+        ),
+        'weather_lightning_intensity': _shaderTuning.getValue(
+          'weather_lightning_intensity',
+        ),
+        'weather_reflection_strength': _shaderTuning.getValue(
+          'weather_reflection_strength',
+        ),
         'post_quantization_bits': _post.quantizationBits.toDouble(),
         'post_vhs_chroma': _post.vhsChromaWeight,
         'post_vhs_noise': _post.vhsNoiseWeight,
@@ -1619,8 +1900,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       effectiveToggles: {
         'fog_enable': _effectiveFogDensity > 0,
         'shadow_ssdo_enable': _post.ssaoStrength > 0,
-        'weather_particles_enable': _shaderTuning
-            .getBool('weather_particles_enable'),
+        'volumetric_light_enable': _environment.volumetricIntensity > 0,
+        'weather_particles_enable': _shaderTuning.getBool(
+          'weather_particles_enable',
+        ),
       },
       unavailableReasons: unavailable,
       debugViewsReason:
@@ -1686,6 +1969,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     if (snapshot == null) {
       _surfaceSnowCoverage = 0;
       _surfaceDissolution = 0;
+      _surfaceWetness = 0;
+      _canvas.removeAttribute('data-renderer-weather-surface');
       return;
     }
     final snowScale = _shaderTuning
@@ -1701,8 +1986,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final meltWetness = (snapshot.waterFilmDepthM / 0.0008)
         .clamp(0.0, 1.0)
         .toDouble();
-    _surfaceWetness = math.max(_surfaceWetness, meltWetness);
+    _surfaceWetness = meltWetness;
     _canvas
+      ..setAttribute(
+        'data-renderer-weather-surface',
+        jsonEncode(snapshot.toJson()),
+      )
       ..setAttribute(
         'data-renderer-weather-snow-coverage',
         _surfaceSnowCoverage.toStringAsFixed(4),
@@ -1930,13 +2219,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _ => 32.0,
     };
     final requestedCount =
-        (8 + _rainIntensity * countScale * particleDensity *
-                _rainWindowVisibility)
+        (8 +
+                _rainIntensity *
+                    countScale *
+                    particleDensity *
+                    _rainWindowVisibility)
             .round()
-            .clamp(
-          0,
-          40,
-        );
+            .clamp(0, 40);
     final budget = px.AtmosphericParticleBudget(
       requestedCount: requestedCount,
       maximumCount: _rainParticleBudgetForProfile,
@@ -2107,6 +2396,18 @@ final class _PixeldartWebRuntime implements RendererRuntime {
 
   px.Vec3 get volumetricSourceRadiance =>
       _volumetricSourceField?.radiance ?? px.Vec3.zero;
+
+  int get volumetricSampleCount => _environment.volumetricSampleCount;
+
+  double get volumetricIntensity => _environment.volumetricIntensity;
+
+  double get volumetricDustDensity => _environment.volumetricDustDensity;
+
+  double get volumetricAnisotropy => _environment.volumetricAnisotropy;
+
+  bool get debugAttachmentsAvailable => _shaderTuning.debugViewsAvailable;
+
+  String get debugAttachmentsReason => _shaderTuning.debugViewsReason;
 
   int get _rainParticleBudgetForProfile => switch (_profile.kind) {
     px.QualityProfileKind.high => 40,
@@ -2937,6 +3238,9 @@ void _openPanel(Panel panel) {
   if (_activePanel == panel && panel.isOpen) return;
   _activePanel?.close();
   _activePanel = panel;
+  if (panel == _sleepPanel) {
+    _sleepPanel.setHomeAvailable(_currentRoom == _house.residenceRoomId);
+  }
   if (panel == _pauseRoot) {
     _pauseLedger.openRoot(restoreFocusId: 'gameplay.viewport');
   } else {
@@ -3128,27 +3432,32 @@ void _configureSettingsPanel(SettingsPanel panel, {bool nested = false}) {
 }
 
 void _configureGraphicsSettingsPanel() {
+  void applyGraphicsRequest(GraphicsSettingsProfile requested) {
+    final negotiation = negotiateGraphics(requested, _graphicsCapabilities());
+    _graphicsSettingsStore = GraphicsSettingsStore(
+      requested: requested,
+      effective: _graphicsSettingsStore.effective,
+    );
+    _graphicsSettingsPanel.setState(
+      requested,
+      _graphicsSettingsStore.effective,
+      downgradeReasons: negotiation.downgradeReasons,
+    );
+    _canvas.setAttribute(
+      'data-graphics-fallback',
+      negotiation.downgradeReasons.join('|'),
+    );
+    _graphicsProfileTransaction = _commitGraphicsProfile(
+      requested,
+      negotiation,
+      _graphicsProfileTransaction,
+    );
+  }
+
   _graphicsSettingsPanel
-    ..onChanged = (requested) {
-      final negotiation = negotiateGraphics(requested, _graphicsCapabilities());
-      _graphicsSettingsStore = GraphicsSettingsStore(
-        requested: requested,
-        effective: _graphicsSettingsStore.effective,
-      );
-      _graphicsSettingsPanel.setState(
-        requested,
-        _graphicsSettingsStore.effective,
-        downgradeReasons: negotiation.downgradeReasons,
-      );
-      _canvas.setAttribute(
-        'data-graphics-fallback',
-        negotiation.downgradeReasons.join('|'),
-      );
-      _graphicsProfileTransaction = _commitGraphicsProfile(
-        requested,
-        negotiation,
-        _graphicsProfileTransaction,
-      );
+    ..onChanged = applyGraphicsRequest
+    ..onLoadOptimizedDefaults = () {
+      applyGraphicsRequest(GraphicsSettingsProfile.optimizedDefaults);
     }
     ..onBack = () {
       _returnFromPausePage(_graphicsSettingsPanel);
@@ -3660,6 +3969,11 @@ Future<void> main() async {
     ).toSet();
     _setBootPhase('house');
     _house = _session.house;
+    _weatherSurfacesByRoom
+      ..clear()
+      ..addAll(
+        _restoreWeatherSurfaces(saved.snapshot?.meta['weatherSurfaces']),
+      );
     final captureShutters = _automationCaptureFixture?.shutters;
     final captureShutterMap = _automationCaptureFixture?.shutterMap;
     if (captureShutterMap != null) {
@@ -3690,7 +4004,10 @@ Future<void> main() async {
     _pixeldartRuntime?.attachHouse(_house);
     _time = _session.time;
 
-    _simEye = _house.defaultPlayerEye(playerEyeHeight);
+    _currentRoom = _house.residenceRoomId ?? 'hall';
+    _simEye =
+        _house.residencePlayerEye(playerEyeHeight) ??
+        _house.defaultPlayerEye(playerEyeHeight);
     _prevEye = _simEye;
     _viewEye = _simEye;
     final initialCapsuleBase =
@@ -3703,7 +4020,6 @@ Future<void> main() async {
     );
     _examineState = ExamineState();
     _rupture = RuptureState();
-    _currentRoom = 'hall';
     final savedPlayer = PlayerState.tryFromJson(saved.snapshot?.meta['player']);
     if (savedPlayer != null && savedPlayer.isCollisionSafe(_house)) {
       _simEye = savedPlayer.eye;
@@ -3730,6 +4046,15 @@ Future<void> main() async {
 
       _showSaveStatus('restored position');
     }
+    final residenceEye = _house.residencePlayerEye(playerEyeHeight);
+    _canvas
+      ..setAttribute('data-house-residence-room', _house.residenceRoomId ?? '')
+      ..setAttribute(
+        'data-house-residence-spawn',
+        residenceEye == null
+            ? ''
+            : '${residenceEye.x.toStringAsFixed(3)},${residenceEye.y.toStringAsFixed(3)},${residenceEye.z.toStringAsFixed(3)}',
+      );
 
     _settingsIndex = SettingsIndexPanel(web.document)
       ..onCategory = (category) {
@@ -3838,6 +4163,11 @@ Future<void> main() async {
         }
         final driftedBefore = _house.drift.landedCount;
         _session.sleep(quality, location, currentRoom: _currentRoom);
+        if (location == SleepLocation.sofa &&
+            _currentRoom == _house.residenceRoomId) {
+          _movePlayerToResidence();
+          _showSaveStatus('woke in the living room');
+        }
         final driftedAfter = _house.drift.landedCount;
         for (var i = driftedBefore; i < driftedAfter; i++) {
           final roomId = _house.drift.schedule[i].roomId;
@@ -3923,6 +4253,16 @@ Future<void> main() async {
             e.preventDefault();
             _shaderTuning.isOpen = false;
             _input.requestPointerLock(_canvas);
+            return;
+          }
+          if (e.code == 'KeyC') {
+            e.preventDefault();
+            _copyShaderLabDocument();
+            return;
+          }
+          if (e.code == 'KeyI') {
+            e.preventDefault();
+            _importShaderLabDocument();
             return;
           }
           if (e.code == 'ArrowUp' || e.code == 'KeyW') {
@@ -4052,6 +4392,10 @@ Future<void> main() async {
       'click',
       ((JSAny? evt) {
         final e = evt as web.MouseEvent;
+        // Pointer lock does not consistently focus a canvas across browsers.
+        // Focus it explicitly so keyboard movement follows the same user
+        // gesture that acquired the camera lock.
+        _canvas.focus();
         if (_door.visitorPresent) {
           e.preventDefault();
           _handleRenderedDialogueClick(e);
@@ -4213,7 +4557,12 @@ void _publishAutomationPlayerState() {
       'schemaVersion': 1,
       'phase': _bootPhase,
       'roomId': _currentRoom,
+      'residenceRoomId': _house.residenceRoomId,
+      'residenceRestAnchor': _house.residenceRestAnchor,
+      'atResidence': _currentRoom == _house.residenceRoomId,
       'eye': {'x': _simEye.x, 'y': _simEye.y, 'z': _simEye.z},
+      'activeStairId': _playerCapsule.activeStairId,
+      'activeStairProgress': _playerCapsule.activeStairProgress,
       'yaw': _simYaw,
       'pitch': _simPitch,
       'modal': _activePanel != null,
@@ -4286,6 +4635,10 @@ void _saveSession(String status) {
             'authoredEvents': _authoredEventCursor!.toJson(),
           'unverifiables': _unverifiableDaysShown.toList()..sort(),
           'inventoryInspections': _inventoryInspections.toJson(),
+          'weatherSurfaces': {
+            for (final entry in _weatherSurfacesByRoom.entries)
+              entry.key: entry.value.toJson(),
+          },
           if (_ending != null) 'ending': _ending!.toJson(),
         },
       ),
@@ -4294,6 +4647,47 @@ void _saveSession(String status) {
   } catch (_) {
     _showSaveStatus('save failed');
   }
+}
+
+/// Returns the player to the authored home anchor after sofa rest. The
+/// residence is a house/runtime concern; no narrative event is emitted.
+void _movePlayerToResidence() {
+  final eye = _house.residencePlayerEye(playerEyeHeight);
+  final roomId = _house.residenceRoomId;
+  if (eye == null || roomId == null || _house.byId(roomId) == null) return;
+  _motion.stop();
+  _currentRoom = roomId;
+  _simEye = eye;
+  _prevEye = eye;
+  _viewEye = eye;
+  final base = eye - Vec3(0, playerEyeHeight - playerCapsuleRadius, 0);
+  _playerCapsule
+    ..base = base
+    ..tip = base + Vec3(0, playerCapsuleHeight - playerCapsuleRadius * 2, 0)
+    ..restoreActiveStair(
+      house: _house,
+      stairId: null,
+      progress: null,
+      currentRoom: roomId,
+      eye: eye,
+    );
+}
+
+Map<String, WeatherSurfaceAccumulator> _restoreWeatherSurfaces(Object? raw) {
+  if (raw == null) return {};
+  if (raw is! Map) {
+    throw const FormatException('weatherSurfaces save data must be an object');
+  }
+  final restored = <String, WeatherSurfaceAccumulator>{};
+  for (final entry in raw.entries) {
+    if (entry.key is! String) {
+      throw const FormatException('weather surface room ID must be a string');
+    }
+    restored[entry.key as String] = WeatherSurfaceAccumulator.fromJson(
+      entry.value,
+    );
+  }
+  return restored;
 }
 
 void _onFocusLoss() {
@@ -5048,6 +5442,30 @@ void _raf(num ts) {
           '${runtime.rainParticleFrustumCulled}',
         );
         _canvas.setAttribute(
+          'data-renderer-volumetric-sample-count',
+          '${runtime.volumetricSampleCount}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-volumetric-intensity',
+          runtime.volumetricIntensity.toStringAsFixed(4),
+        );
+        _canvas.setAttribute(
+          'data-renderer-volumetric-dust-density',
+          runtime.volumetricDustDensity.toStringAsFixed(4),
+        );
+        _canvas.setAttribute(
+          'data-renderer-volumetric-anisotropy',
+          runtime.volumetricAnisotropy.toStringAsFixed(4),
+        );
+        _canvas.setAttribute(
+          'data-renderer-debug-attachments',
+          runtime.debugAttachmentsAvailable ? 'available' : 'unavailable',
+        );
+        _canvas.setAttribute(
+          'data-renderer-debug-attachments-reason',
+          runtime.debugAttachmentsReason,
+        );
+        _canvas.setAttribute(
           'data-renderer-weather-phase',
           runtime.weatherPhase,
         );
@@ -5214,8 +5632,12 @@ void _update(double dt) {
     return;
   }
 
-  final moveDir = _input.moveVector;
   _input.step(dt);
+  // Hold-to-interact may synthesize an edge during step(); sample movement
+  // after that boundary so every simulation tick uses one coherent input
+  // snapshot. Reading this before step() made focus reacquisition especially
+  // timing-sensitive in browsers.
+  final moveDir = _input.moveVector;
   final mouseDx = _input.mouseDx;
   final mouseDy = _input.mouseDy;
 
@@ -5384,6 +5806,11 @@ void _update(double dt) {
         _ambientNotice.show('noticed', item.description);
       }
     } else if (inventoryPlacement != null) {
+      if (inventoryPlacement.id == _house.residenceRestAnchor) {
+        _ambientNotice.showCaption('the living-room sofa is ready for rest');
+        _openPanel(_sleepPanel);
+        return;
+      }
       final event = _inventoryInspections.inspect(inventoryPlacement);
       _canvas
         ..setAttribute('data-inventory-last-focus', event.focusId)
@@ -5427,6 +5854,12 @@ void _renderCanvasGui(double dt, FocusSnapshot focus) {
   );
   _shaderTuning.update(dt);
   final room = _house.byId(_currentRoom);
+  final weather = _weatherSchedule.forDay(_session.snapshot.day);
+  final runtimeTemperature = _pixeldartRuntime?.weatherLocalTemperatureCelsius;
+  final temperatureCelsius =
+      runtimeTemperature != null && runtimeTemperature.isFinite
+      ? runtimeTemperature
+      : weather.outsideTemperatureCelsius;
   gui.render(
     RendererGuiFrame(
       dt: dt,
@@ -5438,6 +5871,7 @@ void _renderCanvasGui(double dt, FocusSnapshot focus) {
       dialogue: _dialogueCoordinator.toRenderState(),
       day: _session.snapshot.day,
       hour: _time.currentHour,
+      temperatureCelsius: temperatureCelsius,
       twelveHourClock:
           _gameplayOptions.clockFormat == GameplayClockFormat.twelveHour,
       roomName: room?.id ?? _currentRoom,
@@ -6023,7 +6457,8 @@ List<WeatherCollisionBox> _weatherCollisionBoxesForRoom(
   // provide a real shelter/impact surface without changing player collision.
   for (final placement in authoredInventory.placementsFor(room.id)) {
     final assetKey = placement.assetId.toLowerCase();
-    if (placement.role == 'renderer-reference' ||
+    if ((placement.role == 'renderer-reference' &&
+            !placement.physics.collision) ||
         (sparseTestChambers &&
             placement.visibilityLayer != 'story' &&
             placement.visibilityLayer != 'architecture') ||
@@ -6061,7 +6496,9 @@ List<WeatherCollisionBox> _weatherCollisionBoxesForRoom(
         center: center,
         halfExtents: halfExtents,
         surfaceTemperatureCelsius: temperature,
-        restitution: asset.kind == 'textile' ? 0.08 : 0.28,
+        restitution: placement.physics.restitution > 0
+            ? placement.physics.restitution
+            : (asset.kind == 'textile' ? 0.08 : 0.28),
       )..validate(),
     );
   }

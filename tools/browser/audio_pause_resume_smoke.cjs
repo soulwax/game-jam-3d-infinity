@@ -9,6 +9,9 @@ async function readAudio(page) {
     master: canvas.getAttribute('data-audio-master-mix'),
     voice: canvas.getAttribute('data-audio-voice-mix'),
     captions: canvas.getAttribute('data-audio-captions'),
+    contextSuspended: canvas.getAttribute('data-audio-context-suspended'),
+    spatial: canvas.getAttribute('data-audio-spatial-active'),
+    muffle: canvas.getAttribute('data-audio-muffle01'),
   }));
 }
 
@@ -40,8 +43,10 @@ async function main() {
     const resumed = await readAudio(page);
     for (const state of [before, paused, resumed]) {
       if (!['true', 'false'].includes(state.muted) ||
+          !['true', 'false'].includes(state.contextSuspended) ||
           !['true', 'false'].includes(state.captions) ||
-          Number.isNaN(Number(state.master)) || Number.isNaN(Number(state.voice))) {
+          Number.isNaN(Number(state.master)) || Number.isNaN(Number(state.voice)) ||
+          Number.isNaN(Number(state.spatial)) || Number.isNaN(Number(state.muffle))) {
         throw new Error(`invalid audio telemetry: ${JSON.stringify(state)}`);
       }
     }

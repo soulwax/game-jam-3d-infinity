@@ -34,6 +34,17 @@ void main() {
     (equinoxDeclination * 180.0 / math.pi).abs() < 2.0,
     '12-hour apparent day should remain near equinox',
   );
+  _expect(
+    SolarDaylightModel.solarHorizonBlend(0.0) == 0.0 &&
+        SolarDaylightModel.solarHorizonBlend(1.0) == 1.0 &&
+        SolarDaylightModel.solarHorizonBlend(0.5) == 0.5,
+    'solar horizon blend must preserve smoothstep endpoints and midpoint',
+  );
+  _expect(
+    SolarDaylightModel.solarHorizonBlend(0.25) <
+        SolarDaylightModel.solarHorizonBlend(0.75),
+    'solar horizon blend must remain monotonic',
+  );
   print(
     'solar daylight adapter: seasonal declination and apparent horizon pass',
   );

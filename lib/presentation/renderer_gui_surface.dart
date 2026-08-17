@@ -15,6 +15,7 @@ final class RendererGuiFrame {
   final P5DialogueState dialogue;
   final int day;
   final double hour;
+  final double temperatureCelsius;
   final bool twelveHourClock;
   final String roomName;
   final String? objective;
@@ -31,6 +32,7 @@ final class RendererGuiFrame {
     required this.dialogue,
     required this.day,
     required this.hour,
+    required this.temperatureCelsius,
     this.twelveHourClock = false,
     required this.roomName,
     required this.objective,
@@ -49,6 +51,7 @@ final class RendererGuiSurface {
   int _frameNumber = 0;
   int _surfaceWidth = 0;
   int _surfaceHeight = 0;
+  double _lastTemperatureCelsius = 0.0;
 
   RendererGuiSurface(web.HTMLCanvasElement canvas)
     : _engine = CanvasP5GuiEngine(canvas);
@@ -75,6 +78,7 @@ final class RendererGuiSurface {
   }
 
   void render(RendererGuiFrame frame) {
+    _lastTemperatureCelsius = frame.temperatureCelsius;
     _engine.beginFrame(frame.dt, frame.width, frame.height);
     if (frame.showGameplayReticle) {
       _engine.drawReticle(
@@ -102,6 +106,11 @@ final class RendererGuiSurface {
       currentRoomName: frame.roomName,
       objectiveText: frame.objective,
     );
+    _engine.drawTemperatureGauge(
+      screenWidth: frame.width,
+      screenHeight: frame.height,
+      temperatureCelsius: frame.temperatureCelsius,
+    );
     _engine.drawContextualHUDActionPrompts(
       screenWidth: frame.width,
       screenHeight: frame.height,
@@ -122,6 +131,10 @@ final class RendererGuiSurface {
     target.setAttribute('data-renderer-gui-frame', '$_frameNumber');
     target.setAttribute('data-renderer-gui-hitboxes', '${hitBoxes.length}');
     target.setAttribute('data-renderer-gui-owner', 'renderer');
+    target.setAttribute(
+      'data-renderer-gui-temperature-c',
+      _lastTemperatureCelsius.toStringAsFixed(2),
+    );
     target.setAttribute(
       'data-renderer-gui-surface',
       '${_surfaceWidth}x$_surfaceHeight',

@@ -33,6 +33,21 @@ void main() {
   );
   _require(deposited.snowDepthM > 0, 'cold snow did not accumulate');
   _require(deposited.meltedDepthM == 0, 'cold snow melted without heat');
+  final restored = WeatherSurfaceAccumulator.fromJson(surface.toJson());
+  _require(
+    restored.snowDepthM == surface.snowDepthM &&
+        restored.waterFilmDepthM == surface.waterFilmDepthM &&
+        restored.materialDissolution01 == surface.materialDissolution01,
+    'weather surface save/restore did not preserve material state',
+  );
+  _throws(
+    () => WeatherSurfaceAccumulator.fromJson({
+      'snowDepthM': -1,
+      'waterFilmDepthM': 0,
+      'materialDissolution01': 0,
+    }),
+    'negative saved snow depth must be rejected',
+  );
 
   final suppressed = surface.advance(
     weather: snapshot,

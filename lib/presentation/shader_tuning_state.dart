@@ -270,7 +270,7 @@ class ShaderTuningState {
       ShaderTuningItem(
         id: 'shadow_csm_hardness',
         label: 'Shadow Penumbra Sharpness',
-        description: 'Shadow filter kernel radius and edge falloff',
+        description: 'Weather-aware shadow filter hardness (higher is sharper)',
         category: ShaderTuningCategory.shadowsAndOcclusion,
         min: 0.1,
         max: 3.0,
@@ -360,6 +360,17 @@ class ShaderTuningState {
         defaultValue: 0.60,
       ),
       ShaderTuningItem(
+        id: 'fog_distance_scale',
+        label: 'Fog Distance Reach',
+        description:
+            'Scale for the start/end distance of atmospheric extinction',
+        category: ShaderTuningCategory.atmosphereAndPost,
+        min: 0.25,
+        max: 2.0,
+        step: 0.05,
+        defaultValue: 1.0,
+      ),
+      ShaderTuningItem(
         id: 'time_override',
         label: 'Time of Day Lock',
         description: 'Override simulation time (-1.0 = normal clock)',
@@ -417,6 +428,27 @@ class ShaderTuningState {
         max: 1.0,
         step: 0.05,
         defaultValue: 0.10,
+      ),
+      ShaderTuningItem(
+        id: 'volumetric_precision',
+        label: 'Volumetric Sample Rate',
+        description: 'Raymarch samples per pixel (4=preview, 24=clean)',
+        category: ShaderTuningCategory.atmosphereAndPost,
+        min: 4.0,
+        max: 24.0,
+        step: 1.0,
+        defaultValue: 12.0,
+      ),
+      ShaderTuningItem(
+        id: 'volumetric_dust_density',
+        label: 'Suspended Dust Density',
+        description:
+            'Near-field particulate density that gives light shafts visible body',
+        category: ShaderTuningCategory.atmosphereAndPost,
+        min: 0.0,
+        max: 0.25,
+        step: 0.005,
+        defaultValue: 0.02,
       ),
       ShaderTuningItem(
         id: 'ssr_enable',
