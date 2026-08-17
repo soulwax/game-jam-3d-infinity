@@ -52,7 +52,10 @@ class TemperatureModel {
     final daylightPhase = math.sin(
       math.pi * ((hour - sunrise) / daylightHours).clamp(0.0, 1.0),
     );
-    final outside = 8.0 + daylightPhase * 4.0 - weather.rainIntensity * 3.0;
+    final outside =
+        weather.outsideTemperatureCelsius +
+        daylightPhase * 4.0 -
+        weather.rainIntensity * 3.0;
     final rooms = <String, double>{};
     final breath = <String>{};
     final ids = roomOffsets.keys.toList()..sort();

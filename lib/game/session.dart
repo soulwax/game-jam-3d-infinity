@@ -297,6 +297,9 @@ class GameSession {
     // browser DOM. Presentation systems can react to this stable seam later.
     _narrative.flags['event.${event.id}.consumer'] = event.kind;
     _narrative.flags['last-authored-event'] = event.id;
+    if (event.kind == 'aftermath') {
+      _narrative.flags['aftermath.${event.id}'] = 'placed';
+    }
     for (final effect in event.effects) {
       final separator = effect.indexOf('=');
       if (separator <= 0 || separator == effect.length - 1) continue;
@@ -363,6 +366,16 @@ class GameSession {
     if (advanced < elapsedSeconds) _record(GameSessionEventType.dayEndReached);
   }
 
+  /// Spends a bounded diegetic wait without allowing a day transition.
+  bool waitHours(double hours) {
+    if (!hours.isFinite || hours < 0 || hours > 3) {
+      throw ArgumentError.value(hours, 'hours', 'must be between 0 and 3');
+    }
+    final before = _time.currentHour;
+    advance(hours * (_time.dayLengthSeconds / 24.0));
+    return _time.currentHour > before;
+  }
+
   Entry? writeJournal(
     Map<String, String> fields,
     double shakiness, {
@@ -420,6 +433,17 @@ class GameSession {
   }
 
   bool lockJournal(int ordinal) => _journal.lock(ordinal);
+
+  bool verifyJournal(int ordinal) {
+    final accepted = _journal.verifyToday(ordinal);
+    _record(
+      accepted
+          ? GameSessionEventType.journalWritten
+          : GameSessionEventType.journalRejected,
+      entryOrdinal: accepted ? ordinal : null,
+    );
+    return accepted;
+  }
 
   bool spendHours(int cost) {
     _requireNonNegative(cost, 'cost');

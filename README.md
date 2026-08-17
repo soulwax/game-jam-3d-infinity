@@ -4,11 +4,65 @@
 - Project for Ludum Dare
 - Project history: [CHANGELOG.md](CHANGELOG.md)
 
-- How to build: install dart then run the following commands or open in vscode and press play button.
+## Prerequisites and quick start
+
+Install these tools before starting the application:
+
+- Dart SDK with `dart` and `webdev` available on `PATH`
+- Python 3.10 or newer for the storyline editor and TTS tooling
+- `ffmpeg` and `ffprobe` for audio rendering and validation
+- Node.js 24+ and npm only if you will use the optional Svelte project board
+- macOS with the `say` command for Apple voices; other systems can use Edge TTS or gTTS
+
+Start the game and its browser editor from the repository root:
 
 ```sh
 dart pub get
-dart pub global activate webdev      # once
+dart pub global activate webdev   # once per Dart installation
+dart pub global run webdev serve web:8080
+```
+
+Open <http://localhost:8080>. In VS Code, the same Dart web application can be
+started with the Run/Play action after dependencies are installed.
+
+Start the Python storyline editor in a second terminal:
+
+```sh
+python3 tools/screenplay_editor.py
+```
+
+Run its headless validation without opening a window:
+
+```sh
+python3 tools/test_screenplay_editor.py
+```
+
+To use Apple voice preview in the web editor, open it in a macOS browser with
+system voices installed. To render production audio with the Apple backend:
+
+```sh
+python3 scripts/tts.py --backend apple --line "Open the door." --name door
+```
+
+The optional Svelte project board runs independently:
+
+```sh
+cd external/project-agile-web
+npm install
+printf 'APP_LOGIN=editor\nAPP_PASSWORD=change-me\nAPP_SESSION_SECRET=use-a-long-random-value\n' > .env
+npm run dev
+```
+
+Open <http://127.0.0.1:5173>. Never commit `.env` or reuse these example
+credentials outside local development.
+
+### Game build
+
+Install Dart, then run the following commands or open the project in VS Code
+and press the Play button.
+
+```sh
+dart pub get
 dart pub global run webdev serve web:8080
 ```
 

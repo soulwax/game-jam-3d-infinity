@@ -19,6 +19,15 @@ void main() {
     for (final placement in inventory.placements) placement.roomId,
   };
   if (rooms.length != 8) fail('inventory does not cover all eight rooms');
+  final fireplace = inventory.placements.firstWhere(
+    (placement) => placement.id == 'placement-living-fireplace',
+  );
+  if (fireplace.heatOutputWatts != 1800 ||
+      fireplace.surfaceTemperatureCelsius != 140 ||
+      fireplace.thermalRadiusM != 0.35 ||
+      fireplace.thermalOffsetY != 0.75) {
+    fail('fireplace thermal source metadata drifted');
+  }
   final pickable = inventory.pickablePlacements.length;
   if (pickable < 8) fail('inventory has too few inspectable placements');
   for (final placement in inventory.pickablePlacements) {

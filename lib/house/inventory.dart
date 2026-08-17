@@ -130,6 +130,15 @@ final class HouseInventory {
           !placement.clearanceRadius.isFinite) {
         throw StateError('invalid clearance for ${placement.id}');
       }
+      if (!placement.heatOutputWatts.isFinite ||
+          placement.heatOutputWatts < 0 ||
+          !placement.surfaceTemperatureCelsius.isFinite ||
+          !placement.thermalRadiusM.isFinite ||
+          !placement.thermalOffsetY.isFinite ||
+          placement.thermalRadiusM < 0 ||
+          (placement.heatOutputWatts > 0 && placement.thermalRadiusM <= 0)) {
+        throw StateError('invalid thermal source for ${placement.id}');
+      }
       if (placement.socket != null &&
           !sockets.add('${placement.roomId}:${placement.socket}')) {
         throw StateError(
@@ -204,6 +213,14 @@ final class InventoryPlacement {
   final String? focusId;
   final double clearanceRadius;
 
+  /// Optional authored thermal source. Zero heat means this placement is not
+  /// a source; the renderer and simulation never infer warmth from an asset's
+  /// name or material.
+  final double heatOutputWatts;
+  final double surfaceTemperatureCelsius;
+  final double thermalRadiusM;
+  final double thermalOffsetY;
+
   const InventoryPlacement({
     required this.id,
     required this.roomId,
@@ -216,6 +233,10 @@ final class InventoryPlacement {
     required this.pickable,
     required this.focusId,
     required this.clearanceRadius,
+    this.heatOutputWatts = 0,
+    this.surfaceTemperatureCelsius = 0,
+    this.thermalRadiusM = 0,
+    this.thermalOffsetY = 0,
   });
 
   factory InventoryPlacement.fromJson(Object? raw) {
@@ -223,6 +244,10 @@ final class InventoryPlacement {
     final visibility = _object(map['visibility'], 'placement visibility');
     final interaction = _object(map['interaction'], 'placement interaction');
     final clearance = map['clearance'];
+    final thermal = map['thermal'];
+    final thermalMap = thermal is Map<String, dynamic>
+        ? thermal
+        : const <String, dynamic>{};
     return InventoryPlacement(
       id: _string(map, 'id'),
       roomId: _string(map, 'roomId'),
@@ -241,6 +266,18 @@ final class InventoryPlacement {
       clearanceRadius: clearance is Map<String, dynamic>
           ? _number(clearance, 'radius')
           : 0,
+      heatOutputWatts: thermalMap.isEmpty
+          ? 0
+          : _number(thermalMap, 'heatOutputWatts'),
+      surfaceTemperatureCelsius: thermalMap.isEmpty
+          ? 0
+          : _number(thermalMap, 'surfaceTemperatureCelsius'),
+      thermalRadiusM: thermalMap.isEmpty ? 0 : _number(thermalMap, 'radiusM'),
+      thermalOffsetY: thermalMap.isEmpty
+          ? 0
+          : (thermalMap['offsetY'] is num
+                ? (thermalMap['offsetY'] as num).toDouble()
+                : 0),
     );
   }
 

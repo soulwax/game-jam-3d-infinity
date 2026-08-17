@@ -28,6 +28,16 @@ void main() {
     'rain intensity remains bounded',
   );
   _expect(
+    a.days.every(
+      (day) =>
+          day.windSpeedMps.isFinite &&
+          day.windSpeedMps >= 0 &&
+          day.windDirectionRadians.isFinite &&
+          day.outsideTemperatureCelsius.isFinite,
+    ),
+    'wind and outside temperature facts remain finite',
+  );
+  _expect(
     WeatherSchedule.fromJson(a.encode()).encode() == a.encode(),
     'save/resume preserves exact schedule',
   );
@@ -56,5 +66,41 @@ void main() {
     rejectedDaylight = true;
   }
   _expect(rejectedDaylight, 'daylight hours above one full day reject');
+  final legacy = <String, dynamic>{
+    'seed': 1,
+    'days': [
+      for (var day = 1; day <= WeatherSchedule.authoredDays; day++)
+        {'day': day, 'rain': false, 'rainIntensity': 0, 'daylightHours': 12},
+    ],
+  };
+  final legacySchedule = WeatherSchedule.fromJson(legacy);
+  _expect(
+    legacySchedule.forDay(1).windSpeedMps == 0,
+    'legacy saves default wind',
+  );
+  _expect(
+    legacySchedule.forDay(1).effectivePrecipitationKind ==
+        PrecipitationKind.none,
+    'legacy clear saves default precipitation phase',
+  );
+  var rejectedPhase = false;
+  try {
+    WeatherSchedule.fromJson({
+      'seed': 1,
+      'days': [
+        for (var day = 1; day <= WeatherSchedule.authoredDays; day++)
+          {
+            'day': day,
+            'rain': false,
+            'rainIntensity': 0,
+            'daylightHours': 12,
+            'precipitationKind': 'ice-needles',
+          },
+      ],
+    });
+  } on FormatException {
+    rejectedPhase = true;
+  }
+  _expect(rejectedPhase, 'unknown precipitation phases reject');
   print('weather: deterministic 21-day schedule and resume fixture pass');
 }

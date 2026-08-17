@@ -2,7 +2,9 @@
   "editor.formatOnSave": true,
   "[dart]": {
     "editor.defaultFormatter": "Dart-Code.dart-code",
-    "editor.rulers": [80]
+    "editor.rulers": [
+      80
+    ]
   },
   "dart.lineLength": 80,
   "dart.runPubGetOnPubspecChanges": "always",
@@ -13,5 +15,6 @@
   "files.watcherExclude": {
     "**/web/assets/**": true,
     "**/.dart_tool/**": true
-  }
+  },
+  "js/ts.experimental.useTsgo": false
 }

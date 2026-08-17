@@ -6,7 +6,11 @@ import 'dart:convert';
 /// files rather than copying their lines. This keeps one source for prose while
 /// giving writers and runtime systems a chronological scene/branch graph.
 class StoryScreenplay {
-  StoryScreenplay({required this.sources, required this.scenes, this.events = const []});
+  StoryScreenplay({
+    required this.sources,
+    required this.scenes,
+    this.events = const [],
+  });
 
   final List<String> sources;
   final List<ScreenplayScene> scenes;
@@ -28,7 +32,9 @@ class StoryScreenplay {
 
   factory StoryScreenplay.fromJson(String source) {
     final raw = jsonDecode(source);
-    if (raw is! Map) throw const FormatException('screenplay root must be an object');
+    if (raw is! Map) {
+      throw const FormatException('screenplay root must be an object');
+    }
     final sourceList = raw['sources'];
     final sceneList = raw['scenes'];
     final eventList = raw['events'] ?? const [];
@@ -38,21 +44,35 @@ class StoryScreenplay {
         eventList is! List) {
       throw const FormatException('screenplay needs sources and scenes arrays');
     }
+    final scenes = [
+      for (final value in sceneList) ScreenplayScene.fromJson(value),
+    ];
+    final events = [
+      for (final value in eventList) ScreenplayEvent.fromJson(value),
+    ];
+    final sceneIds = <String>{};
+    for (final scene in scenes) {
+      if (!sceneIds.add(scene.id)) {
+        throw FormatException('duplicate screenplay scene: ${scene.id}');
+      }
+    }
+    final eventIds = <String>{};
+    for (final event in events) {
+      if (!eventIds.add(event.id)) {
+        throw FormatException('duplicate screenplay event: ${event.id}');
+      }
+    }
     return StoryScreenplay(
       sources: [for (final value in sourceList) _string(value, 'source')],
-      scenes: [
-        for (final value in sceneList)
-          ScreenplayScene.fromJson(value),
-      ],
-      events: [
-        for (final value in eventList)
-          ScreenplayEvent.fromJson(value),
-      ],
+      scenes: scenes,
+      events: events,
     );
   }
 
   static String _string(Object? value, String field) {
-    if (value is! String || value.isEmpty) throw FormatException('$field must be a non-empty string');
+    if (value is! String || value.isEmpty) {
+      throw FormatException('$field must be a non-empty string');
+    }
     return value;
   }
 }
@@ -123,12 +143,19 @@ class ScreenplayEvent {
             randomFrom < 0 ||
             randomTo >= 24 ||
             randomFrom > randomTo)) {
-      throw const FormatException('screenplay event random range is out of range');
+      throw const FormatException(
+        'screenplay event random range is out of range',
+      );
     }
     String optionalString(String key) {
       final item = value[key];
-      return item == null ? '' : item is String ? item : (throw FormatException('screenplay event $key is invalid'));
+      return item == null
+          ? ''
+          : item is String
+          ? item
+          : (throw FormatException('screenplay event $key is invalid'));
     }
+
     return ScreenplayEvent(
       id: value['id'] as String,
       kind: value['kind'] as String,
@@ -171,12 +198,18 @@ class ScreenplayScene {
   }
 
   factory ScreenplayScene.fromJson(Object? value) {
-    if (value is! Map) throw const FormatException('screenplay scene must be an object');
+    if (value is! Map)
+      throw const FormatException('screenplay scene must be an object');
     final id = value['id'];
     final day = value['day'];
     final title = value['title'];
-    if (id is! String || title is! String || day is! num || day.toInt() != day) {
-      throw const FormatException('screenplay scene has invalid id, day, or title');
+    if (id is! String ||
+        title is! String ||
+        day is! num ||
+        day.toInt() != day) {
+      throw const FormatException(
+        'screenplay scene has invalid id, day, or title',
+      );
     }
     final sources = value['sources'];
     final beats = value['beats'];
@@ -195,7 +228,8 @@ class ScreenplayScene {
   }
 
   static String _requiredString(Object? value) {
-    if (value is! String || value.isEmpty) throw const FormatException('screenplay array contains invalid text');
+    if (value is! String || value.isEmpty)
+      throw const FormatException('screenplay array contains invalid text');
     return value;
   }
 }
@@ -220,7 +254,11 @@ class ScreenplayBeat {
 }
 
 class ScreenplayBranch {
-  ScreenplayBranch({required this.id, required this.prompt, required this.options});
+  ScreenplayBranch({
+    required this.id,
+    required this.prompt,
+    required this.options,
+  });
 
   final String id;
   final String prompt;
@@ -234,13 +272,18 @@ class ScreenplayBranch {
   }
 
   factory ScreenplayBranch.fromJson(Object? value) {
-    if (value is! Map || value['id'] is! String || value['prompt'] is! String || value['options'] is! List) {
+    if (value is! Map ||
+        value['id'] is! String ||
+        value['prompt'] is! String ||
+        value['options'] is! List) {
       throw const FormatException('screenplay branch is invalid');
     }
     return ScreenplayBranch(
       id: value['id'] as String,
       prompt: value['prompt'] as String,
-      options: [for (final item in value['options']) ScreenplayOption.fromJson(item)],
+      options: [
+        for (final item in value['options']) ScreenplayOption.fromJson(item),
+      ],
     );
   }
 }
@@ -253,7 +296,10 @@ class ScreenplayOption {
   final String next;
 
   factory ScreenplayOption.fromJson(Object? value) {
-    if (value is! Map || value['id'] is! String || value['label'] is! String || value['next'] is! String) {
+    if (value is! Map ||
+        value['id'] is! String ||
+        value['label'] is! String ||
+        value['next'] is! String) {
       throw const FormatException('screenplay option is invalid');
     }
     return ScreenplayOption(

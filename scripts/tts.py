@@ -36,6 +36,9 @@ Backends, in preference order:
          script builds scripts/.venv on first use and re-execs into it.
   gtts   Google Translate TTS. No dependency at all, but one flat voice per
          language, so --voice degrades to a pitch/formant shift.
+  apple  macOS `say` voices. No dependency or network key; available when
+         the script runs on macOS. --voice-name accepts an installed Apple
+         voice name, such as Alex or Samantha.
 
 Requires ffmpeg and ffprobe on PATH.
 """
@@ -51,6 +54,7 @@ import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import unicodedata
 import urllib.parse
@@ -399,6 +403,10 @@ def ensure_edge() -> bool:
     return True
 
 
+def ensure_apple() -> bool:
+    return shutil.which("say") is not None
+
+
 VARIATIONS: dict[str, tuple[float, str]] = {
     "natural": (1.00, ""),
     "bright": (1.045, "equalizer=f=3200:t=q:w=1.4:g=4,equalizer=f=260:t=q:w=1.0:g=-2"),
@@ -439,7 +447,13 @@ class Job:
 def plan_jobs(text: str, cache: Path, backend: str, voice: str, gender: str,
               tone: Tone, limit: int) -> list[Job]:
     jobs = []
-    for piece in chunk_text(normalize_tts_text(text), limit):
+    normalized = normalize_tts_text(text)
+    pieces = chunk_text(normalized, limit)
+    if "  " in normalized and len(pieces) > 1:
+        raise SystemExit(
+            "word-missing marker cannot be split across TTS requests; "
+            f"increase --chunk-chars (needed at least {len(normalized)})")
+    for piece in pieces:
         # JSON framing avoids collisions when creative text contains pipes,
         # newlines, or other delimiter-looking punctuation.
         sig = json.dumps(
@@ -521,7 +535,10 @@ def run_jobs(jobs: list[Job], backend: str, connections: int) -> None:
         for n in range(RETRIES):
             tmp = job.path.with_suffix(".part")
             try:
-                synth_gtts(job.text, job.gender, tmp)
+                if backend == "apple":
+                    synth_apple(job.text, job.voice, job.rate, job.pitch, tmp)
+                else:
+                    synth_gtts(job.text, job.gender, tmp)
                 tmp.replace(job.path)
                 return
             except Exception as exc:
@@ -551,6 +568,88 @@ def join_jobs(jobs: list[Job], stem: Path) -> Path:
 
 
 GTTS_SHIFT = {"male": 0.90, "female": 1.06}
+
+APPLE_VOICE_BY_GENDER = {"male": "Alex", "female": "Samantha"}
+_APPLE_VOICES: set[str] | None = None
+_APPLE_VOICES_LOCK = threading.Lock()
+
+
+def apple_voices() -> set[str]:
+    global _APPLE_VOICES
+    if _APPLE_VOICES is not None:
+        return _APPLE_VOICES
+    with _APPLE_VOICES_LOCK:
+        if _APPLE_VOICES is not None:
+            return _APPLE_VOICES
+        try:
+            result = subprocess.run(["say", "-v", "?"], capture_output=True,
+                                    text=True, check=False)
+        except OSError:
+            _APPLE_VOICES = set()
+            return _APPLE_VOICES
+        voices = set()
+        for line in (result.stdout + "\n" + result.stderr).splitlines():
+            match = re.search(r"\s+[a-z]{2}[_-][A-Z]{2}(?:[-_]#\d+)?\b", line)
+            if match:
+                name = line[:match.start()].strip()
+                if name:
+                    voices.add(name)
+        _APPLE_VOICES = voices
+    return voices
+
+
+def apple_voice(requested: str, gender: str) -> str:
+    installed = apple_voices()
+    if requested and not requested.lower().startswith("en-"):
+        if installed and requested not in installed:
+            raise SystemExit(
+                f"Apple voice {requested!r} is not installed; use --list-voices")
+        return requested
+    preferred = APPLE_VOICE_BY_GENDER[gender]
+    if not installed or preferred in installed:
+        return preferred
+    alternatives = ("Daniel", "Oliver", "Karen", "Moira")
+    return next((name for name in alternatives if name in installed), preferred)
+
+
+def apple_rate(rate: str) -> int:
+    match = re.fullmatch(r"([+-]?\d+(?:\.\d+)?)%", rate)
+    if not match:
+        return 180
+    return max(80, round(180 * (1 + float(match.group(1)) / 100)))
+
+
+def apple_pitch(pitch: str) -> int:
+    match = re.fullmatch(r"([+-]?\d+(?:\.\d+)?)Hz", pitch)
+    if not match:
+        return 50
+    return max(0, min(100, round(50 + float(match.group(1)) * 1.5)))
+
+
+def apple_markup(text: str, rate: str, pitch: str) -> str:
+    safe_text = text.replace("[[", "[ [").replace("]]", "] ]")
+    return f"[[rate {apple_rate(rate)}]] [[pbas {apple_pitch(pitch)}]] {safe_text}"
+
+
+def synth_apple(text: str, voice: str, rate: str, pitch: str, dest: Path) -> None:
+    aiff = dest.with_suffix(".aiff")
+    try:
+        installed = apple_voices()
+        if installed and voice not in installed:
+            raise RuntimeError(
+                f"voice {voice!r} is not installed; use 'say -v ?' to list voices")
+        result = subprocess.run(
+            ["say", "-v", voice, "-o", str(aiff),
+             apple_markup(text, rate, pitch)],
+            capture_output=True, text=True)
+        if result.returncode:
+            detail = result.stderr.strip() or result.stdout.strip()
+            raise RuntimeError(detail or f"say could not use voice {voice!r}")
+        if not aiff.exists() or aiff.stat().st_size < 128:
+            raise RuntimeError("say produced no audio")
+        run(ff("-i", str(aiff), "-c:a", "libmp3lame", "-q:a", "4", str(dest)))
+    finally:
+        aiff.unlink(missing_ok=True)
 
 
 def synth_gtts(text: str, gender: str, dest: Path) -> None:
@@ -793,8 +892,8 @@ def find_dropout_window_from_boundaries(boundaries: list, marker_pos: int,
     if word_idx >= len(boundaries):
         return None
     boundary = boundaries[word_idx]
-    audio_offset_s = boundary["AudioOffset"] / 1000.0
-    duration_s = boundary["Duration"] / 1000.0
+    audio_offset_s = boundary["AudioOffset"] / 10_000_000.0
+    duration_s = boundary["Duration"] / 10_000_000.0
     return (audio_offset_s, audio_offset_s + duration_s)
 
 
@@ -848,6 +947,8 @@ def plan_units(units: list[Unit], a: argparse.Namespace,
                  or unit.direction.get("voice_name")
                  or SPEAKERS.get(unit.speaker, {}).get("voice_name")
                  or (tone.male if gender == "male" else tone.female))
+        if a.backend == "apple":
+            voice = apple_voice(voice, gender)
         gauge = {}
         for key, table in GAUGES.items():
             raw = str(pick(a, unit, key))
@@ -865,7 +966,7 @@ def plan_units(units: list[Unit], a: argparse.Namespace,
         lead = str(pick(a, unit, "lead"))
         plans.append(Plan(
             unit, tone, SETS[pick(a, unit, "set")], voice,
-            1.0 if a.backend == "edge" else GTTS_SHIFT[gender],
+            1.0 if a.backend in ("edge", "apple") else GTTS_SHIFT[gender],
             RADIO[gauge["radio_level"]], gauge["radio_level"], gauge["wow"],
             gauge["crackle"], gauge["distance"],
             int(drops) if drops else None, str(pick(a, unit, "fault_part")),
@@ -1181,7 +1282,8 @@ def main() -> None:
 
     p.add_argument("--out", help=f"output dir (default: web/res/vo)")
     p.add_argument("--tag", help="suffix on every stem, for A/B renders")
-    p.add_argument("--backend", choices=("auto", "edge", "gtts"), default="auto")
+    p.add_argument("--backend", choices=("auto", "edge", "apple", "gtts"),
+                   default="auto")
     p.add_argument("--seed", default="board", help="seeds {a|b} picks and faults")
     p.add_argument("--gap", type=float, default=0.75,
                    help="base pause between parts, seconds (default: 0.75)")
@@ -1190,7 +1292,7 @@ def main() -> None:
                         "boundaries (default: 30; 0 disables splitting)")
     p.add_argument("--chunk-chars", type=int, default=0, metavar="N",
                    help="max characters per TTS request; 0 picks per backend "
-                        "(gtts 180, edge 500)")
+                   "(gtts 180, apple/edge 500)")
     p.add_argument("--jobs", "-j", type=int, default=min(8, (os.cpu_count() or 4)),
                    metavar="N", help="concurrent ffmpeg workers (default: min(8, cpu_count))")
     p.add_argument("--connections", type=int, default=8,
@@ -1216,7 +1318,10 @@ def main() -> None:
     a = p.parse_args()
 
     if a.list_voices:
-        if ensure_edge():
+        if a.backend == "apple":
+            if ensure_apple():
+                subprocess.run(["say", "-v", "?"])
+        elif ensure_edge():
             subprocess.run([sys.executable, "-m", "edge_tts", "--list-voices"])
         return
 
@@ -1241,9 +1346,16 @@ def main() -> None:
             raise SystemExit(f"{tool} not found on PATH")
 
     if a.backend == "auto":
-        a.backend = "edge" if ensure_edge() else "gtts"
+        if ensure_edge():
+            a.backend = "edge"
+        elif ensure_apple():
+            a.backend = "apple"
+        else:
+            a.backend = "gtts"
     elif a.backend == "edge":
         ensure_edge()
+    elif a.backend == "apple" and not ensure_apple():
+        raise SystemExit("Apple TTS requires the macOS 'say' command")
     if not a.chunk_chars:
         a.chunk_chars = 180 if a.backend == "gtts" else 500
 
@@ -1350,7 +1462,7 @@ def main() -> None:
         cached = sum(1 for path in unique if path.exists())
         print(f"\n{len(plans)} clip(s), {len(all_jobs)} request(s) → "
               f"{len(unique)} unique after dedup, {cached} already cached, "
-              f"{len(unique) - cached} to fetch at {a.jobs} at a time")
+              f"{len(unique) - cached} to fetch at {a.connections} at a time")
         return
 
     print(f"backend={a.backend} seed={a.seed} jobs={a.jobs} → "

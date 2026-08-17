@@ -3,24 +3,43 @@ import 'dart:math' as math;
 
 import '../engine/math3.dart';
 
+enum PrecipitationKind { none, rain, sleet, snow, hail }
+
 class WeatherDay {
   final int day;
   final bool rain;
   final double rainIntensity;
   final double daylightHours;
+  final double windSpeedMps;
+  final double windDirectionRadians;
+  final double outsideTemperatureCelsius;
+  final PrecipitationKind precipitationKind;
 
   const WeatherDay({
     required this.day,
     required this.rain,
     required this.rainIntensity,
     required this.daylightHours,
+    this.windSpeedMps = 0.0,
+    this.windDirectionRadians = 0.0,
+    this.outsideTemperatureCelsius = 8.0,
+    this.precipitationKind = PrecipitationKind.none,
   });
+
+  PrecipitationKind get effectivePrecipitationKind =>
+      precipitationKind == PrecipitationKind.none && rain
+      ? PrecipitationKind.rain
+      : precipitationKind;
 
   Map<String, dynamic> toJson() => {
     'day': day,
     'rain': rain,
     'rainIntensity': rainIntensity,
     'daylightHours': daylightHours,
+    'windSpeedMps': windSpeedMps,
+    'windDirectionRadians': windDirectionRadians,
+    'outsideTemperatureCelsius': outsideTemperatureCelsius,
+    'precipitationKind': precipitationKind.name,
   };
 }
 
@@ -69,6 +88,18 @@ class WeatherSchedule {
           rain: value['rain'] as bool,
           rainIntensity: (value['rainIntensity'] as num).toDouble(),
           daylightHours: (value['daylightHours'] as num).toDouble(),
+          windSpeedMps: value['windSpeedMps'] is num
+              ? (value['windSpeedMps'] as num).toDouble()
+              : 0.0,
+          windDirectionRadians: value['windDirectionRadians'] is num
+              ? (value['windDirectionRadians'] as num).toDouble()
+              : 0.0,
+          outsideTemperatureCelsius: value['outsideTemperatureCelsius'] is num
+              ? (value['outsideTemperatureCelsius'] as num).toDouble()
+              : 8.0,
+          precipitationKind: _decodePrecipitationKind(
+            value['precipitationKind'],
+          ),
         ),
       );
     }
@@ -80,14 +111,25 @@ List<WeatherDay> _generate(int seed) => [
   for (var day = 1; day <= WeatherSchedule.authoredDays; day++)
     () {
       // Narrative curve: Week 1 light drizzle, Week 2 mixed storm, Week 3 heavy climax storm
-      final isRainDay = (day == 2 || day == 5 || day == 8 || day == 11 || 
-                         day == 14 || day == 16 || day == 18 || day == 19 || day == 20);
-      
+      final isRainDay =
+          (day == 2 ||
+          day == 5 ||
+          day == 8 ||
+          day == 11 ||
+          day == 14 ||
+          day == 16 ||
+          day == 18 ||
+          day == 19 ||
+          day == 20);
+
       double intensity = 0.0;
       if (isRainDay) {
         final progress = day / 21.0;
         final wave = math.pow(math.sin((day * math.pi) / 7.0), 2);
-        intensity = (0.25 + 0.65 * wave * (0.6 + 0.4 * progress)).clamp(0.2, 1.0);
+        intensity = (0.25 + 0.65 * wave * (0.6 + 0.4 * progress)).clamp(
+          0.2,
+          1.0,
+        );
         // Keep the authored curve stable while allowing the run seed to make
         // otherwise identical days feel distinct. The bounded jitter is small
         // enough that progression and the day-20 climax remain invariant.
@@ -98,12 +140,29 @@ List<WeatherDay> _generate(int seed) => [
 
       // Daylight hours decay linearly from 12.0h (Day 1) down to 9.8h (Day 21)
       final daylight = 12.0 - (day - 1) * (2.2 / 20.0);
+      final windSpeed = isRainDay
+          ? 3.0 + intensity * 5.0 + ((_mix(seed, day + 101) & 0xff) / 255.0)
+          : 1.2 + ((_mix(seed, day + 101) & 0xff) / 255.0) * 0.8;
+      final windDirection =
+          ((_mix(seed, day + 211) & 0xffff) / 65535.0) * math.pi * 2.0;
+      final outsideTemperature =
+          8.0 -
+          (day - 1) * 0.08 +
+          (((_mix(seed, day + 307) & 0xff) / 255.0) - 0.5) * 0.6;
 
       return WeatherDay(
         day: day,
         rain: isRainDay,
         rainIntensity: double.parse(intensity.toStringAsFixed(2)),
         daylightHours: double.parse(daylight.toStringAsFixed(2)),
+        windSpeedMps: double.parse(windSpeed.toStringAsFixed(2)),
+        windDirectionRadians: double.parse(windDirection.toStringAsFixed(5)),
+        outsideTemperatureCelsius: double.parse(
+          outsideTemperature.toStringAsFixed(2),
+        ),
+        precipitationKind: isRainDay
+            ? PrecipitationKind.rain
+            : PrecipitationKind.none,
       );
     }(),
 ];
@@ -120,11 +179,26 @@ List<WeatherDay> _validate(List<WeatherDay> days) {
         day.rainIntensity > 1 ||
         !day.daylightHours.isFinite ||
         day.daylightHours <= 0 ||
-        day.daylightHours > 24) {
+        day.daylightHours > 24 ||
+        !day.windSpeedMps.isFinite ||
+        day.windSpeedMps < 0 ||
+        !day.windDirectionRadians.isFinite ||
+        !day.outsideTemperatureCelsius.isFinite) {
       throw const FormatException('weather day is out of bounds');
     }
   }
   return days;
+}
+
+PrecipitationKind _decodePrecipitationKind(Object? raw) {
+  if (raw == null) return PrecipitationKind.none;
+  if (raw is! String) {
+    throw const FormatException('precipitation kind is malformed');
+  }
+  for (final kind in PrecipitationKind.values) {
+    if (kind.name == raw) return kind;
+  }
+  throw const FormatException('precipitation kind is unknown');
 }
 
 int _mix(int seed, int day) {

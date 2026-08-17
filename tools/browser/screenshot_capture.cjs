@@ -65,14 +65,38 @@ async function writeScreenshotBundle(target, options = {}) {
     throw new Error(`screenshot filename must use browser-*.png: ${basename}`);
   }
   fs.mkdirSync(path.dirname(file), { recursive: true });
-  await target.screenshot({
-    animations: 'disabled',
-    caret: 'hide',
-    fullPage: false,
-    scale: 'css',
-    ...(options.screenshotOptions || {}),
-    path: file,
-  });
+  try {
+    await target.screenshot({
+      animations: 'disabled',
+      caret: 'hide',
+      fullPage: false,
+      scale: 'css',
+      // WebGL compositing can stall briefly while a context is settling after
+      // a sleep/reload boundary. Keep the capture deterministic but allow the
+      // browser one bounded recovery window before failing the whole packet.
+      timeout: options.screenshotTimeoutMs ?? 60000,
+      ...(options.screenshotOptions || {}),
+      path: file,
+    });
+  } catch (error) {
+    let fontDiagnostics = null;
+    if (typeof target.evaluate === 'function') {
+      try {
+        fontDiagnostics = await target.evaluate(() => ({
+          status: document.fonts.status,
+          fonts: [...document.fonts].map((font) => ({
+            family: font.family,
+            style: font.style,
+            weight: font.weight,
+            status: font.status,
+          })),
+        }));
+      } catch (_) {
+        fontDiagnostics = { status: 'unavailable' };
+      }
+    }
+    throw new Error(`${error}; fontDiagnostics=${JSON.stringify(fontDiagnostics)}`);
+  }
   const maxBytes = options.maxBytes ?? DEFAULT_MAX_BYTES;
   const bytes = fs.statSync(file).size;
   if (bytes > maxBytes) {

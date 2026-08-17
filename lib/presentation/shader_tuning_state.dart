@@ -729,6 +729,38 @@ class ShaderTuningState {
     }
   }
 
+  /// Applies a small, named request preset for repeatable lab observations.
+  /// Presets only change requested controls; profile resolution still decides
+  /// which values are live in the active renderer.
+  static const namedPresetNames = <String>['clean', 'low-light', 'wet-night'];
+
+  void applyNamedPreset(String name) {
+    if (!namedPresetNames.contains(name)) {
+      throw ArgumentError.value(name, 'name', 'unknown Shader Lab preset');
+    }
+    resetAll();
+    final values = switch (name) {
+      'clean' => const <String, double>{},
+      'low-light' => const {
+        'post_exposure': 0.75,
+        'post_saturation': 0.8,
+        'post_vignette': 0.25,
+      },
+      'wet-night' => const {
+        'post_exposure': 0.65,
+        'post_saturation': 0.7,
+        'wetness_override': 0.8,
+        'rain_override': 0.7,
+        'fog_density': 0.35,
+      },
+      _ => const <String, double>{},
+    };
+    for (final entry in values.entries) {
+      final item = items.firstWhere((candidate) => candidate.id == entry.key);
+      item.currentValue = entry.value.clamp(item.min, item.max).toDouble();
+    }
+  }
+
   /// Updates control truth from the active profile and the latest resolved
   /// frame. Callers pass only generic renderer facts; this state does not
   /// infer game meaning from a control name.

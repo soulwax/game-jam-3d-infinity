@@ -784,19 +784,29 @@ class CanvasP5GuiEngine {
     if (hints.isEmpty) return;
 
     final hintCount = hints.length;
-    final hintW = 140.0;
-    final totalW = hintCount * hintW + (hintCount - 1) * 12.0;
-    final startX = screenWidth * 0.5 - totalW * 0.5 + hintW * 0.5;
-    final hintY = screenHeight - 32.0;
+    final compact = screenWidth < 640.0;
+    final columns = compact ? math.min(2, hintCount) : hintCount;
+    final gapX = compact ? 8.0 : 12.0;
+    final gapY = compact ? 8.0 : 0.0;
+    final hintW = compact
+        ? math.min(140.0, (screenWidth - 32.0 - gapX) / columns)
+        : 140.0;
+    final rows = (hintCount + columns - 1) ~/ columns;
 
     for (int i = 0; i < hintCount; i++) {
+      final row = i ~/ columns;
+      final rowStart = row * columns;
+      final rowCount = math.min(columns, hintCount - rowStart);
+      final rowW = rowCount * hintW + (rowCount - 1) * gapX;
+      final rowStartX = screenWidth * 0.5 - rowW * 0.5 + hintW * 0.5;
+      final itemX = rowStartX + (i - rowStart) * (hintW + gapX);
+      final itemY = screenHeight - 32.0 - (rows - 1 - row) * (28.0 + gapY);
       final hint = hints[i];
-      final itemX = startX + i * (hintW + 12.0);
       final isPrimary = hint.isPrimary == true;
 
       drawBrushPanel(
         x: itemX,
-        y: hintY,
+        y: itemY,
         width: hintW,
         height: 28.0,
         skewAngleRad: -0.04,
@@ -818,7 +828,7 @@ class CanvasP5GuiEngine {
       ctx.fillText(
         _fitText('[${hint.key}] ${hint.label}', hintW - 18.0),
         itemX,
-        hintY,
+        itemY,
       );
       ctx.restore();
     }

@@ -382,6 +382,23 @@ def test_chunk_text_single_sentence_over_limit():
         assert len(chunk) <= 50
 
 
+def test_marked_text_cannot_be_split_across_tts_requests():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        try:
+            tts.plan_jobs("The  missing word follows.", pathlib.Path(tmpdir),
+                          "edge", "voice", "male", tts.TONES["neutral"], 12)
+            assert False, "Should have raised SystemExit"
+        except SystemExit as error:
+            assert "marker cannot be split" in str(error)
+
+
+def test_edge_boundary_offsets_are_converted_from_100ns_ticks():
+    window = tts.find_dropout_window_from_boundaries(
+        [{"AudioOffset": 2_500_000, "Duration": 1_000_000}], 0,
+        "The  word")
+    assert window == (0.25, 0.35)
+
+
 def test_chunk_text_every_chunk_under_limit():
     text = "One. Two. Three. Four. Five. Six. Seven. Eight. Nine. Ten."
     result = tts.chunk_text(text, 40)

@@ -7,6 +7,11 @@ void main() {
     'data-audio-spatial-active',
     'data-audio-muffle01',
     'data-audio-transmission-cellar',
+    'data-audio-context-suspended',
+    'data-audio-muted',
+    'data-audio-master-mix',
+    'data-audio-captions',
+    'data-audio-paused',
     'setAcousticPlanner',
     '_pendingSounds.clear()',
   ];

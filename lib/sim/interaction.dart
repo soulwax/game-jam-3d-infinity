@@ -104,11 +104,13 @@ class InteractionEngine {
   final Journal journal;
   final GameTime time;
   final int runSeed;
+  final bool Function(int ordinal)? verifyEntry;
 
   InteractionEngine({
     required this.journal,
     required this.time,
     this.runSeed = 0,
+    this.verifyEntry,
   });
 
   List<Entry> getSelectableEntries() {
@@ -228,7 +230,7 @@ class InteractionEngine {
         !corroborationEnabled || (corroborated && comparison.isExact);
 
     if (confirmed) {
-      journal.verifyToday(selectedOrdinal);
+      (verifyEntry ?? journal.verifyToday)(selectedOrdinal);
     }
 
     return ConsultationResult(

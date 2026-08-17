@@ -9,6 +9,8 @@ final class CampaignPacingPolicy {
   final double readingMultiplier;
   final double maxWaitHours;
 
+  double clockMultiplier({required bool storyMode}) => storyMode ? 1.0 : 20.0;
+
   double waitUntilCue(double now, double cue) {
     if (!now.isFinite || !cue.isFinite || !maxWaitHours.isFinite) {
       throw ArgumentError('pacing values must be finite');

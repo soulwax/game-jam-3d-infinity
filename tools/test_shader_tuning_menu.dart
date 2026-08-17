@@ -18,6 +18,15 @@ void main() {
   if (state.baselineEncode() != ShaderTuningState().baselineEncode()) {
     throw StateError('Shader Lab baseline document is not deterministic');
   }
+  state.applyNamedPreset('wet-night');
+  if (state.getValue('wetness_override') <= 0 ||
+      state.getValue('post_exposure') >= 1.0) {
+    throw StateError('named Shader Lab preset did not apply bounded requests');
+  }
+  state.applyNamedPreset('clean');
+  if (state.modifiedControlIds.isNotEmpty) {
+    throw StateError('clean Shader Lab preset did not restore baseline');
+  }
 
   // 1. Verify Initial State & Category Items
   print('Testing ShaderTuningState initialization...');

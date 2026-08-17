@@ -13,6 +13,13 @@ class PointLight {
   final double intensity;
   final double flicker;
 
+  /// Authored thermal facts for fixtures that emit both light and heat. These
+  /// are kept beside the fixture anchor so weather never guesses warmth from
+  /// a colour temperature or a shader effect.
+  final double heatOutputWatts;
+  final double surfaceTemperatureCelsius;
+  final double thermalRadiusM;
+
   const PointLight({
     required this.position,
     this.direction,
@@ -20,6 +27,9 @@ class PointLight {
     required this.radius,
     required this.intensity,
     required this.flicker,
+    this.heatOutputWatts = 0,
+    this.surfaceTemperatureCelsius = 0,
+    this.thermalRadiusM = 0,
   });
 }
 
@@ -54,6 +64,9 @@ class HouseLighting {
             radius: mantleLightRadius,
             intensity: mantleLightIntensity * _roomGain(room.id),
             flicker: mantleLightFlicker,
+            heatOutputWatts: 80,
+            surfaceTemperatureCelsius: 180,
+            thermalRadiusM: 0.12,
           ),
         );
       }

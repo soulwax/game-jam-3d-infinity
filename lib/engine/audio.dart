@@ -89,6 +89,13 @@ class Audio {
   );
   bool get musicStarted => _musicStarted;
   String get roomIr => _roomIr ?? 'ir-fallback';
+  bool get muted => _muted;
+  double get masterMix => _masterMix;
+  double get voiceMix => _voiceMix;
+  double get effectsMix => _effectsMix;
+  double get ambienceMix => _ambienceMix;
+  double get musicMix => _musicMix;
+  bool get contextSuspended => _ctx.state == 'suspended';
 
   late final web.BiquadFilterNode _vhsHpFilter;
   late final web.BiquadFilterNode _vhsLpFilter;
@@ -238,9 +245,9 @@ class Audio {
     return buf;
   }
 
-  void play(String name, {double rate = 1, double gain = 1}) {
+  bool play(String name, {double rate = 1, double gain = 1}) {
     final buf = _buffers[name];
-    if (buf == null) return;
+    if (buf == null) return false;
     final src = _ctx.createBufferSource()..buffer = buf;
     src.playbackRate.value = rate * (0.94 + _rng.nextDouble() * 0.12);
     final g = _ctx.createGain()..gain.value = gain;
@@ -251,6 +258,7 @@ class Audio {
       g.disconnect();
     }).toJS;
     src.start();
+    return true;
   }
 
   void playAt(

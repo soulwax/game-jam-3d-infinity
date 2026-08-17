@@ -52,25 +52,25 @@ EVENT day-01-wake broadcast 1 7 | Wake and begin the day.
 EVENT day-01-threshold visitor 1 10 | The first threshold is available.
 EVENT day-02-wake broadcast 2 7 | Wake after the first sleep.
 EVENT day-02-consequence aftermath 2 12 | The first consequence settles.
-EVENT day-03-beat visitor 3 10 | Day 3 authored beat becomes available.
-EVENT day-04-beat visitor 4 10 | Day 4 authored beat becomes available.
-EVENT day-05-beat visitor 5 10 | Day 5 authored beat becomes available.
-EVENT day-06-beat visitor 6 10 | Day 6 authored beat becomes available.
-EVENT day-07-beat visitor 7 10 | Day 7 authored beat becomes available.
-EVENT day-08-beat visitor 8 10 | Day 8 authored beat becomes available.
-EVENT day-09-beat visitor 9 10 | Day 9 authored beat becomes available.
-EVENT day-10-beat visitor 10 10 | Day 10 authored beat becomes available.
-EVENT day-11-beat visitor 11 10 | Day 11 authored beat becomes available.
-EVENT day-12-beat visitor 12 10 | Day 12 authored beat becomes available.
-EVENT day-13-beat visitor 13 10 | Day 13 authored beat becomes available.
-EVENT day-14-beat visitor 14 10 | Day 14 authored beat becomes available.
-EVENT day-15-beat visitor 15 10 | Day 15 authored beat becomes available.
-EVENT day-16-beat visitor 16 10 | Day 16 authored beat becomes available.
-EVENT day-17-beat visitor 17 10 | Day 17 authored beat becomes available.
-EVENT day-18-beat visitor 18 10 | Day 18 authored beat becomes available.
-EVENT day-19-beat visitor 19 10 | Day 19 authored beat becomes available.
-EVENT day-20-beat visitor 20 10 | Day 20 authored beat becomes available.
-EVENT day-21-ending ending 21 20 | Day 21 ending evaluation becomes available.
+EVENT day-03-beat visitor 3 10 | Being useful becomes a public expectation.
+EVENT day-04-beat visitor 4 10 | Repair turns care into a visible obligation.
+EVENT day-05-beat visitor 5 10 | Ownership of a record is challenged.
+EVENT day-06-beat visitor 6 10 | Being known changes what can be kept private.
+EVENT day-07-beat visitor 7 10 | Promises return to the threshold.
+EVENT day-08-beat visitor 8 10 | Wording travels beyond the house.
+EVENT day-09-beat visitor 9 10 | Performance becomes part of the evidence.
+EVENT day-10-beat visitor 10 10 | The account must be balanced.
+EVENT day-11-beat visitor 11 10 | Categories decide who is counted.
+EVENT day-12-beat visitor 12 10 | A private fact begins to circulate.
+EVENT day-13-beat visitor 13 10 | Mercy requires a correction.
+EVENT day-14-beat visitor 14 10 | An honest revision becomes possible.
+EVENT day-15-beat visitor 15 10 | Inherited answers enter the house.
+EVENT day-16-beat visitor 16 10 | The question of who is present sharpens.
+EVENT day-17-beat visitor 17 10 | Names and objects acquire consequences.
+EVENT day-18-beat visitor 18 10 | Public events acquire private language.
+EVENT day-19-beat visitor 19 10 | Care is measured by what repeats.
+EVENT day-20-beat visitor 20 10 | Unfinished business reaches the threshold.
+EVENT day-21-ending ending 21 20 | Release evaluates the recorded run.
 
 SCENE day-01 1 Hospitality
 LINK text/broadcasts/week-1.txt

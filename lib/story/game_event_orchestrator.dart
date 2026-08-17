@@ -119,6 +119,14 @@ class GameEventCursor {
 
   bool get isEmpty => _delivered.isEmpty;
 
+  /// Read-only schedule access for presentation consumers that materialize
+  /// authored consequences. Delivery and save state remain cursor-owned.
+  Iterable<ScreenplayEvent> get events sync* {
+    for (var day = 1; day <= 21; day++) {
+      yield* plan.eventsForDay(day);
+    }
+  }
+
   List<String> get deliveredIds => _delivered.toList()..sort();
 
   Map<String, dynamic> toJson() => {'delivered': deliveredIds};

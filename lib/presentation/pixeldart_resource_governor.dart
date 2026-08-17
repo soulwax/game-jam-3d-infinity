@@ -11,6 +11,7 @@ class PixeldartResourceGovernor {
 
   int get currentVramUsageMB => _currentVramUsageMB;
   int get currentDrawCallCount => _currentDrawCallCount;
+  int get residentTextureCount => _vramTextureCache.length;
 
   /// Registers a texture asset allocation in VRAM. Evicts LRU if exceeding budget.
   bool allocateTexture(String textureId, int sizeMB) {
@@ -18,7 +19,8 @@ class PixeldartResourceGovernor {
       return true; // Already resident
     }
 
-    while (_currentVramUsageMB + sizeMB > matrix.maxVramBudgetMB && _vramTextureCache.isNotEmpty) {
+    while (_currentVramUsageMB + sizeMB > matrix.maxVramBudgetMB &&
+        _vramTextureCache.isNotEmpty) {
       // LRU eviction
       final evictId = _vramTextureCache.keys.first;
       final evictSize = _vramTextureCache.remove(evictId)!;
@@ -44,7 +46,8 @@ class PixeldartResourceGovernor {
   }
 
   /// Checks if current frame draw calls are within budget limit.
-  bool isWithinDrawCallBudget() => _currentDrawCallCount <= matrix.maxDrawCallsPerFrame;
+  bool isWithinDrawCallBudget() =>
+      _currentDrawCallCount <= matrix.maxDrawCallsPerFrame;
 
   /// Self-validation for unit tests.
   static bool validate() {
