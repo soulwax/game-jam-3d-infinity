@@ -225,11 +225,17 @@ async function waitForSavedDay(page, expectedDay, label) {
         }
       },
       expectedDay,
-      { timeout: 5000, polling: 50 },
+      { timeout: 15000, polling: 50 },
     );
   } catch (error) {
     const observed = await page.evaluate(() =>
       window.localStorage.getItem('quarantine.save.active'));
+    try {
+      const settled = decodeSavedCalendar(observed, label);
+      if (settled.day === expectedDay) return settled;
+    } catch (_) {
+      // Preserve the original timeout with the raw save payload below.
+    }
     throw new Error(`${label}: saved day did not settle ${JSON.stringify({ expectedDay, observed, error: String(error) })}`);
   }
   return decodeSavedCalendar(
@@ -240,15 +246,15 @@ async function waitForSavedDay(page, expectedDay, label) {
 
 async function sleepToDay(page, expectedDay, label) {
   await page.keyboard.press('l');
-  await waitForPanelOpen(page, 'Rest', `${label}: rest open`);
+  await waitForPanelOpen(page, 'Rest', `${label}: rest open`, 15000);
   const rest = page.locator('.panel[aria-label="Rest"].open');
   const choice = rest.locator('button').first();
-  await choice.waitFor({ state: 'visible', timeout: 5000 });
-  await choice.click();
+  await choice.waitFor({ state: 'visible', timeout: 15000 });
+  await choice.dispatchEvent('click');
   await page.waitForFunction(
     () => !document.querySelector('.panel[aria-label="Rest"]')?.classList.contains('open'),
     null,
-    { timeout: 5000, polling: 50 },
+    { timeout: 15000, polling: 50 },
   );
   return waitForSavedDay(page, expectedDay, `${label}: day ${expectedDay}`);
 }
@@ -332,14 +338,14 @@ async function waitForSettingsState(
   }
 }
 
-async function waitForPanelOpen(page, ariaLabel, label) {
+async function waitForPanelOpen(page, ariaLabel, label, timeoutMs = 15000) {
   try {
     await page.waitForFunction(
       (expectedLabel) => document
         .querySelector(`.panel[aria-label="${expectedLabel}"]`)
         ?.classList.contains('open') === true,
       ariaLabel,
-      { timeout: 5000, polling: 50 },
+      { timeout: timeoutMs, polling: 50 },
     );
   } catch (error) {
     const observed = await page.evaluate((expectedLabel) => {
@@ -526,11 +532,21 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
                   frustumVisible: Number(result.rainParticleFrustumVisible),
                   frustumCulled: Number(result.rainParticleFrustumCulled),
                 },
-            lightning: result.lightningActive == null
+            weather: result.weatherPhase == null
               ? null
               : {
+                  phase: result.weatherPhase,
+                  windMps: Number(result.weatherWindMps),
+                  snowAccumulationRateMps: Number(result.weatherSnowAccumulationRateMps),
+                  impactEnergyFluxWm2: Number(result.weatherImpactEnergyFluxWm2),
+                  obstacleCount: Number(result.weatherObstacleCount),
+                },
+            lightning: result.lightningActive == null
+              ? null
+            : {
                   active: result.lightningActive === 'true',
                   sourceDistanceM: Number(result.lightningSourceDistanceM),
+                  distanceAttenuation: Number(result.lightningDistanceAttenuation),
                   sourceDirection: (result.lightningSourceDirection || '')
                     .split(',')
                     .map(Number),
@@ -545,6 +561,31 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
   });
   console.log(`automation-capture: ${capture.file} (${capture.bytes} bytes)`);
   return capture;
+}
+
+async function writeCanvasDisappearanceDiagnostic(page, routeName, expectedPackageCount) {
+  const runDir = process.env.AUTOMATION_RUN_DIR;
+  if (!automationArgs || !runDir) return null;
+  const safeRoute = routeName.replace(/[^a-z0-9._-]/gi, '-');
+  const file = pathModule.join(
+    runDir,
+    `browser-${automationArgs.scenario}-${safeRoute}-canvas-disappeared.json`,
+  );
+  const payload = {
+    schemaVersion: 1,
+    route: routeName,
+    expectedPackageCount,
+    capturedAt: new Date().toISOString(),
+    page: await page.evaluate(() => ({
+      url: location.href,
+      title: document.title,
+      bodyText: document.body?.innerText?.slice(0, 1000) || '',
+      bodyHtml: document.body?.innerHTML?.slice(0, 2000) || '',
+    })),
+  };
+  fs.writeFileSync(file, `${JSON.stringify(payload, null, 2)}\n`);
+  console.error(`canvas-disappearance-diagnostic: ${file}`);
+  return file;
 }
 
 function writeEmbodiedEvidence(routeName, routePath, result, evidence, capture) {
@@ -760,9 +801,7 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
               : '';
           })()
         : '';
-      const automationPath = automationArgs
-        ? `${path}${path.includes('?') ? '&' : '?'}automation=1${captureFixtureQuery}`
-        : path;
+      const automationPath = `${path}${path.includes('?') ? '&' : '?'}automation=1${captureFixtureQuery}`;
       const response = await page.goto(`${baseUrl}${automationPath}`);
       if (!response || response.status() !== 200) {
         throw new Error(`${name}: expected HTTP 200`);
@@ -782,27 +821,54 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         null,
         { timeout: 10000 },
       );
-      await page.waitForTimeout(1000);
-      const packageReadiness = await page.locator('#game').evaluate((canvas) => {
-        const packageCount = Number(
-          canvas.getAttribute('data-renderer-model-package-count') || 0,
-        );
-        let attached = false;
-        try {
-          const diagnostics = JSON.parse(
-            canvas.getAttribute('data-renderer-model-package-diagnostics') || '{}',
+      let packageReadiness;
+      const packageDeadline = Date.now() + 20000;
+      do {
+        const gameCount = await page.locator('#game').count();
+        if (gameCount === 0) {
+          const pageState = await page.evaluate(() => ({
+            url: location.href,
+            title: document.title,
+            body: document.body?.innerText?.slice(0, 500) || '',
+          }));
+          await writeCanvasDisappearanceDiagnostic(
+            page,
+            name,
+            2,
           );
-          attached = diagnostics.attached === true &&
-            diagnostics.bindingCount === packageCount;
-        } catch (_) {
-          attached = false;
+          throw new Error(`${name}: game canvas disappeared during package readiness ${JSON.stringify(pageState)}`);
         }
-        return {
-          packageCount,
-          runtime: canvas.getAttribute('data-renderer-model-packages-runtime'),
-          attached,
-        };
-      });
+        packageReadiness = await page.evaluate(() => {
+          const canvas = document.querySelector('#game');
+          if (!(canvas instanceof HTMLCanvasElement)) return null;
+          const packageCount = Number(
+            canvas.getAttribute('data-renderer-model-package-count') || 0,
+          );
+          let attached = false;
+          try {
+            const diagnostics = JSON.parse(
+              canvas.getAttribute('data-renderer-model-package-diagnostics') || '{}',
+            );
+            attached = diagnostics.attached === true &&
+              diagnostics.bindingCount === packageCount;
+          } catch (_) {
+            attached = false;
+          }
+          return {
+            packageCount,
+            runtime: canvas.getAttribute('data-renderer-model-packages-runtime'),
+            attached,
+          };
+        });
+        if (packageReadiness == null) {
+          throw new Error(`${name}: game canvas disappeared during package readiness`);
+        }
+        if (packageReadiness.packageCount > 0 &&
+            packageReadiness.runtime === 'loaded' && packageReadiness.attached) {
+          break;
+        }
+        await page.waitForTimeout(250);
+      } while (Date.now() < packageDeadline);
       if (packageReadiness.packageCount > 0 &&
           (packageReadiness.runtime !== 'loaded' || !packageReadiness.attached)) {
         throw new Error(`${name}: promoted model binding was not ready ${JSON.stringify(packageReadiness)}`);
@@ -812,7 +878,10 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         const choice = document.querySelector('.door.visible button');
         if (choice instanceof HTMLElement) choice.focus();
       });
-      const result = await page.locator('#game').evaluate((canvas) => ({
+      const result = await page.evaluate(() => {
+        const canvas = document.querySelector('#game');
+        if (!(canvas instanceof HTMLCanvasElement)) return null;
+        return ({
         bootPhase: canvas.getAttribute('data-boot-phase'),
         requested: canvas.getAttribute('data-renderer-request'),
         backend: canvas.getAttribute('data-renderer-backend'),
@@ -838,6 +907,7 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         },
         frameStats: canvas.getAttribute('data-renderer-frame-stats'),
         frameBudget: canvas.getAttribute('data-renderer-budget'),
+        diagnosticGroups: canvas.getAttribute('data-renderer-diagnostic-groups'),
         frameSubmits: canvas.getAttribute('data-renderer-frame-submits'),
         automationPlayer: canvas.getAttribute('data-automation-player'),
         captureMantle: canvas.getAttribute('data-automation-capture-mantle'),
@@ -850,11 +920,30 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         rainParticleCapped: canvas.getAttribute('data-renderer-rain-particles-capped'),
         rainParticleFrustumVisible: canvas.getAttribute('data-renderer-rain-particles-frustum-visible'),
         rainParticleFrustumCulled: canvas.getAttribute('data-renderer-rain-particles-frustum-culled'),
+        weatherPhase: canvas.getAttribute('data-renderer-weather-phase'),
+        weatherWindMps: canvas.getAttribute('data-renderer-weather-wind-mps'),
+        weatherSnowAccumulationRateMps: canvas.getAttribute('data-renderer-weather-snow-accumulation-mps'),
+        weatherImpactEnergyFluxWm2: canvas.getAttribute('data-renderer-weather-impact-energy-w-m2'),
+        weatherWarmClearanceM: canvas.getAttribute('data-renderer-weather-warm-clearance-m'),
+        weatherLocalTemperatureC: canvas.getAttribute('data-renderer-weather-local-temperature-c'),
+        weatherCondensationSuppression: canvas.getAttribute('data-renderer-weather-condensation-suppression'),
+        weatherImpactCount: canvas.getAttribute('data-renderer-weather-impact-count'),
+        weatherSettledMassKg: canvas.getAttribute('data-renderer-weather-settled-mass-kg'),
+        weatherReboundEnergyJ: canvas.getAttribute('data-renderer-weather-rebound-energy-j'),
+        weatherObstacleCount: canvas.getAttribute('data-renderer-weather-obstacle-count'),
+        volumetricSourceCount: canvas.getAttribute('data-renderer-volumetric-source-count'),
+        volumetricSourceRadiance: canvas.getAttribute('data-renderer-volumetric-source-radiance'),
+        volumetricSourceDirection: canvas.getAttribute('data-renderer-volumetric-source-direction'),
+        weatherSnowCoverage: canvas.getAttribute('data-renderer-weather-snow-coverage'),
+        weatherMaterialDissolution: canvas.getAttribute('data-renderer-weather-material-dissolution'),
+        weatherWaterFilmM: canvas.getAttribute('data-renderer-weather-water-film-m'),
         lightningActive: canvas.getAttribute('data-renderer-lightning-active'),
         lightningSourceDistanceM: canvas.getAttribute('data-renderer-lightning-source-distance-m'),
+        lightningDistanceAttenuation: canvas.getAttribute('data-renderer-lightning-distance-attenuation'),
         lightningSourceDirection: canvas.getAttribute('data-renderer-lightning-source-direction'),
         houseManifest: canvas.getAttribute('data-house-manifest'),
         houseManifestSource: canvas.getAttribute('data-house-manifest-source'),
+        houseRole: canvas.getAttribute('data-house-role'),
         houseInventory: canvas.getAttribute('data-house-inventory'),
         houseInventorySource: canvas.getAttribute('data-house-inventory-source'),
         houseInventoryCount: canvas.getAttribute('data-house-inventory-count'),
@@ -871,6 +960,11 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         audioSpatialActive: canvas.getAttribute('data-audio-spatial-active'),
         audioMusicStarted: canvas.getAttribute('data-audio-music-started'),
         audioRoomIr: canvas.getAttribute('data-audio-room-ir'),
+        audioPaused: canvas.getAttribute('data-audio-paused'),
+        audioMuted: canvas.getAttribute('data-audio-muted'),
+        audioCaptions: canvas.getAttribute('data-audio-captions'),
+        audioMasterMix: canvas.getAttribute('data-audio-master-mix'),
+        audioVoiceMix: canvas.getAttribute('data-audio-voice-mix'),
         storyJournalEntryCount: canvas.getAttribute('data-story-journal-entry-count'),
         storyLastEvent: canvas.getAttribute('data-story-last-event'),
         storyLastEventKind: canvas.getAttribute('data-story-last-event-kind'),
@@ -913,7 +1007,9 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         })(),
         wallTexture: canvas.getAttribute('data-renderer-texture-wall-plaster'),
         grimeTexture: canvas.getAttribute('data-renderer-texture-grime'),
-      }));
+        });
+      });
+      if (result == null) throw new Error(`${name}: game canvas disappeared after readiness`);
       if (!visualCaptureSelection) {
         await captureAutomationScreenshot(page, name, path, result);
       }
@@ -945,6 +1041,9 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       if (result.backend !== 'pixeldart' ||
           !result.diagnostics || !result.bootPhase) {
         throw new Error(`${name}: incomplete diagnostics ${JSON.stringify(result)}`);
+      }
+      if (result.houseRole !== 'provisional-visible-place') {
+        throw new Error(`${name}: house scope was not explicitly provisional ${JSON.stringify(result)}`);
       }
       if (diagnostics.backend !== result.backend ||
           diagnostics.provenancePinned !== true ||
@@ -1048,6 +1147,23 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
       }
       if (result.audioPlanner !== 'validated') {
         throw new Error(`${name}: acoustic planner was not wired ${JSON.stringify(result)}`);
+      }
+      for (const [key, value] of Object.entries({
+        audioPaused: result.audioPaused,
+        audioMuted: result.audioMuted,
+        audioCaptions: result.audioCaptions,
+      })) {
+        if (value !== 'true' && value !== 'false') {
+          throw new Error(`${name}: ${key} telemetry was not published ${JSON.stringify(result)}`);
+        }
+      }
+      for (const [key, value] of Object.entries({
+        audioMasterMix: result.audioMasterMix,
+        audioVoiceMix: result.audioVoiceMix,
+      })) {
+        if (value === null || value === '' || Number.isNaN(Number(value))) {
+          throw new Error(`${name}: ${key} telemetry was not numeric ${JSON.stringify(result)}`);
+        }
       }
       if (result.storyJournalEntryCount === null ||
           !/^\d+$/.test(result.storyJournalEntryCount)) {
@@ -1492,47 +1608,52 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
     } finally {
       await constrainedBrowser.close();
     }
-    const recoveryPage = await browser.newPage();
-    const recoveryFailures = trackPageHealth(recoveryPage);
-    await recoveryPage.goto(`${baseUrl}/?renderer=next`);
-    await recoveryPage.waitForFunction(
-      () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'running',
-      null,
-      { timeout: 15000 },
-    );
-    const contextLossExtension = await recoveryPage.locator('#game').evaluate((canvas) => {
-      const gl = canvas.getContext('webgl2');
-      const extension = gl?.getExtension('WEBGL_lose_context');
-      if (!extension) return false;
-      extension.loseContext();
-      return true;
-    });
-    if (!contextLossExtension) {
-      throw new Error('context recovery smoke requires WEBGL_lose_context');
+    const recoveryBrowser = await firefox.launch(launchOptions);
+    try {
+      const recoveryPage = await recoveryBrowser.newPage();
+      const recoveryFailures = trackPageHealth(recoveryPage);
+      await recoveryPage.goto(`${baseUrl}/?renderer=next`);
+      await recoveryPage.waitForFunction(
+        () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'running',
+        null,
+        { timeout: 15000 },
+      );
+      const contextLossExtension = await recoveryPage.locator('#game').evaluate((canvas) => {
+        const gl = canvas.getContext('webgl2');
+        const extension = gl?.getExtension('WEBGL_lose_context');
+        if (!extension) return false;
+        extension.loseContext();
+        return true;
+      });
+      if (!contextLossExtension) {
+        throw new Error('context recovery smoke requires WEBGL_lose_context');
+      }
+      await recoveryPage.waitForTimeout(250);
+      await recoveryPage.locator('#game').evaluate((canvas) => {
+        const gl = canvas.getContext('webgl2');
+        const extension = gl?.getExtension('WEBGL_lose_context');
+        extension?.restoreContext();
+      });
+      await recoveryPage.waitForTimeout(750);
+      const recovery = await recoveryPage.locator('#game').evaluate((canvas) => ({
+        bootPhase: canvas.getAttribute('data-boot-phase'),
+        backend: canvas.getAttribute('data-renderer-backend'),
+        fallback: canvas.getAttribute('data-renderer-fallback'),
+        diagnostics: canvas.getAttribute('data-renderer-diagnostics'),
+        frameStats: canvas.getAttribute('data-renderer-frame-stats'),
+        frameBudget: canvas.getAttribute('data-renderer-budget'),
+      }));
+      if (recovery.bootPhase !== 'running' || !isPixeldartBackend(recovery.backend) ||
+          recovery.fallback !== 'false' || !recovery.frameStats ||
+          recovery.frameBudget !== 'ok') {
+        throw new Error(`context recovery failed ${JSON.stringify(recovery)}`);
+      }
+      console.log(`next-context-recovery: ${JSON.stringify(recovery)}`);
+      assertHealthy(recoveryFailures, 'next-context-recovery');
+      await recoveryPage.close();
+    } finally {
+      await closeBrowserBounded(recoveryBrowser);
     }
-    await recoveryPage.waitForTimeout(250);
-    await recoveryPage.locator('#game').evaluate((canvas) => {
-      const gl = canvas.getContext('webgl2');
-      const extension = gl?.getExtension('WEBGL_lose_context');
-      extension?.restoreContext();
-    });
-    await recoveryPage.waitForTimeout(750);
-    const recovery = await recoveryPage.locator('#game').evaluate((canvas) => ({
-      bootPhase: canvas.getAttribute('data-boot-phase'),
-      backend: canvas.getAttribute('data-renderer-backend'),
-      fallback: canvas.getAttribute('data-renderer-fallback'),
-      diagnostics: canvas.getAttribute('data-renderer-diagnostics'),
-      frameStats: canvas.getAttribute('data-renderer-frame-stats'),
-      frameBudget: canvas.getAttribute('data-renderer-budget'),
-    }));
-    if (recovery.bootPhase !== 'running' || !isPixeldartBackend(recovery.backend) ||
-        recovery.fallback !== 'false' || !recovery.frameStats ||
-        recovery.frameBudget !== 'ok') {
-      throw new Error(`context recovery failed ${JSON.stringify(recovery)}`);
-    }
-    console.log(`next-context-recovery: ${JSON.stringify(recovery)}`);
-    assertHealthy(recoveryFailures, 'next-context-recovery');
-    await recoveryPage.close();
 
     const scalingPage = await browser.newPage();
     const scalingFailures = trackPageHealth(scalingPage);

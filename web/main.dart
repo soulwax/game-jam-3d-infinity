@@ -63,6 +63,7 @@ import 'package:quarantine/sim/interaction.dart';
 import 'package:quarantine/sim/rupture.dart';
 import 'package:quarantine/sim/time.dart';
 import 'package:quarantine/sim/weather.dart';
+import 'package:quarantine/sim/weather_physics.dart';
 import 'package:quarantine/story/schema.dart' show vocabularyFields;
 import 'package:quarantine/story/text.dart';
 import 'package:quarantine/story/game_event_orchestrator.dart';
@@ -72,6 +73,8 @@ import 'package:quarantine/ui/ambient_notice.dart';
 import 'package:quarantine/ui/accessibility_settings.dart';
 import 'package:quarantine/ui/accessibility_presentation.dart';
 import 'package:quarantine/ui/audio_settings.dart';
+import 'package:quarantine/ui/audio_caption_fallback.dart';
+import 'package:quarantine/sim/pacing.dart';
 import 'package:quarantine/ui/gameplay_settings.dart';
 import 'package:quarantine/ui/gameplay_presentation_policy.dart';
 import 'package:quarantine/ui/broadcast.dart';
@@ -173,6 +176,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   px.PostProcessState _post = px.PostProcessState.off;
   double _rainIntensity = 0;
   double _rainWindowVisibility = 1;
+  WeatherPhysicsSnapshot? _weatherPhysics;
+  WarmClearanceSnapshot? _weatherWarmClearance;
+  List<WarmObjectSource> _warmSources = const [];
+  List<WeatherCollisionBox> _weatherObstacles = const [];
+  int _weatherImpactCount = 0;
+  double _weatherSettledMassKg = 0;
+  double _weatherReboundEnergyJoules = 0;
+  px.VolumetricSourceFieldSample? _volumetricSourceField;
+  double _inventoryModelScale = houseModelScale;
   int _rainParticleRequestedCount = 0;
   int _rainParticleCount = 0;
   int _rainParticleBudget = 0;
@@ -181,10 +193,16 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   bool _rainParticleCapped = false;
   px.MeshHandle? _rainParticleMesh;
   px.MaterialHandle? _rainParticleMaterial;
+  px.MeshHandle? _snowParticleMesh;
+  px.MaterialHandle? _snowParticleMaterial;
+  px.MeshHandle? _hailParticleMesh;
+  px.MaterialHandle? _hailParticleMaterial;
   double _effectiveShaderLabHour = 7;
   double _effectiveFogDensity = 0;
   double _effectiveFogHeightFalloff = 0;
   double _surfaceWetness = 0;
+  double _surfaceSnowCoverage = 0;
+  double _surfaceDissolution = 0;
   px.FrameStats? _lastFrameStats;
   double _lastFrameMs = 0;
   double _timeSeconds = 0;
@@ -246,6 +264,31 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         stats.trianglesSubmitted <= 100000 &&
         stats.liveGpuBytes <= 64 * 1024 * 1024 &&
         _lastFrameMs <= 100;
+  }
+
+  Map<String, Object?> get groupedDiagnostics {
+    final stats = _lastFrameStats;
+    return {
+      'frame': {
+        'drawCalls': stats?.drawCalls ?? 0,
+        'triangles': stats?.trianglesSubmitted ?? 0,
+        'instances': stats?.instancesSubmitted ?? 0,
+        'frameMs': _lastFrameMs,
+        'budget': frameBudgetWithinLimits ? 'ok' : 'exceeded',
+      },
+      'resources': {
+        'gpuBytes': stats?.liveGpuBytes ?? 0,
+        'residentTextures': resourceGovernor.residentTextureCount,
+        'textureVramMb': resourceGovernor.currentVramUsageMB,
+      },
+      'atmosphere': {
+        'rainSubmitted': _rainParticleCount,
+        'rainFrustumVisible': _rainParticleFrustumVisible,
+        'rainFrustumCulled': _rainParticleFrustumCulled,
+        'weatherPhase': weatherPhase,
+        'volumetricSources': volumetricSourceCount,
+      },
+    };
   }
 
   String? get profileFallbackReason => _profileFallbackReason;
@@ -617,6 +660,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   /// renderer-neutral; model handles can be swapped in later without
   /// changing room visibility or simulation ownership.
   void setInventory(HouseInventory inventory) {
+    _inventoryModelScale = inventory.modelScale;
     _inventoryPlacements = List<InventoryPlacement>.unmodifiable(
       inventory.placements,
     );
@@ -1023,6 +1067,32 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final mantleLights = house_lighting.HouseLighting(
       house,
     ).visibleMantles(visible, eye);
+    final warmSources = <WarmObjectSource>[
+      for (final light in mantleLights)
+        if (light.heatOutputWatts > 0)
+          WarmObjectSource(
+            position: light.position,
+            radiusM: light.thermalRadiusM,
+            surfaceTemperatureCelsius: light.surfaceTemperatureCelsius,
+            heatOutputWatts: light.heatOutputWatts,
+          ),
+      for (final placement in _inventoryPlacements)
+        if (placement.heatOutputWatts > 0 &&
+            placement.thermalRadiusM > 0 &&
+            visible.contains(placement.roomId))
+          WarmObjectSource(
+            position: house
+                .byId(placement.roomId)!
+                .toWorld(
+                  placement.runtimePosition(_inventoryModelScale) +
+                      Vec3(0, placement.thermalOffsetY, 0),
+                ),
+            radiusM: placement.thermalRadiusM,
+            surfaceTemperatureCelsius: placement.surfaceTemperatureCelsius,
+            heatOutputWatts: placement.heatOutputWatts,
+          ),
+    ];
+    _warmSources = List<WarmObjectSource>.unmodifiable(warmSources);
     final pointCandidates = <CandidateLight>[];
     final spotCandidates = <CandidateLight>[];
     for (var i = 0; i < mantleLights.length; i++) {
@@ -1135,6 +1205,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         flash.sourceDistanceMeters.toStringAsFixed(1),
       )
       ..setAttribute(
+        'data-renderer-lightning-distance-attenuation',
+        lightningDistanceAttenuation.toStringAsFixed(4),
+      )
+      ..setAttribute(
         'data-renderer-lightning-source-direction',
         '${flash.sourceDirectionX.toStringAsFixed(3)},'
             '${flash.sourceDirectionY.toStringAsFixed(3)},'
@@ -1162,6 +1236,79 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _effectiveFogDensity = fogDensity;
     _effectiveFogHeightFalloff = fogHeightFalloff;
 
+    // Resolve practicals and a located lightning strike through Pixeldart's
+    // generic media contract. This is a diagnostic and lighting input bridge,
+    // not storm ownership: the host still chooses which sources exist and
+    // their bounded physical intensity/cutoff.
+    final volumetricSources = <px.VolumetricSource>[
+      for (final light in points)
+        px.VolumetricSource(
+          id: 'point:${light.id}',
+          position: light.position,
+          color: px.Vec3(light.color.r, light.color.g, light.color.b),
+          luminousIntensity: light.intensity,
+          referenceDistance: math.max(0.25, light.radius),
+          cutoffDistance: math.max(4.0, light.radius * 8.0),
+        ),
+      for (final light in spots)
+        px.VolumetricSource(
+          id: 'spot:${light.id}',
+          position: light.position,
+          color: px.Vec3(light.color.r, light.color.g, light.color.b),
+          luminousIntensity: light.intensity,
+          referenceDistance: math.max(0.25, light.range * 0.25),
+          cutoffDistance: math.max(8.0, light.range),
+        ),
+    ];
+    final camera = _cameraView;
+    if (flash.active && flash.hasValidSource && camera != null) {
+      final sourceDirection = px.Vec3(
+        flash.sourceDirectionX,
+        flash.sourceDirectionY,
+        flash.sourceDirectionZ,
+      ).normalized;
+      volumetricSources.add(
+        px.VolumetricSource(
+          id: 'lightning:active',
+          position: camera.eye + sourceDirection * flash.sourceDistanceMeters,
+          color: px.Vec3(flash.colorR, flash.colorG, flash.colorB),
+          luminousIntensity: flash.intensity * 120000.0,
+          referenceDistance: 1000.0,
+          cutoffDistance: math.max(1100.0, flash.sourceDistanceMeters * 1.25),
+        ),
+      );
+    }
+    _volumetricSourceField = camera == null
+        ? null
+        : px.VolumetricMediaEngine.evaluateSourceField(
+            rayOrigin: camera.eye,
+            rayDirection: camera.forward,
+            rayLength: math.min(camera.far, 64.0),
+            scatteringCoeff: fogDensity,
+            sources: volumetricSources,
+          );
+    final sourceField = _volumetricSourceField;
+    final sourceFog = sourceField?.radiance ?? px.Vec3.zero;
+    if (sourceField != null) {
+      _canvas
+        ..setAttribute(
+          'data-renderer-volumetric-source-count',
+          '${sourceField.contributingSourceCount}',
+        )
+        ..setAttribute(
+          'data-renderer-volumetric-source-radiance',
+          '${sourceField.radiance.x.toStringAsFixed(6)},'
+              '${sourceField.radiance.y.toStringAsFixed(6)},'
+              '${sourceField.radiance.z.toStringAsFixed(6)}',
+        )
+        ..setAttribute(
+          'data-renderer-volumetric-source-direction',
+          '${sourceField.dominantDirection.x.toStringAsFixed(4)},'
+              '${sourceField.dominantDirection.y.toStringAsFixed(4)},'
+              '${sourceField.dominantDirection.z.toStringAsFixed(4)}',
+        );
+    }
+
     _environment = px.FrameEnvironment(
       ambientColor: px.LinearColor(
         atmos.skyAmbientColor.r,
@@ -1183,9 +1330,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       spotLights: spots,
       clearColor: const px.LinearColor(0.008, 0.012, 0.024),
       fogColor: px.LinearColor(
-        atmos.fogColor.r * 0.08,
-        atmos.fogColor.g * 0.08,
-        atmos.fogColor.b * 0.08,
+        atmos.fogColor.r * 0.08 + sourceFog.x.clamp(0.0, 8.0) * 0.015,
+        atmos.fogColor.g * 0.08 + sourceFog.y.clamp(0.0, 8.0) * 0.015,
+        atmos.fogColor.b * 0.08 + sourceFog.z.clamp(0.0, 8.0) * 0.015,
       ),
       fogStart: fogStart / (1.0 + effectiveRain * 0.45),
       fogEnd: fogEnd / (1.0 + effectiveRain * 0.16),
@@ -1268,6 +1415,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       surfaceWetness: (surfaceWetness ?? _surfaceWetness)
           .clamp(0.0, 1.0)
           .toDouble(),
+      surfaceSnowCoverage: _surfaceSnowCoverage,
+      surfaceDissolution: _surfaceDissolution,
       rainWindowVisibility: rainWindowVisibility,
       colorGradeStrength: math.max(
         tuningGrade,
@@ -1382,6 +1531,75 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'data-renderer-shader-lab-document',
       _shaderTuning.encode(),
     );
+    _canvas.setAttribute(
+      'data-renderer-shader-lab-baseline',
+      _shaderTuning.baselineEncode(),
+    );
+  }
+
+  /// Resolves the host weather phase and exposure once per frame. The
+  /// renderer bridge only consumes precipitation/wind facts here; room heat
+  /// ownership remains with the simulation's [WeatherPhysicsInput] contract.
+  void setWeather(
+    WeatherDay weather, {
+    required double shelterFactor,
+    Iterable<WeatherCollisionBox> obstacles = const [],
+  }) {
+    _weatherObstacles = List<WeatherCollisionBox>.unmodifiable(obstacles);
+    final physics = WeatherPhysics.evaluate(
+      WeatherPhysicsInput(
+        weather: weather,
+        roomTemperatureCelsius: weather.outsideTemperatureCelsius,
+        relativeHumidity: 0.8,
+        shelterFactor: shelterFactor,
+        insulationResistance: 1,
+        internalHeatWatts: 0,
+        thermalMassJoulesPerKelvin: 1,
+        surfaceAreaM2: 1,
+        dtSeconds: 0,
+      ),
+    );
+    _weatherPhysics = physics;
+    _weatherWarmClearance = WeatherPhysics.evaluateWarmClearance(
+      samplePosition: _viewEye,
+      ambientTemperatureCelsius: weather.outsideTemperatureCelsius,
+      dewPointCelsius: physics.dewPointCelsius,
+      sources: _warmSources,
+    );
+  }
+
+  /// Maps host-owned snow/melt state to renderer-neutral appearance weights.
+  /// Pixeldart does not advance this state; it shades the resolved values.
+  void setWeatherSurface(WeatherSurfaceSnapshot? surface) {
+    final snapshot = surface;
+    if (snapshot == null) {
+      _surfaceSnowCoverage = 0;
+      _surfaceDissolution = 0;
+      return;
+    }
+    _surfaceSnowCoverage = (snapshot.snowDepthM / 0.08)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    _surfaceDissolution = snapshot.materialDissolution01
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final meltWetness = (snapshot.waterFilmDepthM / 0.0008)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    _surfaceWetness = math.max(_surfaceWetness, meltWetness);
+    _canvas
+      ..setAttribute(
+        'data-renderer-weather-snow-coverage',
+        _surfaceSnowCoverage.toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-weather-material-dissolution',
+        _surfaceDissolution.toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-weather-water-film-m',
+        snapshot.waterFilmDepthM.toStringAsFixed(8),
+      );
   }
 
   void _installRainParticleResources() {
@@ -1492,26 +1710,106 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         receivesShadow: false,
       ),
     );
+
+    final snowBuilder = StaticMeshBuilder();
+    snowBuilder.quad(
+      Vec3(-0.035, 0, 0),
+      Vec3(0.035, 0, 0),
+      Vec3(0.035, -0.07, 0),
+      Vec3(-0.035, -0.07, 0),
+      0xDCEBFF,
+      alpha: 0.78,
+      glow: true,
+    );
+    _snowParticleMesh = _renderer.resources.registerMesh(
+      _meshFromVertices(snowBuilder.build()),
+      debugLabel: 'weather:snow-particle',
+    );
+    _snowParticleMaterial = _registerMaterial(
+      const px.MaterialDefinition(
+        key: 'weather:snow-particle',
+        tintR: 0.82,
+        tintG: 0.9,
+        tintB: 1.0,
+        roughness: 0.72,
+        emissiveStrength: 0.04,
+        alphaMode: px.AlphaMode.blended,
+        receivesShadow: false,
+      ),
+    );
+
+    final hailBuilder = StaticMeshBuilder();
+    hailBuilder.quad(
+      Vec3(-0.025, 0, 0),
+      Vec3(0.025, 0, 0),
+      Vec3(0.025, -0.12, 0),
+      Vec3(-0.025, -0.12, 0),
+      0xAFC7D6,
+      alpha: 0.9,
+      glow: true,
+    );
+    _hailParticleMesh = _renderer.resources.registerMesh(
+      _meshFromVertices(hailBuilder.build()),
+      debugLabel: 'weather:hail-particle',
+    );
+    _hailParticleMaterial = _registerMaterial(
+      const px.MaterialDefinition(
+        key: 'weather:hail-particle',
+        tintR: 0.62,
+        tintG: 0.74,
+        tintB: 0.82,
+        roughness: 0.35,
+        emissiveStrength: 0.06,
+        alphaMode: px.AlphaMode.blended,
+        receivesShadow: false,
+      ),
+    );
   }
 
-  void _submitRainParticles(px.RenderEncoder frame, px.FrameInput input) {
+  void _submitWeatherParticles(px.RenderEncoder frame, px.FrameInput input) {
     _rainParticleRequestedCount = 0;
     _rainParticleCount = 0;
     _rainParticleBudget = _rainParticleBudgetForProfile;
     _rainParticleFrustumVisible = 0;
     _rainParticleFrustumCulled = 0;
     _rainParticleCapped = false;
-    final mesh = _rainParticleMesh;
-    final material = _rainParticleMaterial;
+    _weatherImpactCount = 0;
+    _weatherSettledMassKg = 0;
+    _weatherReboundEnergyJoules = 0;
+    final physics = _weatherPhysics;
+    final kind = physics?.precipitationKind ?? PrecipitationKind.none;
+    final profile =
+        physics?.particleProfile ??
+        WeatherParticleProfile.forKind(PrecipitationKind.none);
+    final mesh = switch (kind) {
+      PrecipitationKind.snow => _snowParticleMesh,
+      PrecipitationKind.hail || PrecipitationKind.sleet => _hailParticleMesh,
+      _ => _rainParticleMesh,
+    };
+    final material = switch (kind) {
+      PrecipitationKind.snow => _snowParticleMaterial,
+      PrecipitationKind.hail ||
+      PrecipitationKind.sleet => _hailParticleMaterial,
+      _ => _rainParticleMaterial,
+    };
     if (mesh == null ||
         material == null ||
+        kind == PrecipitationKind.none ||
         _rainIntensity <= 0.01 ||
         _rainWindowVisibility <= 0.01) {
       return;
     }
-    final requestedCount = (8 + _rainIntensity * 32 * _rainWindowVisibility)
-        .round()
-        .clamp(0, 40);
+    final countScale = switch (kind) {
+      PrecipitationKind.snow => 38.0,
+      PrecipitationKind.hail => 26.0,
+      PrecipitationKind.sleet => 30.0,
+      _ => 32.0,
+    };
+    final requestedCount =
+        (8 + _rainIntensity * countScale * _rainWindowVisibility).round().clamp(
+          0,
+          40,
+        );
     final budget = px.AtmosphericParticleBudget(
       requestedCount: requestedCount,
       maximumCount: _rainParticleBudgetForProfile,
@@ -1522,29 +1820,82 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _rainParticleBudget = budget.maximumCount;
     _rainParticleCapped = budget.wasCapped;
     final gust = math.sin(_timeSeconds * 0.7) * 0.18;
+    final windX = (physics?.windVelocityMps.x ?? 0.0) + gust;
+    final windZ = (physics?.windVelocityMps.z ?? 0.0) + 0.12;
     final field = px.AtmosphericParticleField(
       mesh: mesh,
       material: material,
       anchor: px.AtmosphericParticleAnchor.camera,
       origin: const px.Vec3(0, 3, 0),
       halfExtents: const px.Vec3(2.75, 3, 2.75),
-      initialVelocity: px.Vec3(gust, -2.0, 0.12),
+      initialVelocity: px.Vec3(windX, profile.initialFallSpeedMps, windZ),
       acceleration: const px.Vec3(0, -9.81, 0),
-      // Small rain drops approach an empirical terminal fall speed while
-      // retaining the local gust as their horizontal air velocity.
-      terminalVelocity: px.Vec3(gust, -8.8, 0.12),
-      dragCoefficient: 4.5,
-      lifetimeSeconds: 0.9,
+      // The host physics snapshot supplies phase-specific terminal velocity
+      // and wind; Pixeldart integrates the same drag law for every phase.
+      terminalVelocity: px.Vec3(windX, -profile.terminalFallSpeedMps, windZ),
+      dragCoefficient: profile.dragCoefficient,
+      lifetimeSeconds: profile.lifetimeSeconds,
       particleCount: count,
       seed: _noiseSeed,
-      instanceFamilyKey: 0x7261696e,
-      alignToVelocity: true,
+      instanceFamilyKey: 0x77656174 + kind.index,
+      particleScale: profile.particleScale,
+      alignToVelocity: profile.alignToVelocity,
     );
     final stats = field.frameStats(input);
     _rainParticleFrustumVisible = stats.visibleCount;
     _rainParticleFrustumCulled = stats.culledCount;
-    _rainParticleCount = field.submit(frame, input);
+    final previousInput = px.FrameInput(
+      camera: input.camera,
+      environment: input.environment,
+      post: input.post,
+      visibilityMask: input.visibilityMask,
+      frameIndex: input.frameIndex,
+      historyEpoch: input.historyEpoch,
+      noiseSeed: input.noiseSeed,
+      timeSeconds: math.max(0, input.timeSeconds - 1 / 60),
+    );
+    for (var particleIndex = 0; particleIndex < count; particleIndex++) {
+      final current = field.sampleKinematics(input, particleIndex);
+      final previous = field.sampleKinematics(previousInput, particleIndex);
+      final impact = WeatherImpactResolver.evaluate(
+        kind: kind,
+        startPosition: _toGameVec3(previous.position),
+        endPosition: _toGameVec3(current.position),
+        velocityMps: _toGameVec3(current.velocity),
+        particleRadiusM: 0.02 * profile.particleScale,
+        particleMassKg: profile.particleMassKg,
+        obstacles: _weatherObstacles,
+      );
+      if (!impact.hit) continue;
+      _weatherImpactCount += 1;
+      _weatherSettledMassKg += impact.depositedMassKg;
+      _weatherReboundEnergyJoules += impact.kineticEnergyJoules;
+    }
+    _rainParticleCount = field.submitFiltered(
+      frame,
+      input,
+      (kinematics) => !_insideWeatherObstacle(
+        _toGameVec3(kinematics.position),
+        0.02 * profile.particleScale,
+      ),
+    );
   }
+
+  bool _insideWeatherObstacle(Vec3 position, double radius) {
+    for (final obstacle in _weatherObstacles) {
+      if (position.x >= obstacle.min.x - radius &&
+          position.x <= obstacle.max.x + radius &&
+          position.y >= obstacle.min.y - radius &&
+          position.y <= obstacle.max.y + radius &&
+          position.z >= obstacle.min.z - radius &&
+          position.z <= obstacle.max.z + radius) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Vec3 _toGameVec3(px.Vec3 value) => Vec3(value.x, value.y, value.z);
 
   void setFrameClock({
     required double timeSeconds,
@@ -1576,7 +1927,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     );
     final stopwatch = Stopwatch()..start();
     final frame = _renderer.beginFrame(_world, input);
-    _submitRainParticles(frame, input);
+    _submitWeatherParticles(frame, input);
     _lastFrameStats = _renderer.endFrame();
     stopwatch.stop();
     _lastFrameMs =
@@ -1594,6 +1945,41 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   int get rainParticleFrustumCulled => _rainParticleFrustumCulled;
 
   bool get rainParticleCapped => _rainParticleCapped;
+
+  String get weatherPhase =>
+      (_weatherPhysics?.precipitationKind ?? PrecipitationKind.none).name;
+
+  double get weatherWindSpeedMps =>
+      _weatherPhysics?.effectiveWindSpeedMps ?? 0.0;
+
+  double get weatherSnowAccumulationRateMps =>
+      _weatherPhysics?.snowAccumulationRateMps ?? 0.0;
+
+  double get weatherImpactEnergyFluxWattsPerM2 =>
+      _weatherPhysics?.impactEnergyFluxWattsPerM2 ?? 0.0;
+
+  double get weatherWarmClearanceRadiusM =>
+      _weatherWarmClearance?.clearanceRadiusM ?? 0.0;
+
+  double get weatherLocalTemperatureCelsius =>
+      _weatherWarmClearance?.localTemperatureCelsius ?? 0.0;
+
+  double get weatherCondensationSuppression01 =>
+      _weatherWarmClearance?.condensationSuppression01 ?? 0.0;
+
+  int get weatherImpactCount => _weatherImpactCount;
+
+  double get weatherSettledMassKg => _weatherSettledMassKg;
+
+  double get weatherReboundEnergyJoules => _weatherReboundEnergyJoules;
+
+  int get weatherObstacleCount => _weatherObstacles.length;
+
+  int get volumetricSourceCount =>
+      _volumetricSourceField?.contributingSourceCount ?? 0;
+
+  px.Vec3 get volumetricSourceRadiance =>
+      _volumetricSourceField?.radiance ?? px.Vec3.zero;
 
   int get _rainParticleBudgetForProfile => switch (_profile.kind) {
     px.QualityProfileKind.high => 40,
@@ -2221,6 +2607,7 @@ web.Element? _fpsDiv;
 
 Audio? _audio;
 bool _audioArmed = false;
+const _campaignPacing = CampaignPacingPolicy();
 bool _reducedMotion = false;
 const _audioPreferencePrefix = 'quarantine.audio.';
 const _displayPreferencePrefix = 'quarantine.display.';
@@ -2241,6 +2628,7 @@ bool _systemReducedMotion = false;
 bool _systemPhotosensitivitySafe = false;
 HouseSoundscape? _houseSoundscape;
 HouseInventory? _houseInventory;
+final Map<String, WeatherSurfaceAccumulator> _weatherSurfacesByRoom = {};
 AudioPlanner? _audioPlanner;
 int _audioEventSequence = 0;
 String? _lastPlayedVisitorVoice;
@@ -3267,6 +3655,7 @@ Future<void> main() async {
       journal: _session.journal,
       time: _time,
       runSeed: _session.runSeed,
+      verifyEntry: (ordinal) => _session.verifyJournal(ordinal),
     );
     _journal = JournalPanel(
       web.document,
@@ -3630,6 +4019,10 @@ void _publishRendererDiagnostics() {
     ..setAttribute('data-renderer-profile', diagnostics.profile)
     ..setAttribute('data-renderer-diagnostics', diagnostics.encode())
     ..setAttribute(
+      'data-renderer-query-rejection',
+      _backendSelection.rejectionReason ?? '',
+    )
+    ..setAttribute(
       'data-renderer-configuration',
       _pixeldartRuntime == null
           ? '{}'
@@ -3854,10 +4247,6 @@ Future<void> _loadPromotedModelIndex() async {
     final index = PresentationModelPackageIndex.decode(source);
     _canvas.setAttribute('data-renderer-model-packages', 'validated');
     _canvas.setAttribute('data-renderer-model-packages-source', url);
-    _canvas.setAttribute(
-      'data-renderer-model-package-count',
-      '${index.assetIds.length}',
-    );
     await _pixeldartRuntime?.loadPromotedPackages(index);
   } catch (error) {
     _canvas.setAttribute('data-renderer-model-packages', 'unavailable');
@@ -3877,6 +4266,9 @@ Future<void> _loadAuthoredHouseManifest() async {
       manifest.validateAgainst(_house);
       _canvas.setAttribute('data-house-manifest', 'validated');
       _canvas.setAttribute('data-house-manifest-source', url);
+      // The FBX-derived house is a provisional visible place for bridge and
+      // play testing. It must not be reported as the finished story setting.
+      _canvas.setAttribute('data-house-role', 'provisional-visible-place');
       validated = true;
       break;
     } catch (error) {
@@ -4327,7 +4719,10 @@ void _raf(num ts) {
         _prevEye = _simEye;
         if (!_automationCaptureClockFrozen) {
           _session.advance(
-            _fixedDt * (_gameplayOptions.storyMode ? 1.0 : 20.0),
+            _fixedDt *
+                _campaignPacing.clockMultiplier(
+                  storyMode: _gameplayOptions.storyMode,
+                ),
           );
           for (final event in _houseClock.advance(
             day: _session.snapshot.day,
@@ -4387,6 +4782,25 @@ void _raf(num ts) {
           audio.musicStarted ? 'true' : 'false',
         );
         _canvas.setAttribute('data-audio-room-ir', audio.roomIr);
+        _canvas
+          ..setAttribute(
+            'data-audio-context-suspended',
+            '${audio.contextSuspended}',
+          )
+          ..setAttribute('data-audio-muted', '${audio.muted}')
+          ..setAttribute(
+            'data-audio-master-mix',
+            audio.masterMix.toStringAsFixed(3),
+          )
+          ..setAttribute(
+            'data-audio-voice-mix',
+            audio.voiceMix.toStringAsFixed(3),
+          )
+          ..setAttribute(
+            'data-audio-captions',
+            '${_accessibilityProfile.captions ?? false}',
+          )
+          ..setAttribute('data-audio-paused', '$_paused');
       }
     }
 
@@ -4394,16 +4808,43 @@ void _raf(num ts) {
       _camera.lookFrom(_viewEye, _simYaw, _simPitch);
       _pixeldartRuntime?.setCamera(_camera);
       _pixeldartRuntime?.setVisibleRooms(_house, _currentRoom);
+      final frameWeather = _weatherSchedule.forDay(_session.snapshot.day);
+      final frameShelter = (1.0 - _rainWindowVisibility(_currentRoom))
+          .clamp(0.0, 1.0)
+          .toDouble();
       _pixeldartRuntime?.setLighting(
         _house,
         _currentRoom,
         _viewEye,
         _time.sunAngle,
         _time.daylight,
-        _weatherSchedule.forDay(_session.snapshot.day),
+        frameWeather,
         roomIsLit(_currentRoom),
         currentHour: _time.currentHour,
       );
+      _pixeldartRuntime?.setWeather(
+        frameWeather,
+        shelterFactor: frameShelter,
+        obstacles: _weatherCollisionBoxesForRoom(
+          _house,
+          _currentRoom,
+          frameWeather.outsideTemperatureCelsius,
+          inventory: _houseInventory,
+        ),
+      );
+      final weatherSurface = _advanceWeatherSurface(
+        frameWeather,
+        shelterFactor: frameShelter,
+        dtSeconds: (!_paused && _activePanel == null)
+            ? (frameTime *
+                      _campaignPacing.clockMultiplier(
+                        storyMode: _gameplayOptions.storyMode,
+                      ))
+                  .clamp(0.0, 0.5)
+                  .toDouble()
+            : 0.0,
+      );
+      _pixeldartRuntime?.setWeatherSurface(weatherSurface);
       if (_lastRendererRuptureStep != _rupture.step) {
         _lastRendererRuptureStep = _rupture.step;
         _rendererHistoryEpoch++;
@@ -4423,6 +4864,10 @@ void _raf(num ts) {
       );
       final runtime = _pixeldartRuntime;
       if (runtime != null) {
+        _canvas.setAttribute(
+          'data-renderer-diagnostic-groups',
+          jsonEncode(runtime.groupedDiagnostics),
+        );
         final stats = runtime.frameStatsLabel;
         if (stats != null) {
           _canvas.setAttribute('data-renderer-frame-stats', stats);
@@ -4454,6 +4899,50 @@ void _raf(num ts) {
         _canvas.setAttribute(
           'data-renderer-rain-particles-frustum-culled',
           '${runtime.rainParticleFrustumCulled}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-phase',
+          runtime.weatherPhase,
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-wind-mps',
+          runtime.weatherWindSpeedMps.toStringAsFixed(3),
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-snow-accumulation-mps',
+          runtime.weatherSnowAccumulationRateMps.toStringAsFixed(8),
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-impact-energy-w-m2',
+          runtime.weatherImpactEnergyFluxWattsPerM2.toStringAsFixed(6),
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-warm-clearance-m',
+          runtime.weatherWarmClearanceRadiusM.toStringAsFixed(4),
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-local-temperature-c',
+          runtime.weatherLocalTemperatureCelsius.toStringAsFixed(3),
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-condensation-suppression',
+          runtime.weatherCondensationSuppression01.toStringAsFixed(4),
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-impact-count',
+          '${runtime.weatherImpactCount}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-settled-mass-kg',
+          runtime.weatherSettledMassKg.toStringAsFixed(8),
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-rebound-energy-j',
+          runtime.weatherReboundEnergyJoules.toStringAsFixed(8),
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-obstacle-count',
+          '${runtime.weatherObstacleCount}',
         );
       }
     }
@@ -4652,7 +5141,10 @@ void _update(double dt) {
 
   _camera.lookFrom(renderEye, _simYaw, _simPitch);
 
-  final aftermathManager = PhysicalAftermathManager(state: _session.narrative);
+  final aftermathManager = PhysicalAftermathManager(
+    state: _session.narrative,
+    events: _authoredEventCursor?.events ?? const [],
+  );
 
   // UI prompt / watched-object focus (deterministic resolver)
   final focus = resolveFocus(
@@ -5073,7 +5565,13 @@ void _playVisitorVoice() {
       '-${state.tier.name}-${state.lineIndex + 1}';
   if (_lastPlayedVisitorVoice == key) return;
   _lastPlayedVisitorVoice = key;
-  audio.play(key, gain: 1.0);
+  final played = audio.play(key, gain: 1.0);
+  final fallback = AudioCaptionFallback(cueId: key, caption: line);
+  final caption = fallback.resolve(
+    clipAvailable: played,
+    captionsEnabled: _accessibilityProfile.captions ?? false,
+  );
+  if (caption.isNotEmpty) _ambientNotice.showCaption(line);
 }
 
 void _chooseNarrativeReaction(String optionId) {
@@ -5115,6 +5613,9 @@ void _citeDuringVisit(int ordinal) {
     InteractionType.visitor,
   );
   _door.showCiteResult(event?.contradictionText ?? 'Confirmed.');
+  // Citation verification is authoritative session state, so persist it
+  // immediately instead of leaving the browser UI ahead of the save.
+  _saveSession('saved after visitor citation');
 }
 
 void _closeFrontDoorIfOpen() {
@@ -5177,4 +5678,133 @@ double _rainWindowVisibility(String roomId) {
   if (windows.isEmpty) return 0.12;
   final open = windows.where((window) => window.shutterOpen).length;
   return (open / windows.length).clamp(0.12, 1.0).toDouble();
+}
+
+WeatherSurfaceSnapshot? _advanceWeatherSurface(
+  WeatherDay weather, {
+  required double shelterFactor,
+  required double dtSeconds,
+}) {
+  final runtime = _pixeldartRuntime;
+  if (runtime == null || _house.byId(_currentRoom) == null) return null;
+  final physics = WeatherPhysics.evaluate(
+    WeatherPhysicsInput(
+      weather: weather,
+      roomTemperatureCelsius: weather.outsideTemperatureCelsius,
+      relativeHumidity: (0.82 - weather.rainIntensity * 0.12)
+          .clamp(0.35, 0.98)
+          .toDouble(),
+      shelterFactor: shelterFactor,
+      insulationResistance: 2.5,
+      internalHeatWatts: 0,
+      thermalMassJoulesPerKelvin: 18000,
+      surfaceAreaM2: 1,
+      dtSeconds: 0,
+    ),
+  );
+  final accumulator = _weatherSurfacesByRoom.putIfAbsent(
+    _currentRoom,
+    WeatherSurfaceAccumulator.new,
+  );
+  final localTemperature = runtime.weatherLocalTemperatureCelsius.isFinite
+      ? runtime.weatherLocalTemperatureCelsius
+      : weather.outsideTemperatureCelsius;
+  final warmSuppression = runtime.weatherCondensationSuppression01
+      .clamp(0.0, 1.0)
+      .toDouble();
+  // Convert the resolved conductive temperature rise into a bounded surface
+  // heat flux. This is deliberately host policy: the renderer receives only
+  // the resulting appearance facts, never a heater or room simulation.
+  final heatFlux = ((localTemperature - weather.outsideTemperatureCelsius) * 8)
+      .clamp(0.0, 400.0)
+      .toDouble();
+  return accumulator.advance(
+    weather: physics,
+    surfaceTemperatureCelsius: localTemperature,
+    netHeatFluxWattsPerM2: heatFlux,
+    dtSeconds: dtSeconds,
+    warmClearanceSuppression01: warmSuppression,
+    relativeHumidity: (0.82 - weather.rainIntensity * 0.12)
+        .clamp(0.35, 0.98)
+        .toDouble(),
+  );
+}
+
+/// The first authored collision surface for precipitation is the active
+/// room's floor. More detailed sills, awnings, and furniture boxes can be
+/// added from the same host-owned contract without changing Pixeldart.
+List<WeatherCollisionBox> _weatherCollisionBoxesForRoom(
+  House house,
+  String roomId,
+  double surfaceTemperatureCelsius, {
+  HouseInventory? inventory,
+}) {
+  final room = house.byId(roomId);
+  if (room == null) return const [];
+  final size = house.effectiveSize(room);
+  final boxes = <WeatherCollisionBox>[
+    WeatherCollisionBox(
+      id: 'floor:${room.id}',
+      min: Vec3(room.origin.x, room.origin.y, room.origin.z),
+      max: Vec3(
+        room.origin.x + size.x,
+        room.origin.y + 0.05,
+        room.origin.z + size.z,
+      ),
+      surfaceTemperatureCelsius: surfaceTemperatureCelsius,
+      restitution: 0.12,
+    ),
+  ];
+  final authoredInventory = inventory;
+  if (authoredInventory == null) return boxes;
+
+  // Inventory remains the source of truth for physical props. Renderer-only
+  // references, micro details, and omitted sparse-chamber props must not
+  // create invisible weather walls. Wall-mounted bounds are retained: they
+  // provide a real shelter/impact surface without changing player collision.
+  for (final placement in authoredInventory.placementsFor(room.id)) {
+    final assetKey = placement.assetId.toLowerCase();
+    if (placement.role == 'renderer-reference' ||
+        (sparseTestChambers &&
+            placement.visibilityLayer != 'story' &&
+            placement.visibilityLayer != 'architecture') ||
+        (sparseTestChambers && assetKey.contains('stair'))) {
+      continue;
+    }
+    final asset = authoredInventory.assetFor(placement.assetId);
+    final position = placement.runtimePosition(authoredInventory.modelScale);
+    final extents = placement.runtimeExtents(
+      asset,
+      authoredInventory.modelScale,
+    );
+    final vertical = placement.runtimeVerticalBounds(
+      asset,
+      authoredInventory.modelScale,
+    );
+    final center = room.toWorld(
+      Vec3(
+        position.x,
+        position.y + (vertical.x + vertical.y) * 0.5,
+        position.z,
+      ),
+    );
+    final halfExtents = Vec3(
+      extents.x,
+      math.max(0.005, (vertical.y - vertical.x) * 0.5),
+      extents.z,
+    );
+    final temperature = placement.heatOutputWatts > 0
+        ? placement.surfaceTemperatureCelsius
+        : surfaceTemperatureCelsius;
+    boxes.add(
+      WeatherCollisionBox.fromCenter(
+        id: 'inventory:${placement.id}',
+        center: center,
+        halfExtents: halfExtents,
+        surfaceTemperatureCelsius: temperature,
+        restitution: asset.kind == 'textile' ? 0.08 : 0.28,
+      )..validate(),
+    );
+  }
+  return List<WeatherCollisionBox>.unmodifiable(boxes);
 }

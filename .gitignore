@@ -42,6 +42,10 @@ _worktrees/
 output/
 test-output/
 test-results/
+/artifacts/
+
+# Temporary staging tree created while assembling the committed web bundle.
+dist/.web-staging-*/
 
 # build.dart's launcher symlink/copy at the repo root
 /play
@@ -55,6 +59,7 @@ dist/*
 !dist/web/**/*.js
 !dist/web/**/*.mjs
 dist/web/res/.fetch_state.json
+dist/.web-staging-*/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

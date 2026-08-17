@@ -7,6 +7,13 @@ on changes players or contributors can feel. Detailed renderer notes belong in
 
 ## Unreleased
 
+## [0.2.0.2] — 2026-08-17
+
+- Marked the FBX-derived house runtime and visual evidence as a provisional
+  visible place, keeping it separate from final storyline content.
+- Added runtime and browser-review guards for that scope, then rebuilt the
+  WASM web package.
+
 ## [0.2.0.1] — 2026-08-17
 
 - Relocated the planning and operational documentation repository from `tmp/`
