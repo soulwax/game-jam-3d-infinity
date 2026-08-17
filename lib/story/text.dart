@@ -97,10 +97,11 @@ class TextLibrary {
       // content build produces it; keep those bundles playable while exposing
       // the absence to callers through a null screenplay.
       if (screenplayJson != null || screenplayResp?.ok == true) {
-      _screenplay = StoryScreenplay.fromJson(
-        screenplayJson ?? (await screenplayResp!.text().toDart).toString(),
-      );
-      _eventOrchestrator = GameEventOrchestrator(_screenplay!);
+        _screenplay = StoryScreenplay.fromJson(
+          screenplayJson ?? (await screenplayResp!.text().toDart).toString(),
+        );
+        _screenplay!.validateCampaignSchedule();
+        _eventOrchestrator = GameEventOrchestrator(_screenplay!);
       }
     } catch (e) {
       throw 'Failed to load text.json: $e';

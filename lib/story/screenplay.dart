@@ -30,6 +30,29 @@ class StoryScreenplay {
     return null;
   }
 
+  /// Validates the campaign-level schedule after decoding.  Small editor
+  /// fixtures may intentionally omit events, so this is explicit rather than
+  /// being imposed by the generic JSON decoder.
+  void validateCampaignSchedule() {
+    final byDay = <int, List<ScreenplayEvent>>{};
+    for (final event in events) {
+      (byDay[event.day] ??= []).add(event);
+    }
+    for (var day = 1; day <= 21; day++) {
+      if (byDay[day]?.isEmpty ?? true) {
+        throw StateError('campaign schedule has no event for day $day');
+      }
+    }
+    final dayOneKinds = {for (final event in byDay[1]!) event.kind};
+    if (!dayOneKinds.contains('broadcast') ||
+        !dayOneKinds.contains('visitor')) {
+      throw StateError('day 1 schedule needs broadcast and visitor events');
+    }
+    if (!(byDay[21]!.any((event) => event.kind == 'ending'))) {
+      throw StateError('day 21 schedule needs an ending event');
+    }
+  }
+
   factory StoryScreenplay.fromJson(String source) {
     final raw = jsonDecode(source);
     if (raw is! Map) {

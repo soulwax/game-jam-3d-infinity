@@ -140,5 +140,8 @@
   "ir": {
     "stone": "ir/stone.wav"
   },
+  "skybox": {
+    "main-atmosphere-v1": "skybox/cannon_8k.jpg"
+  },
   "credits": "Assets used under: CC BY 4.0 · CC0 1.0 · OFL 1.1. Full licence texts: res/licenses/."
 }

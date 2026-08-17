@@ -46,5 +46,15 @@ void main() {
   if (capsule.activeStairId != stair.id || capsule.activeStairProgress != 0.5) {
     throw StateError('stair save/restore did not preserve traversal state');
   }
+  capsule.restoreActiveStair(
+    house: house,
+    stairId: stair.id,
+    progress: double.nan,
+    currentRoom: 'hall',
+    eye: stair.lowerEye,
+  );
+  if (capsule.activeStairId != null || capsule.activeStairProgress != null) {
+    throw StateError('non-finite stair progress must clear restored state');
+  }
   print('house route execution: ground/upper topology and stair restore pass');
 }

@@ -326,6 +326,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'volumetricIntensity': _environment.volumetricIntensity,
         'volumetricDustDensity': _environment.volumetricDustDensity,
         'volumetricAnisotropy': _environment.volumetricAnisotropy,
+        'cloudCoverage': _environment.skybox?.cloudCoverage ?? 0,
+        'cloudDensity': _environment.skybox?.cloudDensity ?? 0,
+        'cloudSampleCount': _environment.skybox?.cloudSampleCount ?? 0,
         'reflectionIntensity': _environment.reflectionIntensity,
         'reflectionConfidence': _environment.reflectionConfidence,
       },
@@ -564,6 +567,19 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         debugLabel: 'texture:$key',
       );
     }
+    // The game owns the source asset and stable declaration ID. Pixeldart
+    // owns sampling it as an equirectangular environment. Keep a practical
+    // 4096x2048 browser residency target while retaining the 8K source asset.
+    _textures['skybox-main-atmosphere-v1'] = _renderer.resources
+        .registerTexture(
+          width: 4096,
+          height: 2048,
+          hasMips: true,
+          wrap: pxweb.GpuTextureWrap.repeat,
+          minFilter: pxweb.GpuTextureFilter.linearMipmapLinear,
+          anisotropy: 8,
+          debugLabel: 'texture:skybox-main-atmosphere-v1',
+        );
     _publishTextureResidency();
     _publishMaterialResidency();
     _sceneMaterial = _registerMaterial(
@@ -857,6 +873,18 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'data-renderer-promoted-bounds-alignment',
       promotedBoundsAligned ? 'pass' : 'mismatch',
     );
+    final canonicalResidenceReady =
+        _houseForInventory?.residenceRoomId == 'living-room' &&
+        _houseForInventory?.residenceRestAnchor == 'placement-living-sofa' &&
+        _promotedBindings.containsKey('placement-living-fbx-room');
+    _canvas
+      ..setAttribute(
+        'data-house-playability',
+        canonicalResidenceReady ? 'canonical-fbx-residence' : 'incomplete',
+      )
+      ..setAttribute('data-house-collision-authority', 'game-house')
+      ..setAttribute('data-house-focus-authority', 'game-focus-resolver')
+      ..setAttribute('data-house-save-restore-authority', 'game-session-save');
     _publishPromotedModelDiagnostics();
   }
 
@@ -1359,6 +1387,32 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         ? _shaderTuning.getValue('rain_override')
         : weather.rainIntensity;
     _rainIntensity = effectiveRain.clamp(0.0, 1.0).toDouble();
+    final cloudCoverageOverride = _shaderTuning.getValue(
+      'cloud_coverage_override',
+    );
+    final cloudCoverage =
+        (cloudCoverageOverride >= 0.0
+                ? cloudCoverageOverride
+                : effectiveRain * 0.92)
+            .clamp(0.0, 1.0)
+            .toDouble();
+    final cloudEnabled = _shaderTuning.getBool('cloud_enable');
+    final cloudDensity = cloudEnabled && cloudCoverage > 0.0001
+        ? (_shaderTuning.getValue('cloud_density') *
+                  (0.55 + cloudCoverage * 0.45))
+              .clamp(0.0, 1.0)
+              .toDouble()
+        : 0.0;
+    final cloudSpeed = _shaderTuning
+        .getValue('cloud_speed')
+        .clamp(0.0, 2.0)
+        .toDouble();
+    final cloudWindMagnitude = weather.windSpeedMps * 0.28 * cloudSpeed;
+    final cloudSamples = _shaderTuning
+        .getValue('cloud_samples')
+        .round()
+        .clamp(4, 24)
+        .toInt();
     final effectiveWetness = (_shaderTuning.getValue('wetness_override') >= 0.0)
         ? _shaderTuning.getValue('wetness_override')
         : atmos.windowSurfaceWetness;
@@ -1723,6 +1777,39 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       spotLights: spots,
       volumetricSources: volumetricSources,
       thermalSources: thermalSources,
+      // The game owns the named atmosphere asset and maps current weather
+      // into its authored colours. Pixeldart owns turning this declaration
+      // into the continuously-present background pixels.
+      skybox: px.SkyboxDeclaration(
+        assetId: 'main-atmosphere-v1',
+        texture: _textures['skybox-main-atmosphere-v1'],
+        horizon: px.LinearColor(
+          atmos.skyAmbientColor.r,
+          atmos.skyAmbientColor.g,
+          atmos.skyAmbientColor.b,
+        ),
+        zenith: px.LinearColor(
+          (atmos.skyAmbientColor.r * 1.18).clamp(0.0, 1.0).toDouble(),
+          (atmos.skyAmbientColor.g * 1.18).clamp(0.0, 1.0).toDouble(),
+          (atmos.skyAmbientColor.b * 1.18).clamp(0.0, 1.0).toDouble(),
+        ),
+        ground: px.LinearColor(
+          (solar.fogColor.r * 0.55).clamp(0.0, 1.0).toDouble(),
+          (solar.fogColor.g * 0.55).clamp(0.0, 1.0).toDouble(),
+          (solar.fogColor.b * 0.55).clamp(0.0, 1.0).toDouble(),
+        ),
+        cloudCoverage: cloudCoverage,
+        cloudDensity: cloudDensity,
+        cloudBaseHeight: 650,
+        cloudThickness: 420,
+        cloudScale: 0.0012,
+        cloudWindX: math.cos(weather.windDirectionRadians) * cloudWindMagnitude,
+        cloudWindZ: math.sin(weather.windDirectionRadians) * cloudWindMagnitude,
+        cloudPhase: _timeSeconds,
+        cloudDetail: _shaderTuning.getValue('cloud_detail'),
+        cloudSilverLining: _shaderTuning.getValue('cloud_silver_lining'),
+        cloudSampleCount: cloudSamples,
+      ),
       clearColor: const px.LinearColor(0.008, 0.012, 0.024),
       fogColor: px.LinearColor(
         atmos.fogColor.r * 0.08 +
@@ -1791,6 +1878,26 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       ..setAttribute(
         'data-renderer-reflection-confidence',
         _environment.reflectionConfidence.toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-skybox-asset',
+        _environment.skybox?.assetId ?? 'none',
+      )
+      ..setAttribute(
+        'data-renderer-sky-cloud-coverage',
+        (_environment.skybox?.cloudCoverage ?? 0).toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-sky-cloud-density',
+        (_environment.skybox?.cloudDensity ?? 0).toStringAsFixed(4),
+      )
+      ..setAttribute(
+        'data-renderer-sky-cloud-samples',
+        '${_environment.skybox?.cloudSampleCount ?? 0}',
+      )
+      ..setAttribute(
+        'data-renderer-sky-cloud-phase',
+        (_environment.skybox?.cloudPhase ?? 0).toStringAsFixed(3),
       )
       ..setAttribute('data-renderer-reflection-mode', 'environment-fallback');
   }
@@ -1915,6 +2022,13 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'weather_fog_scattering',
       'weather_lightning_intensity',
       'weather_reflection_strength',
+      'cloud_enable',
+      'cloud_coverage_override',
+      'cloud_density',
+      'cloud_detail',
+      'cloud_speed',
+      'cloud_silver_lining',
+      'cloud_samples',
       'light_ambient_mult',
       'light_direct_mult',
     };
@@ -2014,6 +2128,15 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'weather_reflection_strength': _shaderTuning.getValue(
           'weather_reflection_strength',
         ),
+        'cloud_coverage_override': _shaderTuning.getValue(
+          'cloud_coverage_override',
+        ),
+        'cloud_density': _environment.skybox?.cloudDensity ?? 0,
+        'cloud_detail': _environment.skybox?.cloudDetail ?? 0,
+        'cloud_speed': _shaderTuning.getValue('cloud_speed'),
+        'cloud_silver_lining': _environment.skybox?.cloudSilverLining ?? 0,
+        'cloud_samples': (_environment.skybox?.cloudSampleCount ?? 4)
+            .toDouble(),
         'post_quantization_bits': _post.quantizationBits.toDouble(),
         'post_vhs_chroma': _post.vhsChromaWeight,
         'post_vhs_noise': _post.vhsNoiseWeight,
@@ -2025,6 +2148,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'weather_particles_enable': _shaderTuning.getBool(
           'weather_particles_enable',
         ),
+        'cloud_enable': _environment.skybox?.cloudDensity != 0,
       },
       unavailableReasons: unavailable,
       debugViewsReason:
@@ -2811,6 +2935,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'porcelain-albedo',
         'porcelain-normal',
         'glass',
+        'skybox-main-atmosphere-v1',
       ])
         if (urls[key] case final url?) _loadTexture(key, url),
     ]);
@@ -2827,13 +2952,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       // source map is larger than its declared residency target (notably the
       // 512px glass map versus its 256px slot). Render into the exact
       // descriptor dimensions so the retained handle and GPU payload agree.
-      final targetSize = switch (key) {
-        'grime' => 512,
-        'porcelain-albedo' || 'porcelain-normal' => 4096,
-        _ => 256,
+      final (targetWidth, targetHeight) = switch (key) {
+        'grime' => (512, 512),
+        'porcelain-albedo' || 'porcelain-normal' => (4096, 4096),
+        'skybox-main-atmosphere-v1' => (4096, 2048),
+        _ => (256, 256),
       };
-      final targetWidth = targetSize;
-      final targetHeight = targetSize;
       final canvas = web.HTMLCanvasElement()
         ..width = targetWidth
         ..height = targetHeight;
@@ -4019,7 +4143,11 @@ Future<void> main() async {
       runtime: runtime,
     )..initialize();
   } catch (error, stack) {
-    _canvas.setAttribute('data-renderer-error', '$error');
+    // Keep the stable machine-readable failure phase while preserving the
+    // actionable exception for browser diagnostics and smoke-test output.
+    _canvas
+      ..setAttribute('data-renderer-initialization-error', '$error')
+      ..setAttribute('data-renderer-error', '$error');
     if (_automationDiagnosticsEnabled) {
       _canvas.setAttribute('data-renderer-error-stack', '$stack');
     }
@@ -4150,6 +4278,11 @@ Future<void> main() async {
     _simEye =
         _house.residencePlayerEye(playerEyeHeight) ??
         _house.defaultPlayerEye(playerEyeHeight);
+    // The canonical FBX residence spawn sits near the room's rear boundary.
+    // Face into the room for a new session; restored saves overwrite this
+    // presentation pose with their persisted yaw below.
+    _simYaw = _currentRoom == _house.residenceRoomId ? math.pi : 0.0;
+    _simPitch = 0.0;
     _prevEye = _simEye;
     _viewEye = _simEye;
     final initialCapsuleBase =
@@ -5262,6 +5395,10 @@ void _updateSetting(String key, String raw) {
 Future<void> _loadTextures(JSObject? data) async {
   final urls = <String, String>{};
   _collectUrls(data?['tex'] as JSObject?, urls);
+  _collectUrls(data?['skybox'] as JSObject?, urls);
+  // Keep the renderer declaration and the game manifest key coupled even if
+  // a legacy manifest reader omits newly added groups from its JS view.
+  urls['skybox-main-atmosphere-v1'] = 'res/skybox/cannon_8k.jpg';
   urls.addAll(const {
     'porcelain-albedo':
         'res/house/models/porcelain-mermaid-statuette/textures/retopo_Transferred%20Texture%20from%20Mesh.jpeg',

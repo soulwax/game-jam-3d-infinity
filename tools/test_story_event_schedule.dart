@@ -8,6 +8,7 @@ void main() {
     File('web/res/story_script.json').readAsStringSync(),
   );
   final plan = GameEventOrchestrator(screenplay);
+  screenplay.validateCampaignSchedule();
   final genericLabels = {'required beat', 'placeholder', 'todo', 'tbd'};
   for (final event in screenplay.events) {
     final label = event.label.trim().toLowerCase();

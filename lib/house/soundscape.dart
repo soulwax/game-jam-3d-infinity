@@ -75,6 +75,7 @@ final class HouseSoundscape {
         );
       }
       if (emitter.cues.isEmpty ||
+          emitter.cues.keys.any((cue) => cue.trim().isEmpty) ||
           emitter.cues.values.any((cue) => cue.trim().isEmpty)) {
         throw StateError('sound emitter ${emitter.id} has no usable cues');
       }

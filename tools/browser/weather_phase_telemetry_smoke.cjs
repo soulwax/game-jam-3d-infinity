@@ -24,6 +24,12 @@ async function probe(page, weather) {
       confidence: canvas.getAttribute('data-renderer-reflection-confidence'),
       mode: canvas.getAttribute('data-renderer-reflection-mode'),
     },
+    clouds: {
+      coverage: canvas.getAttribute('data-renderer-sky-cloud-coverage'),
+      density: canvas.getAttribute('data-renderer-sky-cloud-density'),
+      samples: canvas.getAttribute('data-renderer-sky-cloud-samples'),
+      phase: canvas.getAttribute('data-renderer-sky-cloud-phase'),
+    },
   }));
 }
 
@@ -50,6 +56,16 @@ async function main() {
           reflectionConfidence < 0 || reflectionConfidence > 1 ||
           sample.reflection?.mode !== 'environment-fallback') {
         throw new Error(`invalid ${name} reflection telemetry: ${JSON.stringify(sample.reflection)}`);
+      }
+      const cloudCoverage = Number(sample.clouds?.coverage);
+      const cloudDensity = Number(sample.clouds?.density);
+      const cloudSamples = Number(sample.clouds?.samples);
+      const cloudPhase = Number(sample.clouds?.phase);
+      if (!Number.isFinite(cloudCoverage) || cloudCoverage < 0 || cloudCoverage > 1 ||
+          !Number.isFinite(cloudDensity) || cloudDensity < 0 || cloudDensity > 1 ||
+          !Number.isInteger(cloudSamples) || cloudSamples < 4 || cloudSamples > 24 ||
+          !Number.isFinite(cloudPhase)) {
+        throw new Error(`invalid ${name} cloud telemetry: ${JSON.stringify(sample.clouds)}`);
       }
     }
     console.log(JSON.stringify(samples));

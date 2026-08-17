@@ -31,7 +31,7 @@ class Capsule {
     required String currentRoom,
     Vec3? eye,
   }) {
-    if (stairId == null || progress == null) {
+    if (stairId == null || progress == null || !progress.isFinite) {
       _activeStair = null;
       return;
     }
@@ -65,7 +65,8 @@ class Capsule {
       return;
     }
 
-    _activeStair = _ActiveStair(resolved, progress.clamp(0.0, 1.0));
+    final restoredProgress = progress.clamp(0.0, 1.0).toDouble();
+    _activeStair = _ActiveStair(resolved, restoredProgress);
   }
 
   MovementResult move(House house, String currentRoom, Vec3 eye, Vec3 delta) {
@@ -177,7 +178,10 @@ class Capsule {
     if (!intersectsStaticGeometry(house, roomId)) {
       final stepX = _tryAxis(house, roomId, elevatedEye, Vec3(delta.x, 0, 0));
       final stepZ = _tryAxis(house, roomId, stepX.eye, Vec3(0, 0, delta.z));
-      if (!stepX.blocked || !stepZ.blocked) {
+      // A diagonal move is only a valid step-up when both component sweeps
+      // cleared the raised capsule.  Accepting one clear axis here lets the
+      // blocked axis leak through a wall at corners and portal jambs.
+      if (!stepX.blocked && !stepZ.blocked) {
         // Settle downwards onto the step
         var settled = stepZ.eye;
         for (var drop = 0.05; drop <= maxStepUp; drop += 0.05) {

@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 const _assetsRoot = 'web/res';
-const _manifestGroups = {'sfx', 'music', 'fonts', 'tex', 'ir'};
+const _manifestGroups = {'sfx', 'music', 'fonts', 'tex', 'ir', 'skybox'};
 const _sha256RoundConstants = <int>[
   0x428a2f98,
   0x71374491,

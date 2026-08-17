@@ -48,6 +48,12 @@ async function readRuntime(page) {
       storyAuthority: canvas.getAttribute('data-house-story-authority'),
       legacyLivingRoomShell: canvas.getAttribute('data-renderer-legacy-living-room-shell'),
       canonicalRoomShell: canvas.getAttribute('data-renderer-canonical-room-shell'),
+      skyboxAsset: canvas.getAttribute('data-renderer-skybox-asset'),
+      skyboxTexture: canvas.getAttribute('data-renderer-texture-skybox-main-atmosphere-v1'),
+      playability: canvas.getAttribute('data-house-playability'),
+      collisionAuthority: canvas.getAttribute('data-house-collision-authority'),
+      focusAuthority: canvas.getAttribute('data-house-focus-authority'),
+      saveRestoreAuthority: canvas.getAttribute('data-house-save-restore-authority'),
       audioPlanner: canvas.getAttribute('data-audio-planner'),
       diagnostics,
     };
@@ -89,8 +95,18 @@ async function main() {
         canvas.getAttribute('data-renderer-model-packages-runtime') === 'loaded' &&
         canvas.getAttribute('data-house-role') === 'provisional-visible-place' &&
         canvas.getAttribute('data-house-story-authority') === 'external-story-data' &&
+        canvas.getAttribute('data-renderer-skybox-asset') === 'main-atmosphere-v1' &&
+        canvas.getAttribute('data-renderer-texture-skybox-main-atmosphere-v1') === 'loaded' &&
+        canvas.getAttribute('data-house-playability') === 'canonical-fbx-residence' &&
+        canvas.getAttribute('data-house-collision-authority') === 'game-house' &&
+        canvas.getAttribute('data-house-focus-authority') === 'game-focus-resolver' &&
+        canvas.getAttribute('data-house-save-restore-authority') === 'game-session-save' &&
         diagnostics.attached === true && diagnostics.bindingCount >= 1;
-    }, null, { timeout: 60000, polling: 100 });
+    // The promoted FBX package is intentionally loaded through the same
+    // asynchronous runtime path as production. Headless WebGL can spend over
+    // a minute compiling/linking it on a cold run, so keep the acceptance
+    // window generous while still failing deterministically.
+    }, null, { timeout: 90000, polling: 100 });
     const shellState = await page.evaluate(() => {
       const canvas = document.querySelector('#game');
       return {
@@ -164,7 +180,7 @@ async function main() {
       return canvas.getAttribute('data-renderer-model-packages') === 'validated' &&
         canvas.getAttribute('data-renderer-model-packages-runtime') === 'loaded' &&
         diagnostics.attached === true && diagnostics.bindingCount >= 1;
-    }, null, { timeout: 60000, polling: 100 });
+    }, null, { timeout: 90000, polling: 100 });
     const after = decodeSave(
       await page.evaluate(() => window.localStorage.getItem('quarantine.save.active')),
       'after reload',

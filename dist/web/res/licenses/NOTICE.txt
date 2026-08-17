@@ -7,3 +7,6 @@ the same directory:
   CC0-1.0.txt
   OFL-1.1.txt
 
+Skybox:
+  Cannon HDRI by Greg Zaal / Poly Haven, used under CC0 1.0.
+  Source: https://polyhaven.com/a/cannon

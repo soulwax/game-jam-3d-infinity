@@ -720,6 +720,77 @@ class ShaderTuningState {
         step: 0.05,
         defaultValue: 1.0,
       ),
+      ShaderTuningItem(
+        id: 'cloud_enable',
+        label: 'Volumetric Cloud Shell',
+        description: 'Ray-marched cloud layer on clear skybox pixels',
+        category: ShaderTuningCategory.weatherEffects,
+        isToggle: true,
+        defaultValue: 1.0,
+        defaultBool: true,
+      ),
+      ShaderTuningItem(
+        id: 'cloud_coverage_override',
+        label: 'Cloud Coverage Lock',
+        description: 'Override weather cloud coverage (-0.1 = schedule driven)',
+        category: ShaderTuningCategory.weatherEffects,
+        min: -0.1,
+        max: 1.0,
+        step: 0.05,
+        defaultValue: -0.1,
+      ),
+      ShaderTuningItem(
+        id: 'cloud_density',
+        label: 'Cloud Optical Density',
+        description: 'Extinction through the finite volumetric cloud shell',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05,
+        defaultValue: 0.72,
+      ),
+      ShaderTuningItem(
+        id: 'cloud_detail',
+        label: 'Cloud Detail',
+        description: 'High-frequency erosion mixed into the cloud body noise',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05,
+        defaultValue: 0.55,
+      ),
+      ShaderTuningItem(
+        id: 'cloud_speed',
+        label: 'Cloud Advection Speed',
+        description:
+            'Scale for authored wind transport through the cloud shell',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 0.0,
+        max: 2.0,
+        step: 0.05,
+        defaultValue: 1.0,
+      ),
+      ShaderTuningItem(
+        id: 'cloud_silver_lining',
+        label: 'Cloud Silver Lining',
+        description:
+            'Bounded forward-scattered edge response around cloud forms',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 0.0,
+        max: 1.0,
+        step: 0.05,
+        defaultValue: 0.25,
+      ),
+      ShaderTuningItem(
+        id: 'cloud_samples',
+        label: 'Cloud Raymarch Samples',
+        description: 'Sky cloud samples per pixel (4=preview, 24=clean)',
+        category: ShaderTuningCategory.weatherEffects,
+        min: 4.0,
+        max: 24.0,
+        step: 1.0,
+        defaultValue: 12.0,
+      ),
     ];
   }
 
@@ -948,6 +1019,21 @@ class ShaderTuningState {
   /// Canonical untouched document used as a reproducible comparison baseline.
   /// It is constructed independently so calling this never resets live state.
   String baselineEncode() => ShaderTuningState().encode();
+
+  /// Validates an experiment document without changing this lab state.
+  /// Hosts can publish the short, stable error instead of a stack trace.
+  List<String> validateJson(String source) {
+    final probe = ShaderTuningState()
+      ..debugViewsAvailable = debugViewsAvailable;
+    try {
+      probe.importJson(source);
+      return const <String>[];
+    } on FormatException catch (error) {
+      return <String>[error.message.toString()];
+    } on Object catch (error) {
+      return <String>['invalid Shader Lab document: ${error.runtimeType}'];
+    }
+  }
 
   /// IDs whose requested values differ from their authored baseline.
   List<String> get modifiedControlIds => ([

@@ -23,7 +23,7 @@ void main() {
             .cast<String, dynamic>()
       : <String, dynamic>{};
   final assets = <Map<String, dynamic>>[];
-  for (final group in const ['sfx', 'music', 'fonts', 'tex', 'ir']) {
+  for (final group in const ['sfx', 'music', 'fonts', 'tex', 'ir', 'skybox']) {
     final entries = manifest[group];
     if (entries is! Map) continue;
     for (final entry in entries.entries) {
@@ -43,12 +43,18 @@ void main() {
       final pinned = hash is String && hash.isNotEmpty
           ? hash
           : (file.existsSync() ? _sha256(file) : null);
+      final isCannonSkybox =
+          group == 'skybox' && entry.key == 'main-atmosphere-v1';
       assets.add({
         'name': name,
         'path': path,
         'license': 'CC0 1.0',
-        'author': 'The Quarantine project',
-        'sourcePage': 'local://web/res/manifest.json',
+        'author': isCannonSkybox
+            ? 'Greg Zaal (Poly Haven)'
+            : 'The Quarantine project',
+        'sourcePage': isCannonSkybox
+            ? 'https://polyhaven.com/a/cannon'
+            : 'local://web/res/manifest.json',
         if (pinned is String && RegExp(r'^[a-f0-9]{64}$').hasMatch(pinned))
           'sha256': pinned,
       });

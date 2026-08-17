@@ -207,10 +207,19 @@ final class InventoryAsset {
       source: _string(map, 'source'),
       proxy: _string(map, 'proxy'),
       pivot: _string(map, 'pivot'),
-      status: map['status'] as String? ?? 'proxy',
+      status: _status(map['status'], id: _string(map, 'id')),
       bounds: InventoryBounds.fromJson(map['bounds']),
     );
   }
+}
+
+String _status(Object? value, {required String id}) {
+  final status = value ?? 'proxy';
+  if (status is! String ||
+      !{'production', 'proxy', 'invisible-anchor'}.contains(status)) {
+    throw FormatException('invalid inventory asset status $id: $status');
+  }
+  return status;
 }
 
 final class InventoryPlacement {

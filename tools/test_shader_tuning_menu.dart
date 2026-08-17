@@ -81,9 +81,7 @@ void main() {
     );
   }
   state.resolveFrame(
-    liveItemIds: {
-      for (final item in weatherItems) item.id,
-    },
+    liveItemIds: {for (final item in weatherItems) item.id},
     effectiveValues: {
       for (final item in weatherItems)
         if (!item.isToggle) item.id: item.defaultValue,
@@ -190,6 +188,9 @@ void main() {
   final document = state.encode();
   final restored = ShaderTuningState();
   restored.importJson(document);
+  if (restored.validateJson(document).isNotEmpty) {
+    throw StateError('valid Shader Lab document failed validation');
+  }
   if (restored.getValue('pbr_roughness') != roughnessItem.currentValue ||
       !restored.modifiedControlIds.contains('pbr_roughness')) {
     throw StateError(
@@ -214,6 +215,9 @@ void main() {
   }
   if (!rejected) {
     throw StateError('out-of-range Shader Lab import was accepted');
+  }
+  if (restored.validateJson(jsonEncode(invalid)).isEmpty) {
+    throw StateError('invalid Shader Lab document lacked a validation error');
   }
 
   // 5. Test Boolean Toggle Tuning
