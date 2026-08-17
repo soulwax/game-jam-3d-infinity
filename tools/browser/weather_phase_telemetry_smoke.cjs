@@ -19,6 +19,14 @@ async function probe(page, weather) {
     impacts: canvas.getAttribute('data-renderer-weather-impact-count'),
     surface: canvas.getAttribute('data-renderer-weather-surface'),
     particles: canvas.getAttribute('data-renderer-rain-particles'),
+    averageSpeedMps: canvas.getAttribute('data-renderer-rain-particles-average-speed-mps'),
+    flow: {
+      paths: canvas.getAttribute('data-renderer-rain-flow-paths'),
+      particles: canvas.getAttribute('data-renderer-rain-flow-particles'),
+      capturedMassKg: canvas.getAttribute('data-renderer-rain-flow-captured-mass-kg'),
+      drainedMassKg: canvas.getAttribute('data-renderer-rain-flow-drained-mass-kg'),
+      overflowMassKg: canvas.getAttribute('data-renderer-rain-flow-overflow-mass-kg'),
+    },
     reflection: {
       intensity: canvas.getAttribute('data-renderer-reflection-intensity'),
       confidence: canvas.getAttribute('data-renderer-reflection-confidence'),
@@ -45,7 +53,14 @@ async function main() {
       if (!sample.phase || Number.isNaN(Number(sample.wind)) ||
           Number.isNaN(Number(sample.snowRate)) ||
           Number.isNaN(Number(sample.impacts)) ||
-          Number.isNaN(Number(sample.particles)) || !sample.surface) {
+          Number.isNaN(Number(sample.particles)) ||
+          !Number.isFinite(Number(sample.averageSpeedMps)) ||
+          Number(sample.averageSpeedMps) < 0 || !sample.surface ||
+          !Number.isFinite(Number(sample.flow?.paths)) ||
+          !Number.isFinite(Number(sample.flow?.particles)) ||
+          !Number.isFinite(Number(sample.flow?.capturedMassKg)) ||
+          !Number.isFinite(Number(sample.flow?.drainedMassKg)) ||
+          !Number.isFinite(Number(sample.flow?.overflowMassKg))) {
         throw new Error(`invalid ${name} weather telemetry: ${JSON.stringify(sample)}`);
       }
       JSON.parse(sample.surface);

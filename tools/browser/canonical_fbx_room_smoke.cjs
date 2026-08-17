@@ -51,9 +51,15 @@ async function readRuntime(page) {
       skyboxAsset: canvas.getAttribute('data-renderer-skybox-asset'),
       skyboxTexture: canvas.getAttribute('data-renderer-texture-skybox-main-atmosphere-v1'),
       playability: canvas.getAttribute('data-house-playability'),
+      restAnchor: canvas.getAttribute('data-house-rest-anchor'),
+      interactionContract: canvas.getAttribute('data-house-interaction-contract'),
       collisionAuthority: canvas.getAttribute('data-house-collision-authority'),
       focusAuthority: canvas.getAttribute('data-house-focus-authority'),
       saveRestoreAuthority: canvas.getAttribute('data-house-save-restore-authority'),
+      focusKind: canvas.getAttribute('data-house-focus-kind'),
+      focusId: canvas.getAttribute('data-house-focus-id'),
+      focusPrompt: canvas.getAttribute('data-house-focus-prompt'),
+      restTarget: canvas.getAttribute('data-house-rest-target'),
       audioPlanner: canvas.getAttribute('data-audio-planner'),
       diagnostics,
     };
@@ -98,6 +104,8 @@ async function main() {
         canvas.getAttribute('data-renderer-skybox-asset') === 'main-atmosphere-v1' &&
         canvas.getAttribute('data-renderer-texture-skybox-main-atmosphere-v1') === 'loaded' &&
         canvas.getAttribute('data-house-playability') === 'canonical-fbx-residence' &&
+        canvas.getAttribute('data-house-rest-anchor') === 'placement-living-sofa' &&
+        canvas.getAttribute('data-house-interaction-contract') === 'sofa-rest-v1' &&
         canvas.getAttribute('data-house-collision-authority') === 'game-house' &&
         canvas.getAttribute('data-house-focus-authority') === 'game-focus-resolver' &&
         canvas.getAttribute('data-house-save-restore-authority') === 'game-session-save' &&

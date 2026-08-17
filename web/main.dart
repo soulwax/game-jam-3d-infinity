@@ -67,6 +67,7 @@ import 'package:quarantine/sim/rupture.dart';
 import 'package:quarantine/sim/time.dart';
 import 'package:quarantine/sim/weather.dart';
 import 'package:quarantine/sim/weather_physics.dart';
+import 'package:quarantine/sim/rain_flow.dart';
 import 'package:quarantine/story/schema.dart' show vocabularyFields;
 import 'package:quarantine/story/text.dart';
 import 'package:quarantine/story/game_event_orchestrator.dart';
@@ -215,6 +216,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   int _weatherImpactCount = 0;
   double _weatherSettledMassKg = 0;
   double _weatherReboundEnergyJoules = 0;
+  List<px.FlowPath> _rainFlowPaths = const [];
+  int _rainFlowParticleCount = 0;
+  double _rainFlowCapturedMassKg = 0;
+  double _rainFlowDrainedMassKg = 0;
+  double _rainFlowOverflowMassKg = 0;
+  double _rainFlowWetness = 0;
   px.VolumetricSourceFieldSample? _volumetricSourceField;
   double _inventoryModelScale = houseModelScale;
   int _rainParticleRequestedCount = 0;
@@ -222,6 +229,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   int _rainParticleBudget = 0;
   int _rainParticleFrustumVisible = 0;
   int _rainParticleFrustumCulled = 0;
+  double _rainParticleAverageSpeedMps = 0;
   bool _rainParticleCapped = false;
   px.MeshHandle? _rainParticleMesh;
   px.MaterialHandle? _rainParticleMaterial;
@@ -319,7 +327,14 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'rainBudget': _rainParticleBudget,
         'rainFrustumVisible': _rainParticleFrustumVisible,
         'rainFrustumCulled': _rainParticleFrustumCulled,
+        'rainAverageSpeedMps': _rainParticleAverageSpeedMps,
         'rainCapped': _rainParticleCapped,
+        'rainFlowParticles': _rainFlowParticleCount,
+        'rainFlowPaths': _rainFlowPaths.length,
+        'rainFlowCapturedMassKg': _rainFlowCapturedMassKg,
+        'rainFlowDrainedMassKg': _rainFlowDrainedMassKg,
+        'rainFlowOverflowMassKg': _rainFlowOverflowMassKg,
+        'rainFlowWetness': _rainFlowWetness,
         'weatherPhase': weatherPhase,
         'volumetricSources': volumetricSourceCount,
         'volumetricSampleCount': _environment.volumetricSampleCount,
@@ -873,14 +888,25 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       'data-renderer-promoted-bounds-alignment',
       promotedBoundsAligned ? 'pass' : 'mismatch',
     );
+    final sofaInteractionReady =
+        inventory.pickableForFocusId('living-sofa') != null;
     final canonicalResidenceReady =
         _houseForInventory?.residenceRoomId == 'living-room' &&
         _houseForInventory?.residenceRestAnchor == 'placement-living-sofa' &&
-        _promotedBindings.containsKey('placement-living-fbx-room');
+        _promotedBindings.containsKey('placement-living-fbx-room') &&
+        sofaInteractionReady;
     _canvas
       ..setAttribute(
         'data-house-playability',
         canonicalResidenceReady ? 'canonical-fbx-residence' : 'incomplete',
+      )
+      ..setAttribute(
+        'data-house-rest-anchor',
+        _houseForInventory?.residenceRestAnchor ?? '',
+      )
+      ..setAttribute(
+        'data-house-interaction-contract',
+        canonicalResidenceReady ? 'sofa-rest-v1' : 'incomplete',
       )
       ..setAttribute('data-house-collision-authority', 'game-house')
       ..setAttribute('data-house-focus-authority', 'game-focus-resolver')
@@ -2207,6 +2233,46 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     );
   }
 
+  /// Receives host-owned roof/gutter paths. Pixeldart only renders generic
+  /// paths; mass, capacity, and overflow remain in the simulation layer.
+  void setRainFlowSegments(
+    Iterable<RainFlowSegment> segments, {
+    double capturedMassKg = 0,
+    double drainedMassKg = 0,
+    double overflowMassKg = 0,
+  }) {
+    final sourceSegments = segments.toList(growable: false);
+    _rainFlowPaths = [
+      for (final segment in sourceSegments)
+        if (segment.massFlowKgPerSecond > 0)
+          px.FlowPath(
+            start: px.Vec3(segment.start.x, segment.start.y, segment.start.z),
+            end: px.Vec3(segment.end.x, segment.end.y, segment.end.z),
+            speedMps: segment.id.endsWith(':downpipe') ? 3.2 : 2.2,
+            widthM: segment.widthM,
+            particleCount: (2 + segment.massFlowKgPerSecond * 20).round().clamp(
+              2,
+              6,
+            ),
+            seed: segment.id.hashCode & 0x7fffffff,
+          ),
+    ];
+    _rainFlowCapturedMassKg = capturedMassKg
+        .clamp(0.0, double.infinity)
+        .toDouble();
+    _rainFlowDrainedMassKg = drainedMassKg
+        .clamp(0.0, double.infinity)
+        .toDouble();
+    _rainFlowOverflowMassKg = overflowMassKg
+        .clamp(0.0, double.infinity)
+        .toDouble();
+    final peakMassFlow = sourceSegments.fold<double>(
+      0,
+      (peak, segment) => math.max(peak, segment.massFlowKgPerSecond),
+    );
+    _rainFlowWetness = (peakMassFlow * 1.8).clamp(0.0, 1.0).toDouble();
+  }
+
   /// Maps host-owned snow/melt state to renderer-neutral appearance weights.
   /// Pixeldart does not advance this state; it shades the resolved values.
   void setWeatherSurface(WeatherSurfaceSnapshot? surface) {
@@ -2214,7 +2280,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     if (snapshot == null) {
       _surfaceSnowCoverage = 0;
       _surfaceDissolution = 0;
-      _surfaceWetness = 0;
+      _surfaceWetness = _rainFlowWetness;
       _canvas.removeAttribute('data-renderer-weather-surface');
       return;
     }
@@ -2231,7 +2297,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final meltWetness = (snapshot.waterFilmDepthM / 0.0008)
         .clamp(0.0, 1.0)
         .toDouble();
-    _surfaceWetness = meltWetness;
+    _surfaceWetness = math.max(meltWetness, _rainFlowWetness);
     _canvas
       ..setAttribute(
         'data-renderer-weather-surface',
@@ -2248,6 +2314,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       ..setAttribute(
         'data-renderer-weather-water-film-m',
         snapshot.waterFilmDepthM.toStringAsFixed(8),
+      )
+      ..setAttribute(
+        'data-renderer-weather-rain-flow-wetness',
+        _rainFlowWetness.toStringAsFixed(4),
       );
   }
 
@@ -2421,7 +2491,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _rainParticleBudget = _rainParticleBudgetForProfile;
     _rainParticleFrustumVisible = 0;
     _rainParticleFrustumCulled = 0;
+    _rainParticleAverageSpeedMps = 0;
     _rainParticleCapped = false;
+    _rainFlowParticleCount = 0;
     _weatherImpactCount = 0;
     _weatherSettledMassKg = 0;
     _weatherReboundEnergyJoules = 0;
@@ -2453,8 +2525,7 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     if (mesh == null ||
         material == null ||
         kind == PrecipitationKind.none ||
-        _rainIntensity <= 0.01 ||
-        _rainWindowVisibility <= 0.01) {
+        _rainIntensity <= 0.01) {
       return;
     }
     final countScale = switch (kind) {
@@ -2505,6 +2576,8 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     final stats = field.frameStats(input);
     _rainParticleFrustumVisible = stats.visibleCount;
     _rainParticleFrustumCulled = stats.culledCount;
+    final diagnostics = field.diagnostics(input, budget: budget);
+    _rainParticleAverageSpeedMps = diagnostics.averageSpeedMps;
     final previousInput = px.FrameInput(
       camera: input.camera,
       environment: input.environment,
@@ -2532,14 +2605,26 @@ final class _PixeldartWebRuntime implements RendererRuntime {
       _weatherSettledMassKg += impact.depositedMassKg;
       _weatherReboundEnergyJoules += impact.kineticEnergyJoules;
     }
-    _rainParticleCount = field.submitFiltered(
-      frame,
-      input,
-      (kinematics) => !_insideWeatherObstacle(
-        _toGameVec3(kinematics.position),
-        0.02 * profile.particleScale * particleScale,
-      ),
-    );
+    if (_rainWindowVisibility > 0.01) {
+      _rainParticleCount = field.submitFiltered(
+        frame,
+        input,
+        (kinematics) => !_insideWeatherObstacle(
+          _toGameVec3(kinematics.position),
+          0.02 * profile.particleScale * particleScale,
+        ),
+      );
+    }
+    if (_rainFlowPaths.isNotEmpty) {
+      final flowField = px.FlowParticleField(
+        mesh: mesh,
+        material: material,
+        paths: _rainFlowPaths,
+        lifetimeSeconds: 1.4,
+        particleScale: 0.42 * particleScale,
+      );
+      _rainFlowParticleCount = flowField.submit(frame, input);
+    }
   }
 
   bool _insideWeatherObstacle(Vec3 position, double radius) {
@@ -2604,6 +2689,20 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   int get rainParticleFrustumVisible => _rainParticleFrustumVisible;
 
   int get rainParticleFrustumCulled => _rainParticleFrustumCulled;
+
+  double get rainParticleAverageSpeedMps => _rainParticleAverageSpeedMps;
+
+  int get rainFlowParticleCount => _rainFlowParticleCount;
+
+  int get rainFlowPathCount => _rainFlowPaths.length;
+
+  double get rainFlowCapturedMassKg => _rainFlowCapturedMassKg;
+
+  double get rainFlowDrainedMassKg => _rainFlowDrainedMassKg;
+
+  double get rainFlowOverflowMassKg => _rainFlowOverflowMassKg;
+
+  double get rainFlowWetness => _rainFlowWetness;
 
   bool get rainParticleCapped => _rainParticleCapped;
 
@@ -3323,6 +3422,8 @@ bool _systemPhotosensitivitySafe = false;
 HouseSoundscape? _houseSoundscape;
 HouseInventory? _houseInventory;
 final Map<String, WeatherSurfaceAccumulator> _weatherSurfacesByRoom = {};
+final RainFlowNetwork _rainFlowNetwork = _buildRainFlowNetwork();
+final RainFlowState _rainFlowState = RainFlowState();
 AudioPlanner? _audioPlanner;
 int _audioEventSequence = 0;
 int _weatherAudioFrameIndex = 0;
@@ -5652,6 +5753,39 @@ void _raf(num ts) {
           inventory: _houseInventory,
         ),
       );
+      final rainFlowPhysics = WeatherPhysics.evaluate(
+        WeatherPhysicsInput(
+          weather: frameWeather,
+          roomTemperatureCelsius: frameWeather.outsideTemperatureCelsius,
+          relativeHumidity: 0.8,
+          shelterFactor: 0,
+          insulationResistance: 1,
+          internalHeatWatts: 0,
+          thermalMassJoulesPerKelvin: 1,
+          surfaceAreaM2: 1,
+          dtSeconds: 0,
+        ),
+      );
+      final rainFlowStep = _rainFlowNetwork.step(
+        state: _rainFlowState,
+        precipitationMassFluxKgM2S:
+            switch (rainFlowPhysics.precipitationKind) {
+              PrecipitationKind.rain ||
+              PrecipitationKind.sleet ||
+              PrecipitationKind.hail =>
+                rainFlowPhysics.precipitationMassFluxKgM2S,
+              PrecipitationKind.snow || PrecipitationKind.none => 0,
+            },
+        dtSeconds: (!_paused && _activePanel == null)
+            ? frameTime.clamp(0.0, 0.5).toDouble()
+            : 0,
+      );
+      _pixeldartRuntime?.setRainFlowSegments(
+        rainFlowStep.segments,
+        capturedMassKg: rainFlowStep.capturedMassKg,
+        drainedMassKg: rainFlowStep.drainedMassKg,
+        overflowMassKg: rainFlowStep.overflowMassKg,
+      );
       _updateWeatherAudio(
         frameWeather,
         windowOpen01: _windowOpeningFraction(_currentRoom),
@@ -5725,6 +5859,34 @@ void _raf(num ts) {
         _canvas.setAttribute(
           'data-renderer-rain-particles-frustum-culled',
           '${runtime.rainParticleFrustumCulled}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-flow-particles',
+          '${runtime.rainFlowParticleCount}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-flow-paths',
+          '${runtime.rainFlowPathCount}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-flow-captured-mass-kg',
+          runtime.rainFlowCapturedMassKg.toStringAsFixed(8),
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-flow-drained-mass-kg',
+          runtime.rainFlowDrainedMassKg.toStringAsFixed(8),
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-flow-overflow-mass-kg',
+          runtime.rainFlowOverflowMassKg.toStringAsFixed(8),
+        );
+        _canvas.setAttribute(
+          'data-renderer-weather-rain-flow-wetness',
+          runtime.rainFlowWetness.toStringAsFixed(4),
+        );
+        _canvas.setAttribute(
+          'data-renderer-rain-particles-average-speed-mps',
+          runtime.rainParticleAverageSpeedMps.toStringAsFixed(4),
         );
         _canvas.setAttribute(
           'data-renderer-volumetric-sample-count',
@@ -6008,6 +6170,20 @@ void _update(double dt) {
     inventory: _houseInventory,
     aftermathManager: aftermathManager,
   );
+  // Keep the interaction bridge observable without giving the renderer or
+  // browser automation a second target-selection implementation. These
+  // values are derived from the same authoritative focus snapshot that drives
+  // the prompt and KeyE behavior below.
+  _canvas
+    ..setAttribute('data-house-focus-kind', focus.kind.name)
+    ..setAttribute('data-house-focus-id', focus.id ?? '')
+    ..setAttribute('data-house-focus-prompt', focus.prompt ?? '')
+    ..setAttribute(
+      'data-house-rest-target',
+      focus.id == 'living-sofa' && _currentRoom == _house.residenceRoomId
+          ? 'available'
+          : 'not-focused',
+    );
   _prompt.show(focus.prompt);
   final crosshairEl = web.document.getElementById('crosshair');
   if (crosshairEl != null) {
@@ -6658,6 +6834,45 @@ void _updateWeatherAudio(
     );
 }
 
+RainFlowNetwork _buildRainFlowNetwork() {
+  final width = 10.5 * houseScaleProfile.exteriorScale;
+  final depth = 10.5 * houseScaleProfile.exteriorScale;
+  final eaves = 8.03 * houseScaleProfile.exteriorScale;
+  final ridge = 10.88 * houseScaleProfile.exteriorScale;
+  const overhang = 0.42;
+  final drains = <RainDrain>[];
+  final roofs = <RainRoofCatchment>[];
+  var index = 0;
+  for (final z in [-overhang, depth + overhang]) {
+    for (final x in [0.0, width]) {
+      final drainId = 'roof-drain-$index';
+      final inlet = Vec3(x, eaves, z);
+      drains.add(
+        RainDrain(
+          id: drainId,
+          inlet: inlet,
+          outlet: Vec3(x, 0.12, z),
+          capacityKgPerSecond: 0.08,
+        ),
+      );
+      final high = Vec3(width * 0.5, ridge, z + (z < 0 ? 0.42 : -0.42));
+      roofs.add(
+        RainRoofCatchment(
+          id: 'roof-catchment-$index',
+          highPoint: high,
+          drainPoint: inlet,
+          areaM2: width * depth * 0.25,
+          runoffCoefficient: 0.96,
+          flowCapacityKgPerSecond: 0.16,
+          drainId: drainId,
+        ),
+      );
+      index++;
+    }
+  }
+  return RainFlowNetwork(roofs: roofs, drains: drains);
+}
+
 WeatherSurfaceSnapshot? _advanceWeatherSurface(
   WeatherDay weather, {
   required double shelterFactor,
@@ -6731,6 +6946,20 @@ List<WeatherCollisionBox> _weatherCollisionBoxesForRoom(
       ),
       surfaceTemperatureCelsius: surfaceTemperatureCelsius,
       restitution: 0.12,
+    ),
+    // A thin ceiling plane is the interior face of the authored roof. It
+    // keeps camera-anchored precipitation from appearing through insulation;
+    // roof runoff is represented separately by the flow network below.
+    WeatherCollisionBox(
+      id: 'roof-interior:${room.id}',
+      min: Vec3(room.origin.x, room.origin.y + size.y - 0.06, room.origin.z),
+      max: Vec3(
+        room.origin.x + size.x,
+        room.origin.y + size.y + 0.03,
+        room.origin.z + size.z,
+      ),
+      surfaceTemperatureCelsius: surfaceTemperatureCelsius,
+      restitution: 0.05,
     ),
   ];
   final authoredInventory = inventory;

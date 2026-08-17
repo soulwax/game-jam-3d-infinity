@@ -2,6 +2,10 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:quarantine/automation/automation_route.dart';
+import 'package:quarantine/engine/camera.dart';
+import 'package:quarantine/house/focus.dart';
+import 'package:quarantine/house/inventory.dart';
+import 'package:quarantine/house/inventory_interaction.dart';
 import 'package:quarantine/sim/day.dart';
 
 import 'house_fixture.dart';
@@ -112,10 +116,20 @@ void main() {
         sofaInteraction['focusId'] == 'living-sofa',
     'residence sofa must be focusable by the player',
   );
+  final sofaPlacement = InventoryPlacement.fromJson(sofa.single);
+  final sofaInspection = inventoryInspectionContract(sofaPlacement);
+  expectThat(
+    sofaInspection.targetId == 'living-sofa' &&
+        sofaInspection.eventId == 'inventory-inspected:living-sofa',
+    'residence sofa focus must have a stable interaction contract',
+  );
   final statuette = placements.where(
     (placement) => placement['id'] == 'placement-living-porcelain-reference',
   );
-  expectThat(statuette.length == 1, 'living room must place the statuette once');
+  expectThat(
+    statuette.length == 1,
+    'living room must place the statuette once',
+  );
   final statuettePhysics = (statuette.single['physics'] as Map)
       .cast<String, dynamic>();
   expectThat(
@@ -190,6 +204,33 @@ void main() {
   expectThat(
     route.waypoints.any((waypoint) => waypoint.room == 'living-room'),
     'route must enter living-room',
+  );
+
+  // Prove the game-owned focus resolver can actually select the authored
+  // residence target from the real residence eye, without renderer handles or
+  // a browser-only camera teleport. The angle sweep is only a deterministic
+  // fixture for the bounded interaction cone; gameplay still uses live input.
+  final houseInventory = HouseInventory.fromJson(inventory);
+  final camera = Camera();
+  final residenceEye = house.residencePlayerEye(1.65)!;
+  var sofaCanBeFocused = false;
+  for (var yawStep = -64; yawStep <= 64 && !sofaCanBeFocused; yawStep++) {
+    final yaw = yawStep * 0.05;
+    for (var pitchStep = -8; pitchStep <= 8 && !sofaCanBeFocused; pitchStep++) {
+      camera.lookFrom(residenceEye, yaw, pitchStep * 0.04);
+      final focus = resolveFocus(
+        camera: camera,
+        house: house,
+        currentRoom: 'living-room',
+        inventory: houseInventory,
+      );
+      sofaCanBeFocused =
+          focus.kind == FocusKind.inventory && focus.id == 'living-sofa';
+    }
+  }
+  expectThat(
+    sofaCanBeFocused,
+    'residence sofa must be reachable by the game-owned focus resolver',
   );
 
   print(

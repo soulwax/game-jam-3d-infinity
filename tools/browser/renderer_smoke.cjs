@@ -532,6 +532,15 @@ async function captureAutomationScreenshot(page, routeName, routePath, result, s
                   frustumVisible: Number(result.rainParticleFrustumVisible),
                   frustumCulled: Number(result.rainParticleFrustumCulled),
                 },
+            rainFlow: result.rainFlowPaths == null
+              ? null
+              : {
+                  paths: Number(result.rainFlowPaths),
+                  particles: Number(result.rainFlowParticles),
+                  capturedMassKg: Number(result.rainFlowCapturedMassKg),
+                  drainedMassKg: Number(result.rainFlowDrainedMassKg),
+                  overflowMassKg: Number(result.rainFlowOverflowMassKg),
+                },
             weather: result.weatherPhase == null
               ? null
               : {
@@ -930,6 +939,13 @@ async function closeBrowserBounded(browser, timeoutMs = 5000) {
         rainParticleCapped: canvas.getAttribute('data-renderer-rain-particles-capped'),
         rainParticleFrustumVisible: canvas.getAttribute('data-renderer-rain-particles-frustum-visible'),
         rainParticleFrustumCulled: canvas.getAttribute('data-renderer-rain-particles-frustum-culled'),
+        rainParticleAverageSpeedMps: canvas.getAttribute('data-renderer-rain-particles-average-speed-mps'),
+        rainFlowParticles: canvas.getAttribute('data-renderer-rain-flow-particles'),
+        rainFlowPaths: canvas.getAttribute('data-renderer-rain-flow-paths'),
+        rainFlowCapturedMassKg: canvas.getAttribute('data-renderer-rain-flow-captured-mass-kg'),
+        rainFlowDrainedMassKg: canvas.getAttribute('data-renderer-rain-flow-drained-mass-kg'),
+        rainFlowOverflowMassKg: canvas.getAttribute('data-renderer-rain-flow-overflow-mass-kg'),
+        rainFlowWetness: canvas.getAttribute('data-renderer-weather-rain-flow-wetness'),
         weatherPhase: canvas.getAttribute('data-renderer-weather-phase'),
         weatherWindMps: canvas.getAttribute('data-renderer-weather-wind-mps'),
         weatherSnowAccumulationRateMps: canvas.getAttribute('data-renderer-weather-snow-accumulation-mps'),

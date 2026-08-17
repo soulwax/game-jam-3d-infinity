@@ -19,7 +19,7 @@ async function main() {
   const browser = await firefox.launch({ headless: process.env.RENDERER_HEADLESS !== '0' });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   try {
-    await page.goto(`${baseUrl}/?renderer=pixeldart&automation=1`);
+    await page.goto(`${baseUrl}/?renderer=pixeldart&automation=1&debugPause=1`);
     await page.waitForFunction(
       () => document.querySelector('#game')?.getAttribute('data-boot-phase') === 'running',
       null,
@@ -27,14 +27,14 @@ async function main() {
     );
     await page.locator('#game').focus();
     const before = await readAudio(page);
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('p');
     await page.waitForFunction(
       () => document.querySelector('#game')?.getAttribute('data-audio-paused') === 'true',
       null,
       { timeout: 3000 },
     );
     const paused = await readAudio(page);
-    await page.keyboard.press('Escape');
+    await page.keyboard.press('p');
     await page.waitForFunction(
       () => document.querySelector('#game')?.getAttribute('data-audio-paused') === 'false',
       null,
