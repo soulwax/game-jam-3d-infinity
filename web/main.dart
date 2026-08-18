@@ -68,6 +68,7 @@ import 'package:quarantine/sim/time.dart';
 import 'package:quarantine/sim/weather.dart';
 import 'package:quarantine/sim/weather_physics.dart';
 import 'package:quarantine/sim/rain_flow.dart';
+import 'package:quarantine/sim/fire_particles.dart';
 import 'package:quarantine/story/schema.dart' show vocabularyFields;
 import 'package:quarantine/story/text.dart';
 import 'package:quarantine/story/game_event_orchestrator.dart';
@@ -212,6 +213,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   WarmClearanceSnapshot? _weatherWarmClearance;
   List<WarmObjectSource> _warmSources = const [];
   List<WarmObjectSource> get warmSources => _warmSources;
+  List<FireEmitter> _fireEmitters = const [];
+  int _fireFlameParticleCount = 0;
+  int _fireWhiteSmokeParticleCount = 0;
+  int _fireBlackSmokeParticleCount = 0;
   List<WeatherCollisionBox> _weatherObstacles = const [];
   int _weatherImpactCount = 0;
   double _weatherSettledMassKg = 0;
@@ -237,6 +242,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   px.MaterialHandle? _snowParticleMaterial;
   px.MeshHandle? _hailParticleMesh;
   px.MaterialHandle? _hailParticleMaterial;
+  px.MeshHandle? _fireParticleMesh;
+  px.MaterialHandle? _fireParticleMaterial;
+  px.MeshHandle? _whiteSmokeParticleMesh;
+  px.MaterialHandle? _whiteSmokeParticleMaterial;
+  px.MeshHandle? _blackSmokeParticleMesh;
+  px.MaterialHandle? _blackSmokeParticleMaterial;
   double _effectiveShaderLabHour = 7;
   double _effectiveFogDensity = 0;
   double _effectiveFogHeightFalloff = 0;
@@ -335,6 +346,9 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'rainFlowDrainedMassKg': _rainFlowDrainedMassKg,
         'rainFlowOverflowMassKg': _rainFlowOverflowMassKg,
         'rainFlowWetness': _rainFlowWetness,
+        'fireFlameParticles': _fireFlameParticleCount,
+        'fireWhiteSmokeParticles': _fireWhiteSmokeParticleCount,
+        'fireBlackSmokeParticles': _fireBlackSmokeParticleCount,
         'weatherPhase': weatherPhase,
         'volumetricSources': volumetricSourceCount,
         'volumetricSampleCount': _environment.volumetricSampleCount,
@@ -908,6 +922,14 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         'data-house-interaction-contract',
         canonicalResidenceReady ? 'sofa-rest-v1' : 'incomplete',
       )
+      ..setAttribute(
+        'data-house-thermal-authority',
+        canonicalResidenceReady ? 'game-house-lighting' : 'incomplete',
+      )
+      ..setAttribute(
+        'data-house-fire-authority',
+        canonicalResidenceReady ? 'game-fire-emitter' : 'incomplete',
+      )
       ..setAttribute('data-house-collision-authority', 'game-house')
       ..setAttribute('data-house-focus-authority', 'game-focus-resolver')
       ..setAttribute('data-house-save-restore-authority', 'game-session-save');
@@ -1364,6 +1386,21 @@ final class _PixeldartWebRuntime implements RendererRuntime {
           ),
     ];
     _warmSources = List<WarmObjectSource>.unmodifiable(warmSources);
+    final wind = Vec3(
+      math.cos(weather.windDirectionRadians) * weather.windSpeedMps,
+      0,
+      math.sin(weather.windDirectionRadians) * weather.windSpeedMps,
+    );
+    _fireEmitters = [
+      for (var i = 0; i < mantleLights.length; i++)
+        if (mantleLights[i].heatOutputWatts > 0)
+          FireEmitter(
+            id: 'mantle-fire-$i',
+            position: mantleLights[i].position,
+            heatOutputWatts: mantleLights[i].heatOutputWatts,
+            windVelocityMps: wind,
+          ),
+    ];
     final pointCandidates = <CandidateLight>[];
     final spotCandidates = <CandidateLight>[];
     for (var i = 0; i < mantleLights.length; i++) {
@@ -2483,6 +2520,85 @@ final class _PixeldartWebRuntime implements RendererRuntime {
         receivesShadow: false,
       ),
     );
+
+    final fireBuilder = StaticMeshBuilder();
+    fireBuilder.quad(
+      Vec3(-0.06, 0, 0),
+      Vec3(0.06, 0, 0),
+      Vec3(0.045, 0.22, 0),
+      Vec3(-0.045, 0.22, 0),
+      0xFFB52E,
+      alpha: 0.86,
+      glow: true,
+    );
+    _fireParticleMesh = _renderer.resources.registerMesh(
+      _meshFromVertices(fireBuilder.build()),
+      debugLabel: 'fire:flame-particle',
+    );
+    _fireParticleMaterial = _registerMaterial(
+      const px.MaterialDefinition(
+        key: 'fire:flame-particle',
+        tintR: 1.0,
+        tintG: 0.42,
+        tintB: 0.06,
+        roughness: 0.28,
+        emissiveStrength: 2.4,
+        alphaMode: px.AlphaMode.blended,
+        receivesShadow: false,
+      ),
+    );
+
+    final whiteSmokeBuilder = StaticMeshBuilder();
+    whiteSmokeBuilder.quad(
+      Vec3(-0.11, 0, 0),
+      Vec3(0.11, 0, 0),
+      Vec3(0.15, 0.20, 0),
+      Vec3(-0.15, 0.20, 0),
+      0xE7E7DF,
+      alpha: 0.22,
+    );
+    _whiteSmokeParticleMesh = _renderer.resources.registerMesh(
+      _meshFromVertices(whiteSmokeBuilder.build()),
+      debugLabel: 'fire:white-vapour-particle',
+    );
+    _whiteSmokeParticleMaterial = _registerMaterial(
+      const px.MaterialDefinition(
+        key: 'fire:white-vapour-particle',
+        tintR: 0.86,
+        tintG: 0.86,
+        tintB: 0.82,
+        roughness: 0.96,
+        emissiveStrength: 0.0,
+        alphaMode: px.AlphaMode.blended,
+        receivesShadow: false,
+      ),
+    );
+
+    final blackSmokeBuilder = StaticMeshBuilder();
+    blackSmokeBuilder.quad(
+      Vec3(-0.14, 0, 0),
+      Vec3(0.14, 0, 0),
+      Vec3(0.18, 0.24, 0),
+      Vec3(-0.18, 0.24, 0),
+      0x17191D,
+      alpha: 0.34,
+    );
+    _blackSmokeParticleMesh = _renderer.resources.registerMesh(
+      _meshFromVertices(blackSmokeBuilder.build()),
+      debugLabel: 'fire:black-soot-particle',
+    );
+    _blackSmokeParticleMaterial = _registerMaterial(
+      const px.MaterialDefinition(
+        key: 'fire:black-soot-particle',
+        tintR: 0.06,
+        tintG: 0.065,
+        tintB: 0.075,
+        roughness: 1.0,
+        emissiveStrength: 0.0,
+        alphaMode: px.AlphaMode.blended,
+        receivesShadow: false,
+      ),
+    );
   }
 
   void _submitWeatherParticles(px.RenderEncoder frame, px.FrameInput input) {
@@ -2494,6 +2610,10 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     _rainParticleAverageSpeedMps = 0;
     _rainParticleCapped = false;
     _rainFlowParticleCount = 0;
+    _fireFlameParticleCount = 0;
+    _fireWhiteSmokeParticleCount = 0;
+    _fireBlackSmokeParticleCount = 0;
+    _submitFireParticles(frame, input);
     _weatherImpactCount = 0;
     _weatherSettledMassKg = 0;
     _weatherReboundEnergyJoules = 0;
@@ -2627,6 +2747,101 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     }
   }
 
+  void _submitFireParticles(px.RenderEncoder frame, px.FrameInput input) {
+    final flameMesh = _fireParticleMesh;
+    final flameMaterial = _fireParticleMaterial;
+    final whiteMesh = _whiteSmokeParticleMesh;
+    final whiteMaterial = _whiteSmokeParticleMaterial;
+    final blackMesh = _blackSmokeParticleMesh;
+    final blackMaterial = _blackSmokeParticleMaterial;
+    if (_fireEmitters.isEmpty ||
+        flameMesh == null ||
+        flameMaterial == null ||
+        whiteMesh == null ||
+        whiteMaterial == null ||
+        blackMesh == null ||
+        blackMaterial == null) {
+      return;
+    }
+    for (
+      var emitterIndex = 0;
+      emitterIndex < _fireEmitters.length;
+      emitterIndex++
+    ) {
+      final emitter = _fireEmitters[emitterIndex];
+      final emission = emitter.resolve();
+      final wind = emitter.windVelocityMps;
+      final origin = px.Vec3(
+        emitter.position.x,
+        emitter.position.y + 0.03,
+        emitter.position.z,
+      );
+      final flameCount = (2 + emission.flameIntensity * 5).round().clamp(2, 7);
+      final flameField = px.AtmosphericParticleField(
+        mesh: flameMesh,
+        material: flameMaterial,
+        origin: origin,
+        halfExtents: const px.Vec3(0.045, 0.025, 0.045),
+        initialVelocity: px.Vec3(
+          wind.x * 0.03,
+          emission.buoyancyMps,
+          wind.z * 0.03,
+        ),
+        acceleration: const px.Vec3(0, 2.8, 0),
+        terminalVelocity: px.Vec3(wind.x * 0.08, 1.65, wind.z * 0.08),
+        dragCoefficient: 2.8,
+        lifetimeSeconds: 0.52,
+        particleCount: flameCount,
+        seed: _noiseSeed ^ (emitterIndex * 7919),
+        particleScale: 0.72 + emission.flameIntensity * 0.45,
+        instanceFamilyKey: 0x666c6d65,
+      );
+      _fireFlameParticleCount += flameField.submit(frame, input);
+
+      final whiteCount = (1 + emission.whiteVapourDensity * 5).round().clamp(
+        1,
+        6,
+      );
+      final whiteField = px.AtmosphericParticleField(
+        mesh: whiteMesh,
+        material: whiteMaterial,
+        origin: origin,
+        halfExtents: const px.Vec3(0.08, 0.04, 0.08),
+        initialVelocity: px.Vec3(wind.x * 0.12, 0.24, wind.z * 0.12),
+        acceleration: const px.Vec3(0, 0.52, 0),
+        terminalVelocity: px.Vec3(wind.x * 0.34, 0.92, wind.z * 0.34),
+        dragCoefficient: 0.72,
+        lifetimeSeconds: emission.whiteVapourLifetimeSeconds,
+        particleCount: whiteCount,
+        seed: _noiseSeed ^ (emitterIndex * 1543) ^ 0x77,
+        particleScale: 0.62 + emission.whiteVapourDensity * 0.6,
+        instanceFamilyKey: 0x77767472,
+      );
+      _fireWhiteSmokeParticleCount += whiteField.submit(frame, input);
+
+      final blackCount = (1 + emission.blackSootDensity * 6).round().clamp(
+        1,
+        5,
+      );
+      final blackField = px.AtmosphericParticleField(
+        mesh: blackMesh,
+        material: blackMaterial,
+        origin: origin,
+        halfExtents: const px.Vec3(0.1, 0.05, 0.1),
+        initialVelocity: px.Vec3(wind.x * 0.18, 0.18, wind.z * 0.18),
+        acceleration: const px.Vec3(0, 0.34, 0),
+        terminalVelocity: px.Vec3(wind.x * 0.5, 0.68, wind.z * 0.5),
+        dragCoefficient: 0.52,
+        lifetimeSeconds: emission.blackSootLifetimeSeconds,
+        particleCount: blackCount,
+        seed: _noiseSeed ^ (emitterIndex * 3571) ^ 0x1337,
+        particleScale: 0.8 + emission.blackSootDensity * 0.7,
+        instanceFamilyKey: 0x626c6b73,
+      );
+      _fireBlackSmokeParticleCount += blackField.submit(frame, input);
+    }
+  }
+
   bool _insideWeatherObstacle(Vec3 position, double radius) {
     for (final obstacle in _weatherObstacles) {
       if (position.x >= obstacle.min.x - radius &&
@@ -2703,6 +2918,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
   double get rainFlowOverflowMassKg => _rainFlowOverflowMassKg;
 
   double get rainFlowWetness => _rainFlowWetness;
+
+  int get fireFlameParticleCount => _fireFlameParticleCount;
+
+  int get fireWhiteSmokeParticleCount => _fireWhiteSmokeParticleCount;
+
+  int get fireBlackSmokeParticleCount => _fireBlackSmokeParticleCount;
 
   bool get rainParticleCapped => _rainParticleCapped;
 
@@ -5768,14 +5989,12 @@ void _raf(num ts) {
       );
       final rainFlowStep = _rainFlowNetwork.step(
         state: _rainFlowState,
-        precipitationMassFluxKgM2S:
-            switch (rainFlowPhysics.precipitationKind) {
-              PrecipitationKind.rain ||
-              PrecipitationKind.sleet ||
-              PrecipitationKind.hail =>
-                rainFlowPhysics.precipitationMassFluxKgM2S,
-              PrecipitationKind.snow || PrecipitationKind.none => 0,
-            },
+        precipitationMassFluxKgM2S: switch (rainFlowPhysics.precipitationKind) {
+          PrecipitationKind.rain ||
+          PrecipitationKind.sleet ||
+          PrecipitationKind.hail => rainFlowPhysics.precipitationMassFluxKgM2S,
+          PrecipitationKind.snow || PrecipitationKind.none => 0,
+        },
         dtSeconds: (!_paused && _activePanel == null)
             ? frameTime.clamp(0.0, 0.5).toDouble()
             : 0,
@@ -5883,6 +6102,18 @@ void _raf(num ts) {
         _canvas.setAttribute(
           'data-renderer-weather-rain-flow-wetness',
           runtime.rainFlowWetness.toStringAsFixed(4),
+        );
+        _canvas.setAttribute(
+          'data-renderer-fire-flame-particles',
+          '${runtime.fireFlameParticleCount}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-fire-white-smoke-particles',
+          '${runtime.fireWhiteSmokeParticleCount}',
+        );
+        _canvas.setAttribute(
+          'data-renderer-fire-black-smoke-particles',
+          '${runtime.fireBlackSmokeParticleCount}',
         );
         _canvas.setAttribute(
           'data-renderer-rain-particles-average-speed-mps',

@@ -1,107 +1,67 @@
-# THE QUARANTINE — UNITY TRANSITION PLAN
+# THE QUARANTINE — UNITY GREENFIELD IMPLEMENTATION PLAN
 
-> Status: active migration authority
+> Status: active greenfield implementation authority
 >
-> Repository audit: 2026-08-16
+> Repository audit: 2026-08-18
 >
 > Product authority: `external/docs/MASTERPLAN.md`
 >
 > Target: Unity 6.3 LTS, URP, Windows x64 first
 >
-> Audience: human engineers and small coding subagents
+> Audience: developers working directly from the plan
 
-This document explains how to move *The Quarantine* from its current Dart/WebGL
-implementation into Unity without turning the port into a second, contradictory
-game. It owns Unity architecture, migration order, parity evidence, and the
-handoff from Dart. It does not own story meaning, game vision, room purpose,
-visual approval, or release criteria; those remain in `external/docs/MASTERPLAN.md`.
+This plan describes creating the Unity game from an empty repository. It is not
+a migration plan. No Unity scene, prefab, ScriptableObject, runtime service, or
+save file is assumed to exist. The Dart/WebGL project is an algorithm and
+content reference only: copy a rule when it is useful, then implement it as
+small, idiomatic C# with Unity ownership made explicit.
 
-The transition is a controlled replacement. Unity must first reproduce one
-small, truthful product slice. It must not begin by copying every Dart class,
-rebuilding Pixeldart, importing every experimental shader, or decorating an
-unproven scene.
+The product is the 21-day domestic administrative horror game defined by
+`external/docs/MASTERPLAN.md`. Unity owns the new production runtime. Dart is
+never a second runtime to keep in lockstep, and no Dart class is a Unity
+requirement. Shared authored content is synchronized through validated source
+files and the project-management database, not by copying runtime state.
 
----
-
-## 0. Operating protocol
+## 0. Working protocol
 
 ### 0.1 Authority order
 
-When sources disagree, use this order:
+1. `external/docs/MASTERPLAN.md` owns product intent and human acceptance.
+2. This file owns Unity categories, packet order, architecture, and database
+   synchronization.
+3. `text/story.screenplay` and linked corpus files own story content.
+4. `assets/house/*.json` own authored house, inventory, material, and sound
+   data after validation.
+5. Dart files named in section 3 are reference algorithms, never authority.
+6. Unity assets are generated consumers of those sources; they are not a second
+   content database.
 
-1. `external/docs/MASTERPLAN.md` owns the horror game, player loop, campaign, evidence
-   standards, and human-review gates.
-2. This document owns the Unity migration and Unity project structure.
-3. `text/story.screenplay` owns the 21-day dramatic graph.
-4. Linked `text/**/*.txt` files own final prose and dialogue.
-5. `assets/house/house.json`, `inventory.json`, `materials.json`, and
-   `soundscape.json` own intended house data after they pass import validation.
-6. Dart production paths are behavioral reference, including known defects.
-7. Dart tests prove only the behavior they execute; their names are not canon.
-8. Unity scenes and generated ScriptableObjects are consumers, never independent
-   authoring sources.
-9. `external/docs/HUMAN_AGILE_GUIDE.md` describes project cadence, WIP, review, and handoff;
-   it is operational guidance and cannot redefine a packet or product decision.
-
-If this document conflicts with the product masterplan, stop and fix this
-document. Do not change the product vision to make a port easier.
-
-### 0.2 Work states
-
-Unity packets use the same lifecycle as the product plan:
+### 0.2 Packet lifecycle
 
 ```text
-OPEN -> ACTIVE -> CLOSED
-               -> PARTIAL -> ACTIVE | DROPPED
-               -> BLOCKED -> ACTIVE | DROPPED
-CLOSED -> ACTIVE only when regression evidence reopens it
+OPEN -> ACTIVE -> PARTIAL -> ACTIVE
+                 -> BLOCKED -> ACTIVE
+                 -> CLOSED -> ACTIVE (only after regression evidence)
+OPEN/PARTIAL/BLOCKED -> DROPPED (human decision)
 ```
 
-- `OPEN`: not started.
-- `ACTIVE`: exactly one owner is working on it.
-- `PARTIAL`: a tested subset exists; `Remainder` names the exact missing work.
-- `BLOCKED`: the decision, authority, asset, or input needed is named.
-- `CLOSED`: production-path acceptance and required human review passed.
-- `DROPPED`: a human deliberately removed it from scope.
+Each packet has one owner, one observable outcome, a bounded file scope, and a
+production-path check. Never close a packet because a class exists or a mock
+passes. Close it only when the named behaviour works in the assembled Unity
+project and the required human gate is recorded.
 
-Never report a percentage. Never close a packet because a class, prefab, or
-test with the expected name exists.
+### 0.3 Required packet fields
 
-### 0.3 Small-subagent rules
-
-Each subagent receives one packet and must:
-
-1. Read sections 0–4, its packet, and every named input file.
-2. Run `git status --short` and preserve unrelated work.
-3. Change the packet to `ACTIVE`, add its owner, and stop if another owner is
-   already active.
-4. Edit only the named files/directories.
-5. Keep Unity compiling after each coherent change.
-6. Add focused EditMode or PlayMode coverage in the same packet.
-7. Record commands, results, and artifact paths under `Evidence`.
-8. Finish as `CLOSED`, `PARTIAL`, or `BLOCKED`, synchronize section 15, and stop.
-
-Subagents must not:
-
-- “port the game” as one task;
-- create IDs from scene object names or display text;
-- edit generated content or `.meta` GUIDs by hand;
-- introduce a package without the packet authorizing it;
-- change story prose to satisfy code;
-- add singleton state owners beside `GameSession`;
-- put domain rules in `MonoBehaviour.Update()`;
-- treat an attractive screenshot as parity;
-- approve their own visible changes; or
-- begin the next packet automatically.
-
-### 0.4 Packet format
-
-Every packet keeps these fields in this order:
+Keep this order in every packet. `Category` and `Subcategory` make the plan
+easy to filter; the website parser surfaces them on cards while the database
+stores them in card details.
 
 ```text
 ID
 State
 Owner
+Category
+Subcategory
 Depends on
 Outcome
 Inputs
@@ -113,1669 +73,905 @@ Evidence
 Remainder
 ```
 
-Split a packet before work if one subagent cannot finish it while owning one
-clear directory and one independent acceptance result.
+### 0.4 Human implementation loop
 
-### 0.5 Editing this document
+1. Pull the first `OPEN` packet whose dependencies are `CLOSED`.
+2. Read the category, Dart references, packet scope, and acceptance check.
+3. Create the smallest failing test or fixture that proves the behaviour.
+4. Implement the direct C# path; keep domain code independent of `MonoBehaviour`.
+5. Integrate it through the current bootstrap scene.
+6. Run focused tests, database sync, and the applicable build check.
+7. Capture a playable or inspectable result for human review.
+8. Update the packet and the matching database card, then stop at the packet
+   boundary.
 
-Ordinary agent edits are restricted to:
+## 1. Greenfield product objective
 
-- a packet's state, owner, evidence, and remainder;
-- audited truth when the repository actually changes;
-- the risk register when a release-level risk is proven;
-- the compact ledger; and
-- packet splits approved by the dependency order.
+### 1.1 Player promise
 
-Do not append dated diaries, “epiphanies,” second roadmaps, implementation code,
-or renderer wish lists. Put architectural detail in code documentation or an
-Architecture Decision Record (ADR) under `unity/Docs/Decisions/` after the Unity
-project exists.
+The player is a householder under quarantine, not an action hero. They hear a
+cue, move through a believable house, inspect or listen at a threshold, choose
+access/help/refusal/silence, write a fallible record, spend time and heat, see a
+human or physical consequence, secure the house, and sleep. The record and the
+house gradually disagree.
 
-Before handing off a plan change:
+### 1.2 First playable target
 
-```sh
-git diff --check -- UNITY_PLAN.md
-git status --short
-```
+The first playable build is one complete Day 1 route through a small greybox:
 
-### 0.6 Minimalistic human-like code
+- boot, new run, deterministic seed, and resume;
+- ground floor, one upper room, cellar access, and two functioning thresholds;
+- first-person movement with collision and portal crossing;
+- one visitor, one broadcast, one inspectable domestic object, and one choice;
+- journal write/correct/lock flow;
+- time, heat, ration, scrutiny, and sleep transition;
+- text dialogue, captions, keyboard navigation, and reduced-motion mode;
+- one saved consequence visible after reload.
 
-All Unity code must look like a careful human wrote the smallest complete
-solution for the current packet. “Flexible,” “enterprise,” and “future-proof”
-are not goals unless a current requirement proves the need.
+Everything else waits behind this vertical slice.
 
-The rule is:
+## 2. Categories and subcategories
 
-> Prefer one direct data flow, one obvious owner, and one readable implementation
-> over frameworks, indirection, cleverness, or speculative reuse.
+### 2.1 Foundation and project operations
 
-Required habits:
+**Subcategories:** Unity version and packages; repository layout; scenes and
+bootstrap; coding rules; build profiles; CI and local setup.
 
-- Read the surrounding code before naming or structuring new code.
-- Use plain C# and Unity APIs already approved by this plan.
-- Keep behavior close to its owner and dependencies visible in constructors or
-  serialized fields.
-- Write short top-to-bottom methods with early returns for invalid/rejected
-  cases.
-- Use concrete names from the game: `PortalController`, `JournalEntry`,
-  `StoryEvent`, `SaveStore`, `RoomBinding`.
-- Comment only when correctness depends on a reason that code cannot express.
-- Delete dead branches, unused fields, temporary logging, copied scaffolding,
-  and obsolete comments before handoff.
-- Prefer an enum or small result type when a Boolean argument/result would be
-  ambiguous at the call site.
-- Keep public APIs narrow; default to `private` and expose immutable/read-only
-  data.
-- Make invalid authored content fail during sync/import/bootstrap with the
-  stable ID and source path in the error.
-- Return a typed rejection for ordinary player actions; do not use exceptions as
-  expected control flow.
+Create an empty Unity project, pin the editor/package versions, add only URP,
+Input System, Test Framework, UI Toolkit, Audio Mixer, and localization-ready
+string support. The project must open, test, and build before game code grows.
 
-Forbidden without a recorded ADR and current measured need:
+### 2.2 Domain simulation
 
-- dependency-injection containers, service locators, global event buses, global
-  mutable singletons, reflection-driven registration, or `SendMessage`;
-- an interface with one implementation unless it isolates a real boundary such
-  as clock, randomness, filesystem, or platform build service;
-- generic repositories, factories, builders, coordinators, registries, or
-  “systems” that only rename one constructor or method call;
-- base classes created only to share a few lines;
-- stringly typed commands when a small enum/record already describes the action;
-- catch-all `try/catch`, swallowed exceptions, or success returned after a
-  partial import/save;
-- per-object `Update()` loops when one owner can update a bounded collection;
-- runtime `FindObjectOfType`, hierarchy-name searches, or scene-name logic;
-- LINQ or allocations inside per-frame/player-input loops without profiling;
-- coroutines for domain time, saves, story delivery, or authoritative state;
-- pooling, jobs, ECS, Addressables, custom render features, or caching layers
-  before profiling demonstrates the problem; and
-- names such as `ComprehensiveDynamicPortalStateSynchronizationCoordinator`.
+**Subcategories:** clock/day loop; resources; difficulty; deterministic random;
+weather and surface state; consequences; ending derivation.
 
-Soft size warnings, not fragmentation targets:
+Use plain C# records and services called by `GameSession`. Domain time advances
+only through explicit commands; `Update()` is presentation plumbing, never the
+owner of story or save state.
 
-- A method above roughly 40 lines deserves a readability pass.
-- A production class above roughly 250 lines deserves an ownership pass.
-- More than three constructor dependencies deserves an ownership/composition
-  check.
-- A change that adds more infrastructure than behavior should be reduced.
+### 2.3 Authored content and import
 
-Do not satisfy these warnings by making one-line wrapper files. Cohesion is more
-important than a number.
+**Subcategories:** screenplay; dialogue corpus; house rooms; portals; inventory;
+materials; soundscape; schema validation; generated Unity assets.
 
-### 0.7 Small-subagent execution recipe
+Source JSON/text is validated first, then converted into typed immutable
+runtime data. Stable IDs are mandatory. A failed import names the ID and source
+path and produces no partial asset set.
 
-For each packet, use this exact sequence:
+### 2.4 Persistence and database synchronization
 
-1. **Restate:** write one sentence describing the observable outcome.
-2. **Inspect:** list production callers, data inputs, existing tests, and the
-   smallest intended write set.
-3. **Classify:** put pure rules in Domain, parsing/assets in Content/Editor,
-   scene binding in Runtime, and pixels/audio/UI in Presentation.
-4. **Prove first:** add the smallest failing test or reproducible fixture when
-   feasible.
-5. **Implement directly:** build only enough code/assets to pass the packet.
-6. **Integrate:** exercise the production composition root; a detached prefab or
-   isolated helper is not integrated.
-7. **Simplify:** remove duplication, speculative hooks, excess comments, noisy
-   logs, unused serialization, and unnecessary abstractions.
-8. **Verify:** run focused checks, applicable shared checks, and a packaged path
-   when the packet requires it.
-9. **Handoff:** update state/ledger and provide the record below.
-10. **Stop:** do not opportunistically start dependent work.
+**Subcategories:** local save slots; atomic writes; recovery; project planner;
+packet status; evidence; activity; conflict policy; release manifests.
 
-Handoff format:
+Gameplay saves are local, versioned, checksummed, and recoverable. Planning
+state is hosted in Postgres through the website. Unity does not connect to the
+planner database at runtime; a sync command mirrors plan packets into the
+private `unity-plan` project.
 
-```text
-Packet: MIG-##
-Delivered outcome: one sentence
-Files changed: exact paths
-Behavior path: input -> owner -> output
-IDs/schema changed: none or exact list
-Verification: exact command and PASS/FAIL
-Artifacts: exact paths or none
-Human review: HR-### APPROVED/REJECTED or not required
-Known limits: exact limits
-Remaining work: none or exact next work
-```
+### 2.5 House and spatial world
 
-“Implemented,” “ported,” “works,” and “tests pass” are incomplete handoffs
-without the behavior path and exact evidence.
+**Subcategories:** coordinate scale; room graph; portal topology; stairs;
+collision; focus points; physical residues; scene binding.
 
----
+Build the room graph and greybox from data, then bind authored meshes by stable
+IDs. A room is a playable volume with exits and acoustic portals, not merely a
+scene hierarchy folder.
 
-## 1. Migration objective
+### 2.6 Movement and tactile interaction
 
-### 1.1 One-sentence objective
+**Subcategories:** first-person camera; capsule movement; stair traversal;
+portal crossing; focus ray; hold/drag; door chain and letterbox; accessibility.
 
-Ship the same 21-day domestic administrative horror game in Unity, with its
-threshold choices, journal uncertainty, persistent house, resources, people,
-and three derived endings intact, while replacing the browser-specific runtime
-and renderer with a maintainable Windows Unity production.
+Player actions return typed success/rejection results. Every interaction has a
+visual, audio, and journal-visible consequence or a clear reason it is not
+available.
 
-### 1.2 What must survive
+### 2.7 Story delivery and people
 
-- Stable room, portal, window, focus, visitor, event, choice, narrative flag,
-  record, asset, material, and sound-emitter IDs.
-- The red-thread loop: hear -> move -> inspect/listen -> choose -> record -> pay
-  or preserve resources -> see consequence -> secure house -> sleep.
-- One authoritative `GameSession` and deterministic run seed.
-- Journal entries, revisions, uncertainty, corroboration, locks, and night drift.
-- Time, gas/heat, rations, scrutiny, exhaustion, isolation, and sleep behavior.
-- Threshold modes: closed door, chain, letterbox, open door, silence/walk-away.
-- Persistent physical residues and house states.
-- Screenplay/corpus authority, text-first fallback, captions, and three endings.
-- Save semantics, reproducible fixtures, and human visual review.
+**Subcategories:** event schedule; visitor arrival; conversation choices;
+callbacks; flags; residues; day progression; endings.
 
-### 1.3 What must not be ported
+The screenplay schedule is the only event authority. The runtime resolves
+conditions and records choices; it never invents an event because a prototype
+class happens to be available.
 
-- Pixeldart, WebGL wrappers, GLSL passes, DOM layout code, JavaScript interop,
-  browser boot/query behavior, or committed `dist/web/` output.
-- The eight sparse renderer-showcase chambers from `lib/house/house.dart`.
-- `sparseTestChambers`, default PS1/VHS presentation, Shader Lab experiments,
-  fake legacy-renderer selection, or renderer-only demonstration modes.
-- `NarrativeEncounterDirector`, `TimelineProgressionCoordinator.canonical21Days`,
-  or any other hard-coded narrative that competes with the screenplay/corpus.
-- Self-declared gold-master badges, constant certification status, or tests that
-  claim visual/runtime coverage without exercising it.
-- Browser local-storage plumbing, pointer-lock details, or Dart-specific event
-  classes when a smaller C# boundary expresses the same rule.
-- Missing model paths as if they were real assets.
+### 2.8 Journal and evidence
 
-### 1.4 Migration strategy
+**Subcategories:** entries; uncertainty; corroboration; correction; lock;
+night drift; citations; residue links; final record.
 
-Use a strangler transition:
+Journal operations are domain commands with deterministic results. UI is a
+projection of the journal, not a second mutable journal.
 
-1. Freeze and validate shared content contracts.
-2. Build a Unity domain that passes selected cross-engine fixtures.
-3. Build a greybox Day 1 slice in Unity.
-4. Obtain human play and visual approval.
-5. Expand by act and room batch in Unity.
-6. Keep the Dart build as a behavioral/content reference during parity work.
-7. Freeze Dart feature development when Unity Day 1 reaches the transition gate.
-8. Retire the Dart production only after the Unity campaign and save/recovery
-   gates pass; retain tagged source and evidence for archaeology.
+### 2.9 UI, input, and accessibility
 
-Do not implement new product features twice. Before Unity reaches its Day 1
-gate, only critical bug fixes and canonical content/source corrections should
-land in Dart. New campaign, art, and presentation work goes to Unity unless a
-human explicitly chooses otherwise.
+**Subcategories:** pause shell; dialogue; journal; inventory; settings;
+captions; remapping; focus order; text scale; reduced motion; contrast.
 
----
+Text-first interaction is always complete. Audio and visual effects enhance a
+route but never carry required information alone.
 
-## 2. Audited starting point
+### 2.10 Audio, voice, and acoustics
 
-| Area | State | Repository truth | Unity consequence |
-|---|---|---|---|
-| Unity project | `ABSENT` | No `unity/` project exists. | Scaffold, package lock, CI, and ownership come first. |
-| Product vision | `VERIFIED` | `external/docs/MASTERPLAN.md` defines the game and ordered product gaps. | Unity implements that plan, not the old showcase direction. |
-| House runtime | `CONTRADICTED` | Dart runs eight all-ground renderer chambers; authored JSON describes a cellar/ground/first-floor house. | Import JSON; never port showcase geometry. |
-| House content | `PARTIAL` | Eight rooms, nine intended portals, stairs, inventory, materials, soundscape, routes, and captures exist as data. | Validate scale/topology before scene work. |
-| Production models | `MOSTLY ABSENT` | Inventory references roughly 60 assets; almost all model sources are missing. One porcelain OBJ source exists. | Greybox with labeled proxies; asset intake is a separate human-reviewed lane. |
-| Story spine | `VERIFIED` | The screenplay defines 21 scenes and links the prose corpus. | Compile/import it as canon. |
-| Story schedule | `ABSENT` | The screenplay has no authored `EVENT` records. | Unity cannot invent timing; shared source must gain a schedule first. |
-| Visitor runtime | `PARTIAL` | Corpus-driven `VisitorDirector` is wired in Dart. | Port behavior after consolidating it with screenplay events. |
-| Duplicate story logic | `VERIFIED` | Hard-coded 21-day prototypes contradict canonical content and feed self-audits. | Exclude and retire; do not translate them. |
-| Domain systems | `PARTIAL` | Session, day/resources, journal, drift, difficulty, weather, saves, visitors, and endings have useful pure code/tests. | Port rules selectively with fixture parity. |
-| Pacing | `UNRESOLVED` | Current `dayLengthSeconds` is 5,760 seconds while the product target is a 3–5 hour campaign. | Port target pacing policy, not the stale constant. |
-| UI/accessibility | `PARTIAL` | Pause/settings/credits/dialogue/journal/accessibility models exist. | Preserve behavior; redesign presentation for Unity with human review. |
-| Audio/voice | `PARTIAL` | Sound planning and many generated voice/demo files exist; production coverage and story lock are unproven. | Build text/caption/audio fallback first; voice imports only after lock. |
-| Visual baseline | `CONTRADICTED` | Realism, PS1 defaults, and extensive experimental effects coexist. | URP clean period baseline first; rupture effects later. |
-| Tests | `PARTIAL` | Many standalone Dart scripts exist; several test only isolated prototypes. | Select behavioral fixtures; do not translate test count. |
-| Release status | `ABSENT` | No valid human-reviewed release evidence exists. | Unity starts pre-alpha regardless of self-certification strings. |
+**Subcategories:** cue catalogue; portal transmission; muffle; spatial audio;
+voice variants; captions; fallback; mixer snapshots.
 
-### 2.1 Migration decisions
+The acoustic planner chooses a bounded route through portals. Voice is imported
+only after text, timing, captions, and fallback are approved.
 
-1. Unity is the target production runtime; Dart remains reference until the
-   retirement gate.
-2. Windows x64 is the first platform. Browser parity is not a Unity launch gate.
-3. Use Unity 6.3 LTS and pin one tested patch in `ProjectVersion.txt`. Unity's
-   official support page lists Unity 6.3 LTS support through December 2027:
-   <https://unity.com/releases/unity-6/support>.
-4. Use URP, not HDRP or a custom render pipeline.
-5. Use GameObjects/components and plain C# domain code. Do not begin with ECS.
-6. Use Unity Input System, Test Framework, UI Toolkit, AudioMixer, and built-in
-   localization-ready string keys.
-7. Defer Addressables until profiling proves one-scene content is a problem.
-8. Do not add Cinemachine for the normal first-person camera.
-9. All visible work requires the human-eyes gate from the product masterplan.
-10. Story and house sources remain outside `unity/` and are imported
-    deterministically; generated Unity assets are never hand-authored canon.
+### 2.11 Rendering and presentation
 
----
+**Subcategories:** URP baseline; period lighting; practicals; rain and wetness;
+materials; camera treatment; performance profiles; rupture effects.
 
-## 3. Target Unity project
+Start with a clean, legible period baseline. Add stylization or reflective
+effects only when the player can still read rooms, objects, and thresholds.
 
-### 3.1 Repository layout
+### 2.12 Verification, telemetry, and release
 
-```text
-.
-├── assets/house/                    # shared authored house source
-├── text/                            # shared authored narrative source
-├── tools/unity/                     # deterministic sync and headless helpers
-├── external/docs/MASTERPLAN.md      # product authority; separate docs repo
-├── UNITY_PLAN.md                    # this migration authority
-└── unity/
-    ├── Assets/_Quarantine/
-    │   ├── Art/
-    │   │   ├── Source/              # human source files where suitable
-    │   │   ├── Models/
-    │   │   ├── Textures/
-    │   │   ├── Materials/
-    │   │   └── Prefabs/
-    │   ├── Audio/
-    │   │   ├── Music/
-    │   │   ├── Sfx/
-    │   │   ├── Voice/
-    │   │   └── Mixers/
-    │   ├── Content/
-    │   │   ├── Raw/                 # generated copies; never hand-edit
-    │   │   ├── Imported/            # generated Unity assets; never hand-edit
-    │   │   └── Schemas/
-    │   ├── Prefabs/
-    │   │   ├── Player/
-    │   │   ├── House/
-    │   │   ├── Interaction/
-    │   │   └── UI/
-    │   ├── Scenes/
-    │   │   ├── Bootstrap.unity
-    │   │   ├── HouseGreybox.unity
-    │   │   └── House.unity
-    │   ├── Scripts/
-    │   │   ├── Domain/
-    │   │   ├── Content/
-    │   │   ├── Runtime/
-    │   │   ├── Presentation/
-    │   │   └── Editor/
-    │   ├── Settings/
-    │   └── Tests/
-    │       ├── EditMode/
-    │       └── PlayMode/
-    ├── Docs/Decisions/
-    ├── Packages/
-    ├── ProjectSettings/
-    └── UserSettings/                # ignored
-```
+**Subcategories:** EditMode tests; PlayMode tests; content fixtures; save
+recovery; accessibility route; performance; Windows packaging; evidence.
 
-Do not use a Unity `Resources/` folder. Do not put canonical content into
-`StreamingAssets` merely to avoid writing an importer. Runtime JSON is allowed
-only when a packet proves live data loading is necessary; otherwise use
-generated typed assets with source hashes.
+Every milestone has a reproducible command, a human review artifact, and a
+known-limit record. Automated checks never replace visual or experiential
+approval.
 
-### 3.2 Assemblies
+## 3. Dart reference algorithms (copy the rule, not the runtime)
 
-| Assembly | May depend on | Must not depend on |
+These files are useful algorithm references. Read the named methods, write a
+small C# equivalent, and add a Unity test. Do not import Dart code, mirror its
+class graph, or make Unity depend on the Dart build.
+
+| Unity concern | Dart reference | Algorithm worth preserving |
 |---|---|---|
-| `Quarantine.Domain` | .NET base libraries | UnityEngine, scenes, assets, wall clock, global random |
-| `Quarantine.Content` | Domain, minimal Unity asset containers | Runtime, Presentation |
-| `Quarantine.Runtime` | Domain, Content, UnityEngine | UI implementation, Editor |
-| `Quarantine.Presentation` | Runtime, Content, Input System, UI/URP APIs | Editor |
-| `Quarantine.Editor` | Runtime assemblies, UnityEditor | Player build |
-| `Quarantine.Domain.Tests` | Domain, NUnit | UnityEngine |
-| `Quarantine.PlayMode.Tests` | Runtime, Presentation, test fixtures | Editor-only production dependency |
+| Session command flow | `lib/game/session.dart` — `advance`, `sleep`, `writeJournal`, `applyAuthoredEvent` | Explicit command ownership, event queue, snapshot projection |
+| Save recovery | `lib/game/save_store.dart` — `write`, `read` | Versioned envelope, checksum/recovery slot, no half-written active save |
+| Capsule movement | `lib/house/collision.dart` — `Capsule.move`, `_tryAxis`, `_moveOnStair` | Axis-separated collision, stair restoration, typed `MovementResult` |
+| Room/portal crossing | `lib/house/collision.dart` — `portalCross`, `_crossPortal` | Crossing a passable portal changes room only after plane/bounds checks |
+| Inventory validation | `lib/house/inventory.dart` — `validateAgainst`, `runtimeBounds` | Stable placement IDs, scale conversion, bounds and missing-asset checks |
+| Weather impacts | `lib/sim/weather_physics.dart` — `WeatherImpactResolver.evaluate` | Swept collision, surface normal reflection, bounded restitution |
+| Melt/wet state | `lib/sim/weather_physics.dart` — `WeatherSurfaceAccumulator.advance` | Deterministic accumulation/evaporation with warm-source clearance |
+| Acoustic routing | `lib/engine/audio_planner.dart` — `AudioPlanner._route`, `transmission` | Bounded portal route, distance loss, closed-door muffle, deterministic gain |
+| Story callbacks | `lib/story/narrative_encounter_director.dart` — `resolveEncounter`, `commitChoice` | Canonical encounter lookup, callback flags, no duplicate schedule |
+| Roster integrity | `lib/story/character_roster_registry.dart` — `verifyRosterIntegrity` | Stable character IDs and referenced-line validation |
+| Deterministic cues | `lib/engine/audio_planner.dart` — `AudioCueSet.select` | Seeded choice instead of random replay drift |
+| Resource policy | `lib/game/session.dart` — `spendHoursAndGas`, `collectRation` | Atomic multi-resource command or no change |
+| Weather profiles | `lib/sim/weather_physics.dart` — `WeatherParticleProfile.forKind` | Data-driven profile selection with bounded values |
 
-The compiler must enforce the boundary with `.asmdef` files from the scaffold
-packet. A scene load must never be required to run domain tests.
-
-### 3.3 Bootstrap ownership
-
-`Bootstrap.unity` contains only composition roots and persistent services:
-
-```text
-AppRoot
-├── ContentRoot
-├── SessionRoot
-├── SaveRoot
-├── InputRoot
-├── AudioRoot
-├── PresentationRoot
-└── SceneFlowRoot
-```
-
-Boot sequence:
-
-1. Load and validate imported content catalogue.
-2. Load settings and apply accessibility-safe defaults.
-3. Load or create the domain session from an injected clock/seed.
-4. Load the greybox/house scene.
-5. Bind stable IDs to scene components and reject missing/duplicate bindings.
-6. Apply the first immutable snapshot.
-7. Enable input and publish `Ready`.
-
-Do not use arbitrary Script Execution Order to make this work. Express order in
-one asynchronous bootstrap coordinator and test every failure stage.
-
-### 3.4 C# and Unity asset conventions
-
-MIG-05 turns these conventions into project guardrails.
-
-#### C# shape
-
-- One primary type per file; filename matches the type.
-- Namespace follows the owning assembly and feature, for example
-  `Quarantine.Domain.Journal` or `Quarantine.Runtime.House`.
-- Public types/members use `PascalCase`; parameters/locals/private fields use
-  `camelCase`. Serialized private fields use the same private-field convention
-  selected in `unity/.editorconfig`.
-- Use `var` when the right-hand type is obvious; write the type when it clarifies
-  a domain distinction.
-- Use collection interfaces/read-only views at public boundaries. Do not return
-  a mutable internal list or dictionary.
-- Validate constructor/import inputs once. Do not scatter repeated null/ID
-  checks through every frame.
-- Use exhaustive `switch` statements for commands, states, and event kinds so a
-  new enum value fails loudly during development.
-- Use named constants for product values. Do not hide unexplained numbers in
-  scene scripts.
-- Keep log messages short and actionable: subsystem, stable ID, failure. Do not
-  log every frame or every successful interaction.
-
-#### MonoBehaviour shape
-
-- A `MonoBehaviour` adapts Unity lifecycle/input/scene objects to a plain owner;
-  it does not contain campaign rules.
-- Serialized references are private and explicit. Cache required components at
-  `Awake`; do not repeatedly query them.
-- Subscribe and unsubscribe symmetrically in one visible lifecycle pair.
-- `Update` reads input or advances presentation only. Domain time advances once
-  through the session adapter.
-- `OnValidate` may validate the component's own fields. Global ID/reference
-  validation belongs to the importer/build validator.
-- Visual tweens/coroutines must be cancel-safe on disable, scene unload, snapshot
-  replacement, and reduced-motion mode.
-- Development diagnostics are compiled or enabled explicitly and cannot become
-  a hidden dependency of normal boot.
-
-#### Prefab, scene, and `.meta` safety
-
-- Never manufacture or edit `.meta` GUIDs.
-- Do not hand-edit serialized scene/prefab YAML for convenience. Use the Unity
-  Editor or a deterministic Editor tool, then inspect the serialized diff.
-- Do not reserialize unrelated scenes/assets or accept mass GUID/import-setting
-  churn.
-- A generated scene/prefab must state its generator and source hash in an
-  importer-owned record, not a comment pasted into every object.
-- Human-authored prefabs and generated catalogues live in separate directories;
-  sync/import tools may delete only files in their owned generated set.
-- Scene references use serialized object references plus stable content IDs.
-  Object names remain readable but are never identity.
-
-#### Tests
-
-- Test one behavior per test; name it as `Action_Condition_Result`.
-- Prefer Arrange/Act/Assert with little fixture magic.
-- Assert public results, ordered events, snapshots, bindings, or visible state;
-  do not inspect private fields through reflection.
-- A fake implements only the boundary the test needs. Do not build a reusable
-  fake framework before two real consumers need it.
-- Keep deterministic seeds, times, IDs, and expected values visible in the test.
-- A PlayMode test must fail if it accidentally uses a test-only command path
-  instead of production input/session composition.
-
-#### Review questions
-
-Before handoff, the owner answers:
-
-1. Can a reader find the state owner in under a minute?
-2. Is there a shorter implementation with the same tested behavior?
-3. Did this packet add an abstraction for a hypothetical second use?
-4. Are lifecycle, failure, cancellation, and save effects explicit?
-5. Can the next subagent change the feature without reading unrelated systems?
-
-If answers 1, 2, 4, or 5 are “no,” simplify before review. If answer 3 is “yes,”
-remove the abstraction or record the current second use.
-
----
-
-## 4. Canonical contracts
-
-### 4.1 Content synchronization
-
-One command owns source-to-Unity synchronization:
+## 4. Unity project shape
 
 ```text
-tools/unity/sync-content
+unity/
+  Assets/Quarantine/
+    Runtime/Domain/       # pure C# rules and immutable snapshots
+    Runtime/Content/      # typed imported data and validators
+    Runtime/Save/         # local save store and save-schema migrations only
+    Runtime/World/        # room graph, portals, scene bindings
+    Runtime/Interaction/  # focus, doors, inventory, thresholds
+    Runtime/Story/        # schedule, visitors, callbacks, residues
+    Runtime/Audio/        # cue and portal transmission planning
+    Runtime/UI/           # UI Toolkit views and input actions
+    Runtime/Presentation/ # URP materials, lighting, camera, particles
+    Editor/Import/        # source validation and asset generation
+    Tests/EditMode/
+    Tests/PlayMode/
+    Content/Generated/
+  Assets/Scenes/Bootstrap.unity
+  Assets/Scenes/Day01Greybox.unity
+  Packages/manifest.json
+  ProjectSettings/ProjectVersion.txt
+  Docs/Decisions/
 ```
 
-Choose a tracked implementation available on CI; do not require an editor UI.
-It must:
+Use one `GameSession` composition root in `Bootstrap`. Domain assemblies must
+not reference `UnityEngine`; presentation reads immutable snapshots and sends
+commands back to the session.
 
-1. Run or verify `dart run tools/text_build.dart` while Dart remains the shared
-   compiler.
-2. Validate screenplay, generated story JSON, house, inventory, material,
-   soundscape, verification, and manifest sources before copying.
-3. Copy only declared inputs to `unity/Assets/_Quarantine/Content/Raw/`.
-4. Write `content-index.json` with schema version, source path, destination,
-   byte length, SHA-256, content kind, stable IDs, and provenance status.
-5. Stage generated output and replace it only after the full transaction passes.
-6. Delete only stale files recorded as owned by the previous content index.
-7. Fail on missing references, duplicate IDs, unconsumed event kinds, absent
-   production assets, or unsupported schema versions.
-8. Remain byte-for-byte stable when inputs do not change.
+## 5. Canonical contracts
 
-Voice is excluded unless a human-approved story/voice lock authorizes the exact
-text hashes. Missing voice must not block a text-only build.
+### 5.1 Content contract
 
-### 4.2 Typed imported content
+Source files are read from explicit paths, validated with stable IDs, and
+written to `Assets/Quarantine/Content/Generated`. Generated assets include a
+source digest and importer version. Re-importing identical source is a no-op.
 
-Use small typed records rather than a single dynamic dictionary database:
+### 5.2 Domain contract
+
+The session owns clock, resources, story flags, journal state, residues,
+current room, and deterministic seed. Systems receive commands and return a
+new snapshot plus domain events. No UI, audio, or scene object mutates domain
+fields directly.
+
+### 5.3 Save contract
 
 ```text
-HouseLayoutCatalog
-  Levels, Rooms, Windows, Portals, Stairs, ExteriorCells
-
-HousePresentationCatalog
-  Materials, Assets, Placements, Bounds, FocusTargets, Emitters
-
-StoryCatalog
-  Days, Scenes, Beats, Branches, Events, Sources
-
-DialogueCatalog
-  Visitors, Arrivals, Tiers, Reactions, Variants, Residues, Captions
-
-TextCatalog
-  Broadcasts, Documents, Nights, Records, Endings, Vocabulary
+SaveEnvelope { schemaVersion, runId, seed, createdAt, updatedAt,
+               payload, payloadSha256 }
 ```
 
-Generated assets store the source schema version and hash. Lookup dictionaries
-are derived at load time and are not serialized as competing mutable copies.
+Write a temporary file, flush, replace the active slot, and retain one recovery
+slot. Reject a bad checksum or unknown schema without destroying the last good
+save. Save after meaningful commands, sleep, and settings changes—not every
+frame.
 
-### 4.3 Domain boundary
+### 5.4 Database contract
 
-The ported domain exposes commands, immutable snapshots, and ordered events:
+The website is the planning database. The stable mapping is:
 
 ```text
-GameSession
-  Advance(elapsed)
-  Interact(command)
-  ChooseVisitorOption(encounterId, optionId)
-  WriteJournal(draft)
-  CorrectJournal(entryId, revision)
-  LockJournal(entryId)
-  Sleep(quality, location)
-  CreateSave(meta)
+source packet MIG-40 -> board project unity-plan -> card unity-mig-40
 ```
 
-Required properties:
+`MIG-*` IDs are retained for database and board compatibility; they no longer
+mean migration. They are implementation packet IDs.
 
-- no `MonoBehaviour`, `GameObject`, `Time`, `Random`, scene query, audio, or UI;
-- injected fixed time and deterministic random source;
-- all mutations through commands;
-- all output through immutable snapshots and ordered events;
-- stable serialization independent of dictionary insertion order; and
-- explicit rejection results rather than silent no-ops.
+Source-owned card fields: title, details, checklist, owner, priority, cover,
+tags, and packet evidence. Board-owned fields: manual lane position, comments,
+watchers, and local view preferences. Sync is idempotent and updates only
+source-owned fields. A database failure never changes the source plan file.
 
-Event listeners update presentation only. An animation-complete callback does
-not reissue the domain command that caused it.
+### 5.5 World contract
 
-### 4.4 Save contract
+Room IDs, portal IDs, focus IDs, inventory IDs, material IDs, sound IDs, story
+event IDs, and journal entry IDs are stable across imports. Scene object names
+are presentation labels only.
 
-Use versioned JSON under `Application.persistentDataPath`:
+## 6. Database synchronization procedure
 
-```text
-save-vN.json.tmp -> fsync/close -> atomic replace save-vN.json
-                                      -> previous valid save-vN.backup.json
-```
+1. Parse `UNITY_PLAN.md` and validate every packet field and dependency.
+2. Compute the plan digest and list changed packet IDs.
+3. Upsert the private `unity-plan` project and ensure its lanes/tags.
+4. Upsert each `unity-mig-##` card's source-owned fields.
+5. Preserve lane position, comments, watchers, and user view state.
+6. Record a project activity entry with the digest and changed count.
+7. If any packet fails validation, abort before writing cards.
+8. Retry transient database failures; never mark a packet closed from a board
+   card alone.
 
-Persist:
+### 6.1 Sync invariants
 
-- run seed, day, fractional hour, pacing profile;
-- time/gas/ration/lock resources and difficulty consequences;
-- full journal with revisions, corroboration, uncertainty, and locks;
-- narrative flags, delivered event IDs, visitors, choices, quotes, residues;
-- portal, shutter, mantle, inventory inspection, and drift states;
-- player room, position, look, crouch, and stable transition state;
-- settings separately under meta where they do not affect game rules; and
-- content schema/hash compatibility information.
+- The sync is a no-op when the source-owned projection is unchanged; opening
+  the planner repeatedly must not create activity noise.
+- A changed packet updates its title, details, checklist, owner, priority,
+  cover colour, and managed state tags only.
+- Lane, position, archive state, comments, watchers, custom tags, and view
+  preferences belong to the board and are never replaced by source sync.
+- New cards receive the next position in the lane derived from the packet
+  state. Existing cards never move automatically when the source state changes.
+- A successful change records one activity event containing the changed count
+  and the first 12 characters of the source digest. Invalid input records no
+  writes; a transient database failure may leave additive partial progress, so
+  the next idempotent retry resumes it and emits no activity until complete.
+- The project settings retain the full planner digest, last sync timestamp,
+  changed count, and changed packet IDs so an administrator can audit the last
+  mirror without inspecting every card.
+- Existing cards created under the old `Unity migration plan` name are renamed
+  once to `Unity greenfield build plan`; a custom project name is preserved.
 
-Never persist GameObjects, instance IDs, asset paths as identity, coroutines,
-animation progress, AudioSource state, or GPU objects.
+The implementation lives in
+`external/project-agile-web/src/lib/server/persistence.ts` (`syncUnityPlannerCards`).
+The planner route calls it on load. A future Unity editor import may consume a
+checked plan export, but Unity must not write directly to Postgres.
 
-Cross-engine import of browser saves is not assumed. MIG-14 must inspect whether
-public saves need a one-time export/import path and record a human decision.
+## 7. Milestones and category exits
 
-### 4.5 House coordinate contract
-
-Shared house data is `[x, y, z]`, Y-up, authored in metres. Import
-`modelScale` exactly once. Keep `HouseRoot` at identity. A generated marker and
-human visual mesh must agree without compensating root transforms.
-
-Before final art, validate:
-
-- eight canonical rooms on cellar, ground, and first levels;
-- nine intended canonical portals and one stair transition;
-- front-door, journal-desk, mantle, mirror, wireless, and required focus anchors;
-- route fixtures through ground, upper, cellar, and threshold bands;
-- a 0.3 m-radius, 1.8 m-high player capsule at route clearance; and
-- human approval of perceived domestic scale before locking architecture.
-
-If JSON data and product intent conflict, correct the shared source with a
-recorded migration. Do not hide the problem in a Unity transform override.
-
-### 4.6 Scene binding
-
-The greybox and production house use independent layers:
-
-```text
-HouseRoot
-├── Visuals
-├── Collision
-├── RoomVolumes
-├── Portals
-├── Interactions
-├── AudioAnchors
-├── Lighting
-└── Debug                         # editor/development build only
-```
-
-- `RoomBinding` stores one `RoomId`.
-- `PortalBinding` stores one `PortalId`, animation references, and colliders.
-- `InteractableBinding` stores one `FocusId` and supported typed command.
-- `EmitterBinding` stores one `EmitterId`.
-- Validation rejects duplicates and missing required IDs before play begins.
-- Visual prefab replacement cannot alter domain truth or save identity.
-
-### 4.7 Interaction contract
-
-Use a `CharacterController` for first-person movement. The production focus path:
-
-1. Raycast from the camera through the current room/cell collision mask.
-2. Reject solid-wall occlusion, targets beyond the configured distance, and
-   targets outside the authored focus cone/bounds.
-3. Resolve exactly one stable focus ID and supported command.
-4. Show a presentation-only prompt.
-5. On press/hold/direct manipulation, send one domain command.
-6. Apply accepted state through domain events and snapshots.
-7. Save/reload and reconstruct the same semantic state.
-
-Continuous door/shutter/object manipulation may predict visuals locally but
-commits one accepted semantic state at its defined boundary. Cancel restores the
-last authoritative state.
-
-### 4.8 Story and scheduling contract
-
-Unity consumes the screenplay and linked corpus. It does not invent a schedule
-to compensate for the current zero-event source.
-
-Before campaign expansion:
-
-- every day has wake, required story/threshold, consequence, and sleep-ready
-  event records;
-- every event kind has one declared runtime consumer;
-- optional ambient windows resolve deterministically from run seed and event ID;
-- reading, pause, and accessibility modes obey the product pacing policy;
-- delivered IDs make events exactly-once across save/reload; and
-- branch outcomes write declared fact keys consumed by later callbacks,
-  residues, resources, or ending texture.
-
-### 4.9 UI and input contract
-
-Input maps:
-
-```text
-Gameplay: Move, Look, Crouch, Run, Interact, AlternateInteract, Journal, Pause
-Dialogue: Advance, Choose1, Choose2, Choose3, Silence, Cancel
-UI: Navigate, Submit, Cancel, Point, Click, Scroll
-```
-
-Keyboard/mouse is the first required route. Gamepad may be added only with full
-remapping and focus parity. One `InputModeCoordinator` owns map switching,
-cursor state, movement suppression, and restoration across pause, journal,
-dialogue, sleep, ending, and focus loss.
-
-Prefer UI Toolkit for pause, settings, credits, and journal. A screen-space
-uGUI layer is allowed for reticle or dialogue only if ownership is explicit and
-keyboard/accessibility semantics remain complete. Never implement one panel in
-both systems.
-
-### 4.10 Rendering contract
-
-Use URP to reproduce the product look, not Dart render passes:
-
-- clean restrained period realism as ordinary baseline;
-- baked/static indirect grounding for the house;
-- bounded mixed/realtime practicals and shadows for stateful lights;
-- room reflection probes only where evidence shows value;
-- readable darkness before bloom, fog, grain, or color treatment;
-- high and safe profiles that preserve all story information;
-- story-driven rupture effects separated from ordinary post-processing; and
-- no default PS1, VHS, gameplay depth of field, motion blur, flare, SSR, or
-  volumetric requirement.
-
-Expose only graphics settings that alter real Unity configuration. Requested
-and effective values must be reportable. Profile changes retain the last valid
-configuration on failure.
-
-### 4.11 Audio and voice contract
-
-Use one AudioMixer with master, music, effects, ambience, voice, and reverb
-groups. Spatial emitters use shared IDs. A portal graph computes listener/source
-path, gain, low-pass, and reverb intent from live door/window states.
-
-Required transmission modes include open threshold, closed door, chain,
-letterbox, window, wall, floor, wireless, and telephone where authored. Captions
-remain authoritative. A missing or rejected clip plays text/captions with no
-broken wait.
-
-Voice production begins only after a human locks the relevant text hashes,
-casting, performance direction, pronunciation, rights, and fallback behavior.
-Runtime TTS is forbidden.
-
----
-
-## 5. Parity philosophy
-
-### 5.1 Product parity, not bug parity
-
-Port a Dart behavior only when at least one of these is true:
-
-- it implements a product rule in `external/docs/MASTERPLAN.md`;
-- it is exercised by the current production browser path and agrees with canon;
-- it is necessary to read existing shared content or saves; or
-- a human explicitly accepts it as intended behavior.
-
-Do not port behavior merely because a pure helper or test exists. Record every
-adopt/replace/reject choice in `unity/Docs/Decisions/MigrationMap.md` with source
-path, target owner, rule, fixture, and status.
-
-### 5.2 Cross-engine fixtures
-
-Fixtures are plain versioned JSON with inputs and expected semantic output. Use
-them for:
-
-- clock progression and day boundary;
-- resource spending and sleep reset;
-- journal write/correct/lock/drift;
-- reaction effects and exactly-once events;
-- portal/shutter/mantle state;
-- save/restore digest;
-- ending selection; and
-- fixed house route/anchor facts.
-
-Do not compare floating-point serialization byte-for-byte without a declared
-normalization. Do compare stable IDs, ordered events, state digests, and bounded
-numeric results.
-
-### 5.3 Evidence ladder
-
-| Evidence | Proves |
-|---|---|
-| EditMode NUnit | Pure C# rules, parsing, serialization. |
-| Importer test | Deterministic source-to-Unity mapping. |
-| PlayMode test | Scene binding, input, collision, interaction, save wiring. |
-| Windows development build | Packaged runtime behavior outside the editor. |
-| Capture bundle | Reproducible visible state, not quality approval. |
-| Human review | Visual/audio/usability judgment. |
-| Human playthrough | Campaign coherence and ending reachability. |
-
-The Unity Editor alone is not the shipped product path. Milestone gates require
-a Windows development or release build where stated.
-
-### 5.4 Human-eyes gate
-
-Every visible Unity packet follows `external/docs/MASTERPLAN.md` section 9.2. The reviewer
-must be a real human engineer and record:
-
-```text
-Human review ID
-Reviewer
-Commit/build
-Unity editor patch
-Windows/CPU/GPU/driver
-Resolution and quality profile
-Capture paths
-Readability/composition/clipping/motion/horror notes
-APPROVED or REJECTED
-```
-
-Subagents may prepare captures but cannot approve them. A rejection yields
-`PARTIAL` with exact corrections and requires a new build/review.
-
----
-
-## 6. Migration milestones
-
-| Milestone | Outcome | Hard gate |
+| Milestone | Categories | Exit |
 |---|---|---|
-| U0 — Scaffold | Pinned Unity project builds headlessly with assemblies and one test. | Clean clone batch build and tests. |
-| U1 — Shared truth | Content sync/import and cross-engine domain fixtures are deterministic. | No duplicate story/house authority in Unity. |
-| U2 — Greybox house | Real topology, player, portals, focus, audio graph, and save work. | Ground/upper/cellar/threshold PlayMode routes. |
-| U3 — Day 1 slice | Full red-thread Day 1 works text-first in a Windows build. | Human play + visual/accessibility approval. |
-| U4 — Act I | Days 1–7 and first journal anomaly work. | Human pacing review; no idle wait. |
-| U5 — Full campaign | Days 1–21 and three endings work. | Automated semantic routes + human playthroughs. |
-| U6 — Production house | Human art, materials, lighting, audio, and states replace proxies. | Room-batch human approvals. |
-| U7 — Release candidate | Performance, accessibility, rights, recovery, and packaging pass. | Product masterplan release gate. |
+| U0 Foundation | 2.1, 2.4 | Empty project opens, tests, builds, and syncs a plan card |
+| U1 Truth | 2.2, 2.3, 2.7, 2.8 | Typed content and pure session fixture run deterministically |
+| U2 Greybox | 2.5, 2.6, 2.10 | Day 1 route is navigable, inspectable, and audible |
+| U3 Vertical slice | 2.9, 2.12 | Complete Day 1 route survives save/reload and human review |
+| U4 Campaign | 2.7, 2.8, 2.10 | Acts I–III and consequences are schedule-driven |
+| U5 Production house | 2.5, 2.11 | Rooms, lighting, materials, and audio pass human review |
+| U6 Release candidate | 2.4, 2.9, 2.12 | Windows build, recovery, accessibility, and performance gates pass |
 
-The Dart feature freeze occurs after U3 is approved. Dart retirement occurs only
-after U5, save/recovery proof, and a human transition decision.
+## 8. Ordered implementation packets
 
----
-
-## 7. Ordered migration packets
-
-The first `OPEN` packet with all dependencies `CLOSED` is the default next task.
-
-### MIG-00 — Record the transition charter
+### MIG-00 — Choose the greenfield contract
 
 ID: MIG-00
 State: OPEN
 Owner: unassigned
+Category: Foundation and project operations
+Subcategory: Scope and decisions
 Depends on: none
-Outcome: one reviewed charter records platforms, Unity version policy, source
-authorities, Dart freeze/retirement gates, and ownership.
-Inputs: `external/docs/MASTERPLAN.md`, this plan, current repository status.
-Files: `unity/Docs/Decisions/000-transition-charter.md` after scaffold, or a
-temporary reviewed record under `docs/unity/` before scaffold.
-Do not touch: code, story, assets.
+Outcome: A reviewed greenfield charter names the Unity target, source roots, first playable, and non-goals.
+Inputs: `external/docs/MASTERPLAN.md`, this plan, Dart reference map.
+Files: `UNITY_PLAN.md`, `unity/Docs/Decisions/DEC-001-greenfield.md`
+Do not touch: Dart runtime, story prose, database rows.
 Steps:
+1. Confirm Unity 6.3 LTS patch and Windows build target.
+2. Confirm the first playable route and explicit exclusions.
+3. Record whether any optional package is approved.
+Checks: Human review of the charter; no Unity project required yet.
+Evidence: none
+Remainder: none
 
-1. Name the human product owner, Unity technical owner, content owner, and human
-   visual reviewers.
-2. Confirm Windows x64 first and Unity 6.3 LTS patch-selection process.
-3. Confirm no new product features are implemented in both engines.
-4. Confirm U3 Dart freeze and U5 retirement decision gates.
-5. Record whether public Dart saves require cross-engine import.
-
-Checks: human review of the charter and links to both plans.
-Evidence: none.
-Remainder: none.
-
-### MIG-01 — Scaffold the pinned Unity project
+### MIG-01 — Create the empty Unity foundation
 
 ID: MIG-01
 State: OPEN
 Owner: unassigned
+Category: Foundation and project operations
+Subcategory: Project scaffold and CI
 Depends on: MIG-00
-Outcome: a minimal URP Unity project opens, compiles, tests, and builds Windows
-from a clean checkout with pinned packages.
-Inputs: Unity 6.3 LTS official support/package documentation, section 3.
-Files: `unity/`, root ignore attributes as required, CI/build helper only.
-Do not touch: Dart, shared story, house data, production art.
+Outcome: A clean checkout opens the empty Unity project, runs a smoke test, and builds Windows x64.
+Inputs: approved Unity patch, package list, Windows build environment.
+Files: `unity/ProjectSettings`, `unity/Packages`, `unity/Assets/Quarantine/Tests`, CI workflow.
+Do not touch: gameplay rules, imported content, final art.
 Steps:
+1. Create the project and pin packages.
+2. Add `Bootstrap.unity` and a deterministic EditMode smoke test.
+3. Add a reproducible Windows build command.
+Checks: Clean clone open; EditMode tests; development build.
+Evidence: none
+Remainder: none
 
-1. A human installs/selects one supported 6.3 LTS patch and records it.
-2. Create an empty URP project under `unity/`.
-3. Pin manifest and lock file; retain only authorized packages.
-4. Add assemblies and one pure test proving Domain has no Unity dependency.
-5. Add a batch test command and Windows development-build command.
-6. Verify serialized text/meta settings minimize unnecessary diffs.
-
-Checks: Unity batch EditMode test and Windows development build from a clean
-checkout.
-Evidence: none.
-Remainder: none. A visible default scene does not need art approval.
-
-### MIG-02 — Create deterministic content sync
+### MIG-02 — Define typed source schemas
 
 ID: MIG-02
 State: OPEN
 Owner: unassigned
+Category: Authored content and import
+Subcategory: Schemas and IDs
 Depends on: MIG-01
-Outcome: one headless transaction mirrors declared shared content into Unity and
-produces a stable hash index.
-Inputs: `text/`, `web/res/story_script.json`, `assets/house/*.json`, verification
-JSON, asset/audio manifest and provenance records.
-Files: `tools/unity/`, Unity `Content/Raw/`, focused tool tests.
-Do not touch: prose, house values, Unity scenes, art.
+Outcome: C# content records validate house, story, inventory, material, sound, and schedule sources without Unity scene access.
+Inputs: `assets/house/*.json`, screenplay/corpus, Dart parsers as behaviour references.
+Files: `Runtime/Content`, `Editor/Import` schemas and tests.
+Do not touch: generated prefabs, gameplay controllers.
 Steps:
+1. Define stable ID and reference types.
+2. Validate duplicates, missing references, ranges, and source digests.
+3. Add fixture tests for valid and invalid source.
+Checks: EditMode schema suite; malformed fixture fails with path and ID.
+Evidence: none
+Remainder: none
 
-1. Declare allowed inputs and owned destinations.
-2. Validate before writing.
-3. Stage, compare, atomically replace, and remove only owned stale outputs.
-4. Generate schema-versioned `content-index.json`.
-5. Prove identical inputs produce no semantic or byte diff.
-6. Prove one missing reference fails without damaging the last valid import.
-
-Checks: tool self-test, two-run idempotence, negative missing-reference fixture.
-Evidence: none.
-Remainder: none.
-
-### MIG-03 — Import typed catalogues
+### MIG-03 — Build deterministic content import
 
 ID: MIG-03
 State: OPEN
 Owner: unassigned
+Category: Authored content and import
+Subcategory: Import and generated assets
 Depends on: MIG-02
-Outcome: Unity imports typed story, dialogue, house, placement, material, and
-sound catalogues with stable IDs/source hashes.
-Inputs: synchronized raw content and schemas.
-Files: `Scripts/Content/`, `Scripts/Editor/Import/`, `Content/Imported/`, importer
-EditMode tests.
-Do not touch: runtime scene binding or domain behavior.
+Outcome: Valid source produces typed generated assets; invalid source produces no partial output.
+Inputs: validated schemas and canonical text/JSON.
+Files: `Editor/Import`, `Content/Generated`.
+Do not touch: runtime session and scene art.
 Steps:
+1. Import screenplay schedule and corpus.
+2. Import room graph, portals, inventory, materials, and soundscape.
+3. Write source digest and importer version into generated assets.
+Checks: Two identical imports produce identical IDs/digests; invalid import is atomic.
+Evidence: none
+Remainder: none
 
-1. Decode into validation DTOs before creating assets.
-2. Validate global IDs and cross-catalog references.
-3. Create/update generated assets transactionally.
-4. Reject duplicate IDs and unsupported schemas with exact source paths.
-5. Keep GUIDs stable for unchanged stable IDs.
-6. Emit a readable import report mapping source IDs to Unity asset GUIDs.
-
-Checks: EditMode import, idempotence, source-move/hash fixture, negative schemas.
-Evidence: none.
-Remainder: none.
-
-### MIG-04 — Build the migration map and fixture runner
+### MIG-04 — Synchronize the plan with the project database
 
 ID: MIG-04
 State: OPEN
 Owner: unassigned
-Depends on: MIG-01
-Outcome: intended Dart behaviors are classified and selected plain-JSON fixtures
-run in Dart reference and Unity Domain tests.
-Inputs: masterplan truth table; `lib/game`, `lib/sim`, `lib/journal`,
-`lib/visitors`, `lib/story`, relevant focused Dart tests.
-Files: `unity/Docs/Decisions/MigrationMap.md`, shared fixture schema/data,
-Unity fixture runner, minimal Dart fixture exporter if needed.
-Do not touch: gameplay implementation or prose.
+Category: Persistence and database synchronization
+Subcategory: Planner cards and activity
+Depends on: MIG-00
+Outcome: Every valid implementation packet has an idempotent `unity-mig-##` card with source-owned details.
+Inputs: `syncUnityPlannerCards`, `DATABASE_URL`, packet parser.
+Files: website persistence/tests and database-sync documentation.
+Do not touch: gameplay save files, user-owned board lane positions.
 Steps:
+1. Add packet category/subcategory to card details.
+2. Upsert changed source-owned fields while preserving board-owned fields.
+3. Record plan digest and changed packet count in activity.
+4. Add a dry-run and conflict test.
+Checks: Validation rejects duplicate/missing IDs before writes; website tests; hosted sync with a changed packet; repeat sync is a no-op; retry after transient failure.
+Evidence: none
+Remainder: none
 
-1. Classify each candidate rule `adopt`, `replace`, `retire`, or `decision`.
-2. Exclude renderer showcase, duplicate narrative, and fake certification.
-3. Define normalized commands, ordered events, and expected state digests.
-4. Create initial time, resource, journal, save, and ending fixtures.
-5. Require a human decision for every `decision` row before dependent porting.
-
-Checks: schema test; Dart reference fixture run; empty Unity runner discovers all
-fixtures even before implementations pass.
-Evidence: none.
-Remainder: none.
-
-### MIG-05 — Install minimal-code guardrails
+### MIG-05 — Install human-sized code guardrails
 
 ID: MIG-05
 State: OPEN
 Owner: unassigned
+Category: Foundation and project operations
+Subcategory: Code quality and review
 Depends on: MIG-01
-Outcome: the Unity project enforces assembly direction, stable formatting, clean
-asset ownership, and the minimal-code rules that can be checked mechanically.
-Inputs: sections 0.6, 0.7, 3.2, and 3.4; scaffolded Unity project.
-Files: `unity/.editorconfig`, assembly definitions, focused architecture/build
-validation tests, `unity/Docs/Decisions/CodeRules.md` containing only rules that
-cannot live in configuration/tests.
-Do not touch: gameplay behavior, shared content, scenes, third-party analyzers.
+Outcome: Unity code has analyzers, test commands, ownership boundaries, and a review checklist.
+Inputs: section 0 rules.
+Files: `.editorconfig`, analyzers, CI, `unity/Docs/CONTRIBUTING.md`.
+Do not touch: product behaviour.
 Steps:
+1. Enforce no domain-to-UnityEngine references.
+2. Add warnings for empty tests and accidental generated edits.
+3. Document the one-packet human workflow.
+Checks: CI fails on a deliberate boundary violation.
+Evidence: none
+Remainder: none
 
-1. Add a small `.editorconfig` that formats C# consistently without reformatting
-   generated/vendor files.
-2. Make assembly references enforce Domain -> Content -> Runtime -> Presentation
-   direction declared in section 3.2.
-3. Add a test/build validator rejecting `Resources/`, duplicate production
-   composition roots, forbidden Domain Unity references, and generated files
-   outside owned directories.
-4. Add one intentionally invalid fixture for each guard and prove clear errors.
-5. Document only non-mechanical rules and link back to this plan rather than
-   copying it.
-6. Run one cleanup review on the scaffold so the reference code demonstrates
-   direct naming, narrow APIs, and no needless interface/framework.
-
-Checks: formatting check, EditMode architecture tests, batch compile, Windows
-development build.
-Evidence: none.
-Remainder: none.
-
-### MIG-10 — Port time, day, resources, and difficulty
+### MIG-10 — Implement clock, resources, and deterministic difficulty
 
 ID: MIG-10
 State: OPEN
 Owner: unassigned
-Depends on: MIG-03, MIG-04, MIG-05
-Outcome: Unity Domain reproduces accepted clock, resource, sleep, weather, and
-difficulty rules without UnityEngine.
-Inputs: accepted migration-map rows and fixtures.
-Files: `Scripts/Domain/Time/`, `Scripts/Domain/Resources/`, Domain tests.
-Do not touch: scenes, UI, story prose.
+Category: Domain simulation
+Subcategory: Day loop and resource commands
+Depends on: MIG-02, MIG-05
+Outcome: A pure session advances time and atomically spends hours, heat, and rations.
+Inputs: `lib/game/session.dart` (`advance`, `sleep`, `spendHoursAndGas`), product pacing decision.
+Files: `Runtime/Domain/Clock`, `Resources`, `Difficulty`, tests.
+Do not touch: UI timers, MonoBehaviour.Update, final pacing art.
 Steps:
+1. Implement immutable snapshot and command results.
+2. Port only the tested resource invariants.
+3. Add seeded difficulty and day-boundary tests.
+Checks: EditMode fixture replay produces the same snapshot and event list.
+Evidence: none
+Remainder: none
 
-1. Port values only after resolving stale pacing constants against the product
-   pacing policy.
-2. Inject elapsed time and deterministic random source.
-3. Make sleep the only normal day transition.
-4. Prevent negative resources and required-content soft locks.
-5. Serialize stable state and ordered events.
-
-Checks: EditMode fixtures for boundaries, spend/reject, sleep reset, weather,
-difficulty, and deterministic repeat.
-Evidence: none.
-Remainder: none.
-
-### MIG-11 — Port journal and drift
+### MIG-11 — Implement journal truth and drift
 
 ID: MIG-11
 State: OPEN
 Owner: unassigned
-Depends on: MIG-03, MIG-04, MIG-05
-Outcome: write, uncertainty, comparison, correction, corroboration, lock, night
-drift, and revision history match the accepted product rules.
-Inputs: vocabulary/catalogues, journal migration rows/fixtures.
-Files: `Scripts/Domain/Journal/`, Domain tests.
-Do not touch: journal UI, narrative prose.
+Category: Journal and evidence
+Subcategory: Entries, corrections, and night drift
+Depends on: MIG-10
+Outcome: Entries can be written, cited, corrected, verified, and locked; night drift is deterministic and visible.
+Inputs: `lib/game/session.dart` journal methods, canonical journal rules.
+Files: `Runtime/Domain/Journal`, tests.
+Do not touch: journal UI and prose authoring.
 Steps:
+1. Model entry status and citations with stable ordinals.
+2. Implement correction/lock rejection rules.
+3. Apply seeded drift only at the sleep boundary.
+Checks: Replay fixture; locked entry cannot be silently changed.
+Evidence: none
+Remainder: none
 
-1. Use typed fields and stable entry/revision IDs.
-2. Preserve revision history and cause/source metadata.
-3. Distinguish mismatch, contradiction, and unverifiable.
-4. Apply deterministic drift only during accepted sleep transition.
-5. Prove protected entries and sparse save state.
-
-Checks: EditMode positive/negative/cross-engine fixtures and stable digest.
-Evidence: none.
-Remainder: none.
-
-### MIG-12 — Port narrative state and event delivery
+### MIG-12 — Implement scheduled story events
 
 ID: MIG-12
 State: OPEN
 Owner: unassigned
-Depends on: MIG-03, MIG-05, MIG-10, MIG-11; product STORY-01 and STORY-02 closed
-Outcome: screenplay events, visitor choices, callbacks, residues, and exactly-once
-delivery mutate one domain narrative state.
-Inputs: compiled canonical story/dialogue catalogues and accepted fixtures.
-Files: `Scripts/Domain/Narrative/`, Domain tests.
-Do not touch: duplicate Dart narrative prototypes or Unity UI.
+Category: Story delivery and people
+Subcategory: Schedule, choices, and callbacks
+Depends on: MIG-03, MIG-10, MIG-11
+Outcome: The screenplay schedule delivers one canonical encounter and records its callback flags.
+Inputs: screenplay/corpus import, `NarrativeEncounterDirector.resolveEncounter`, `commitChoice`.
+Files: `Runtime/Story`, tests.
+Do not touch: hard-coded replacement schedules and prototype narrative directors.
 Steps:
+1. Resolve event by day/time/conditions.
+2. Present choices from imported content.
+3. Commit flags, residues, journal facts, and activity as one domain command.
+Checks: Same seed and choice sequence produces the same flags and residue IDs.
+Evidence: none
+Remainder: none
 
-1. Reject event kinds with no declared consumer.
-2. Resolve optional time windows deterministically.
-3. Validate every choice effect key and later consumer.
-4. Persist delivered events, active encounter, choice, flags, residues, quotes.
-5. Prove pause/save/reload never duplicates delivery.
-
-Checks: EditMode 21-day schema sweep and focused Day 1/exactly-once fixtures.
-Evidence: none.
-Remainder: none.
-
-### MIG-13 — Compose the Unity GameSession
+### MIG-13 — Compose the GameSession
 
 ID: MIG-13
 State: OPEN
 Owner: unassigned
+Category: Domain simulation
+Subcategory: Composition root and event queue
 Depends on: MIG-10, MIG-11, MIG-12
-Outcome: one Unity-free session accepts all current commands and emits one
-immutable snapshot/event stream.
-Inputs: ported domain modules and command/event contract.
-Files: `Scripts/Domain/Session/`, Domain tests.
-Do not touch: MonoBehaviours, scenes, UI.
+Outcome: Bootstrap creates one session whose snapshot drives all current systems.
+Inputs: domain packets and Dart session event-queue behaviour.
+Files: `Runtime/Domain/GameSession`, bootstrap composition, tests.
+Do not touch: global singletons and scene lookups.
 Steps:
+1. Compose clock, resources, journal, story, residues, and seed.
+2. Expose read-only snapshot and drained domain events.
+3. Add command rejection telemetry.
+Checks: PlayMode bootstrap route; no duplicate session owner.
+Evidence: none
+Remainder: none
 
-1. Define command results with accepted/rejected reason.
-2. Order same-tick events explicitly.
-3. Prohibit subsystem mutation outside session methods.
-4. Compose deterministic domain snapshot and digest.
-5. Run multi-day command fixture twice with identical output.
-
-Checks: Domain tests, cross-engine fixture subset, architectural dependency test.
-Evidence: none.
-Remainder: none.
-
-### MIG-14 — Implement resilient saves
+### MIG-14 — Add resilient local saves
 
 ID: MIG-14
 State: OPEN
 Owner: unassigned
+Category: Persistence and database synchronization
+Subcategory: Save slots and recovery
 Depends on: MIG-13
-Outcome: Unity saves/restores complete session and player metadata atomically,
-recovers from corruption, and follows the charter's cross-engine decision.
-Inputs: save contract, Dart save schema/reference fixtures, transition charter.
-Files: `Scripts/Runtime/Save/`, save tests and fixtures.
-Do not touch: game UI beyond a test adapter.
+Outcome: New run, save, load, corrupted active slot, and recovery slot all behave safely.
+Inputs: `lib/game/save_store.dart` (`write`, `read`), save contract section 5.3.
+Files: `Runtime/Save`, EditMode and PlayMode save tests.
+Do not touch: hosted planner database or per-frame autosave.
 Steps:
+1. Serialize the versioned envelope and checksum.
+2. Write temporary then replace active; retain recovery.
+3. Reject bad data without deleting good data.
+Checks: Interrupted-write fixture; build-path reload test.
+Evidence: none
+Remainder: none
 
-1. Define version/schema/content compatibility fields.
-2. Write temp -> replace -> backup with bounded failure recovery.
-3. Reject malformed/unsupported saves without boot crash.
-4. Prove deterministic restore digest and exactly-once events.
-5. Implement or explicitly omit cross-engine import per MIG-00 decision.
-
-Checks: EditMode serialization; PlayMode filesystem failures; corrupt primary
-backup recovery; development-build save/reload smoke.
-Evidence: none.
-Remainder: none.
-
-### MIG-20 — Generate and bind the domestic greybox
+### MIG-20 — Build the data-driven domestic greybox
 
 ID: MIG-20
 State: OPEN
 Owner: unassigned
+Category: House and spatial world
+Subcategory: Room graph, scale, and binding
 Depends on: MIG-03, MIG-13
-Outcome: Unity displays and binds the canonical cellar/ground/first-floor house,
-not renderer chambers.
-Inputs: house catalogue, route/capture fixtures, house contract.
-Files: `Scripts/Runtime/House/`, `Scripts/Editor/House/`,
-`HouseGreybox.unity`, house prefabs/tests.
-Do not touch: final art, lighting polish, story.
+Outcome: Imported room/portal data creates a navigable greybox with stable bindings.
+Inputs: house JSON, inventory JSON, `HouseInventory.validateAgainst`.
+Files: `Runtime/World`, `Editor/Import`, `Scenes/Day01Greybox`.
+Do not touch: final production models and decorative dressing.
 Steps:
+1. Establish metres, eye height, floor, stairs, and portal conventions.
+2. Generate labeled proxy geometry from room data.
+3. Bind focus points and residues by ID.
+Checks: Room graph validator; PlayMode route reaches every Day 1 target.
+Evidence: none
+Remainder: none
 
-1. Generate labeled proxy rooms/openings/stairs from catalogue data.
-2. Create identity-root bindings for rooms, portals, focus, and emitters.
-3. Validate scale exactly once and all required IDs.
-4. Bind immutable snapshots to portal/shutter/mantle proxy states.
-5. Prove a visual replacement can occur without changing domain/save IDs.
-
-Checks: importer/binding EditMode tests; PlayMode boot and marker assertions;
-development-build capture.
-Evidence: none.
-Remainder: none. Visible scale/topology requires human approval.
-
-### MIG-21 — Implement first-person movement and routes
+### MIG-21 — Implement movement and portal crossing
 
 ID: MIG-21
 State: OPEN
 Owner: unassigned
+Category: Movement and tactile interaction
+Subcategory: Capsule, stairs, and room transitions
 Depends on: MIG-20
-Outcome: keyboard/mouse player movement traverses ground, upper, cellar, and
-threshold routes with stable room transitions and save recovery.
-Inputs: player constants, verification routes, accessibility movement policy.
-Files: `Scripts/Runtime/Player/`, player prefab/input actions, PlayMode tests.
-Do not touch: camera effects, final geometry, dialogue.
+Outcome: The player can walk, step stairs, collide, and cross only passable portals.
+Inputs: `lib/house/collision.dart` (`Capsule.move`, `_tryAxis`, `_moveOnStair`, `portalCross`).
+Files: `Runtime/World/Movement`, `Runtime/Interaction/Portals`, tests.
+Do not touch: story triggers hidden in movement code.
 Steps:
+1. Implement capsule sweep and axis-separated resolution.
+2. Implement stair enter/restore and portal-plane bounds.
+3. Emit room-change domain command to the session.
+Checks: Collision fixture; PlayMode ground/upper/cellar route.
+Evidence: none
+Remainder: none
 
-1. Configure `CharacterController` capsule and explicit fixed movement policy.
-2. Implement look, move, crouch, run, wall slide, stairs, and room volumes.
-3. Prevent tunneling and invalid portal crossing.
-4. Drive route fixtures with production input actions.
-5. Save/reload on stairs and after a portal transition.
-
-Checks: PlayMode routes and Windows build smoke at supported frame rates.
-Evidence: none.
-Remainder: none. Camera/motion requires human review including reduced motion.
-
-### MIG-22 — Implement focus and tactile interaction
+### MIG-22 — Implement focus and threshold interaction
 
 ID: MIG-22
 State: OPEN
 Owner: unassigned
-Depends on: MIG-21
-Outcome: production focus resolves through occlusion and sends exactly one typed
-session command for door, shutter, mantle, inspection, and journal desk.
-Inputs: focus/inventory catalogues, command contract, product interaction rules.
-Files: `Scripts/Runtime/Interaction/`, interaction prefabs, PlayMode tests.
-Do not touch: final UI/art.
+Category: Movement and tactile interaction
+Subcategory: Focus, doors, letterbox, and objects
+Depends on: MIG-21, MIG-20
+Outcome: Focused objects expose typed actions with clear success/rejection feedback.
+Inputs: inventory/focus data, interaction contract, `InventoryPhysics` bounds.
+Files: `Runtime/Interaction`, `Runtime/World` bindings, tests.
+Do not touch: generic event bus and hierarchy-name discovery.
 Steps:
+1. Cast the bounded focus query.
+2. Implement open/close/hold/drag/letterbox/chain actions.
+3. Send accepted action commands to `GameSession`.
+Checks: PlayMode threshold route; accessibility focus order test.
+Evidence: none
+Remainder: none
 
-1. Resolve stable target/bounds from collider hits.
-2. Enforce room, wall, distance, and cone constraints.
-3. Implement press/hold/cancel and one direct-manipulation proof.
-4. Apply domain result to presentation once.
-5. Save/reload every proof state.
-
-Checks: PlayMode approach/aim/focus/act routes, negative wall-occlusion tests.
-Evidence: none.
-Remainder: none. Visible feedback requires human approval.
-
-### MIG-23 — Implement portal acoustics and Day 1 sound bed
+### MIG-23 — Add portal acoustics and the Day 1 sound bed
 
 ID: MIG-23
 State: OPEN
 Owner: unassigned
-Depends on: MIG-20, MIG-22
-Outcome: room ambience, one localized cue, and threshold voice/text respond to
-live portal state through one AudioMixer route.
-Inputs: soundscape catalogue, portal graph, product audio/accessibility rules.
-Files: `Scripts/Runtime/Audio/`, AudioMixer/assets, PlayMode/hardware tests.
-Do not touch: full voice batch or music expansion.
+Category: Audio, voice, and acoustics
+Subcategory: Portal transmission and cues
+Depends on: MIG-20, MIG-21, MIG-22
+Outcome: A visitor and broadcast are spatially audible with closed-door muffle and captions.
+Inputs: `lib/engine/audio_planner.dart` (`AudioPlanner._route`, `transmission`, `muffleToGainDb`).
+Files: `Runtime/Audio`, mixer setup, cue fixtures.
+Do not touch: locked final voice coverage.
 Steps:
+1. Build a bounded portal route from source room to listener room.
+2. Apply distance and portal transmission to mixer parameters.
+3. Provide text/caption fallback for every required cue.
+Checks: speaker/headphone PlayMode check; deterministic audio-plan fixture.
+Evidence: none
+Remainder: none
 
-1. Bind emitters and listener to stable room IDs.
-2. Compute portal path, gain, low-pass, and reverb intent.
-3. Smooth changes on door open/close and room crossing.
-4. Apply master/effects/ambience/voice, mono, and night settings.
-5. Preserve caption/text fallback with missing voice.
-
-Checks: EditMode graph tests; PlayMode open/closed paths; Windows hardware smoke;
-human headphone/speaker review.
-Evidence: none.
-Remainder: none.
-
-### MIG-30 — Build the persistent UI/input shell
+### MIG-30 — Build the persistent UI shell
 
 ID: MIG-30
 State: OPEN
 Owner: unassigned
+Category: UI, input, and accessibility
+Subcategory: Pause, settings, and input actions
 Depends on: MIG-13, MIG-21
-Outcome: HUD, pause, settings, credits, modal ownership, input maps, and focus
-loss work through one persistent UI root.
-Inputs: product UI/accessibility contract and current Dart behavior reference.
-Files: `Scripts/Presentation/UI/`, UI assets/prefabs, input coordinator/tests.
-Do not touch: journal/dialogue detail or final skin.
+Outcome: Pause, settings, input remapping, and return-to-game work without losing the session.
+Inputs: input/accessibility product rules.
+Files: `Runtime/UI`, UI Toolkit documents/styles, tests.
+Do not touch: story-specific text layout.
 Steps:
+1. Create one persistent UI root owned by bootstrap.
+2. Bind Input System actions and focus navigation.
+3. Save settings independently from run state.
+Checks: keyboard-only PlayMode route; settings survive restart.
+Evidence: none
+Remainder: none
 
-1. Build one panel stack/modal ledger.
-2. Route actions through semantic controls and typed commands.
-3. Own input-map/cursor/movement transitions centrally.
-4. Persist settings with migration/defaults.
-5. Prove keyboard navigation, close/back, focus loss, and resume.
-
-Checks: EditMode view-model tests; PlayMode keyboard route; captures.
-Evidence: none.
-Remainder: none. Visible UI requires human approval.
-
-### MIG-31 — Build text-first dialogue and captions
+### MIG-31 — Deliver text-first dialogue and captions
 
 ID: MIG-31
 State: OPEN
 Owner: unassigned
+Category: Story delivery and people
+Subcategory: Dialogue, choices, and fallback
 Depends on: MIG-12, MIG-23, MIG-30
-Outcome: visitor/broadcast dialogue, choices, silence, walk-away, type pacing,
-captions, and missing-audio fallback complete Day 1.
-Inputs: story/dialogue/text catalogues, session events, accessibility policy.
-Files: `Scripts/Presentation/Dialogue/`, dialogue UI, PlayMode tests.
-Do not touch: final voice production or story prose.
+Outcome: A visitor conversation presents authored lines, choices, captions, and callbacks without audio.
+Inputs: imported corpus, schedule, caption rules.
+Files: `Runtime/UI/Dialogue`, `Runtime/Story` presentation adapter, tests.
+Do not touch: generated voice assets.
 Steps:
+1. Render line/choice sequence from typed content.
+2. Keep callback commit in the domain command.
+3. Make captions timing-independent and readable.
+Checks: text-only PlayMode conversation; choice replay fixture.
+Evidence: none
+Remainder: none
 
-1. Present authored source/speaker/text without storing branch truth in UI.
-2. Route option/silence/walk-away once to session.
-3. Support instant/readable/slow pacing and skip without skipping semantics.
-4. Display speech/non-speech/direction captions.
-5. Verify voice present, voice missing, and voice disabled paths.
-
-Checks: view-model tests; PlayMode threshold scenario; keyboard/accessibility
-route; captures.
-Evidence: none.
-Remainder: none. Visible dialogue requires human approval.
-
-### MIG-32 — Build the working journal
+### MIG-32 — Build the working journal UI
 
 ID: MIG-32
 State: OPEN
 Owner: unassigned
+Category: Journal and evidence
+Subcategory: Entry editing and citations
 Depends on: MIG-11, MIG-30
-Outcome: player can write, mark uncertainty, cite, compare, correct, and lock an
-entry with accessible revision history and save recovery.
-Inputs: journal snapshots/events, vocabulary catalogue, product journal contract.
-Files: `Scripts/Presentation/Journal/`, journal UI, PlayMode tests.
-Do not touch: journal domain mutation outside commands or final art skin.
+Outcome: The player can inspect, write, cite, correct, verify, and lock a journal entry in-game.
+Inputs: journal domain snapshot and commands.
+Files: `Runtime/UI/Journal`, UI Toolkit templates, tests.
+Do not touch: duplicate UI-side journal state.
 Steps:
+1. Render immutable entries and uncertainty markers.
+2. Send edit/correct/verify/lock commands to the session.
+3. Show residues and citations without exposing hidden truth.
+Checks: PlayMode write/reload/lock route; screen-reader labels.
+Evidence: none
+Remainder: none
 
-1. Build semantic entry editor and ledger.
-2. Show source, certainty, corroboration, revisions, and protected state.
-3. Distinguish mismatch/contradiction/unverifiable language.
-4. Route every mutation through session commands.
-5. Prove keyboard-only Day 1 entry and save/reload.
-
-Checks: view-model/EditMode tests; PlayMode journal route; captures.
-Evidence: none.
-Remainder: none. Visible journal requires human approval.
-
-### MIG-33 — Complete Day 1 accessibility route
+### MIG-33 — Complete the accessible Day 1 route
 
 ID: MIG-33
 State: OPEN
 Owner: unassigned
+Category: UI, input, and accessibility
+Subcategory: Keyboard, captions, contrast, and reduced motion
 Depends on: MIG-22, MIG-23, MIG-30, MIG-31, MIG-32
-Outcome: Day 1 is completable keyboard-only with remapping, scalable UI,
-captions, strong focus, reduced motion/effects, and non-hold interaction.
-Inputs: product accessibility requirements and all Day 1 systems.
-Files: `Scripts/Presentation/Accessibility/`, relevant settings/input/presentation
-files and PlayMode scenarios.
-Do not touch: simplify choices or reveal hidden causes.
+Outcome: Day 1 is completable with keyboard-only input, captions, scalable text, and reduced motion.
+Inputs: real human usability reviewer and accessibility checklist.
+Files: accessibility settings, UI tests, evidence capture.
+Do not touch: campaign expansion.
 Steps:
+1. Traverse every required action without pointer-only controls.
+2. Verify focus order, contrast, text scale, captions, and reduced motion.
+3. Fix the first confusing or unreachable step before adding polish.
+Checks: human keyboard route; PlayMode accessibility suite.
+Evidence: none
+Remainder: none
 
-1. Audit every required action and focus target.
-2. Exercise remap/conflict/reset/persistence.
-3. Exercise UI scale, contrast, captions, reduced modes, and brightness.
-4. Exercise pause/focus-loss/audio interaction.
-5. Conduct real human usability review.
-
-Checks: semantic tests; keyboard-only Windows build route; captures; human review.
-Evidence: none.
-Remainder: none.
-
-### MIG-40 — Complete the Unity Day 1 vertical slice
+### MIG-40 — Close the first human-testable vertical slice
 
 ID: MIG-40
 State: OPEN
 Owner: unassigned
+Category: Verification, telemetry, and release
+Subcategory: Day 1 integration gate
 Depends on: MIG-14, MIG-20, MIG-21, MIG-22, MIG-23, MIG-31, MIG-32, MIG-33
-Outcome: a Windows build completes wake -> domestic preparation -> threshold ->
-choice -> journal -> physical consequence -> sleep -> reload in 8–15 minutes.
-Inputs: product LOOP-01 acceptance and Day 1 canonical content.
-Files: integration/composition and Day 1 fixtures only; defects go to owning
-directories.
-Do not touch: Days 2–21 implementation or final art expansion.
+Outcome: A fresh player can complete Day 1, reload a consequence, and explain what happened.
+Inputs: canonical Day 1 content and human review.
+Files: integration scene, build script, evidence index.
+Do not touch: final house art, Acts II–III, locked voice.
 Steps:
+1. Run the complete route from a clean profile.
+2. Save, quit, reload, and verify the residue and journal.
+3. Collect visual/audio/accessibility feedback and fix blockers.
+Checks: clean Windows development build; human playthrough approved.
+Evidence: none
+Remainder: none
 
-1. Add one deterministic semantic scenario and one production-input smoke.
-2. Verify no idle wait and no repeated event after reload.
-3. Capture normal, accessibility, safe/high, and consequence states.
-4. Record performance and load evidence.
-5. Conduct human play, visual, audio, and accessibility reviews.
-6. Record the Dart feature-freeze decision when approved.
-
-Checks: all Day 1 EditMode/PlayMode tests; clean Windows development build;
-human gate.
-Evidence: none.
-Remainder: none.
-
-### MIG-50 — Accept the human house model
+### MIG-50 — Produce the approved house asset baseline
 
 ID: MIG-50
 State: OPEN
 Owner: unassigned
+Category: House and spatial world
+Subcategory: Production meshes and dressing
 Depends on: MIG-40
-Outcome: a rights-cleared, source-controlled human house visual replaces the
-greybox without changing topology, bindings, collision truth, or saves.
-Inputs: product room/art briefs, house catalogue, greybox fixtures, modeller
-handoff.
-Files: `Art/House/`, house visual prefab, import presets, provenance/handoff
-record, visual tests.
-Do not touch: domain topology or story.
+Outcome: The first approved room batch replaces proxies without changing IDs, scale, or routes.
+Inputs: rights-cleared house sources, modeling plan, greybox bindings.
+Files: model import settings, room prefabs, material slots.
+Do not touch: domain rules and packet database.
 Steps:
+1. Replace one room pair at a time.
+2. Validate scale, collision, portal clearance, and focus IDs.
+3. Obtain human visual approval before the next batch.
+Checks: room-batch PlayMode route and capture review.
+Evidence: none
+Remainder: none
 
-1. Require source, export, units/axes, hashes, materials, anchors, and rights.
-2. Import with identity house root and per-asset normalization.
-3. Keep collision/room/portal/focus/audio layers separate.
-4. Run every route and binding fixture.
-5. Review perceived domestic scale before architecture lock.
-6. Obtain human approval for normal/high/safe/accessibility captures.
-
-Checks: asset validation; PlayMode routes; Windows captures/performance; human
-review.
-Evidence: none.
-Remainder: none.
-
-### MIG-51 — Establish production materials and lighting
+### MIG-51 — Establish period lighting and materials
 
 ID: MIG-51
 State: OPEN
 Owner: unassigned
+Category: Rendering and presentation
+Subcategory: URP baseline, practicals, and weather
 Depends on: MIG-50
-Outcome: Day 1 hero route meets the clean restrained realism baseline in URP
-without hiding construction behind effects.
-Inputs: product VIS-01/ART-01 requirements, material catalogue, human house.
-Files: URP settings, materials/textures, lighting/probe prefabs, visual fixtures.
-Do not touch: advanced effect wish list or other rooms.
+Outcome: A readable period lighting baseline supports domestic care, procedure, memory, and place.
+Inputs: materials JSON, lighting references, accessibility profile.
+Files: URP assets, light profiles, shaders/materials, captures.
+Do not touch: experimental rupture effects until baseline approval.
 Steps:
+1. Establish exposure, shadow, fog, practical, and rain profiles.
+2. Add wetness/surface response only where it improves legibility.
+3. Measure frame time on the target Windows profile.
+Checks: human baseline review; performance capture.
+Evidence: none
+Remainder: none
 
-1. Validate color space, normals, ORM channels, mipmaps, filtering, and scale.
-2. Establish daylight and bounded warm practicals.
-3. Bake indirect grounding and configure necessary realtime shadows.
-4. Calibrate darkest normal navigation with post disabled.
-5. Add only restrained accepted post treatment.
-6. Capture and obtain human approval across profiles/states.
-
-Checks: import/material audit; Windows gallery; GPU/frame record; human review.
-Evidence: none.
-Remainder: none.
-
-### MIG-52 — Expand house art and sound by room pair
+### MIG-52 — Expand rooms, residues, and sound by batch
 
 ID: MIG-52
 State: OPEN
 Owner: unassigned
-Depends on: MIG-51 and canonical campaign consequences for affected rooms
-Outcome: kitchen/cellar, bedroom/landing, and bathroom/spare-room reach the hero
-bar with story states, interactions, and sound.
-Inputs: product ART-02, room jobs, campaign state requirements.
-Files: affected room art/prefabs/materials/lighting/audio and tests.
-Do not touch: unrelated room pair or new renderer features.
+Category: House and spatial world
+Subcategory: Room pairs, physical consequences, and sound
+Depends on: MIG-51
+Outcome: Production room batches preserve the route while adding authored physical and acoustic evidence.
+Inputs: canonical consequences, inventory, soundscape, approved baseline.
+Files: room prefabs, residue bindings, audio scenes, captures.
+Do not touch: unapproved story rewrites.
 Steps:
+1. Select one room pair and its consequence set.
+2. Bind residues and audio cues by stable ID.
+3. Review visual, route, and acoustic coherence together.
+Checks: per-batch PlayMode and human review.
+Evidence: none
+Remainder: none
 
-1. Split into three packets before becoming `ACTIVE`.
-2. Replace only validated proxies with rights-cleared assets.
-3. Author normal, consequence, and late-game states actually used by story.
-4. Verify route/focus/save/acoustics/profiles/accessibility per pair.
-5. Obtain separate human approval per pair.
-
-Checks: per-pair asset, PlayMode, gallery, performance, and human gates.
-Evidence: none.
-Remainder: must split before work.
-
-### MIG-60 — Implement Acts I–III
+### MIG-60 — Implement Acts I–III from the schedule
 
 ID: MIG-60
 State: OPEN
 Owner: unassigned
-Depends on: MIG-40; product STORY-03 batches closed as shared content
-Outcome: Days 2–20 reuse the accepted loop with callbacks, consequences, pacing,
-save/reload, and restrained escalation.
-Inputs: canonical compiled campaign and product act gates.
-Files: integration/content consumers and affected house state prefabs/tests.
-Do not touch: new prose in Unity or renderer features.
+Category: Story delivery and people
+Subcategory: Campaign progression
+Depends on: MIG-40, MIG-52
+Outcome: The full campaign runs from canonical schedule, corpus, journal, resources, and consequences.
+Inputs: closed story batches, approved room/audio batches.
+Files: campaign fixtures, event bindings, PlayMode scenarios.
+Do not touch: invented event timing and duplicate narrative authorities.
 Steps:
+1. Add one closed story batch at a time.
+2. Replay key choices from a known seed.
+3. Review pacing and restraint after each act.
+Checks: act fixtures, save/reload, human pacing review.
+Evidence: none
+Remainder: none
 
-1. Split into Days 2–7, 8–14, and 15–20 before becoming `ACTIVE`.
-2. Add one required embodied beat and consequence per day.
-3. Prove declared callbacks and no orphaned effects.
-4. Add exactly-once save/reload scenario per act.
-5. Conduct human pacing/restraint review per act.
-
-Checks: per-act Domain/PlayMode/Windows scenarios and human play notes.
-Evidence: none.
-Remainder: must split before work.
-
-### MIG-61 — Implement Day 21 and three endings
+### MIG-61 — Implement Day 21 and derived endings
 
 ID: MIG-61
 State: OPEN
 Owner: unassigned
+Category: Domain simulation
+Subcategory: Endings and final record
 Depends on: MIG-60
-Outcome: compliance, synchronisation, and player-initiated rupture are derived
-from campaign facts and return run-specific human/physical texture.
-Inputs: canonical Day 21/endings and product END-01.
-Files: ending integration/UI, rupture presentation, scenarios/tests.
-Do not touch: fourth ending, cause explanation, final ending selector menu.
+Outcome: The Day 21 rupture and three endings derive from recorded choices, journal state, and residues.
+Inputs: ending acceptance rules, session snapshot, canonical final content.
+Files: ending domain rules, final scene, tests.
+Do not touch: arbitrary ending selection or hidden developer switches.
 Steps:
+1. Derive ending inputs from the session snapshot.
+2. Test all three outcomes and boundary cases.
+3. Present the final record without rewriting history.
+Checks: deterministic ending fixture; human campaign review.
+Evidence: none
+Remainder: none
 
-1. Bind ending eligibility to inspectable saved facts.
-2. Keep rupture Day-21/front-door/player initiated.
-3. Implement photosensitivity-safe/reduced rupture presentation.
-4. Return two or three authored run-specific residues.
-5. Prove all routes in Windows builds and human playthroughs.
-
-Checks: Domain resolver, three PlayMode/build routes, save/reload, human visual
-and campaign review.
-Evidence: none.
-Remainder: none.
-
-### MIG-62 — Produce locked voice only if approved
+### MIG-62 — Add locked voice after text approval
 
 ID: MIG-62
 State: OPEN
 Owner: unassigned
-Depends on: MIG-60; human story lock
-Outcome: approved hash-matched voice coverage imports atomically while the full
-campaign remains playable voice-off.
-Inputs: locked text hashes, cast/pronunciation/direction/provenance, TTS pipeline,
-caption catalogue.
-Files: staged voice output, approved Unity audio imports, voice index/lock,
-audio tests.
-Do not touch: prose, branches, runtime TTS, obstruction baked into sole masters.
+Category: Audio, voice, and acoustics
+Subcategory: Voice coverage and licensing
+Depends on: MIG-31, MIG-60
+Outcome: Approved voice coverage is imported with caption timing and a safe text fallback.
+Inputs: locked script, rights records, approved performances.
+Files: voice assets, import metadata, mixer routes, caption timings.
+Do not touch: unapproved generated voice in release builds.
 Steps:
+1. Verify line IDs against the corpus.
+2. Import only rights-cleared files.
+3. Test missing/failed voice fallback and captions.
+Checks: voice audit; headphone/speaker human review.
+Evidence: none
+Remainder: none
 
-1. Generate/review a representative audition set.
-2. Render to staging and validate hash, loudness, clipping, keys, and rights.
-3. Human-review performances and reject weak lines explicitly.
-4. Promote one complete accepted batch atomically.
-5. Run voice-on and voice-off campaign sweeps.
-
-Checks: voice index audit; PlayMode routing/caption fallback; human performance
-and mix review.
-Evidence: none.
-Remainder: none.
-
-### MIG-70 — Optimize and package the release candidate
+### MIG-70 — Package and release the Windows candidate
 
 ID: MIG-70
 State: OPEN
 Owner: unassigned
-Depends on: MIG-52, MIG-61, MIG-62 or human decision to ship text-first
-Outcome: one pinned Unity Windows build satisfies the product release gate with
-measured performance, recovery, accessibility, rights, and human evidence.
-Inputs: product release criteria and all closed migration packets.
-Files: quality/build settings, build tooling, manifests/licenses, evidence index;
-defects remain owned by their systems.
-Do not touch: add features or upgrade Unity/packages casually.
+Category: Verification, telemetry, and release
+Subcategory: Performance, recovery, and packaging
+Depends on: MIG-14, MIG-33, MIG-61, MIG-62
+Outcome: A clean Windows x64 candidate installs, runs, saves, recovers, and passes the release checklist.
+Inputs: all closed packets, target hardware, release profile.
+Files: build scripts, release notes, evidence index, checksums.
+Do not touch: source authority files during packaging.
 Steps:
+1. Run clean checkout tests and content validation.
+2. Measure boot, room transition, memory, frame time, save recovery, and input.
+3. Package the candidate and record exact digest.
+Checks: release preflight; human playthrough; recovery drill.
+Evidence: none
+Remainder: none
 
-1. Profile representative routes before adding Addressables or custom features.
-2. Establish high/safe budgets for CPU, GPU, memory, load, and stutter.
-3. Run long traversal, portal/light transitions, context/device/focus recovery,
-   and save corruption tests.
-4. Audit licenses/provenance and strip developer UI/content.
-5. Complete human visual/audio/accessibility/playthrough gates.
-6. A human records the release and Dart-retirement decisions.
+## 9. Verification matrix
 
-Checks: clean batch tests/build, packaged Windows matrix, product masterplan
-release gate.
-Evidence: none.
-Remainder: none.
-
----
-
-## 8. Human house handoff
-
-The modeller owns visual architecture; Unity owns gameplay bindings and simple
-collision. A handoff includes:
-
-- source scene (`.blend` or equivalent) and deterministic interchange export;
-- exporter and Unity importer versions/presets;
-- metres, Y-up, baked transforms, unit scale, identity root;
-- room/cell-separated render meshes and independent door/shutter/stateful leaves;
-- stable anchor transforms or a generated anchor comparison report;
-- material slots, texture sources, channel conventions, and provenance;
-- LOD intent where profiling requires it;
-- no gameplay scripts, triggers, cameras, lights, or authoritative colliders;
-- source/export hashes in `house-handoff.json`; and
-- route, capture, scale, and human-review result for the accepted export.
-
-Required hierarchy may vary internally, but the prefab adapter must expose:
-
-```text
-Visual/Room__<room-id>
-Visual/Exterior/Cell__<cell-id>
-DoorVisual/Portal__<portal-id>
-ShutterVisual/Window__<window-id>
-Anchor/Focus__<focus-id>
-Anchor/Emitter__<emitter-id>
-```
-
-A new export cannot replace the previous accepted house until validation passes.
-Do not repair a failed route by moving gameplay markers away from canonical data
-without an approved source migration.
-
----
-
-## 9. Asset intake
-
-Every external or human-produced asset follows:
-
-```text
-candidate -> rights/provenance -> source snapshot -> normalization
-          -> import preset -> prefab/material -> stable-ID registry
-          -> route/state/capture review -> accepted
-```
-
-Statuses are `candidate`, `blocked`, `normalizing`, `validated`, `accepted`, and
-`deprecated`. A visually useful asset with unknown rights stays `blocked` and
-does not enter a production scene.
-
-The intake record contains:
-
-- stable asset ID and intended placements;
-- source URL/creator/license/receipt or human ownership record;
-- source and normalized hashes;
-- unit, axis, pivot, bounds, material, texture, and collider policy;
-- importer preset version;
-- prefab GUID;
-- LOD and animation/state notes;
-- human review IDs; and
-- replacement/deprecation record.
-
-Do not bulk-download assets to satisfy missing inventory paths. Start with the
-Day 1 route, use labeled proxies elsewhere, and acquire only assets tied to a
-room job or story state.
-
----
-
-## 10. Visual and performance profiles
-
-### 10.1 Initial profiles
-
-Create only after MIG-51 proves the baseline:
-
-| Setting | High | Safe |
-|---|---|---|
-| Render scale | 1.0 unless measured otherwise | measured lower bound |
-| Antialiasing | tested TAA/SMAA/MSAA choice | stable low-cost choice |
-| Realtime shadows | bounded hero/stateful lights | one or none where readable |
-| Shadow distance/resolution | measured hero route | reduced, no clue loss |
-| Texture quality | full within budget | mip-biased/streamed, no missing clue |
-| Post | restrained accepted stack | reduced effects |
-| Particles/fog | authored and bounded | reduced/disabled |
-
-Do not publish numbers before profiling the actual production house. Requested
-and effective profile, resolution, shadow budget, and downgrade reason must be
-available in development diagnostics and capture metadata.
-
-### 10.2 Provisional release measurements
-
-Measure, do not self-certify:
-
-- p50/p95/p99 CPU and GPU frame times on declared minimum/reference hardware;
-- frame pacing during room/portal/light/dialogue transitions;
-- peak and steady managed/native/GPU memory;
-- cold/warm boot and first-use asset/shader stutter;
-- save/load latency and failure recovery;
-- 100 repeated door/light/room transitions without growing live counts; and
-- window/fullscreen/resolution/focus/device recovery.
-
-Budget decisions require actual target hardware and belong in MIG-70 evidence,
-not permanent speculative constants in this plan.
-
----
-
-## 11. Test matrix
-
-| Layer | Required coverage |
+| Layer | Required proof |
 |---|---|
-| Domain EditMode | time/resources, journal/drift, narrative/events, ending, save DTOs, determinism |
-| Content EditMode | schemas, IDs, cross-references, import idempotence, hash/GUID stability |
-| Runtime PlayMode | boot failures, scene binding, routes, focus, interactions, portal acoustics, save/reload |
-| Presentation PlayMode | modal/input state, dialogue, journal, captions, settings, accessibility |
-| Windows smoke | production input, Day 1, save/reload, audio device, graphics profiles |
-| Campaign automation | per-act exactly-once events, consequences, three endings |
-| Human | visual, audio, accessibility, pacing, complete playthroughs |
+| Domain | EditMode deterministic fixtures and invariant tests |
+| Content | Valid/invalid import fixtures with source ID/path errors |
+| Database | Idempotent sync, source change update, board-owned field preservation |
+| Save | Interrupted write, checksum failure, recovery slot, schema rejection |
+| World | PlayMode movement, portal, focus, residue, and route checks |
+| Story | Schedule/choice replay with stable seed and callback flags |
+| UI | Keyboard, captions, focus order, text scale, reduced motion |
+| Audio | Portal transmission, deterministic cue selection, fallback captions |
+| Visual | Human captures on target profile; no model-only approval |
+| Release | Clean Windows build, install, save/reload, performance, and evidence |
 
-Every failure artifact includes Unity patch, commit/build, platform/hardware,
-seed, content index hash, save/fixture, scene, quality, resolution, logs, last
-commands/events, screenshot when visible, and replay procedure.
+## 10. Risks and stop conditions
 
-Every code packet also receives a minimal-code review. The reviewer rejects:
+Stop and record `BLOCKED` when the source schedule, rights, database
+credentials, Unity package lock, or human decision needed for the next packet is
+missing. Stop release work when a save can be lost, a required action is
+pointer-only, a source import is partial, or a card sync overwrites user-owned
+board state. Do not solve a blocked product decision with a hidden default.
 
-- unused public APIs, speculative extension points, or placeholder methods;
-- a new interface/factory/manager without a current second use or real boundary;
-- domain logic in Unity lifecycle methods;
-- hidden scene lookup, static mutable state, or duplicate state ownership;
-- broad comments/XML summaries that repeat the code;
-- tests that only reproduce implementation details; and
-- a large mechanical/reformat diff mixed with behavior.
+## 11. Compact database-facing ledger
 
-A mechanically green packet remains `PARTIAL` until this review is clean.
+The website reads the packets below by stable ID and mirrors them to
+`unity-plan`. Keep this table synchronized with packet `State`, `Owner`, and
+`Evidence`.
 
----
-
-## 12. Risks
-
-| ID | State | Risk | Mitigation |
-|---|---|---|---|
-| URISK-01 | OPEN | Porting current showcase instead of the game. | Explicit exclusion; house JSON and product room jobs govern. |
-| URISK-02 | OPEN | Two live engines receive new features and diverge. | U3 feature freeze; one owner and transition charter. |
-| URISK-03 | OPEN | Duplicate narrative prototypes become Unity canon. | Import screenplay/corpus only; migration map retires duplicates. |
-| URISK-04 | OPEN | `modelScale` is applied twice or feels non-domestic. | Identity root, marker assertions, human scale review before art lock. |
-| URISK-05 | OPEN | Unity scene objects become save truth. | Domain IDs/state authoritative; binding validation and replacement test. |
-| URISK-06 | OPEN | Missing assets cause proxy scenes to be called finished. | Explicit proxy/accepted status and human visual gate. |
-| URISK-07 | OPEN | Package/plugin sprawl delays the vertical slice. | Fixed authorized packages; new package requires ADR and measured need. |
-| URISK-08 | OPEN | Editor tests pass while Windows build is broken. | Development-build gates from U0/U3 onward. |
-| URISK-09 | OPEN | Voice generation locks in unfinished prose. | Story hash lock, audition, atomic promotion, voice-off completeness. |
-| URISK-10 | OPEN | Visual effects recreate prototype contradictions. | Clean baseline first; rupture-only distortion; human approval. |
-| URISK-11 | OPEN | Ported pacing copies a stale 96-minute day. | Product duration policy plus Day 1/act human timing evidence. |
-| URISK-12 | OPEN | This plan becomes another append-only document. | Section 0.5, stable packets, compact ledger, ADRs for implementation detail. |
-| URISK-13 | OPEN | Subagents produce framework-heavy, generated-looking C#. | Sections 0.6/3.4, MIG-05 guardrails, minimal-code review on every packet. |
-
----
-
-## 13. Stop conditions
-
-Set the active packet `BLOCKED` and stop when:
-
-- product and Unity plans disagree about intended behavior;
-- a source ID/canon conflict has no recorded resolution;
-- another owner is active on the packet or intended files;
-- a Unity/package upgrade is required but not approved/tested;
-- a required asset has missing rights, source, or provenance;
-- save compatibility needs a human migration choice;
-- a production path cannot be tested outside a mock/editor-only seam;
-- visible work has no real human reviewer;
-- shared source changes would break Dart before its freeze without a coordinated
-  migration; or
-- the work ports renderer novelty rather than a product requirement.
-
-Split/narrow difficult work before declaring it blocked.
-
----
-
-## 14. Shared commands and evidence placeholders
-
-MIG-01 must replace placeholders below with exact, tested commands for the
-pinned editor and CI environment. Do not guess an editor path in later packets.
-
-```text
-UNITY_EDITMODE_TEST_COMMAND=<recorded by MIG-01>
-UNITY_PLAYMODE_TEST_COMMAND=<recorded by MIG-01>
-UNITY_WINDOWS_DEV_BUILD_COMMAND=<recorded by MIG-01>
-UNITY_CONTENT_SYNC_COMMAND=<recorded by MIG-02>
-```
-
-Common source-side checks while Dart remains authoritative:
-
-```sh
-dart analyze
-dart run tools/text_build.dart
-npm run assets:check
-```
-
-Visible evidence must follow the human record in section 5.4. Unity capture
-metadata additionally records scene, camera/route, render pipeline asset,
-quality level, active Volume profile, and content index hash.
-
----
-
-## 15. Compact migration ledger
-
-Packet bodies in section 7 own detail. Keep this table synchronized.
-
-| ID | State | Owner | Milestone | Evidence |
+| Packet | State | Owner | Milestone | Evidence |
 |---|---|---|---|---|
 | MIG-00 | OPEN | unassigned | U0 | none |
 | MIG-01 | OPEN | unassigned | U0 | none |
 | MIG-02 | OPEN | unassigned | U1 | none |
 | MIG-03 | OPEN | unassigned | U1 | none |
-| MIG-04 | OPEN | unassigned | U1 | none |
-| MIG-05 | OPEN | unassigned | U0 | minimal-code guardrails |
+| MIG-04 | OPEN | unassigned | U0 | none |
+| MIG-05 | OPEN | unassigned | U0 | none |
 | MIG-10 | OPEN | unassigned | U1 | none |
 | MIG-11 | OPEN | unassigned | U1 | none |
-| MIG-12 | OPEN | unassigned | U1 | product story dependencies |
+| MIG-12 | OPEN | unassigned | U1 | none |
 | MIG-13 | OPEN | unassigned | U1 | none |
-| MIG-14 | OPEN | unassigned | U2 | save decision required in MIG-00 |
-| MIG-20 | OPEN | unassigned | U2 | human scale gate |
-| MIG-21 | OPEN | unassigned | U2 | human motion gate |
-| MIG-22 | OPEN | unassigned | U2 | human interaction gate |
-| MIG-23 | OPEN | unassigned | U2 | human audio gate |
-| MIG-30 | OPEN | unassigned | U3 | human UI gate |
-| MIG-31 | OPEN | unassigned | U3 | human UI gate |
-| MIG-32 | OPEN | unassigned | U3 | human UI gate |
-| MIG-33 | OPEN | unassigned | U3 | human accessibility gate |
-| MIG-40 | OPEN | unassigned | U3 | Dart freeze decision |
-| MIG-50 | OPEN | unassigned | U6 | human house gate |
-| MIG-51 | OPEN | unassigned | U6 | human visual gate |
-| MIG-52 | OPEN | unassigned | U6 | must split; human gate |
-| MIG-60 | OPEN | unassigned | U4–U5 | must split; human pacing gate |
-| MIG-61 | OPEN | unassigned | U5 | human ending/play gate |
-| MIG-62 | OPEN | unassigned | U5–U6 | story lock and human voice gate |
-| MIG-70 | OPEN | unassigned | U7 | human release/retirement decision |
+| MIG-14 | OPEN | unassigned | U2 | none |
+| MIG-20 | OPEN | unassigned | U2 | none |
+| MIG-21 | OPEN | unassigned | U2 | none |
+| MIG-22 | OPEN | unassigned | U2 | none |
+| MIG-23 | OPEN | unassigned | U2 | none |
+| MIG-30 | OPEN | unassigned | U3 | none |
+| MIG-31 | OPEN | unassigned | U3 | none |
+| MIG-32 | OPEN | unassigned | U3 | none |
+| MIG-33 | OPEN | unassigned | U3 | none |
+| MIG-40 | OPEN | unassigned | U3 | none |
+| MIG-50 | OPEN | unassigned | U5 | none |
+| MIG-51 | OPEN | unassigned | U5 | none |
+| MIG-52 | OPEN | unassigned | U5 | none |
+| MIG-60 | OPEN | unassigned | U4 | none |
+| MIG-61 | OPEN | unassigned | U4 | none |
+| MIG-62 | OPEN | unassigned | U5 | none |
+| MIG-70 | OPEN | unassigned | U6 | none |
 
----
+## 12. Greenfield definition of done
 
-## 16. Unity transition definition of done
-
-The transition is complete only when:
-
-- the pinned Unity project builds reproducibly from a clean checkout;
-- production C# follows the minimal-code rule with no unneeded framework,
-  duplicate owner, global state, or generated-looking scaffolding;
-- canonical shared content imports deterministically with no hand-edited copy;
-- one Unity-free domain owns all authoritative run state;
-- all eight domestic rooms and three levels agree across scene, collision,
-  focus, audio, save, and automation;
-- the 21-day campaign has no duplicate narrative authority or idle-wait gate;
-- Day 1 and all acts pass packaged Windows routes and human pacing review;
-- all three endings derive from saved play and pass human review;
-- text/captions communicate the full game with voice disabled;
-- final house/art/audio/assets have rights, provenance, state, and human approval;
-- high/safe/accessibility modes preserve every required clue and action;
-- save/recovery, performance, memory, load, and long-run evidence meet the
-  product release gate; and
-- a human records the release and Dart-retirement decisions.
-
-Until then, the project is a migration in progress, regardless of test names,
-screenshots, version strings, or editor appearance.
+The Unity project is ready for release consideration only when the product
+masterplan gates pass, all required packets are `CLOSED`, the database mirror
+has no stale source-owned fields, the clean Windows candidate has a recorded
+digest, save recovery succeeds, accessibility is human-reviewed, and the full
+21-day campaign can be completed without Dart or browser runtime dependencies.

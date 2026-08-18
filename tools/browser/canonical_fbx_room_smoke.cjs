@@ -53,6 +53,8 @@ async function readRuntime(page) {
       playability: canvas.getAttribute('data-house-playability'),
       restAnchor: canvas.getAttribute('data-house-rest-anchor'),
       interactionContract: canvas.getAttribute('data-house-interaction-contract'),
+      thermalAuthority: canvas.getAttribute('data-house-thermal-authority'),
+      fireAuthority: canvas.getAttribute('data-house-fire-authority'),
       collisionAuthority: canvas.getAttribute('data-house-collision-authority'),
       focusAuthority: canvas.getAttribute('data-house-focus-authority'),
       saveRestoreAuthority: canvas.getAttribute('data-house-save-restore-authority'),
@@ -106,6 +108,8 @@ async function main() {
         canvas.getAttribute('data-house-playability') === 'canonical-fbx-residence' &&
         canvas.getAttribute('data-house-rest-anchor') === 'placement-living-sofa' &&
         canvas.getAttribute('data-house-interaction-contract') === 'sofa-rest-v1' &&
+        canvas.getAttribute('data-house-thermal-authority') === 'game-house-lighting' &&
+        canvas.getAttribute('data-house-fire-authority') === 'game-fire-emitter' &&
         canvas.getAttribute('data-house-collision-authority') === 'game-house' &&
         canvas.getAttribute('data-house-focus-authority') === 'game-focus-resolver' &&
         canvas.getAttribute('data-house-save-restore-authority') === 'game-session-save' &&

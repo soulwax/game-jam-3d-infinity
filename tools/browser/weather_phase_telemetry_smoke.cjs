@@ -27,6 +27,11 @@ async function probe(page, weather) {
       drainedMassKg: canvas.getAttribute('data-renderer-rain-flow-drained-mass-kg'),
       overflowMassKg: canvas.getAttribute('data-renderer-rain-flow-overflow-mass-kg'),
     },
+    fire: {
+      flame: canvas.getAttribute('data-renderer-fire-flame-particles'),
+      whiteSmoke: canvas.getAttribute('data-renderer-fire-white-smoke-particles'),
+      blackSmoke: canvas.getAttribute('data-renderer-fire-black-smoke-particles'),
+    },
     reflection: {
       intensity: canvas.getAttribute('data-renderer-reflection-intensity'),
       confidence: canvas.getAttribute('data-renderer-reflection-confidence'),
@@ -62,6 +67,11 @@ async function main() {
           !Number.isFinite(Number(sample.flow?.drainedMassKg)) ||
           !Number.isFinite(Number(sample.flow?.overflowMassKg))) {
         throw new Error(`invalid ${name} weather telemetry: ${JSON.stringify(sample)}`);
+      }
+      for (const value of Object.values(sample.fire ?? {})) {
+        if (!Number.isInteger(Number(value)) || Number(value) < 0) {
+          throw new Error(`invalid ${name} fire telemetry: ${JSON.stringify(sample.fire)}`);
+        }
       }
       JSON.parse(sample.surface);
       const reflectionIntensity = Number(sample.reflection?.intensity);
