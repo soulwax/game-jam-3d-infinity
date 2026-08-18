@@ -54,7 +54,9 @@ project and the required human gate is recorded.
 
 Keep this order in every packet. `Category` and `Subcategory` make the plan
 easy to filter; the website parser surfaces them on cards while the database
-stores them in card details.
+stores them as visible card tags and in card details. Tags are lowercase,
+comma-separated capability labels; use `none` only when a packet truly has no
+cross-cutting label.
 
 ```text
 ID
@@ -62,6 +64,7 @@ State
 Owner
 Category
 Subcategory
+Tags
 Depends on
 Outcome
 Inputs
@@ -307,9 +310,11 @@ source packet MIG-40 -> board project unity-plan -> card unity-mig-40
 mean migration. They are implementation packet IDs.
 
 Source-owned card fields: title, details, checklist, owner, priority, cover,
-tags, and packet evidence. Board-owned fields: manual lane position, comments,
-watchers, and local view preferences. Sync is idempotent and updates only
-source-owned fields. A database failure never changes the source plan file.
+planner tags, and packet evidence. Planner tags use the reserved `plan-` tag
+namespace; manually created tags remain untouched. Board-owned fields: manual
+lane position, archive state, comments, watchers, custom tags, and local view
+preferences. Sync is idempotent and updates only source-owned fields. A
+database failure never changes the source plan file.
 
 ### 5.5 World contract
 
@@ -321,7 +326,8 @@ are presentation labels only.
 
 1. Parse `UNITY_PLAN.md` and validate every packet field and dependency.
 2. Compute the plan digest and list changed packet IDs.
-3. Upsert the private `unity-plan` project and ensure its lanes/tags.
+3. Upsert the private `unity-plan` project and ensure its lanes, default tags,
+   and reserved `plan-*` packet tags.
 4. Upsert each `unity-mig-##` card's source-owned fields.
 5. Preserve lane position, comments, watchers, and user view state.
 6. Record a project activity entry with the digest and changed count.
@@ -375,6 +381,7 @@ State: OPEN
 Owner: unassigned
 Category: Foundation and project operations
 Subcategory: Scope and decisions
+Tags: greenfield, unity, decisions
 Depends on: none
 Outcome: A reviewed greenfield charter names the Unity target, source roots, first playable, and non-goals.
 Inputs: `external/docs/MASTERPLAN.md`, this plan, Dart reference map.
@@ -395,6 +402,7 @@ State: OPEN
 Owner: unassigned
 Category: Foundation and project operations
 Subcategory: Project scaffold and CI
+Tags: greenfield, unity, ci, tooling
 Depends on: MIG-00
 Outcome: A clean checkout opens the empty Unity project, runs a smoke test, and builds Windows x64.
 Inputs: approved Unity patch, package list, Windows build environment.
@@ -415,6 +423,7 @@ State: OPEN
 Owner: unassigned
 Category: Authored content and import
 Subcategory: Schemas and IDs
+Tags: content, schemas, validation, ids
 Depends on: MIG-01
 Outcome: C# content records validate house, story, inventory, material, sound, and schedule sources without Unity scene access.
 Inputs: `assets/house/*.json`, screenplay/corpus, Dart parsers as behaviour references.
@@ -435,6 +444,7 @@ State: OPEN
 Owner: unassigned
 Category: Authored content and import
 Subcategory: Import and generated assets
+Tags: content, import, determinism, assets
 Depends on: MIG-02
 Outcome: Valid source produces typed generated assets; invalid source produces no partial output.
 Inputs: validated schemas and canonical text/JSON.
@@ -455,16 +465,17 @@ State: OPEN
 Owner: unassigned
 Category: Persistence and database synchronization
 Subcategory: Planner cards and activity
+Tags: database, sync, planner, audit
 Depends on: MIG-00
 Outcome: Every valid implementation packet has an idempotent `unity-mig-##` card with source-owned details.
 Inputs: `syncUnityPlannerCards`, `DATABASE_URL`, packet parser.
 Files: website persistence/tests and database-sync documentation.
 Do not touch: gameplay save files, user-owned board lane positions.
 Steps:
-1. Add packet category/subcategory to card details.
+1. Add packet category/subcategory and normalized tags to card details and tag links.
 2. Upsert changed source-owned fields while preserving board-owned fields.
 3. Record plan digest and changed packet count in activity.
-4. Add a dry-run and conflict test.
+4. Add parser validation, retry, tag-preservation, and conflict tests.
 Checks: Validation rejects duplicate/missing IDs before writes; website tests; hosted sync with a changed packet; repeat sync is a no-op; retry after transient failure.
 Evidence: none
 Remainder: none
@@ -476,6 +487,7 @@ State: OPEN
 Owner: unassigned
 Category: Foundation and project operations
 Subcategory: Code quality and review
+Tags: unity, csharp, testing, guardrails
 Depends on: MIG-01
 Outcome: Unity code has analyzers, test commands, ownership boundaries, and a review checklist.
 Inputs: section 0 rules.
@@ -496,6 +508,7 @@ State: OPEN
 Owner: unassigned
 Category: Domain simulation
 Subcategory: Day loop and resource commands
+Tags: domain, clock, resources, determinism
 Depends on: MIG-02, MIG-05
 Outcome: A pure session advances time and atomically spends hours, heat, and rations.
 Inputs: `lib/game/session.dart` (`advance`, `sleep`, `spendHoursAndGas`), product pacing decision.
@@ -516,6 +529,7 @@ State: OPEN
 Owner: unassigned
 Category: Journal and evidence
 Subcategory: Entries, corrections, and night drift
+Tags: journal, evidence, consequences, save
 Depends on: MIG-10
 Outcome: Entries can be written, cited, corrected, verified, and locked; night drift is deterministic and visible.
 Inputs: `lib/game/session.dart` journal methods, canonical journal rules.
@@ -536,6 +550,7 @@ State: OPEN
 Owner: unassigned
 Category: Story delivery and people
 Subcategory: Schedule, choices, and callbacks
+Tags: story, schedule, choices, callbacks
 Depends on: MIG-03, MIG-10, MIG-11
 Outcome: The screenplay schedule delivers one canonical encounter and records its callback flags.
 Inputs: screenplay/corpus import, `NarrativeEncounterDirector.resolveEncounter`, `commitChoice`.
@@ -556,6 +571,7 @@ State: OPEN
 Owner: unassigned
 Category: Domain simulation
 Subcategory: Composition root and event queue
+Tags: domain, session, events, integration
 Depends on: MIG-10, MIG-11, MIG-12
 Outcome: Bootstrap creates one session whose snapshot drives all current systems.
 Inputs: domain packets and Dart session event-queue behaviour.
@@ -576,6 +592,7 @@ State: OPEN
 Owner: unassigned
 Category: Persistence and database synchronization
 Subcategory: Save slots and recovery
+Tags: save, recovery, checksums, persistence
 Depends on: MIG-13
 Outcome: New run, save, load, corrupted active slot, and recovery slot all behave safely.
 Inputs: `lib/game/save_store.dart` (`write`, `read`), save contract section 5.3.
@@ -596,6 +613,7 @@ State: OPEN
 Owner: unassigned
 Category: House and spatial world
 Subcategory: Room graph, scale, and binding
+Tags: world, rooms, portals, greybox
 Depends on: MIG-03, MIG-13
 Outcome: Imported room/portal data creates a navigable greybox with stable bindings.
 Inputs: house JSON, inventory JSON, `HouseInventory.validateAgainst`.
@@ -616,6 +634,7 @@ State: OPEN
 Owner: unassigned
 Category: Movement and tactile interaction
 Subcategory: Capsule, stairs, and room transitions
+Tags: movement, collision, stairs, portals
 Depends on: MIG-20
 Outcome: The player can walk, step stairs, collide, and cross only passable portals.
 Inputs: `lib/house/collision.dart` (`Capsule.move`, `_tryAxis`, `_moveOnStair`, `portalCross`).
@@ -636,6 +655,7 @@ State: OPEN
 Owner: unassigned
 Category: Movement and tactile interaction
 Subcategory: Focus, doors, letterbox, and objects
+Tags: interaction, focus, doors, inventory
 Depends on: MIG-21, MIG-20
 Outcome: Focused objects expose typed actions with clear success/rejection feedback.
 Inputs: inventory/focus data, interaction contract, `InventoryPhysics` bounds.
@@ -656,6 +676,7 @@ State: OPEN
 Owner: unassigned
 Category: Audio, voice, and acoustics
 Subcategory: Portal transmission and cues
+Tags: audio, acoustics, cues, captions
 Depends on: MIG-20, MIG-21, MIG-22
 Outcome: A visitor and broadcast are spatially audible with closed-door muffle and captions.
 Inputs: `lib/engine/audio_planner.dart` (`AudioPlanner._route`, `transmission`, `muffleToGainDb`).
@@ -676,6 +697,7 @@ State: OPEN
 Owner: unassigned
 Category: UI, input, and accessibility
 Subcategory: Pause, settings, and input actions
+Tags: ui, input, settings, accessibility
 Depends on: MIG-13, MIG-21
 Outcome: Pause, settings, input remapping, and return-to-game work without losing the session.
 Inputs: input/accessibility product rules.
@@ -696,6 +718,7 @@ State: OPEN
 Owner: unassigned
 Category: Story delivery and people
 Subcategory: Dialogue, choices, and fallback
+Tags: story, dialogue, captions, fallback
 Depends on: MIG-12, MIG-23, MIG-30
 Outcome: A visitor conversation presents authored lines, choices, captions, and callbacks without audio.
 Inputs: imported corpus, schedule, caption rules.
@@ -716,6 +739,7 @@ State: OPEN
 Owner: unassigned
 Category: Journal and evidence
 Subcategory: Entry editing and citations
+Tags: journal, ui, citations, evidence
 Depends on: MIG-11, MIG-30
 Outcome: The player can inspect, write, cite, correct, verify, and lock a journal entry in-game.
 Inputs: journal domain snapshot and commands.
@@ -736,6 +760,7 @@ State: OPEN
 Owner: unassigned
 Category: UI, input, and accessibility
 Subcategory: Keyboard, captions, contrast, and reduced motion
+Tags: accessibility, keyboard, captions, reduced-motion
 Depends on: MIG-22, MIG-23, MIG-30, MIG-31, MIG-32
 Outcome: Day 1 is completable with keyboard-only input, captions, scalable text, and reduced motion.
 Inputs: real human usability reviewer and accessibility checklist.
@@ -756,6 +781,7 @@ State: OPEN
 Owner: unassigned
 Category: Verification, telemetry, and release
 Subcategory: Day 1 integration gate
+Tags: vertical-slice, qa, telemetry, human-test
 Depends on: MIG-14, MIG-20, MIG-21, MIG-22, MIG-23, MIG-31, MIG-32, MIG-33
 Outcome: A fresh player can complete Day 1, reload a consequence, and explain what happened.
 Inputs: canonical Day 1 content and human review.
@@ -776,6 +802,7 @@ State: OPEN
 Owner: unassigned
 Category: House and spatial world
 Subcategory: Production meshes and dressing
+Tags: world, art, meshes, dressing
 Depends on: MIG-40
 Outcome: The first approved room batch replaces proxies without changing IDs, scale, or routes.
 Inputs: rights-cleared house sources, modeling plan, greybox bindings.
@@ -796,6 +823,7 @@ State: OPEN
 Owner: unassigned
 Category: Rendering and presentation
 Subcategory: URP baseline, practicals, and weather
+Tags: rendering, urp, lighting, weather
 Depends on: MIG-50
 Outcome: A readable period lighting baseline supports domestic care, procedure, memory, and place.
 Inputs: materials JSON, lighting references, accessibility profile.
@@ -816,6 +844,7 @@ State: OPEN
 Owner: unassigned
 Category: House and spatial world
 Subcategory: Room pairs, physical consequences, and sound
+Tags: world, residues, acoustics, production
 Depends on: MIG-51
 Outcome: Production room batches preserve the route while adding authored physical and acoustic evidence.
 Inputs: canonical consequences, inventory, soundscape, approved baseline.
@@ -836,6 +865,7 @@ State: OPEN
 Owner: unassigned
 Category: Story delivery and people
 Subcategory: Campaign progression
+Tags: story, campaign, schedule, consequences
 Depends on: MIG-40, MIG-52
 Outcome: The full campaign runs from canonical schedule, corpus, journal, resources, and consequences.
 Inputs: closed story batches, approved room/audio batches.
@@ -856,6 +886,7 @@ State: OPEN
 Owner: unassigned
 Category: Domain simulation
 Subcategory: Endings and final record
+Tags: domain, endings, journal, consequences
 Depends on: MIG-60
 Outcome: The Day 21 rupture and three endings derive from recorded choices, journal state, and residues.
 Inputs: ending acceptance rules, session snapshot, canonical final content.
@@ -876,6 +907,7 @@ State: OPEN
 Owner: unassigned
 Category: Audio, voice, and acoustics
 Subcategory: Voice coverage and licensing
+Tags: audio, voice, licensing, captions
 Depends on: MIG-31, MIG-60
 Outcome: Approved voice coverage is imported with caption timing and a safe text fallback.
 Inputs: locked script, rights records, approved performances.
@@ -896,6 +928,7 @@ State: OPEN
 Owner: unassigned
 Category: Verification, telemetry, and release
 Subcategory: Performance, recovery, and packaging
+Tags: release, windows, performance, recovery
 Depends on: MIG-14, MIG-33, MIG-61, MIG-62
 Outcome: A clean Windows x64 candidate installs, runs, saves, recovers, and passes the release checklist.
 Inputs: all closed packets, target hardware, release profile.
@@ -968,7 +1001,77 @@ The website reads the packets below by stable ID and mirrors them to
 | MIG-62 | OPEN | unassigned | U5 | none |
 | MIG-70 | OPEN | unassigned | U6 | none |
 
-## 12. Greenfield definition of done
+## 12. Development detail playbook
+
+### 12.1 One-way data flow
+
+Keep the runtime path explicit:
+
+```text
+validated source -> immutable content snapshot -> GameSession command
+-> domain result -> saved snapshot + journal event -> UI/audio/presentation
+```
+
+`MonoBehaviour`, scene objects, particle systems, and UI Toolkit views consume
+domain results. They do not mutate the clock, schedule, inventory, journal, or
+save store directly. Every command returns either a typed success result with
+the state delta or a typed rejection with a player-facing reason.
+
+### 12.2 C# implementation shape
+
+For each packet, prefer this small vertical slice:
+
+1. `Runtime/Domain/<Feature>State.cs`: immutable state and value types.
+2. `Runtime/Domain/<Feature>Rules.cs`: pure algorithm with no Unity namespace.
+3. `Runtime/Content/<Feature>Definition.cs`: imported authored data and
+   validation rules.
+4. `Runtime/Integration/<Feature>Service.cs`: maps commands to domain rules
+   and emits events through `GameSession`.
+5. `Runtime/UI` or `Runtime/Presentation`: observes events and renders them.
+6. `Tests/EditMode/<Feature>RulesTests.cs` plus one assembled PlayMode test
+   when scene binding or input is involved.
+
+Avoid a singleton service locator, hidden static state, `FindObjectOfType`,
+reflection-driven registration, and gameplay logic in `Update()`. A feature is
+not complete until it can be constructed in a plain EditMode fixture.
+
+### 12.3 Test design and evidence
+
+Use the smallest test that proves the contract, then one integration proof:
+
+- pure rules: table-driven cases for boundaries, rejection, and determinism;
+- content: valid, missing-reference, duplicate-ID, and out-of-range fixtures;
+- persistence: interrupted write, checksum failure, recovery, and schema bump;
+- integration: one fresh-run route through the assembled bootstrap scene;
+- accessibility: keyboard-only route, focus order, captions, text scale, and
+  reduced-motion capture;
+- release: clean checkout, Windows build, install, reload, and evidence digest.
+
+Name tests after observable behaviour (`RejectsClosedPortal`,
+`ReplayKeepsChoiceStable`) rather than implementation methods. Attach the
+command, test output, build/profile, source digest, and capture path to the
+packet evidence. A green unit suite without an assembled proof leaves the
+packet `PARTIAL`.
+
+### 12.4 Error and recovery policy
+
+Validate at boundaries, return errors as data, and keep the last known-good
+state. An importer writes to a temporary generated directory and swaps it only
+after every source has validated. A save writes a temporary file, flushes it,
+renames the active slot, and retains one recovery slot. A database sync
+validates the entire packet set before its first card write and retries
+idempotently after transient failure.
+
+### 12.5 Performance and review budgets
+
+The first playable must keep domain commands allocation-light, avoid per-frame
+filesystem or database work, and keep presentation polling bounded. Measure
+before optimizing: record frame time, memory, load time, save time, and audio
+voice latency on the target Windows profile. Review each packet for stable IDs,
+source ownership, accessibility, deterministic replay, and a reversible change
+before moving it to `CLOSED`.
+
+## 13. Greenfield definition of done
 
 The Unity project is ready for release consideration only when the product
 masterplan gates pass, all required packets are `CLOSED`, the database mirror
