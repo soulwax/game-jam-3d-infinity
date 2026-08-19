@@ -45,5 +45,6 @@ void main() {
   assert(weathClean.condensationFactor == 0.0);
   assert(weathClean.sootDarkening == 0.0);
 
-  print('All tests passed!');
+  print('All SSDO/CSM/weathering policy-object tests passed '
+        '(policy objects only — no pixels asserted).');
 }

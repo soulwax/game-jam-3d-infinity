@@ -1,9 +1,17 @@
 import 'dart:io';
 
-/// Master regression runner executing all 16 test suites across the repository.
+/// Master regression runner for the repository's policy and simulation suites.
+///
+/// SCOPE: this battery covers pure-Dart policy objects, simulation rules,
+/// narrative data, and UI state. It asserts nothing about rendered pixels.
+/// A green run here does NOT mean a renderer feature ships — renderer evidence
+/// comes from `external/pixeldart`'s own suites and, once R-F1 lands, from the
+/// golden-image comparison. See PLAN_RENDERER.md §1.3 and §10.
 void main() async {
   print('========================================================================');
-  print(' THE QUARANTINE — MASTER REGRESSION EVIDENCE BATTERY (17 SUITES)');
+  print(' THE QUARANTINE — POLICY & SIMULATION REGRESSION BATTERY');
+  print(' Scope: policy objects, simulation, narrative, UI state.');
+  print(' NOT covered: rendered output. See PLAN_RENDERER.md §1.3.');
   print('========================================================================\n');
 
   final testSuites = [
@@ -11,7 +19,7 @@ void main() async {
     'tools/test_accessibility_and_polish_suite.dart',
     'tools/test_performance_and_frame_pacing.dart',
     'tools/test_audio_acoustic_mixdown.dart',
-    'tools/test_pbr_shading_pipeline.dart',
+    'tools/test_pbr_policy_objects.dart',
     'tools/test_full_runtime_gameplay_loop.dart',
     'tools/test_21day_narrative_matrix.dart',
     'tools/test_raycast_wall_occlusion.dart',
@@ -20,7 +28,7 @@ void main() async {
     'tools/test_brush_components.dart',
     'tools/test_dialogue_encounter_bridge.dart',
     'tools/test_house_manifests_and_lighting.dart',
-    'tools/test_ssdo_csm_weathering.dart',
+    'tools/test_ssdo_csm_policy_objects.dart',
     'tools/test_lod_mesh_pipeline.dart',
     'tools/test_surface_detail_history_pass.dart',
     'tools/test_pixeldart_capabilities_and_governance.dart',

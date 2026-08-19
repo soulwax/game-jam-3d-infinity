@@ -5,7 +5,7 @@ import 'package:quarantine/presentation/procedural_surface_weathering.dart';
 import 'package:quarantine/presentation/contact_shadows_ssdo.dart';
 
 Never _fail(String message) =>
-    throw StateError('PBR Shading Pipeline test failed: $message');
+    throw StateError('PBR policy-object test failed: $message');
 
 void _expect(bool condition, String message) {
   if (!condition) _fail(message);
@@ -116,5 +116,5 @@ void main() {
   _expect(weatheredResult.finalRoughness > 0.3, 'Dust accumulation must increase effective surface roughness');
   _expect(weatheredResult.finalOcclusion < 1.0, 'SSDO must modulate effective ambient occlusion');
 
-  print('All PBR Material Shading Pipeline tests passed successfully!');
+  print('All PBR policy-object tests passed (policy objects only — no pixels asserted).');
 }
