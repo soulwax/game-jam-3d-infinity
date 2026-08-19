@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:quarantine/engine/math3.dart';
-import 'package:quarantine/presentation/screen_space_reflections.dart';
 import 'package:quarantine/presentation/contact_shadows_ssdo.dart';
 import 'package:quarantine/presentation/procedural_surface_weathering.dart';
 import 'package:quarantine/presentation/subsurface_scattering_params.dart';
@@ -55,7 +54,6 @@ class PBRShadingResult {
   final Vec3 diffuse;
   final Vec3 specular;
   final Vec3 sssContribution;
-  final Vec3 ssrReflection;
   final Vec3 totalRadiance;
   final double finalRoughness;
   final double finalOcclusion;
@@ -64,7 +62,6 @@ class PBRShadingResult {
     required this.diffuse,
     required this.specular,
     required this.sssContribution,
-    required this.ssrReflection,
     required this.totalRadiance,
     required this.finalRoughness,
     required this.finalOcclusion,
@@ -74,7 +71,6 @@ class PBRShadingResult {
         'diffuse': {'x': diffuse.x, 'y': diffuse.y, 'z': diffuse.z},
         'specular': {'x': specular.x, 'y': specular.y, 'z': specular.z},
         'sssContribution': {'x': sssContribution.x, 'y': sssContribution.y, 'z': sssContribution.z},
-        'ssrReflection': {'x': ssrReflection.x, 'y': ssrReflection.y, 'z': ssrReflection.z},
         'totalRadiance': {'x': totalRadiance.x, 'y': totalRadiance.y, 'z': totalRadiance.z},
         'finalRoughness': finalRoughness,
         'finalOcclusion': finalOcclusion,
@@ -84,7 +80,7 @@ class PBRShadingResult {
 /// Master Cook-Torrance Microfacet PBR Material Shading Pipeline.
 ///
 /// Unifies physical BRDF, normal displacement, SSDO contact shadows, procedural
-/// weathering layers, screen-space reflections, and subsurface scattering.
+/// weathering layers and subsurface scattering.
 class PBRMaterialShadingPipeline {
   /// Evaluates Cook-Torrance GGX microfacet BRDF with atmospheric and weathering layers.
   static PBRShadingResult evaluateSurface({
@@ -92,7 +88,6 @@ class PBRMaterialShadingPipeline {
     required List<PBRLightSource> lights,
     Vec3? ambientLight,
     SSDOResult? ssdoResult,
-    ScreenSpaceReflectionResult? ssrResult,
   }) {
     final n = surface.normal.normalized;
     final v = surface.viewDir.normalized;
@@ -220,20 +215,12 @@ class PBRMaterialShadingPipeline {
       effectiveAlbedo.z * ambient.z * effectiveAO,
     );
 
-    // Screen Space Reflection contribution
-    var ssrColor = Vec3(0, 0, 0);
-    if (ssrResult != null && ssrResult.hasHit) {
-      final ssrWeight = (1.0 - effectiveRoughness) * ssrResult.confidence01;
-      ssrColor = f0 * ssrWeight;
-    }
-
-    final totalRadiance = ambientDiffuse + totalDiffuse + totalSpecular + totalSSS + ssrColor;
+    final totalRadiance = ambientDiffuse + totalDiffuse + totalSpecular + totalSSS;
 
     return PBRShadingResult(
       diffuse: ambientDiffuse + totalDiffuse,
       specular: totalSpecular,
       sssContribution: totalSSS,
-      ssrReflection: ssrColor,
       totalRadiance: totalRadiance,
       finalRoughness: effectiveRoughness,
       finalOcclusion: effectiveAO,

@@ -3,7 +3,6 @@ import 'package:quarantine/presentation/pbr_material_shading_pipeline.dart';
 import 'package:quarantine/presentation/subsurface_scattering_params.dart';
 import 'package:quarantine/presentation/procedural_surface_weathering.dart';
 import 'package:quarantine/presentation/contact_shadows_ssdo.dart';
-import 'package:quarantine/presentation/screen_space_reflections.dart';
 
 Never _fail(String message) =>
     throw StateError('PBR Shading Pipeline test failed: $message');
@@ -116,24 +115,6 @@ void main() {
 
   _expect(weatheredResult.finalRoughness > 0.3, 'Dust accumulation must increase effective surface roughness');
   _expect(weatheredResult.finalOcclusion < 1.0, 'SSDO must modulate effective ambient occlusion');
-
-  // 5. Screen Space Reflection Integration
-  const ssrResult = ScreenSpaceReflectionResult(
-    hasHit: true,
-    confidence01: 0.85,
-    roughnessConeSpread: 0.1,
-    hitDistance: 1.5,
-    activeSteps: 12,
-    diagnostics: {},
-  );
-
-  final ssrShadedResult = PBRMaterialShadingPipeline.evaluateSurface(
-    surface: dielectricSurface,
-    lights: [light],
-    ssrResult: ssrResult,
-  );
-
-  _expect(ssrShadedResult.ssrReflection.length > 0, 'SSR hit must contribute to specular radiance');
 
   print('All PBR Material Shading Pipeline tests passed successfully!');
 }
