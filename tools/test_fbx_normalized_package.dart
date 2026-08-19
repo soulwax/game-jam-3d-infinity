@@ -16,8 +16,9 @@ void main(List<String> args) {
   }
   final root = Directory(args.single);
   final manifestFile = File('${root.path}/generated-manifest.json');
-  if (!manifestFile.existsSync())
+  if (!manifestFile.existsSync()) {
     throw StateError('missing generated manifest');
+  }
   final manifest =
       jsonDecode(manifestFile.readAsStringSync()) as Map<String, dynamic>;
   final parts = manifest['parts'] as List<dynamic>;

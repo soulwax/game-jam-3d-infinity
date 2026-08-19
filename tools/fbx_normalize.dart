@@ -131,8 +131,9 @@ Future<void> main(List<String> args) async {
       });
       partIndex++;
     }
-    if (parts.isEmpty)
+    if (parts.isEmpty) {
       throw const FormatException('GLB contains no triangle primitives');
+    }
     emittedFiles.sort((a, b) => a.path.compareTo(b.path));
     final packageHash = Sha256.compute(
       emittedFiles.expand((file) => file.readAsBytesSync()).toList(),
@@ -227,10 +228,11 @@ final class _Primitive {
       0,
       math.min(fullOrder.length, targetTriangles * 3),
     );
-    if (order.length % 3 != 0)
+    if (order.length % 3 != 0) {
       throw const FormatException(
         'primitive index count is not divisible by 3',
       );
+    }
     final min = [double.infinity, double.infinity, double.infinity];
     final max = [
       double.negativeInfinity,
@@ -296,7 +298,9 @@ final class _Primitive {
         max[axis] = math.max(max[axis], value);
         floats[base + 3 + axis] = n[axis];
       }
-      for (var j = 0; j < 4; j++) floats[base + 6 + j] = t[j];
+      for (var j = 0; j < 4; j++) {
+        floats[base + 6 + j] = t[j];
+      }
       floats[base + 10] = 1;
       floats[base + 11] = 1;
       floats[base + 12] = 1;
@@ -394,8 +398,9 @@ final class _Glb {
 
   factory _Glb.parse(Uint8List bytes) {
     final view = ByteData.sublistView(bytes);
-    if (view.getUint32(0, Endian.little) != 0x46546c67)
+    if (view.getUint32(0, Endian.little) != 0x46546c67) {
       throw const FormatException('bad GLB magic');
+    }
     var offset = 12;
     Map<String, dynamic>? json;
     Uint8List? bin;
@@ -404,18 +409,20 @@ final class _Glb {
       final type = view.getUint32(offset + 4, Endian.little);
       final data = bytes.sublist(offset + 8, offset + 8 + length);
       offset += 8 + length;
-      if (type == 0x4e4f534a)
+      if (type == 0x4e4f534a) {
         json = Map<String, dynamic>.from(
           jsonDecode(utf8.decode(data).trimRight().replaceAll('\u0000', ' '))
               as Map,
         );
+      }
       if (type == 0x004e4942) bin = Uint8List.fromList(data);
     }
-    if (json == null || bin == null)
+    if (json == null || bin == null) {
       throw const FormatException('GLB missing JSON or BIN chunk');
+    }
     final primitives = <_Primitive>[];
     for (final mesh in (json['meshes'] as List? ?? const []))
-      for (final p in (mesh['primitives'] as List? ?? const []))
+      for (final p in (mesh['primitives'] as List? ?? const [])) {
         primitives.add(
           _Primitive(
             Map<String, dynamic>.from(p['attributes'] as Map),
@@ -423,6 +430,7 @@ final class _Glb {
             p['material'] as int?,
           ),
         );
+      }
     return _Glb(json, bin, primitives);
   }
 

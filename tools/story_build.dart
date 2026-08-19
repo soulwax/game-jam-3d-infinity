@@ -15,13 +15,15 @@ void main() {
       if (file.path.endsWith('.txt')) file.path.replaceAll('\\', '/'),
   };
   for (final source in parsed.sources) {
-    if (!knownSources.contains(source))
+    if (!knownSources.contains(source)) {
       _fail('screenplay references missing source $source');
+    }
   }
   for (final scene in parsed.scenes) {
     for (final source in scene.sources) {
-      if (!knownSources.contains(source))
+      if (!knownSources.contains(source)) {
         _fail('${scene.id} links missing source $source');
+      }
     }
   }
   final days = parsed.scenes.map((scene) => scene.day).toList()..sort();
@@ -30,11 +32,13 @@ void main() {
     _fail('screenplay must contain exactly one scene for every day 1..21');
   }
   final sceneIds = {for (final scene in parsed.scenes) scene.id};
-  if (sceneIds.length != parsed.scenes.length)
+  if (sceneIds.length != parsed.scenes.length) {
     _fail('scene ids must be unique');
+  }
   final eventIds = {for (final event in parsed.events) event.id};
-  if (eventIds.length != parsed.events.length)
+  if (eventIds.length != parsed.events.length) {
     _fail('event ids must be unique');
+  }
   for (final event in parsed.events) {
     if (!const {
       'broadcast',
@@ -78,8 +82,9 @@ void main() {
   }
   for (final scene in parsed.scenes) {
     for (final branch in scene.branches) {
-      if (branch.options.length < 2)
+      if (branch.options.length < 2) {
         _fail('${scene.id}/${branch.id} needs at least two options');
+      }
       for (final option in branch.options) {
         if (!sceneIds.contains(option.next) && option.next != 'END') {
           _fail(
@@ -143,8 +148,9 @@ void main() {
     ],
   };
   final encoded = '${const JsonEncoder.withIndent('  ').convert(json)}\n';
-  if (!output.existsSync() || output.readAsStringSync() != encoded)
+  if (!output.existsSync() || output.readAsStringSync() != encoded) {
     output.writeAsStringSync(encoded);
+  }
   stdout.writeln(
     'Generated ${output.path} (${parsed.scenes.length} scenes, ${parsed.sources.length} sources)',
   );
@@ -186,33 +192,40 @@ StoryScreenplay _parse(List<String> lines) {
         scene = null;
         branch = null;
       case 'EVENT_SOURCE':
-        if (event == null || head.length != 2)
+        if (event == null || head.length != 2) {
           _fail('line ${i + 1}: EVENT_SOURCE path');
-        event!.source = head[1];
+        }
+        event.source = head[1];
       case 'EVENT_SPEAKER':
-        if (event == null || head.length != 2)
+        if (event == null || head.length != 2) {
           _fail('line ${i + 1}: EVENT_SPEAKER speaker');
-        event!.speaker = head[1];
+        }
+        event.speaker = head[1];
       case 'EVENT_CUE':
-        if (event == null || head.length != 2)
+        if (event == null || head.length != 2) {
           _fail('line ${i + 1}: EVENT_CUE cue');
-        event!.cue = head[1];
+        }
+        event.cue = head[1];
       case 'EVENT_EFFECT':
-        if (event == null || value.isEmpty)
+        if (event == null || value.isEmpty) {
           _fail('line ${i + 1}: EVENT_EFFECT | key=value');
-        event!.effects.add(value);
+        }
+        event.effects.add(value);
       case 'EVENT_NEXT':
-        if (event == null || head.length != 2)
+        if (event == null || head.length != 2) {
           _fail('line ${i + 1}: EVENT_NEXT scene-id');
-        event!.nextScene = head[1];
+        }
+        event.nextScene = head[1];
       case 'EVENT_RANDOM':
-        if (event == null || head.length != 3)
+        if (event == null || head.length != 3) {
           _fail('line ${i + 1}: EVENT_RANDOM earliest latest');
-        event!.randomFrom = double.tryParse(head[1]);
-        event!.randomTo = double.tryParse(head[2]);
+        }
+        event.randomFrom = double.tryParse(head[1]);
+        event.randomTo = double.tryParse(head[2]);
       case 'LINK':
-        if (scene == null || event != null || head.length != 2)
+        if (scene == null || event != null || head.length != 2) {
           _fail('line ${i + 1}: LINK path');
+        }
         scene.sources.add(head[1]);
       case 'SCENE':
         if (head.length < 4) _fail('line ${i + 1}: SCENE id day title');
@@ -228,23 +241,27 @@ StoryScreenplay _parse(List<String> lines) {
         );
         branch = null;
       case 'BEAT':
-        if (scene == null || value.isEmpty || head.length < 2)
+        if (scene == null || value.isEmpty || head.length < 2) {
           _fail('line ${i + 1}: BEAT kind | text');
+        }
         scene.beats.add(ScreenplayBeat(kind: head[1], text: value));
       case 'DIALOGUE':
-        if (scene == null || value.isEmpty || head.length < 2)
+        if (scene == null || value.isEmpty || head.length < 2) {
           _fail('line ${i + 1}: DIALOGUE speaker | text');
+        }
         scene.beats.add(
           ScreenplayBeat(kind: 'dialogue', speaker: head[1], text: value),
         );
       case 'BRANCH':
-        if (scene == null || value.isEmpty || head.length != 2)
+        if (scene == null || value.isEmpty || head.length != 2) {
           _fail('line ${i + 1}: BRANCH id | prompt');
+        }
         branch = ScreenplayBranchBuilder(head[1], value);
         scene.branches.add(branch);
       case 'OPTION':
-        if (branch == null || head.length != 3 || value.isEmpty)
+        if (branch == null || head.length != 3 || value.isEmpty) {
           _fail('line ${i + 1}: OPTION id next | label');
+        }
         branch.options.add(
           ScreenplayOption(id: head[1], next: head[2], label: value),
         );
@@ -254,8 +271,9 @@ StoryScreenplay _parse(List<String> lines) {
   }
   if (event != null) events.add(event.build());
   if (scene != null) scenes.add(scene.build());
-  if (scenes.any((scene) => scene.day < 1 || scene.day > 21))
+  if (scenes.any((scene) => scene.day < 1 || scene.day > 21)) {
     _fail('scene day must be 1..21');
+  }
   return StoryScreenplay(
     sources: [...LinkedHashSet<String>.from(sources)],
     scenes: scenes,
@@ -332,7 +350,9 @@ Never _fail(String message) {
 /// Small insertion-ordered set without adding a package dependency.
 class LinkedHashSet<T> extends Iterable<T> {
   LinkedHashSet.from(Iterable<T> values) {
-    for (final value in values) _values[value] = true;
+    for (final value in values) {
+      _values[value] = true;
+    }
   }
   final _values = <T, bool>{};
   @override

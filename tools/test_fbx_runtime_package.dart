@@ -24,8 +24,9 @@ Future<void> main(List<String> args) async {
   for (final mesh in decoded) {
     cache.release(mesh);
   }
-  if (cache.cachedCount != 0)
+  if (cache.cachedCount != 0) {
     throw StateError('runtime package leaked cache entries');
+  }
   final lod1 = await package.decodeLod(cache, 'LOD1', (path) async {
     return Uint8List.fromList(File('${root.path}/$path').readAsBytesSync());
   });

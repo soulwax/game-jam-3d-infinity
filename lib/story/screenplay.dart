@@ -221,8 +221,9 @@ class ScreenplayScene {
   }
 
   factory ScreenplayScene.fromJson(Object? value) {
-    if (value is! Map)
+    if (value is! Map) {
       throw const FormatException('screenplay scene must be an object');
+    }
     final id = value['id'];
     final day = value['day'];
     final title = value['title'];
@@ -251,8 +252,9 @@ class ScreenplayScene {
   }
 
   static String _requiredString(Object? value) {
-    if (value is! String || value.isEmpty)
+    if (value is! String || value.isEmpty) {
       throw const FormatException('screenplay array contains invalid text');
+    }
     return value;
   }
 }

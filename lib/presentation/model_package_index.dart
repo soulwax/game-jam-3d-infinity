@@ -29,8 +29,9 @@ final class PresentationModelPackageIndex {
       throw const FormatException('unsupported promoted model index schema');
     }
     final records = raw['entries'];
-    if (records is! List)
+    if (records is! List) {
       throw const FormatException('promoted model index entries are required');
+    }
     return PresentationModelPackageIndex([
       for (final value in records)
         if (value is Map)
@@ -107,8 +108,9 @@ final class PresentationModelPackageIndex {
 }
 
 bool _safeManifestPath(String path) {
-  if (path.isEmpty || path.startsWith('/') || path.contains('://'))
+  if (path.isEmpty || path.startsWith('/') || path.contains('://')) {
     return false;
+  }
   if (path.toLowerCase().endsWith('.obj') ||
       path.toLowerCase().endsWith('.mtl') ||
       path.toLowerCase().endsWith('.fbx')) {

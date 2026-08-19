@@ -7266,7 +7266,7 @@ r=new A.tm(a,h,b,r,j,f,k,g,i,!1,e,l==null?null:A.aW(l,s,t.X))
 r.jZ(a,b,c,!1,e,f,g,h,i,j,k,l)
 return r},
 Bv(a,b,c,d){var s=A.no("RENDERER_SHA"),r=A.no("GAME_SHA"),q=A.no("DART_SDK_VERSION")
-return A.Bu(a,"222ff2d101f4-a5a2929e6a5c-dirty",b,!1,null,r,A.no("LOCKFILE_SHA256"),d,A.no("PROJECT_VERSION"),s,q,null)},
+return A.Bu(a,"d4fcfad4cf43-29c54d675af0-dirty",b,!1,null,r,A.no("LOCKFILE_SHA256"),d,A.no("PROJECT_VERSION"),s,q,null)},
 no(a){var s=B.ll.h(0,a)
 return s.length===0?null:s},
 tm:function tm(a,b,c,d,e,f,g,h,i,j,k,l){var _=this
@@ -26988,7 +26988,7 @@ B.lj=new A.a4(B.dD,["Move forward","Move back","Move left","Move right","Interac
 B.m8={uScene:0,uHistory:1}
 B.lk=new A.a4(B.m8,[0,1],t.I)
 B.lH={RENDERER_SHA:0,GAME_SHA:1,DART_SDK_VERSION:2,LOCKFILE_SHA256:3,PROJECT_VERSION:4}
-B.ll=new A.a4(B.lH,["a5a2929e6a5c4c0e2af0c3f56260706764bee448","222ff2d101f47f8d190048ed563b64651a7c0b56","3.12.2","73459684a3fee7d154e75cb8de030541d65ed4559f75251b12d373a91f33100f","0.2.0.3"],t.w)
+B.ll=new A.a4(B.lH,["29c54d675af0d7886b0d1808b14deee1a6473afc","d4fcfad4cf4303123ff7ac0154724e7426c16e7a","3.12.2","73459684a3fee7d154e75cb8de030541d65ed4559f75251b12d373a91f33100f","0.2.0.3"],t.w)
 B.lV={aPosition:0,aUvMat:1}
 B.dt=new A.a4(B.lV,[0,4],t.I)
 B.lI={pickup:0,gate:1,explosion:2,blip:3,milestone:4,confirm:5,crossing:6,whoosh:7,glitch:8,toll:9,collapse:10,votive:11,rood:12,winnow:13,"clock-tick":14,"clock-chime":15,"clock-cuckoo":16,"clock-bell":17,"door-knock":18,"door-knock-soft":19,"window-wind":20,"house-creak":21,"timber-creak":22,"pipe-tick":23,"range-settle":24,"cellar-drip":25,"cistern-settle":26,"weather-rain":27,"weather-sleet":28,"weather-snow":29,"weather-hail":30,"weather-hail-roof":31,"weather-hail-tick":32,"weather-wind":33,"weather-window-rattle":34,"weather-window-tick":35,"weather-thunder-bed":36,"weather-interior-drip":37,"weather-interior-warmth":38,"weather-interior-coffee":39,"weather-coffee-clink":40,"weather-thunder-crack":41,"weather-thunder-roll":42,"step-above-0":43,"step-above-1":44,"step-above-2":45,"step-above-3":46}

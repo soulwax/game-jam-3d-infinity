@@ -15,7 +15,8 @@ void main() {
       (entry as Map)['assetId'] as String,
   };
   final missing = production.difference(indexed);
-  if (missing.isNotEmpty)
+  if (missing.isNotEmpty) {
     throw StateError('production inventory is not promoted: $missing');
+  }
   print('inventory/index alignment: every production asset is promoted');
 }
