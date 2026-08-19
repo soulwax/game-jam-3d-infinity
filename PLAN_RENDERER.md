@@ -396,7 +396,7 @@ created in the game tree.
 
 Cheap, unblocks everything, and is worth doing even if §0.2 resolves toward Unity.
 
-**R-A1 (GM) — delete the dead legacy renderer.**
+**R-A1 (GM) — delete the dead legacy renderer.** — **DONE** (`9b781f1`; snapshot tag `legacy-renderer-snapshot`).
 *Outcome:* `lib/engine/renderer*.dart`, `gl.dart`, `passes.dart`, `programs.dart`,
 `shaders.dart`, `shadow.dart`, `world_program_bindings.dart`, `lib/house/emitter.dart`,
 and the root `shaders/` directory are gone; the build and every test still pass.
@@ -416,14 +416,14 @@ are `tools/test_*` and `release_validator.dart`, it is not driving anything.
 *Checks:* no module is labelled `PLANNED` without a packet ID that exists below.
 *Rationale:* this is what stops a future reader from believing SSR ships.
 
-**R-A3 (GM) — rename the misleading test suites.**
+**R-A3 (GM) — rename the misleading test suites.** — **DONE** (`1233efa`).
 *Outcome:* `test_pbr_shading_pipeline.dart` → `test_pbr_policy_objects.dart`,
 `test_ssdo_csm_weathering.dart` → `test_ssdo_csm_policy_objects.dart`, and the
 `run_all_master_tests.dart` banner states that the battery covers policy and
 simulation, not rendering output.
 *Checks:* battery still green; names now describe what they assert.
 
-**R-A4 (PD) — delete or complete the three phantom passes.**
+**R-A4 (PD) — delete or complete the three phantom passes.** — **DONE** (pixeldart `d80b8ab`; all three deleted, TAA included because R-D1 is unscheduled).
 *Outcome:* `passes/taa.dart`, `passes/ssss.dart`, `passes/lens_flare.dart` are
 either removed with their resource files, or carry shaders in
 `shaders/rendering/manifest.json` and are installable.
@@ -432,7 +432,7 @@ file only if **R-D1** is scheduled, otherwise delete it too and re-add later.
 *Checks:* `tools/renderer/check_boundary.dart`; every `RenderFeature` in the
 package is referenced by at least one graph builder.
 
-**R-A5 (PD) — reconcile the advertised shadow/light budget.**
+**R-A5 (PD) — reconcile the advertised shadow/light budget.** — **DONE** (pixeldart `6ae1624`, game `cebaec4`; claims lowered, `RuntimeLightBudget` now the single source).
 *Outcome:* `lib/presentation/pixeldart_renderer_profile_policy.dart` and
 `light_table_capacity_ledger.dart` report the numbers the runtime can honour
 (today: 1 shadow caster), or the runtime honours theirs. Until **R-B2** lands,
@@ -653,25 +653,25 @@ Rules:
 
 ## 8. Sequencing summary
 
-| Order | Packet | Repo | Blocks | Effort |
-| --- | --- | --- | --- | --- |
-| 1 | R-A1 delete legacy | GM | — | S |
-| 2 | R-A2 classify presentation | GM | all | S |
-| 3 | R-A3 rename suites | GM | — | XS |
-| 4 | R-A4 phantom passes | PD | R-D1 | S |
-| 5 | R-A5 reconcile budget claims | PD/GM | R-B2 | S |
-| 6 | **R-F1 golden images** | PD | gates B–E | M |
-| 7 | R-B1 HDR targets | PD | R-C2 | M |
-| 8 | R-B2 shadow atlas + CSM | PD | — | L |
-| 9 | R-C2 bloom pyramid | PD | — | S |
-| 10 | R-B3 environment probes | PD | — | L |
-| 11 | R-E1 attribute instancing | PD | R-C1 | M |
-| 12 | R-C1 skeletal animation | PD | visitor content | L |
-| 13 | R-C3 contact shadows | PD | — | M |
-| 14 | R-E3 PVS submission | PD | — | M |
-| 15 | R-E2 dynamic resolution | PD/GM | — | M |
-| 16 | R-F2 budget enforcement | PD | — | S |
-| — | R-D1 TAA | PD | art gate | L |
+| Order | Packet | Repo | Blocks | Effort | Status |
+| --- | --- | --- | --- | --- | --- |
+| 1 | R-A1 delete legacy | GM | — | S | **done** |
+| 2 | R-A2 classify presentation | GM | all | S | **done**, §10.5 pending |
+| 3 | R-A3 rename suites | GM | — | XS | **done** |
+| 4 | R-A4 phantom passes | PD | R-D1 | S | **done** |
+| 5 | R-A5 reconcile budget claims | PD/GM | R-B2 | S | **done** |
+| 6 | **R-F1 golden images** | PD | gates B–E | M | — |
+| 7 | R-B1 HDR targets | PD | R-C2 | M | — |
+| 8 | R-B2 shadow atlas + CSM | PD | — | L | — |
+| 9 | R-C2 bloom pyramid | PD | — | S | — |
+| 10 | R-B3 environment probes | PD | — | L | — |
+| 11 | R-E1 attribute instancing | PD | R-C1 | M | — |
+| 12 | R-C1 skeletal animation | PD | visitor content | L | — |
+| 13 | R-C3 contact shadows | PD | — | M | — |
+| 14 | R-E3 PVS submission | PD | — | M | — |
+| 15 | R-E2 dynamic resolution | PD/GM | — | M | — |
+| 16 | R-F2 budget enforcement | PD | — | S | — |
+| — | R-D1 TAA | PD | art gate | L | — |
 
 Phase A is roughly a week. Phase B is the bulk of the work and the bulk of the
 visible change. Phases C–E are additive and can be reordered against content
