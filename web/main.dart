@@ -678,10 +678,12 @@ final class _PixeldartWebRuntime implements RendererRuntime {
     }
     _publishMaterialResidency();
     for (final room in house.rooms) {
-      // living-room is now presented by the promoted FBX package. Keep the
-      // authored room topology and collision in the game, but do not draw the
-      // retired procedural shell underneath the canonical model.
-      if (room.id == 'living-room') continue;
+      // A model-presented room is drawn by its promoted package. The authored
+      // room topology, collision, and audio stay with the game; only the
+      // retired procedural shell goes. The set lives in lib/house/geometry.dart
+      // so the generator and this loop cannot disagree about which rooms have
+      // migrated.
+      if (roomShellIsModelPresented(room.id)) continue;
       _installRoomSurfaces(house, room);
     }
     _canvas.setAttribute('data-renderer-legacy-living-room-shell', 'removed');

@@ -16,10 +16,25 @@ void main() {
 
   final house = loadAuthoredHouse(seed: 42);
 
-  // 1. Verify all rooms produce valid structural shell geometry.
-  print('Testing RoomGeometry generation across all house rooms...');
+  // 1. Every room that the generator still owns produces a valid shell.
+  //     Rooms migrated to an authored model package are excluded by design:
+  //     their shell comes from the promoted FBX, not from this generator.
+  print('Testing RoomGeometry generation across generator-owned rooms...');
+  var generatedRooms = 0;
   for (final room in house.rooms) {
     final geom = buildRoomGeometry(house, room);
+    if (roomShellIsModelPresented(room.id)) {
+      if (!geom.isEmpty) {
+        throw StateError(
+          'Room ${room.id} is presented by a model package, so the procedural '
+          'generator must contribute nothing for it — otherwise the retired '
+          'shell is still being built, measured, and drawn underneath the '
+          'authored interior. Got ${geom.combined.length} floats.',
+        );
+      }
+      continue;
+    }
+    generatedRooms++;
     if (geom.floor.isEmpty) {
       throw StateError('Floor geometry empty for room ${room.id}');
     }
@@ -33,19 +48,22 @@ void main() {
       throw StateError('Combined geometry empty for room ${room.id}');
     }
   }
-  print('✓ All ${house.rooms.length} rooms generated clean structural shells');
+  print(
+    '✓ $generatedRooms generator-owned rooms produced clean structural shells; '
+    '${modelPresentedRoomShells.length} model-presented '
+    '(${modelPresentedRoomShells.join(", ")}) produced none',
+  );
 
-  // 2. Sparse chambers intentionally omit the old primitive volume.
+  // 2. The migrated room contributes no procedural geometry at all.
   final living = house.byId('living-room')!;
   final livingGeom = buildRoomGeometry(house, living);
-  if (livingGeom.walls.length > 10000) {
+  if (!livingGeom.isEmpty) {
     throw StateError(
-      'Living room walls still contain decorative artifacts: ${livingGeom.walls.length} floats',
+      'Living room still generates a procedural shell: '
+      '${livingGeom.combined.length} floats',
     );
   }
-  print(
-    '✓ Living room shell remains sparse (${livingGeom.walls.length} floats)',
-  );
+  print('✓ Living room shell is fully retired in favour of its FBX package');
 
   // 3. Verify StaticMeshBuilder primitive emission
   print('Testing Primitive Geometric Builders...');

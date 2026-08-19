@@ -8,6 +8,18 @@ void main() {
   final house = loadAuthoredHouse(seed: 42);
   for (final room in house.rooms) {
     final geometry = buildRoomGeometry(house, room);
+    // A room migrated to an authored model package has no procedural shell to
+    // check. Its geometry is validated against the promoted package instead —
+    // see tools/test_promoted_living_room_package.dart.
+    if (roomShellIsModelPresented(room.id)) {
+      if (!geometry.isEmpty) {
+        _fail(
+          'room ${room.id} is model-presented but still generates '
+          '${geometry.combined.length} floats of procedural shell',
+        );
+      }
+      continue;
+    }
     if (geometry.floor.isEmpty || geometry.ceiling.isEmpty) {
       _fail('room ${room.id} has no floor or ceiling geometry');
     }
