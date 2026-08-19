@@ -14,7 +14,14 @@ void main() {
   );
   check(high.internalWidth == 1920, 'high internal width');
   check(high.internalHeight == 1080, 'high internal height');
-  check(high.shadowMapCount == 3, 'high shadow maps');
+  // R-A5: assert against what the runtime honours, not against a constant
+  // chosen here. RuntimeLightBudget.shadowMaps is itself pinned to the shader
+  // and the pipeline resource layout by
+  // external/pixeldart/tools/renderer/test_runtime_light_budget.dart.
+  check(
+    high.shadowMapCount == pixeldart.RuntimeLightBudget.shadowMaps,
+    'high shadow maps must match the runtime shadow-map budget',
+  );
   check(high.shadowMapSize == 1024, 'high shadow map size');
   final highMsaa4 = policy.configuration(
     profile: pixeldart.QualityProfile.clean,
@@ -24,10 +31,16 @@ void main() {
   );
   check(highMsaa4.sampleCount == 4, 'high MSAA 4x allocation');
   check(high.materialTableCapacity == 64, 'high material capacity');
-  check(high.lightTableCapacity == 8, 'high light capacity');
+  check(
+    high.lightTableCapacity == pixeldart.RuntimeLightBudget.dynamicLights,
+    'high light capacity must match the shader light budget',
+  );
   final highMap = high.toMap();
   check(highMap['internalWidth'] == 1920, 'configuration map width');
-  check(highMap['shadowMapCount'] == 3, 'configuration map shadow count');
+  check(
+    highMap['shadowMapCount'] == pixeldart.RuntimeLightBudget.shadowMaps,
+    'configuration map shadow count',
+  );
 
   final standard = policy.configuration(
     profile: pixeldart.QualityProfile.minimal,
@@ -36,7 +49,10 @@ void main() {
   );
   check(standard.internalWidth == 1280, 'standard internal width');
   check(standard.internalHeight == 720, 'standard internal height');
-  check(standard.shadowMapCount == 2, 'standard shadow maps');
+  check(
+    standard.shadowMapCount == pixeldart.RuntimeLightBudget.shadowMaps,
+    'standard shadow maps must match the runtime shadow-map budget',
+  );
 
   final safe = policy.configuration(
     profile: pixeldart.QualityProfile.safe,
@@ -46,6 +62,13 @@ void main() {
   check(safe.internalWidth == 800, 'safe internal width');
   check(safe.internalHeight == 450, 'safe internal height');
   check(safe.shadowMapCount == 0, 'safe has no shadows');
+  final shadowsOff = policy.configuration(
+    profile: pixeldart.QualityProfile.clean,
+    surfaceWidth: 1920,
+    surfaceHeight: 1080,
+    shadowQuality: 'off',
+  );
+  check(shadowsOff.shadowMapCount == 0, 'shadowQuality off disables shadows');
   check(safe.lightTableCapacity == 1, 'safe light capacity');
 
   final small = policy.configuration(

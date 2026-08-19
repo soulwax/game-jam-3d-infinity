@@ -82,14 +82,14 @@ const bool ps1VertexLighting = true;
 const bool ps1ColorQuantize = false;
 const bool ps1PointSampled = true;
 
-const int shadowMapSize = 512;
-const int shadowMapSizeSmall = 256;
-const int maxShadowCasters = 2;
-const double shadowFov = 90.0;
-const double shadowNear = 0.15;
-const double shadowFar = 12.0;
-const double shadowBiasConstant = 0.0015;
-const double shadowBiasSlope = 0.005;
+// The shadow budget lives in `external/pixeldart`, not here. The constants that
+// used to sit at this spot (shadowMapSize/maxShadowCasters/shadowFov/bias)
+// configured the legacy renderer deleted in PLAN_RENDERER.md R-A1 and had no
+// readers left; `maxShadowCasters = 2` in particular advertised a budget the
+// shipping runtime has never honoured. The truthful figure is one shadow map,
+// bound to `spotLights.first` — see PLAN_RENDERER.md §2.3 and packet R-A5. The
+// live knobs are `PixeldartRendererProfilePolicy.shadowMapSize` and
+// `LightTableCapacityLedger.maxShadowCasters`.
 
 const double playerSpeed = 2.0;
 const double playerAcceleration = 14.0;
@@ -113,8 +113,9 @@ const double dofBlurRadius = 0.5;
 const double dofBlurScale = 1.0;
 const double depthOfFieldStrength = 1.0;
 
-const bool enableFrustumCull = false;
-const bool enableDrawSorting = true;
+// enableFrustumCull/enableDrawSorting also went with the legacy renderer:
+// culling and sort keys are unconditional in `external/pixeldart`
+// (`core/visibility.dart`, `core/sort_key.dart`).
 
 // One real minute advances exactly fifteen in-game minutes. A full in-game
 // day therefore takes 96 real minutes, leaving enough room for slow domestic

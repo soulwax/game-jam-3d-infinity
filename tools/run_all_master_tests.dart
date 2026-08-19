@@ -39,7 +39,7 @@ void main() async {
     'tools/test_temporal_anti_aliasing_jitter.dart',
     'tools/test_volumetric_fog_inscattering.dart',
     'tools/test_motion_blur_velocity_field.dart',
-    'tools/test_pixeldart_extended_rendering_passes.dart',
+    'tools/test_pixeldart_volumetric_light_pass.dart',
     'tools/test_masterplan_final_verification.dart',
   ];
 

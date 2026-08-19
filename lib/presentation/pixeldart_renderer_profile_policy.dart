@@ -41,11 +41,18 @@ final class PixeldartRendererProfilePolicy {
     final shadows =
         profile.installs(pixeldart.PipelineFeatures.shadows) &&
         shadowQuality != 'off';
+    // The runtime honours exactly `RuntimeLightBudget.shadowMaps` shadow maps —
+    // one, bound to `spotLights.first`. This used to advertise 1/2/3 by tier,
+    // which nothing downstream could deliver: `shadowMapCount` reaches
+    // `configuration_transition.dart` and is otherwise unread, and
+    // `pipeline_resource_layout.dart` allocates a single `shadowMap` resource.
+    // The quality tier therefore moves shadow *resolution*, not shadow *count*.
+    // Restore per-tier counts when PLAN_RENDERER.md R-B2 lands the shadow atlas
+    // — at which point this reads the widened `RuntimeLightBudget.shadowMaps`
+    // rather than a fresh constant. See packet R-A5.
     final shadowCount = switch (shadowQuality) {
-      'high' => shadows ? 3 : 0,
-      'standard' => shadows ? 2 : 0,
       'off' => 0,
-      _ => shadows ? (isHigh ? 3 : (isStandard ? 2 : 1)) : 0,
+      _ => shadows ? pixeldart.RuntimeLightBudget.shadowMaps : 0,
     };
     final shadowSize = switch (shadowQuality) {
       'high' => 1024,
@@ -71,7 +78,11 @@ final class PixeldartRendererProfilePolicy {
       shadowMapCount: shadowCount,
       shadowMapSize: shadowSize,
       materialTableCapacity: isHigh ? 64 : (isStandard ? 32 : 16),
-      lightTableCapacity: isHigh ? 8 : (isStandard ? 4 : 1),
+      // 8 at high is the honest ceiling: 4 point + 3 unshadowed spot + 1
+      // shadowed spot in `shadowed_world.frag`. Lower tiers submit fewer.
+      lightTableCapacity: isHigh
+          ? pixeldart.RuntimeLightBudget.dynamicLights
+          : (isStandard ? 4 : 1),
       textureArrayLayerCapacity: isHigh ? 8 : (isStandard ? 4 : 1),
       diagnosticLevel: switch (diagnosticLevel) {
         'off' => pixeldart.DiagnosticLevel.off,

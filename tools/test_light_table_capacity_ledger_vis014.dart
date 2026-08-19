@@ -1,3 +1,4 @@
+import 'package:pixeldart/rendering/rendering.dart' as pixeldart;
 import 'package:quarantine/presentation/light_table_capacity_ledger.dart';
 
 void check(bool condition, String message) {
@@ -5,6 +6,20 @@ void check(bool condition, String message) {
 }
 
 void main() {
+  // R-A5: the ledger's defaults must be what the runtime honours, not an
+  // aspiration. Pinned to pixeldart's RuntimeLightBudget, which is itself
+  // pinned to the shader and the pipeline resource layout.
+  final defaults = LightTableCapacityLedger();
+  check(
+    defaults.maxDynamicLights == pixeldart.RuntimeLightBudget.dynamicLights,
+    'default dynamic-light cap must match the shader light budget',
+  );
+  check(
+    defaults.maxShadowCasters == pixeldart.RuntimeLightBudget.shadowMaps,
+    'default shadow-caster cap must match the one allocated shadow map',
+  );
+
+  // An explicitly widened ledger still caps and reports correctly.
   final ledger = LightTableCapacityLedger(
     maxDynamicLights: 8,
     maxShadowCasters: 3,
