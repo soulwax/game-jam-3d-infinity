@@ -93,7 +93,7 @@ Remainder
 
 ### 0.5 Handle rules
 
-A **handle** is a small, independently reviewable slice inside a `MIG-*`
+A **handle** is a small, independently reviewable slice inside a `WARD-*`
 packet. It is not a second ticket system: handles keep the implementation
 sequence visible while one packet remains the atomic Kanban card and closure
 unit. A handle is lowercase kebab-case and starts with its milestone prefix
@@ -321,11 +321,12 @@ frame.
 The website is the planning database. The stable mapping is:
 
 ```text
-source packet MIG-40 -> board project unity-plan -> card unity-mig-40
+source packet WARD-40 -> board project unity-plan -> card unity-ward-40
 ```
 
-`MIG-*` IDs are retained for database and board compatibility; they no longer
-mean migration. They are implementation packet IDs.
+`WARD-*` IDs are implementation packet IDs — renamed from the earlier `MIG-*`
+prefix, a leftover from before the project's pivot away from a Unity-migration
+framing that no longer described anything real.
 
 Source-owned card fields: title, details, checklist, owner, priority, cover,
 planner tags, and packet evidence. Planner tags use the reserved `plan-` tag
@@ -346,7 +347,7 @@ are presentation labels only.
 2. Compute the plan digest and list changed packet IDs.
 3. Upsert the private `unity-plan` project and ensure its lanes, default tags,
    and reserved `plan-*` packet tags.
-4. Upsert each `unity-mig-##` card's source-owned fields.
+4. Upsert each `unity-ward-##` card's source-owned fields.
 5. Preserve lane position, comments, watchers, and user view state.
 6. Record a project activity entry with the digest and changed count.
 7. If any packet fails validation, abort before writing cards.
@@ -377,7 +378,7 @@ are presentation labels only.
 ### 6.2 Canonical Kanban migration
 
 The `unity-plan` project is the only interactive task surface for this plan.
-Every packet becomes one persistent `unity-mig-##` Kanban card, initially in
+Every packet becomes one persistent `unity-ward-##` Kanban card, initially in
 `Backlog`; active, blocked, and closed packets map to `In progress`, `Blocked`,
 and `Done` on first sync. The card's checklist mirrors the packet steps, its
 reserved planner tags mirror the packet tags, and its detail text keeps the
@@ -463,9 +464,9 @@ from open libraries for this project.
 
 ## 8. Ordered implementation packets
 
-### MIG-00 — Choose the greenfield contract
+### WARD-00 — Choose the greenfield contract
 
-ID: MIG-00
+ID: WARD-00
 State: OPEN
 Owner: unassigned
 Category: Foundation and project operations
@@ -491,9 +492,9 @@ Checks: Human review of the charter; no Unity project required yet.
 Evidence: none
 Remainder: none
 
-### MIG-01 — Create the empty Unity foundation
+### WARD-01 — Create the empty Unity foundation
 
-ID: MIG-01
+ID: WARD-01
 State: OPEN
 Owner: unassigned
 Category: Foundation and project operations
@@ -504,7 +505,7 @@ Runbook:
 1. Create the project with the approved Unity patch and commit the generated package lock before adding gameplay code.
 2. Add assemblies, bootstrap scene, smoke test, and Windows build command one handle at a time; run each after adding it.
 3. Repeat the test and build from a clean checkout, then attach editor version, log paths, and artifact digest to the card.
-Depends on: MIG-00
+Depends on: WARD-00
 Outcome: A clean checkout opens the empty Unity project, runs a smoke test, and builds Windows x64.
 Inputs: approved Unity patch, package list, Windows build environment.
 Files: `unity/ProjectSettings`, `unity/Packages`, `unity/Assets/Quarantine/Tests`, CI workflow.
@@ -519,9 +520,9 @@ Checks: Clean clone open; EditMode tests; development build.
 Evidence: none
 Remainder: none
 
-### MIG-02 — Define typed source schemas
+### WARD-02 — Define typed source schemas
 
-ID: MIG-02
+ID: WARD-02
 State: OPEN
 Owner: unassigned
 Category: Authored content and import
@@ -532,7 +533,7 @@ Runbook:
 1. Catalogue every source file family and write its ID, references, ranges, and required fields in a schema table.
 2. Implement immutable definitions and validators before any importer or scene binding, with valid and invalid fixtures beside each definition.
 3. Run the complete schema suite and retain one failure report proving path, ID, field, and message are actionable.
-Depends on: MIG-01
+Depends on: WARD-01
 Outcome: C# content records validate house, story, inventory, material, sound, and schedule sources without Unity scene access.
 Inputs: `assets/house/*.json`, validated scenario export/corpus, Dart parsers as behaviour references.
 Files: `Runtime/Content`, `Editor/Import` schemas and tests.
@@ -547,9 +548,9 @@ Checks: EditMode schema suite; malformed fixture fails with path and ID.
 Evidence: none
 Remainder: none
 
-### MIG-03 — Build deterministic content import
+### WARD-03 — Build deterministic content import
 
-ID: MIG-03
+ID: WARD-03
 State: OPEN
 Owner: unassigned
 Category: Authored content and import
@@ -560,7 +561,7 @@ Runbook:
 1. Create the import manifest and temporary output root, listing parser version and digest for every input.
 2. Import scenario, house, inventory, material, and sound data into the temporary root, stopping on any validation error.
 3. Compare two clean imports for stable IDs and digests, then promote only the fully validated generated root.
-Depends on: MIG-02
+Depends on: WARD-02
 Outcome: Valid source produces typed generated assets; invalid source produces no partial output.
 Inputs: validated schemas and canonical text/JSON.
 Files: `Editor/Import`, `Content/Generated`.
@@ -575,9 +576,9 @@ Checks: Two identical imports produce identical IDs/digests; invalid import is a
 Evidence: none
 Remainder: none
 
-### MIG-04 — Synchronize the plan with the project database
+### WARD-04 — Synchronize the plan with the project database
 
-ID: MIG-04
+ID: WARD-04
 State: OPEN
 Owner: unassigned
 Category: Persistence and database synchronization
@@ -588,8 +589,8 @@ Runbook:
 1. Parse the plan into one canonical projection and deliberately test duplicate IDs, missing taxonomy, handles, and dependencies.
 2. Upsert only source-owned fields, then prove a dragged lane, a comment, and a custom tag survive a changed source packet.
 3. Run a changed sync and an immediate repeat, recording the digest, changed IDs, and no-op result in project activity.
-Depends on: MIG-00
-Outcome: Every valid implementation packet has an idempotent `unity-mig-##` card with source-owned details.
+Depends on: WARD-00
+Outcome: Every valid implementation packet has an idempotent `unity-ward-##` card with source-owned details.
 Inputs: `syncUnityPlannerCards`, `DATABASE_URL`, packet parser.
 Files: website persistence/tests and database-sync documentation.
 Do not touch: gameplay save files, user-owned board lane positions.
@@ -604,9 +605,9 @@ Checks: Validation rejects duplicate/missing IDs before writes; website tests; h
 Evidence: none
 Remainder: none
 
-### MIG-05 — Install human-sized code guardrails
+### WARD-05 — Install human-sized code guardrails
 
-ID: MIG-05
+ID: WARD-05
 State: OPEN
 Owner: unassigned
 Category: Foundation and project operations
@@ -617,7 +618,7 @@ Runbook:
 1. Add assembly boundaries and analyzer rules before feature assemblies grow.
 2. Create the contribution checklist with test, source-ownership, generated-file, and scene-integration prompts.
 3. Introduce one known boundary violation in a branch or fixture and verify CI rejects it with an understandable message.
-Depends on: MIG-01
+Depends on: WARD-01
 Outcome: Unity code has analyzers, test commands, ownership boundaries, and a review checklist.
 Inputs: section 0 rules.
 Files: `.editorconfig`, analyzers, CI, `unity/Docs/CONTRIBUTING.md`.
@@ -630,9 +631,9 @@ Checks: CI fails on a deliberate boundary violation.
 Evidence: none
 Remainder: none
 
-### MIG-10 — Implement clock, resources, and deterministic difficulty
+### WARD-10 — Implement clock, resources, and deterministic difficulty
 
-ID: MIG-10
+ID: WARD-10
 State: OPEN
 Owner: unassigned
 Category: Domain simulation
@@ -643,7 +644,7 @@ Runbook:
 1. Write the command/rejection table for time, heat, rations, collection, and sleep before coding state mutation.
 2. Implement immutable state transitions and seed creation in plain C#, then cover day boundaries and insufficient-resource cases.
 3. Replay the same command list twice and attach matching snapshots plus event lists as proof.
-Depends on: MIG-02, MIG-05
+Depends on: WARD-02, WARD-05
 Outcome: A pure session advances time and atomically spends hours, heat, and rations.
 Inputs: `lib/game/session.dart` (`advance`, `sleep`, `spendHoursAndGas`), product pacing decision.
 Files: `Runtime/Domain/Clock`, `Resources`, `Difficulty`, tests.
@@ -658,9 +659,9 @@ Checks: EditMode fixture replay produces the same snapshot and event list.
 Evidence: none
 Remainder: none
 
-### MIG-11 — Implement journal truth and drift
+### WARD-11 — Implement journal truth and drift
 
-ID: MIG-11
+ID: WARD-11
 State: OPEN
 Owner: unassigned
 Category: Journal and evidence
@@ -671,7 +672,7 @@ Runbook:
 1. Define entry statuses, citations, correction rules, and locks in a pure domain fixture.
 2. Implement sleep-boundary drift from the stored seed, never from frame time or UI state.
 3. Prove correction, lock rejection, and identical overnight replay with focused tests.
-Depends on: MIG-10
+Depends on: WARD-10
 Outcome: Entries can be written, cited, corrected, verified, and locked; night drift is deterministic and visible.
 Inputs: `lib/game/session.dart` journal methods, canonical journal rules.
 Files: `Runtime/Domain/Journal`, tests.
@@ -684,9 +685,9 @@ Checks: Replay fixture; locked entry cannot be silently changed.
 Evidence: none
 Remainder: none
 
-### MIG-12 — Implement the authored encounter schedule
+### WARD-12 — Implement the authored encounter schedule
 
-ID: MIG-12
+ID: WARD-12
 State: OPEN
 Owner: unassigned
 Category: Story delivery and people
@@ -697,7 +698,7 @@ Runbook:
 1. Start with one imported event and resolve it only from day, time, stable conditions, and schedule IDs.
 2. Commit the selected choice, flags, residue, journal fact, and activity as one domain operation.
 3. Replay the event from the same seed and show the exact same callbacks and residue IDs.
-Depends on: MIG-03, MIG-10, MIG-11
+Depends on: WARD-03, WARD-10, WARD-11
 Outcome: The validated scenario schedule delivers one canonical encounter and records its callback flags.
 Inputs: scenario/corpus import, `NarrativeEncounterDirector.resolveEncounter`, `commitChoice`.
 Files: `Runtime/Story`, tests.
@@ -710,9 +711,9 @@ Checks: Same seed and choice sequence produces the same flags and residue IDs.
 Evidence: none
 Remainder: none
 
-### MIG-13 — Compose the GameSession
+### WARD-13 — Compose the GameSession
 
-ID: MIG-13
+ID: WARD-13
 State: OPEN
 Owner: unassigned
 Category: Domain simulation
@@ -723,7 +724,7 @@ Runbook:
 1. Compose all completed pure services in one `GameSession` constructor with no scene lookup or global singleton.
 2. Expose a read-only snapshot and a drain-once event stream, then wire a minimal Bootstrap consumer.
 3. Run a PlayMode bootstrap probe and verify a second session cannot become an accidental owner.
-Depends on: MIG-10, MIG-11, MIG-12
+Depends on: WARD-10, WARD-11, WARD-12
 Outcome: Bootstrap creates one session whose snapshot drives all current systems.
 Inputs: domain packets and Dart session event-queue behaviour.
 Files: `Runtime/Domain/GameSession`, bootstrap composition, tests.
@@ -736,9 +737,9 @@ Checks: PlayMode bootstrap route; no duplicate session owner.
 Evidence: none
 Remainder: none
 
-### MIG-14 — Add resilient local saves
+### WARD-14 — Add resilient local saves
 
-ID: MIG-14
+ID: WARD-14
 State: OPEN
 Owner: unassigned
 Category: Persistence and database synchronization
@@ -749,7 +750,7 @@ Runbook:
 1. Specify the save envelope, version policy, active and recovery locations, and rejection message before serializing data.
 2. Implement temporary-write, flush, checksum, replace, and recovery retention in that exact order.
 3. Simulate interrupted, corrupt, missing, and old-schema saves; preserve the last good save in every failure case.
-Depends on: MIG-13
+Depends on: WARD-13
 Outcome: New run, save, load, corrupted active slot, and recovery slot all behave safely.
 Inputs: `lib/game/save_store.dart` (`write`, `read`), save contract section 5.3.
 Files: `Runtime/Save`, EditMode and PlayMode save tests.
@@ -764,9 +765,9 @@ Checks: Interrupted-write fixture; build-path reload test.
 Evidence: none
 Remainder: none
 
-### MIG-20 — Build the data-driven domestic greybox
+### WARD-20 — Build the data-driven domestic greybox
 
-ID: MIG-20
+ID: WARD-20
 State: OPEN
 Owner: unassigned
 Category: House and spatial world
@@ -777,7 +778,7 @@ Runbook:
 1. Build the Day 1 room and portal graph from stable IDs using primitives only.
 2. Bind one room pair at a time and validate scale, portal bounds, collider clearance, and focus anchors.
 3. Walk the fixed ground-to-upper-to-cellar route and capture the expected room-ID sequence.
-Depends on: MIG-03, MIG-13
+Depends on: WARD-03, WARD-13
 Outcome: Imported room/portal data creates a navigable greybox with stable bindings.
 Inputs: house JSON, inventory JSON, `HouseInventory.validateAgainst`.
 Files: `Runtime/World`, `Editor/Import`, `Scenes/Day01Greybox`.
@@ -792,9 +793,9 @@ Checks: Room graph validator; PlayMode route reaches every Day 1 target.
 Evidence: none
 Remainder: none
 
-### MIG-21 — Implement movement and portal crossing
+### WARD-21 — Implement movement and portal crossing
 
-ID: MIG-21
+ID: WARD-21
 State: OPEN
 Owner: unassigned
 Category: Movement and tactile interaction
@@ -805,7 +806,7 @@ Runbook:
 1. Separate input sampling, desired displacement, collision solve, stairs, and room notification into distinct components.
 2. Implement capsule and axis resolution against the generated collision layer before adding any story trigger.
 3. Exercise clipping, backtracking, blocked doors, and stair restoration in PlayMode with expected rejection reasons.
-Depends on: MIG-20
+Depends on: WARD-20
 Outcome: The player can walk, step stairs, collide, and cross only passable portals.
 Inputs: `lib/house/collision.dart` (`Capsule.move`, `_tryAxis`, `_moveOnStair`, `portalCross`).
 Files: `Runtime/World/Movement`, `Runtime/Interaction/Portals`, tests.
@@ -820,9 +821,9 @@ Checks: Collision fixture; PlayMode ground/upper/cellar route.
 Evidence: none
 Remainder: none
 
-### MIG-22 — Implement focus and threshold interaction
+### WARD-22 — Implement focus and threshold interaction
 
-ID: MIG-22
+ID: WARD-22
 State: OPEN
 Owner: unassigned
 Category: Movement and tactile interaction
@@ -833,7 +834,7 @@ Runbook:
 1. Define focus targets and typed accepted/rejected actions from generated IDs, never scene object names.
 2. Implement door, chain, letterbox, hold, drag, and inventory paths with a visible and audible response for each result.
 3. Complete the threshold route with keyboard focus order and record any unavailable-action explanation.
-Depends on: MIG-21, MIG-20
+Depends on: WARD-21, WARD-20
 Outcome: Focused objects expose typed actions with clear success/rejection feedback.
 Inputs: inventory/focus data, interaction contract, `InventoryPhysics` bounds.
 Files: `Runtime/Interaction`, `Runtime/World` bindings, tests.
@@ -846,9 +847,9 @@ Checks: PlayMode threshold route; accessibility focus order test.
 Evidence: none
 Remainder: none
 
-### MIG-23 — Add portal acoustics and the Day 1 sound bed
+### WARD-23 — Add portal acoustics and the Day 1 sound bed
 
-ID: MIG-23
+ID: WARD-23
 State: OPEN
 Owner: unassigned
 Category: Audio, voice, and acoustics
@@ -859,7 +860,7 @@ Runbook:
 1. Make a cue catalogue with stable IDs, source room, required caption, and explicit fallback before adding clips.
 2. Route one visitor and one broadcast through portals, then tune distance and closed-door loss in the mixer.
 3. Verify the route on speakers and headphones and prove every required cue still works with audio disabled.
-Depends on: MIG-20, MIG-21, MIG-22
+Depends on: WARD-20, WARD-21, WARD-22
 Outcome: A visitor and broadcast are spatially audible with closed-door muffle and captions.
 Inputs: `lib/engine/audio_planner.dart` (`AudioPlanner._route`, `transmission`, `muffleToGainDb`).
 Files: `Runtime/Audio`, mixer setup, cue fixtures.
@@ -872,9 +873,9 @@ Checks: speaker/headphone PlayMode check; deterministic audio-plan fixture.
 Evidence: none
 Remainder: none
 
-### MIG-30 — Build the persistent UI shell
+### WARD-30 — Build the persistent UI shell
 
-ID: MIG-30
+ID: WARD-30
 State: OPEN
 Owner: unassigned
 Category: UI, input, and accessibility
@@ -885,7 +886,7 @@ Runbook:
 1. Create one Bootstrap-owned UI root and map pause, settings, and input actions without duplicating session state.
 2. Implement keyboard navigation and settings persistence independently from game-save persistence.
 3. Restart the build, restore a run, and verify focus plus user settings return in the expected order.
-Depends on: MIG-13, MIG-21
+Depends on: WARD-13, WARD-21
 Outcome: Pause, settings, input remapping, and return-to-game work without losing the session.
 Inputs: input/accessibility product rules.
 Files: `Runtime/UI`, UI Toolkit documents/styles, tests.
@@ -898,9 +899,9 @@ Checks: keyboard-only PlayMode route; settings survive restart.
 Evidence: none
 Remainder: none
 
-### MIG-31 — Deliver text-first dialogue and captions
+### WARD-31 — Deliver text-first dialogue and captions
 
-ID: MIG-31
+ID: WARD-31
 State: OPEN
 Owner: unassigned
 Category: Story delivery and people
@@ -911,7 +912,7 @@ Runbook:
 1. Render one imported line and choice sequence from stable IDs, with no hard-coded replacement text.
 2. Send the selected choice through the domain command and prove the resulting callback is committed once.
 3. Run the entire conversation with audio off, keyboard only, and captions enabled; retain the replay result.
-Depends on: MIG-12, MIG-23, MIG-30
+Depends on: WARD-12, WARD-23, WARD-30
 Outcome: A visitor conversation presents authored lines, choices, captions, and callbacks without audio.
 Inputs: imported corpus, validated schedule, caption rules.
 Files: `Runtime/UI/Dialogue`, `Runtime/Story` presentation adapter, tests.
@@ -924,9 +925,9 @@ Checks: text-only PlayMode conversation; choice replay fixture.
 Evidence: none
 Remainder: none
 
-### MIG-32 — Build the working journal UI
+### WARD-32 — Build the working journal UI
 
-ID: MIG-32
+ID: WARD-32
 State: OPEN
 Owner: unassigned
 Category: Journal and evidence
@@ -937,7 +938,7 @@ Runbook:
 1. Render immutable journal state, uncertainty, citations, and residue references before enabling edits.
 2. Wire write, correct, verify, and lock controls to domain commands and show each rejection reason without exposing hidden truth.
 3. Write an entry, reload, lock it, and prove both its state and accessibility labels persist.
-Depends on: MIG-11, MIG-30
+Depends on: WARD-11, WARD-30
 Outcome: The player can inspect, write, cite, correct, verify, and lock a journal entry in-game.
 Inputs: journal domain snapshot and commands.
 Files: `Runtime/UI/Journal`, UI Toolkit templates, tests.
@@ -950,9 +951,9 @@ Checks: PlayMode write/reload/lock route; screen-reader labels.
 Evidence: none
 Remainder: none
 
-### MIG-33 — Complete the accessible Day 1 route
+### WARD-33 — Complete the accessible Day 1 route
 
-ID: MIG-33
+ID: WARD-33
 State: OPEN
 Owner: unassigned
 Category: UI, input, and accessibility
@@ -963,7 +964,7 @@ Runbook:
 1. List every required Day 1 control and complete the route with keyboard input before polishing pointer interactions.
 2. Check focus order, contrast, text scaling, captions, and reduced motion at their supported extremes.
 3. Capture the route, file each failure by severity, and rerun after the first unreachable or confusing step is fixed.
-Depends on: MIG-22, MIG-23, MIG-30, MIG-31, MIG-32
+Depends on: WARD-22, WARD-23, WARD-30, WARD-31, WARD-32
 Outcome: Day 1 is completable with keyboard-only input, captions, scalable text, and reduced motion.
 Inputs: real human usability reviewer and accessibility checklist.
 Files: accessibility settings, UI tests, evidence capture.
@@ -976,9 +977,9 @@ Checks: human keyboard route; PlayMode accessibility suite.
 Evidence: none
 Remainder: none
 
-### MIG-40 — Close the first human-testable vertical slice
+### WARD-40 — Close the first human-testable vertical slice
 
-ID: MIG-40
+ID: WARD-40
 State: OPEN
 Owner: unassigned
 Category: Verification, telemetry, and release
@@ -989,7 +990,7 @@ Runbook:
 1. Freeze a single Day 1 acceptance script with expected prompts, room IDs, resources, choices, and journal outcomes.
 2. Run it from a clean Windows profile, including quit/reload, and collect visual, audio, accessibility, and comprehension notes.
 3. Fix blockers only, rerun the identical route, and attach the approved capture plus remaining follow-ups.
-Depends on: MIG-14, MIG-20, MIG-21, MIG-22, MIG-23, MIG-31, MIG-32, MIG-33
+Depends on: WARD-14, WARD-20, WARD-21, WARD-22, WARD-23, WARD-31, WARD-32, WARD-33
 Outcome: A fresh player can complete Day 1, reload a consequence, and explain what happened.
 Inputs: canonical Day 1 content and human review.
 Files: integration scene, build script, evidence index.
@@ -1004,9 +1005,9 @@ Checks: clean Windows development build; human playthrough approved.
 Evidence: none
 Remainder: none
 
-### MIG-50 — Produce the approved house asset baseline
+### WARD-50 — Produce the approved house asset baseline
 
-ID: MIG-50
+ID: WARD-50
 State: OPEN
 Owner: unassigned
 Category: House and spatial world
@@ -1017,7 +1018,7 @@ Runbook:
 1. Create rights-ledger entries and quarantine files before importing any third-party asset.
 2. Replace proxies for one room pair using stable bindings, then check collision, scale, portals, and focus IDs.
 3. Obtain visual approval for the batch and keep rejected or unapproved assets out of release folders.
-Depends on: MIG-40
+Depends on: WARD-40
 Outcome: The first approved room batch replaces proxies without changing IDs, scale, or routes.
 Inputs: rights-cleared house sources, modeling plan, greybox bindings.
 Files: model import settings, room prefabs, material slots.
@@ -1030,9 +1031,9 @@ Checks: room-batch PlayMode route and capture review.
 Evidence: none
 Remainder: none
 
-### MIG-51 — Establish period lighting and materials
+### WARD-51 — Establish period lighting and materials
 
-ID: MIG-51
+ID: WARD-51
 State: OPEN
 Owner: unassigned
 Category: Rendering and presentation
@@ -1043,7 +1044,7 @@ Runbook:
 1. Establish a neutral URP exposure and lighting calibration scene before tuning individual rooms.
 2. Build reusable material, practical-light, rain, and wetness variants from approved assets only.
 3. Review readability and performance together on target hardware, then lock the baseline before rupture experiments.
-Depends on: MIG-50
+Depends on: WARD-50
 Outcome: A readable period lighting baseline supports domestic care, procedure, memory, and place.
 Inputs: materials JSON, lighting references, accessibility profile.
 Files: URP assets, light profiles, shaders/materials, captures.
@@ -1056,9 +1057,9 @@ Checks: human baseline review; performance capture.
 Evidence: none
 Remainder: none
 
-### MIG-52 — Expand rooms, residues, and sound by batch
+### WARD-52 — Expand rooms, residues, and sound by batch
 
-ID: MIG-52
+ID: WARD-52
 State: OPEN
 Owner: unassigned
 Category: House and spatial world
@@ -1069,7 +1070,7 @@ Runbook:
 1. Choose one room pair with its specific consequence and acoustic requirements.
 2. Bind visual residue and cues by stable IDs, then replay the route without changing schedule or domain code.
 3. Review visuals, navigation, and acoustics in one capture session before starting the next room batch.
-Depends on: MIG-51
+Depends on: WARD-51
 Outcome: Production room batches preserve the route while adding authored physical and acoustic evidence.
 Inputs: canonical consequences, inventory, soundscape, approved baseline.
 Files: room prefabs, residue bindings, audio scenes, captures.
@@ -1082,9 +1083,9 @@ Checks: per-batch PlayMode and human review.
 Evidence: none
 Remainder: none
 
-### MIG-60 — Implement Acts I–III from the schedule
+### WARD-60 — Implement Acts I–III from the schedule
 
-ID: MIG-60
+ID: WARD-60
 State: OPEN
 Owner: unassigned
 Category: Story delivery and people
@@ -1095,7 +1096,7 @@ Runbook:
 1. Split the approved schedule into day-range batches with required rooms, choices, callbacks, and expected residues.
 2. Import and integrate one batch at a time, then replay known seeds instead of manually recreating timing or line IDs.
 3. Save/reload at each batch boundary and hold a pacing review before enabling the next act.
-Depends on: MIG-40, MIG-52
+Depends on: WARD-40, WARD-52
 Outcome: The full campaign runs from the validated scenario schedule, corpus, journal, resources, and consequences.
 Inputs: closed story batches, approved room/audio batches.
 Files: campaign fixtures, event bindings, PlayMode scenarios.
@@ -1110,9 +1111,9 @@ Checks: act fixtures, save/reload, human pacing review.
 Evidence: none
 Remainder: none
 
-### MIG-61 — Implement Day 21 and derived endings
+### WARD-61 — Implement Day 21 and derived endings
 
-ID: MIG-61
+ID: WARD-61
 State: OPEN
 Owner: unassigned
 Category: Domain simulation
@@ -1123,7 +1124,7 @@ Runbook:
 1. List the exact snapshot inputs for each ending and implement a deterministic resolver without hidden developer switches.
 2. Build fixtures for every ending and boundary combination, including incomplete journal and residue cases.
 3. Run the full campaign review and verify the final record reports history without rewriting it.
-Depends on: MIG-60
+Depends on: WARD-60
 Outcome: The Day 21 rupture and three endings derive from recorded choices, journal state, and residues.
 Inputs: ending acceptance rules, session snapshot, canonical final content.
 Files: ending domain rules, final scene, tests.
@@ -1136,9 +1137,9 @@ Checks: deterministic ending fixture; human campaign review.
 Evidence: none
 Remainder: none
 
-### MIG-62 — Add locked voice after text approval
+### WARD-62 — Add locked voice after text approval
 
-ID: MIG-62
+ID: WARD-62
 State: OPEN
 Owner: unassigned
 Category: Audio, voice, and acoustics
@@ -1149,7 +1150,7 @@ Runbook:
 1. Freeze text and line IDs, then record a rights ledger for every approved performance before importing audio.
 2. Import clips through metadata that maps each line to captions, timing, mixer route, and a text-only fallback.
 3. Test missing clips, disabled audio, speakers, and headphones; reject any line without a safe fallback.
-Depends on: MIG-31, MIG-60
+Depends on: WARD-31, WARD-60
 Outcome: Approved voice coverage is imported with caption timing and a safe text fallback.
 Inputs: locked script, rights records, approved performances.
 Files: voice assets, import metadata, mixer routes, caption timings.
@@ -1162,9 +1163,9 @@ Checks: voice audit; headphone/speaker human review.
 Evidence: none
 Remainder: none
 
-### MIG-70 — Package and release the Windows candidate
+### WARD-70 — Package and release the Windows candidate
 
-ID: MIG-70
+ID: WARD-70
 State: OPEN
 Owner: unassigned
 Category: Verification, telemetry, and release
@@ -1175,7 +1176,7 @@ Runbook:
 1. Freeze the release manifest, package lock, generated-content digest, rights ledger, and known-issue list.
 2. Build and install from a clean Windows profile, then complete the release route without developer tools.
 3. Record performance and recovery evidence, publish checksums and rollback notes, and stop on any release blocker.
-Depends on: MIG-14, MIG-33, MIG-61, MIG-62
+Depends on: WARD-14, WARD-33, WARD-61, WARD-62
 Outcome: A clean Windows x64 candidate installs, runs, saves, recovers, and passes the release checklist.
 Inputs: all closed packets, target hardware, release profile.
 Files: build scripts, release notes, evidence index, checksums.
@@ -1221,33 +1222,33 @@ The website reads the packets below by stable ID and mirrors them to
 
 | Packet | State | Owner | Milestone | Evidence |
 |---|---|---|---|---|
-| MIG-00 | OPEN | unassigned | U0 | none |
-| MIG-01 | OPEN | unassigned | U0 | none |
-| MIG-02 | OPEN | unassigned | U1 | none |
-| MIG-03 | OPEN | unassigned | U1 | none |
-| MIG-04 | OPEN | unassigned | U0 | none |
-| MIG-05 | OPEN | unassigned | U0 | none |
-| MIG-10 | OPEN | unassigned | U1 | none |
-| MIG-11 | OPEN | unassigned | U1 | none |
-| MIG-12 | OPEN | unassigned | U1 | none |
-| MIG-13 | OPEN | unassigned | U1 | none |
-| MIG-14 | OPEN | unassigned | U2 | none |
-| MIG-20 | OPEN | unassigned | U2 | none |
-| MIG-21 | OPEN | unassigned | U2 | none |
-| MIG-22 | OPEN | unassigned | U2 | none |
-| MIG-23 | OPEN | unassigned | U2 | none |
-| MIG-30 | OPEN | unassigned | U3 | none |
-| MIG-31 | OPEN | unassigned | U3 | none |
-| MIG-32 | OPEN | unassigned | U3 | none |
-| MIG-33 | OPEN | unassigned | U3 | none |
-| MIG-40 | OPEN | unassigned | U3 | none |
-| MIG-50 | OPEN | unassigned | U5 | none |
-| MIG-51 | OPEN | unassigned | U5 | none |
-| MIG-52 | OPEN | unassigned | U5 | none |
-| MIG-60 | OPEN | unassigned | U4 | none |
-| MIG-61 | OPEN | unassigned | U4 | none |
-| MIG-62 | OPEN | unassigned | U5 | none |
-| MIG-70 | OPEN | unassigned | U6 | none |
+| WARD-00 | OPEN | unassigned | U0 | none |
+| WARD-01 | OPEN | unassigned | U0 | none |
+| WARD-02 | OPEN | unassigned | U1 | none |
+| WARD-03 | OPEN | unassigned | U1 | none |
+| WARD-04 | OPEN | unassigned | U0 | none |
+| WARD-05 | OPEN | unassigned | U0 | none |
+| WARD-10 | OPEN | unassigned | U1 | none |
+| WARD-11 | OPEN | unassigned | U1 | none |
+| WARD-12 | OPEN | unassigned | U1 | none |
+| WARD-13 | OPEN | unassigned | U1 | none |
+| WARD-14 | OPEN | unassigned | U2 | none |
+| WARD-20 | OPEN | unassigned | U2 | none |
+| WARD-21 | OPEN | unassigned | U2 | none |
+| WARD-22 | OPEN | unassigned | U2 | none |
+| WARD-23 | OPEN | unassigned | U2 | none |
+| WARD-30 | OPEN | unassigned | U3 | none |
+| WARD-31 | OPEN | unassigned | U3 | none |
+| WARD-32 | OPEN | unassigned | U3 | none |
+| WARD-33 | OPEN | unassigned | U3 | none |
+| WARD-40 | OPEN | unassigned | U3 | none |
+| WARD-50 | OPEN | unassigned | U5 | none |
+| WARD-51 | OPEN | unassigned | U5 | none |
+| WARD-52 | OPEN | unassigned | U5 | none |
+| WARD-60 | OPEN | unassigned | U4 | none |
+| WARD-61 | OPEN | unassigned | U4 | none |
+| WARD-62 | OPEN | unassigned | U5 | none |
+| WARD-70 | OPEN | unassigned | U6 | none |
 
 ## 12. Development detail playbook
 
