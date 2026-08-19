@@ -2,7 +2,7 @@
 //
 // Performs comprehensive automated release readiness checks across:
 //  1. WholeProductConvergenceGate status.
-//  2. Section 22 Rendering Fidelity (Volumetric Shafts, SSDO, CSM, Weathering).
+//  2. Section 22 Rendering Fidelity (SSDO, CSM).
 //  3. Section 22 House Revamp (8 Room Manifests, 50+ Props, Lighting Rigs, Surface Detail History).
 //  4. Section 22 Dynamic Dialogue UI (Non-modal Controller, Typewriter, Spatial Audio, Interrupts, Bridge).
 //  5. Section 22 Asset Quality & Golden Pipeline (PBR Validation, LOD Mesh Pipeline, Normal Maps, 32 Golden Poses).
@@ -10,11 +10,8 @@
 
 import 'package:quarantine/engine/whole_product_convergence_gate.dart';
 import 'package:quarantine/story/narrative_truth_ledger.dart';
-import 'package:quarantine/presentation/volumetric_light_shaft.dart';
 import 'package:quarantine/presentation/contact_shadows_ssdo.dart';
 import 'package:quarantine/presentation/cascaded_shadow_maps.dart';
-import 'package:quarantine/presentation/procedural_surface_weathering.dart';
-import 'package:quarantine/presentation/pbr_material_shading_pipeline.dart';
 import 'package:quarantine/house/hall_furnishing_manifest.dart';
 import 'package:quarantine/house/kitchen_furnishing_manifest.dart';
 import 'package:quarantine/house/living_room_furnishing_manifest.dart';
@@ -80,12 +77,10 @@ void main() {
   print('[✓] Narrative Engine: 4 Core Character Sheets verified (Nov 1918 setting locked)');
 
   // 3. Section 22 Rendering Fidelity Track (VF)
-  check(VolumetricLightShaftEngine.validate(), 'Volumetric light shaft validation failed');
   check(SSDOEngine.validate(), 'SSDO contact shadows validation failed');
   check(CSMEngine.validate(), 'Cascaded shadow maps validation failed');
-  check(ProceduralWeatheringEngine.validate(), 'Procedural surface weathering validation failed');
-  check(PBRMaterialShadingPipeline.validate(), 'PBR material shading pipeline validation failed');
-  print('[✓] Rendering Fidelity: Volumetric Shafts, SSDO, CSM, Weathering & PBR Pipeline validated');
+  print('[✓] Rendering Fidelity: SSDO and CSM policy objects validated '
+        '(policy only — see PLAN_RENDERER.md §10)');
 
   // 4. Section 22 House Environment Revamp Track (HV)
   check(HallFurnishingManifest.validate(), 'Hall manifest validation failed');

@@ -30,7 +30,7 @@ claimed feature reachable from a real frame rather than from a unit test.
 4. This file owns the gap list, the packet order, and the acceptance checks for
    reaching "full-fledged".
 
-### 0.2 The Unity question — must be answered before Phase B
+### 0.2 The Unity question — RESOLVED 2026-08-19: Dart/WebGL still ships
 
 `UNITY_PLAN.md` (committed 2026-08-18, one day before this audit) declares a
 Unity 6.3 greenfield the production runtime and demotes the Dart/WebGL project
@@ -408,9 +408,10 @@ snapshot commit first so the code remains recoverable from history.
 *Note:* `RENDERER-HANDOFF.md` already records that the duplicated renderer tree
 was deleted once. This finishes that job.
 
-**R-A2 (GM) — classify every `lib/presentation/` module.** — **DONE (classification + mandated deletions), remainder awaiting owner decision.**
-*Outcome:* each module is labelled `DRIVES-RUNTIME`, `PLANNED (packet R-xx)`, or
-`DELETE`. See §10 for the completed classification table and its method.
+**R-A2 (GM) — classify every `lib/presentation/` module.** — **DONE.**
+*Outcome:* each module is labelled `DRIVES-RUNTIME`, `PLANNED (packet R-xx)`,
+`DELETE`, or — for unclaimed plumbing that makes no rendering claim — `KEEP`.
+See §10 for the completed classification and its method.
 *Steps:* for each module, grep for a non-test consumer; where the only consumers
 are `tools/test_*` and `release_validator.dart`, it is not driving anything.
 *Checks:* no module is labelled `PLANNED` without a packet ID that exists below.
@@ -656,7 +657,7 @@ Rules:
 | Order | Packet | Repo | Blocks | Effort | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | R-A1 delete legacy | GM | — | S | **done** |
-| 2 | R-A2 classify presentation | GM | all | S | **done**, §10.5 pending |
+| 2 | R-A2 classify presentation | GM | all | S | **done** |
 | 3 | R-A3 rename suites | GM | — | XS | **done** |
 | 4 | R-A4 phantom passes | PD | R-D1 | S | **done** |
 | 5 | R-A5 reconcile budget claims | PD/GM | R-B2 | S | **done** |
@@ -783,30 +784,37 @@ its SSR term and import; `tools/release_validator.dart` lost its
 `ScreenSpaceReflectionEngine` / `POMEngine` gates; five dedicated test suites
 and three master-battery entries were removed with their subjects.
 
-### 10.5 `DELETE` — proposed, **needs owner sign-off** (21)
+### 10.5 `DELETE` — fidelity-policy group, executed
 
-These are unreachable from `web/main.dart` and no packet in §6 claims them, so
-§4.8 makes them `DELETE`. They are listed rather than deleted because two of
-them are load-bearing for master-battery suites that also assert unrelated
-things, and because the plan itself never itemised them. **This is the one open
-decision left in Phase A.**
+Owner decision, 2026-08-19: delete the modules that make false *rendering*
+claims; leave the seam plumbing, which misleads nobody about pixels.
 
-*Renderer-fidelity policy objects duplicating what the live shader already does:*
-`pbr_material_shading_pipeline.dart` (consumed by `test_performance_and_frame_pacing.dart`
-and `test_playability_and_fluidity.dart` — battery surgery required),
-`procedural_surface_weathering.dart`, `subsurface_scattering_params.dart`,
-`volumetric_light_shaft.dart`, `volumetric_fog_inscattering.dart`,
-`lut_color_grading_policy.dart`, `post_process_pipeline.dart`.
+| Module | Reason |
+| --- | --- |
+| `pbr_material_shading_pipeline.dart` | a second, unreachable Cook-Torrance implementation; the real one is `shadowed_world.frag` |
+| `procedural_surface_weathering.dart` | the live shader already does rain wetness, snow coverage, and the thermal field |
+| `subsurface_scattering_params.dart` | its pass was deleted in R-A4 |
+| `volumetric_light_shaft.dart` | `passes/volumetric_light.dart` is the shipping one |
+| `volumetric_fog_inscattering.dart` | `shadowed_world.frag` computes analytic height-fog optical depth |
+| `lut_color_grading_policy.dart` | `passes/grade.dart` is the shipping LUT grade |
+| `post_process_pipeline.dart` | the graph in §2.1 is the shipping post chain |
 
-*Unused seam plumbing:* `backend_bootstrap.dart`, `build_provenance.dart`,
-`environment_facts.dart`, `feature_fact_mappers.dart`, `feature_frame_adapter.dart`,
-`frame_coalescer.dart`, `frame_queue_transients.dart`, `pixeldart_scene_contract.dart`,
-`query_smoke.dart`, `resource_lifecycle.dart`, `transient_depth_route.dart`,
-`transient_facts_mapper.dart`.
+Cascade in the same commit: `gold_master_asset_auditor.dart` loses its
+`pbrShadingVerified` gate — a policy object's `validate()` was standing in for
+evidence that PBR shading works; `test_playability_and_fluidity.dart` and
+`test_performance_and_frame_pacing.dart` lose their PBR sections (one of which
+was benchmarking the *policy object's* arithmetic as if it were shading cost);
+`release_validator.dart` loses three more fidelity gates; six dedicated suites
+and two battery entries go with their subjects.
 
-*Camera policy, unwired:* `camera_inertia_controller.dart`,
-`cinematic_immersion_director.dart`.
+### 10.6 `KEEP` — unclaimed seam plumbing (14)
 
-A defensible alternative for the seam-plumbing group is to keep it and open a
-packet that wires it, since it is plumbing rather than a fidelity claim — it
-misleads nobody about pixels. The fidelity-policy group has no such defence.
+Unreachable from `web/main.dart` and unclaimed by any packet, but not a fidelity
+claim: deleting it would remove no misleading signal. Retained pending a packet
+that either wires it or retires it.
+
+`backend_bootstrap.dart`, `build_provenance.dart`, `environment_facts.dart`,
+`feature_fact_mappers.dart`, `feature_frame_adapter.dart`, `frame_coalescer.dart`,
+`frame_queue_transients.dart`, `pixeldart_scene_contract.dart`, `query_smoke.dart`,
+`resource_lifecycle.dart`, `transient_depth_route.dart`, `transient_facts_mapper.dart`,
+`camera_inertia_controller.dart`, `cinematic_immersion_director.dart`.

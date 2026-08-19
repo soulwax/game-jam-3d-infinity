@@ -2,7 +2,6 @@ import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/engine/scratch_pool.dart';
 import 'package:quarantine/presentation/dynamic_resolution_scaler.dart';
-import 'package:quarantine/presentation/pbr_material_shading_pipeline.dart';
 import 'package:quarantine/game/save_integrity_validator.dart';
 import 'package:quarantine/house/focus.dart';
 import 'package:quarantine/engine/camera.dart';
@@ -80,37 +79,6 @@ void main() {
   swFocus.stop();
   print('  - 5,000 Focus queries completed in ${swFocus.elapsedMicroseconds} µs');
   _expect(swFocus.elapsedMilliseconds < 100, '5,000 Focus queries must take < 100ms');
-
-  // 6. PBR Material Shading Evaluation Stress Test (5,000 surface evaluations)
-  print('Benchmarking PBR Material Shading Pipeline across 5,000 evaluations...');
-  final surface = PBRSurfaceInput(
-    worldPosition: Vec3(0, 1, 0),
-    normal: Vec3(0, 1, 0),
-    viewDir: Vec3(0, 1, 1).normalized,
-    albedo: Vec3(0.6, 0.4, 0.2),
-    roughness: 0.4,
-    metallic: 0.1,
-  );
-
-  final lights = [
-    PBRLightSource(
-      position: Vec3(0, 3, 0),
-      color: Vec3(1.0, 0.9, 0.8),
-      intensity: 1.5,
-    ),
-  ];
-
-  final swPbr = Stopwatch()..start();
-  for (var i = 0; i < 5000; i++) {
-    final pbrRes = PBRMaterialShadingPipeline.evaluateSurface(
-      surface: surface,
-      lights: lights,
-    );
-    _expect(pbrRes.totalRadiance.x > 0, 'PBR output must be positive');
-  }
-  swPbr.stop();
-  print('  - 5,000 PBR evaluations completed in ${swPbr.elapsedMicroseconds} µs');
-  _expect(swPbr.elapsedMilliseconds < 100, '5,000 PBR evaluations must take < 100ms');
 
   print('All Performance Budgets, Frame Pacing & Memory Stabilization tests passed successfully!');
 }

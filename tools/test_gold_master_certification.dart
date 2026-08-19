@@ -20,7 +20,6 @@ void main() {
   _expect(audit.totalPropsAudited >= 40, 'Must audit 40+ 3D props across 8 rooms');
   _expect(audit.roomManifestsVerified, 'Room manifests must be 100% verified');
   _expect(audit.narrativeMatrixVerified, '21-day narrative matrix must be 100% verified');
-  _expect(audit.pbrShadingVerified, 'PBR material shading pipeline must be 100% verified');
   _expect(audit.audioMixdownVerified, 'Master audio mixdown must be 100% verified');
   print('  -> ${audit.diagnostic}');
   print('  -> Total 3D props audited: ${audit.totalPropsAudited}');

@@ -4,7 +4,6 @@ import 'package:quarantine/config.dart';
 import 'package:quarantine/engine/locomotion_controller.dart';
 import 'package:quarantine/engine/math3.dart';
 import 'package:quarantine/house/interaction.dart';
-import 'package:quarantine/presentation/pbr_material_shading_pipeline.dart';
 import 'house_fixture.dart';
 
 void main() {
@@ -60,30 +59,7 @@ void main() {
     throw StateError('Line of sight must be false through solid room walls');
   }
 
-  // 4. Cook-Torrance PBR Shading Evaluation
-  print('Testing Cook-Torrance GGX PBR Shading Pipeline...');
-  final pbrInput = PBRSurfaceInput(
-    worldPosition: Vec3(0, 1.0, 0),
-    normal: Vec3(0, 1, 0),
-    viewDir: Vec3(0, 1, 1).normalized,
-    albedo: Vec3(0.8, 0.6, 0.4),
-    roughness: 0.3,
-    metallic: 0.8,
-  );
-  final light = PBRLightSource(
-    position: Vec3(0, 5, 0),
-    color: Vec3(1, 1, 1),
-    intensity: 2.0,
-  );
-  final result = PBRMaterialShadingPipeline.evaluateSurface(
-    surface: pbrInput,
-    lights: [light],
-  );
-  if (result.totalRadiance.length <= 0.0) {
-    throw StateError('PBR pipeline must compute positive non-zero radiance');
-  }
-
   print('========================================================================');
-  print('✓ PLAYABILITY, FLUIDITY & SHADER SUITE PASSED (5/5 SUB-SYSTEMS CERTIFIED)');
+  print('✓ PLAYABILITY & FLUIDITY SUITE PASSED (4/4 SUB-SYSTEMS)');
   print('========================================================================');
 }

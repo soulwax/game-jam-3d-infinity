@@ -1,6 +1,5 @@
 import 'package:quarantine/presentation/contact_shadows_ssdo.dart';
 import 'package:quarantine/presentation/cascaded_shadow_maps.dart';
-import 'package:quarantine/presentation/procedural_surface_weathering.dart';
 
 void main() {
   print('Testing SSDO...');
@@ -28,23 +27,6 @@ void main() {
   assert(csmSafe.activeCascadeIndex == -1);
   assert(csmSafe.shadowFactor == 1.0);
 
-  print('Testing Weathering...');
-  assert(ProceduralWeatheringEngine.validate());
-
-  final weathClean = ProceduralWeatheringEngine.evaluateSurface(
-    params: const WeatheringParams(
-      dayIndex: 21,
-      roomTemperatureCelsius: 20.0,
-      dewPointCelsius: 10.0,
-      isFireplaceNearby: false,
-      flueDistanceM: 5.0,
-      isSurfaceCleaned: true,
-    ),
-  );
-  assert(weathClean.dustOpacity == 0.0);
-  assert(weathClean.condensationFactor == 0.0);
-  assert(weathClean.sootDarkening == 0.0);
-
-  print('All SSDO/CSM/weathering policy-object tests passed '
+  print('All SSDO/CSM policy-object tests passed '
         '(policy objects only — no pixels asserted).');
 }

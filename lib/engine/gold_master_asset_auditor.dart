@@ -6,7 +6,6 @@ import 'package:quarantine/house/bedroom_furnishing_manifest.dart';
 import 'package:quarantine/house/upper_and_service_rooms_manifest.dart';
 import 'package:quarantine/house/per_room_lighting_rigs.dart';
 import 'package:quarantine/house/surface_detail_history_pass.dart';
-import 'package:quarantine/presentation/pbr_material_shading_pipeline.dart';
 import 'package:quarantine/engine/master_acoustic_simulator.dart';
 import 'package:quarantine/story/narrative_truth_ledger.dart';
 import 'package:quarantine/story/narrative_encounter_director.dart';
@@ -20,7 +19,6 @@ class ProductionAuditReport {
   final bool characterSheetsVerified;
   final bool narrativeMatrixVerified;
   final bool lightingRigsVerified;
-  final bool pbrShadingVerified;
   final bool audioMixdownVerified;
   final bool allChecksPass;
   final String diagnostic;
@@ -31,7 +29,6 @@ class ProductionAuditReport {
     required this.characterSheetsVerified,
     required this.narrativeMatrixVerified,
     required this.lightingRigsVerified,
-    required this.pbrShadingVerified,
     required this.audioMixdownVerified,
     required this.allChecksPass,
     required this.diagnostic,
@@ -43,7 +40,6 @@ class ProductionAuditReport {
         'characterSheetsVerified': characterSheetsVerified,
         'narrativeMatrixVerified': narrativeMatrixVerified,
         'lightingRigsVerified': lightingRigsVerified,
-        'pbrShadingVerified': pbrShadingVerified,
         'audioMixdownVerified': audioMixdownVerified,
         'allChecksPass': allChecksPass,
         'diagnostic': diagnostic,
@@ -92,9 +88,6 @@ class ProductionAssetAuditor {
     // 3. Audit Lighting & Surface Detail
     final lightingRigsVerified = PerRoomLightingRigs.validate() && SurfaceDetailHistoryPass.validate();
 
-    // 4. Audit PBR Shading Pipeline
-    final pbrShadingVerified = PBRMaterialShadingPipeline.validate();
-
     // 5. Audit Master Audio Mixdown
     final audioMixdownVerified = MasterAcousticSimulator.validate();
 
@@ -102,7 +95,6 @@ class ProductionAssetAuditor {
         characterSheetsVerified &&
         narrativeMatrixVerified &&
         lightingRigsVerified &&
-        pbrShadingVerified &&
         audioMixdownVerified;
 
     final diag = allReady
@@ -115,7 +107,6 @@ class ProductionAssetAuditor {
       characterSheetsVerified: characterSheetsVerified,
       narrativeMatrixVerified: narrativeMatrixVerified,
       lightingRigsVerified: lightingRigsVerified,
-      pbrShadingVerified: pbrShadingVerified,
       audioMixdownVerified: audioMixdownVerified,
       allChecksPass: allReady,
       diagnostic: diag,
