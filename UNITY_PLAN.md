@@ -1,6 +1,8 @@
 # THE QUARANTINE — UNITY GREENFIELD IMPLEMENTATION PLAN
 
-> Status: active greenfield implementation authority
+> Status: active implementation plan for the Unity track only
+>
+> Track: `unity-windows` — one of two independent runtime tracks
 >
 > Repository audit: 2026-08-18
 >
@@ -17,25 +19,66 @@ content reference only: copy a rule when it is useful, then implement it as
 small, idiomatic C# with Unity ownership made explicit.
 
 The product is the 21-day domestic administrative horror game defined by
-`external/docs/MASTERPLAN.md`. Unity owns the new production runtime. Dart is
-never a second runtime to keep in lockstep, and no Dart class is a Unity
-requirement. Shared authored content is synchronized through validated source
-files and the project-management database, not by copying runtime state.
+`external/docs/MASTERPLAN.md`.
+
+### Track differentiation
+
+`MASTERPLAN.md` §4.2 and DEC-004 define two *independent* runtime tracks —
+`dart-web` and `unity-windows` — and this plan covers only the second. That
+separation is a standing constraint on this document, not a preamble:
+
+- **Unity owns the Unity runtime. It does not own the product.** This file may
+  define Unity architecture, packet order, and Unity acceptance. Per
+  `MASTERPLAN.md` §0.1, it may not redefine the product, freeze the Dart track,
+  or make Dart retirement a condition of a Unity release.
+- **Neither track is the other's successor.** The Dart/WebGL game running on
+  Pixeldart is a valid end product. A Unity release certifies `unity-windows`
+  and says nothing about `dart-web`; the reverse is equally true.
+- **Either track may proceed, pause, or ship without the other.** Work here
+  needs no permission from the Dart track and grants none to it.
+- **Dart is a reference, not a requirement.** Copy a rule from `lib/` when it
+  is useful and reimplement it as idiomatic C#. No Dart class, file layout, or
+  test is a Unity obligation, and no Dart packet closes because a Unity packet
+  closed.
+- **Evidence never crosses tracks.** Every capture, test result, and release
+  claim names `unity-windows`. A `dart-web` result cannot close a packet here
+  (`MASTERPLAN.md` §9).
+- **Shared content, not shared runtime.** The screenplay, corpus, and
+  `assets/house/*.json` are canonical for both tracks and are consumed here
+  through validated read-only exports. Runtime state, save schemas, and
+  renderer configuration are per track and are never copied between them.
+
+`MASTERPLAN.md` currently records Unity as inactive for this workspace, so
+active work under this plan presumes the owner has explicitly reopened the
+track. If that is not the case, this document is adaptation context and must
+not pull effort off `dart-web`.
 
 ## 0. Working protocol
 
 ### 0.1 Authority order
 
-1. `external/docs/MASTERPLAN.md` owns product intent and human acceptance.
-2. This file owns Unity categories, packet order, architecture, and database
-   synchronization.
+1. `external/docs/MASTERPLAN.md` owns product intent, priorities, gates, and
+   human acceptance for *both* tracks. Where this file and the masterplan
+   disagree about player experience, this file is wrong and gets corrected.
+2. This file owns the `unity-windows` track only: Unity categories, packet
+   order, architecture, Unity acceptance, and this track's database
+   synchronization. It has no authority over `dart-web` — not its scope, its
+   priorities, its status, or its continued existence.
 3. `text/story.screenplay` and linked corpus files remain root/Python-owned
    authoring sources; Unity consumes their validated read-only export.
 4. `assets/house/*.json` own authored house, inventory, material, and sound
    data after validation.
-5. Dart files named in section 3 are reference algorithms, never authority.
+5. Dart files named in section 3 are reference algorithms for this track, never
+   authority over it — and naming one here confers no obligation on the Dart
+   track in return.
 6. Unity assets are generated consumers of those sources; they are not a second
    content database.
+7. `external/docs/GROUND_RULES.md` remains the Git and repository-process
+   authority, unchanged by anything in this plan.
+
+Where Unity and Dart differ only because their engines, platforms, input
+systems, or presentation stacks differ, record the adaptation here rather than
+forcing parity in either direction (`MASTERPLAN.md` §0.1).
 
 ### 0.2 Packet lifecycle
 
@@ -483,11 +526,15 @@ Inputs: `external/docs/MASTERPLAN.md`, this plan, Dart reference map.
 Files: `UNITY_PLAN.md`, `unity/Docs/Decisions/DEC-001-greenfield.md`
 Do not touch: Dart runtime, story prose, database rows.
 Steps:
-1. List the product, source, build, and planning authorities with a named owner for each.
-2. Confirm the exact Unity 6.3 LTS patch, Windows build target, and supported test machine.
-3. Write the Day 1 route as player action -> domain consequence -> saved proof.
-4. Separate approved packages from deferred packages; record a reason and replacement for each deferral.
-5. Capture explicit non-goals so later packets cannot silently grow the first playable.
+1. `u0-charter-authority-doc` — Write the authority table: for product, source content, build, and planning, name the owning file and the accountable human. Product is `external/docs/MASTERPLAN.md`; nothing in the charter may contradict it.
+2. `u0-charter-editor-decide` — Pin one exact Unity 6.3 LTS patch and record why that one. Note the URP version it ships with. A later patch bump is its own decision entry, not an edit to this one.
+3. `u0-charter-hardware-decide` — Name the single Windows x64 machine that is the supported test target: GPU, driver version, RAM, and display resolution. Results from any other machine are context, not proof.
+4. `u0-charter-source-roots-doc` — List the read-only source roots Unity may import from (`text/`, `assets/house/*.json`) and state plainly that Unity writes to none of them.
+5. `u0-charter-package-set-decide` — Split the package list into approved and deferred. Every deferral gets a reason and an interim replacement, so a later packet cannot quietly reintroduce it.
+6. `u0-charter-day1-route-doc` — Write the Day 1 route as an explicit chain of player action -> domain consequence -> saved proof. This chain is the acceptance target for everything through WARD-40.
+7. `u0-charter-nongoals-doc` — Write the non-goals for the first playable (no voice, no final art, no 21 days). Each non-goal names the later packet that owns it, so it reads as deferred rather than forgotten.
+8. `u0-charter-risk-doc` — Record the three risks most likely to stop the first playable. Each needs a named early signal and a fallback you would actually accept.
+9. `u0-charter-approval-review` — Walk the charter with the accountable reviewer. Record their name and the date, save it as `unity/Docs/Decisions/DEC-001-greenfield.md`, and do not start WARD-01 before that file exists.
 Checks: Human review of the charter; no Unity project required yet.
 Evidence: none
 Remainder: none
@@ -511,11 +558,18 @@ Inputs: approved Unity patch, package list, Windows build environment.
 Files: `unity/ProjectSettings`, `unity/Packages`, `unity/Assets/Quarantine/Tests`, CI workflow.
 Do not touch: gameplay rules, imported content, final art.
 Steps:
-1. Create the project from the approved editor version and commit the generated package lock files.
-2. Add folder roots, assembly definitions, `.editorconfig`, and a bootstrap scene with one visible build stamp.
-3. Add a deterministic EditMode smoke test that creates and disposes the composition root without a scene lookup.
-4. Add a reproducible Windows build command that writes logs and an artifact to a known path.
-5. Run the command from a clean checkout and record the editor version, package lock digest, and output path.
+1. `u0-found-project-asset` — Create the Unity project from the pinned patch, then commit `Packages/manifest.json` and `Packages/packages-lock.json` before adding any other file.
+2. `u0-found-folders-asset` — Create the folder roots under `unity/Assets/Quarantine/` (`Domain`, `Presentation`, `Content`, `Tests`), each with its own assembly definition, so the layout is enforced rather than conventional.
+3. `u0-found-domain-asmdef-guard` — Give `Quarantine.Domain` an assembly definition with no reference to `UnityEngine`. This is the boundary WARD-05 later enforces in CI, so it has to be real from the first commit.
+4. `u0-found-asmdef-map-guard` — Wire the remaining references one direction only: Presentation depends on Domain, Tests depend on both, Domain depends on neither. Confirm Unity reports no circular reference.
+5. `u0-found-bootstrap-scene` — Add one bootstrap scene containing nothing but the composition-root object and a build-stamp text element. Resist putting gameplay in it.
+6. `u0-found-composition-adapter` — Write the composition root that explicitly constructs and disposes the domain services. No `FindObjectOfType`, no singletons, no static mutable state.
+7. `u0-found-buildstamp-adapter` — Render editor version, git SHA, and build time into the scene's stamp, so any later screenshot identifies the build that produced it.
+8. `u0-found-smoke-test` — Add an EditMode test that constructs and disposes the composition root twice and asserts nothing leaked between the two. It must not open a scene.
+9. `u0-found-build-command-adapter` — Add a headless Windows x64 build command that writes its log and artifact to known paths and exits non-zero on failure.
+10. `u0-found-ci-guard` — Run the EditMode tests and the build command in CI on every push. A red run blocks the packet; do not add an override switch.
+11. `u0-found-clean-clone-route` — From a fresh clone with no `Library` cache, open the project, run the tests, and build. Time the first import: much over fifteen minutes is a finding to record, not to absorb.
+12. `u0-found-version-capture` — Attach the editor version, package-lock digest, build log path, and artifact digest to the WARD-01 card as its evidence.
 Checks: Clean clone open; EditMode tests; development build.
 Evidence: none
 Remainder: none
@@ -539,11 +593,20 @@ Inputs: `assets/house/*.json`, validated scenario export/corpus, Dart parsers as
 Files: `Runtime/Content`, `Editor/Import` schemas and tests.
 Do not touch: generated prefabs, gameplay controllers.
 Steps:
-1. Inventory every source type and identify its stable primary ID, foreign references, optional fields, and allowed ranges.
-2. Define immutable C# definitions plus a single validation result format containing source path, ID, field, and message.
-3. Validate duplicate IDs, missing references, ranges, required text, and source digests before touching generated assets.
-4. Add one minimal valid fixture and one focused invalid fixture for each source family.
-5. Make the importer surface all actionable errors in one run, while refusing to emit a partial asset set.
+1. `u1-schema-source-census-doc` — Catalogue every source file family in one table: file glob, primary ID field, foreign references, optional fields, allowed ranges. Write it before any C# type exists — the table is what the schemas encode.
+2. `u1-schema-result-format-rule` — Define one validation result record carrying source path, ID, field, and message. Every validator returns this shape, so a failure reads the same wherever it came from.
+3. `u1-schema-id-registry-schema` — Build the ID registry that every other schema resolves references through, so a dangling reference is caught once, centrally, rather than per file family.
+4. `u1-schema-house-schema` — Define the immutable room record and its validator: unique room ID, level, bounds, required display name.
+5. `u1-schema-portal-schema` — Define the portal record: both endpoint room IDs resolve, no self-portals, and traversal state is one of the allowed values.
+6. `u1-schema-inventory-schema` — Define the inventory record: stable item ID, host room reference, pickable flag, and the placement fields the greybox will need.
+7. `u1-schema-material-schema` — Define the material record: stable material ID, family, and the value ranges a URP material can actually accept.
+8. `u1-schema-sound-schema` — Define the soundscape record: emitter ID, host room reference, gain and distance ranges, and portal-muffle references.
+9. `u1-schema-scenario-schema` — Define the schedule record: day, time window, event ID, conditions, and choice IDs, with days constrained to 1-21.
+10. `u1-schema-corpus-schema` — Define the corpus record: text ID, speaker, and body, and validate that every ID referenced by the scenario resolves to a real line.
+11. `u1-schema-valid-fixture` — Add one minimal valid fixture per source family — the smallest file that passes — and keep it beside its schema.
+12. `u1-schema-invalid-fixture` — Add one focused invalid fixture per family, each breaking exactly one rule, so a failing test names the rule that broke.
+13. `u1-schema-suite-test` — Run the whole schema suite in EditMode with no scene access, asserting that every valid fixture passes and every invalid one fails with the expected field.
+14. `u1-schema-failure-report-capture` — Feed one malformed real source file through the suite and attach the report, proving path, ID, field, and message are actionable by someone who did not write the schema.
 Checks: EditMode schema suite; malformed fixture fails with path and ID.
 Evidence: none
 Remainder: none
@@ -567,11 +630,21 @@ Inputs: validated schemas and canonical text/JSON.
 Files: `Editor/Import`, `Content/Generated`.
 Do not touch: runtime session and scene art.
 Steps:
-1. Define an import manifest that lists every source file, parser version, and output asset root.
-2. Import the validated scenario schedule and corpus into typed data with source line/ID diagnostics.
-3. Import room graph, portals, inventory, materials, and soundscape using the same stable-ID rules.
-4. Generate into a temporary output root, validate cross-references there, then swap it into `Content/Generated`.
-5. Write source digest, importer version, and generated-at metadata into the import manifest for review.
+1. `u1-import-manifest-schema` — Define the import manifest: every source file, its digest, the parser version, and the output asset root. The manifest is the record that makes an import reviewable.
+2. `u1-import-temp-root-rule` — Import into a temporary output root, never directly into `Content/Generated`. Nothing outside the temp root is touched until the whole pass validates.
+3. `u1-import-house-adapter` — Import the room graph and portals into typed generated assets, carrying source line and ID into every diagnostic.
+4. `u1-import-inventory-adapter` — Import inventory placements with the same stable-ID rule, so a placement keeps its identity across re-imports.
+5. `u1-import-material-adapter` — Import material definitions into generated assets; do not create URP materials here — that binding belongs to WARD-51.
+6. `u1-import-sound-adapter` — Import the soundscape into typed data, keeping emitter-to-room references symbolic rather than resolved to scene objects.
+7. `u1-import-scenario-adapter` — Import the validated schedule into typed events, preserving day, window, and condition fields exactly as authored.
+8. `u1-import-corpus-adapter` — Import the corpus into typed text data keyed by text ID, with no formatting or trimming that would change authored prose.
+9. `u1-import-crossref-rule` — Validate cross-references inside the temp root — every scenario text ID, every emitter room, every portal endpoint — before any promotion.
+10. `u1-import-swap-rule` — Promote by swapping the validated temp root into `Content/Generated` as one operation. A failed import leaves the previous generated set untouched.
+11. `u1-import-digest-rule` — Write source digest, importer version, and generated-at into the manifest, so a generated asset can always be traced to the exact source that produced it.
+12. `u1-import-menu-adapter` — Add the editor menu command that runs the import and reports the result count, so the pass is reproducible without a console incantation.
+13. `u1-import-determinism-test` — Run two clean imports from identical sources and assert identical IDs and digests. A difference here means something non-deterministic leaked in — find it now, not in WARD-40.
+14. `u1-import-atomicity-test` — Run an import with one deliberately invalid source and assert the generated root is unchanged and no partial assets exist.
+15. `u1-import-manifest-capture` — Attach the manifest from a successful run to the card as the packet's evidence.
 Checks: Two identical imports produce identical IDs/digests; invalid import is atomic.
 Evidence: none
 Remainder: none
@@ -595,12 +668,19 @@ Inputs: `syncUnityPlannerCards`, `DATABASE_URL`, packet parser.
 Files: website persistence/tests and database-sync documentation.
 Do not touch: gameplay save files, user-owned board lane positions.
 Steps:
-1. Parse packet identity, taxonomy, tags, dependencies, steps, checks, and evidence into a canonical source projection.
-2. Reject duplicate IDs, unknown dependencies, missing taxonomy, or untagged packets before opening a database write.
-3. Add packet category/subcategory and normalized tags to card details and reserved planner tag links.
-4. Upsert changed source-owned fields while preserving lane, position, archive state, comments, watchers, custom tags, and view state.
-5. Record plan digest, changed count, and changed packet IDs only after a complete successful pass.
-6. Add parser validation, retry, tag-preservation, no-op, and conflict tests.
+1. `u0-sync-projection-rule` — Parse each packet into one canonical projection object (identity, taxonomy, tags, dependencies, handles, steps, checks, evidence). The projection, not the Markdown, is what the writer consumes.
+2. `u0-sync-handle-parse-rule` — Parse `Handles:` into a normalized, de-duplicated, lower-cased list that preserves declared order. The order is the intended implementation order and must survive the round trip.
+3. `u0-sync-validation-guard` — Run the full validator before opening any database write: duplicate IDs, unknown dependencies, missing taxonomy, untagged packets, malformed handles, and handles milestoned to the wrong packet.
+4. `u0-sync-checklist-merge-rule` — Project handles onto the card checklist keyed by handle name, merging by name so a handle already ticked stays ticked when surrounding source text changes.
+5. `u0-sync-upsert-adapter` — Upsert only source-owned fields: title, details, checklist text, owner, priority, cover. Everything else on the card belongs to the board and is never written here.
+6. `u0-sync-tag-namespace-rule` — Write plan-derived tags into a reserved `plan-` namespace, so a user's own tags on the same card are never candidates for removal.
+7. `u0-sync-board-owned-guard` — Assert, in code and in a test, that lane, position, archive state, comments, watchers, custom tags, and per-user view state are never written by sync.
+8. `u0-sync-activity-rule` — After a fully successful pass, record one activity entry with the plan digest, changed count, and changed packet IDs. Never record anything for a partial pass.
+9. `u0-sync-noop-test` — Test that syncing twice against an unchanged plan writes nothing the second time and reports zero changes.
+10. `u0-sync-conflict-test` — Test that a card dragged to another lane, given a comment, and given a custom tag keeps all three after its source packet's text changes.
+11. `u0-sync-retry-test` — Test that a transient database failure mid-pass leaves no digest recorded, so the next run is a full retry rather than a silent partial.
+12. `u0-sync-hosted-route` — Run the sync against the hosted database with one deliberately changed packet and confirm the change appears on the board.
+13. `u0-sync-audit-capture` — Capture the resulting activity row and the board state, and attach both to the card.
 Checks: Validation rejects duplicate/missing IDs before writes; website tests; hosted sync with a changed packet; repeat sync is a no-op; retry after transient failure.
 Evidence: none
 Remainder: none
@@ -624,9 +704,16 @@ Inputs: section 0 rules.
 Files: `.editorconfig`, analyzers, CI, `unity/Docs/CONTRIBUTING.md`.
 Do not touch: product behaviour.
 Steps:
-1. Enforce no domain-to-UnityEngine references.
-2. Add warnings for empty tests and accidental generated edits.
-3. Document the one-packet human workflow.
+1. `u0-guard-domain-boundary-guard` — Add the CI rule that fails when `Quarantine.Domain` references `UnityEngine`, and make it name the offending file and line.
+2. `u0-guard-analyzer-set-guard` — Enable the agreed analyzer set with warnings as errors for the rules the team will actually honour. Explicitly suppress the rest rather than leaving standing noise.
+3. `u0-guard-editorconfig-doc` — Commit `.editorconfig` with indentation, naming, and file-scoped-namespace rules, noting which analyzer enforces each one.
+4. `u0-guard-empty-test-guard` — Add the rule that fails a test method containing no assertion, so an empty test cannot be mistaken for coverage.
+5. `u0-guard-generated-edit-guard` — Fail the build when a generated file is hand-edited, and name the generator that should have produced it.
+6. `u0-guard-naming-doc` — Document naming rules for domain types, adapters, and ScriptableObjects, with one worked example of each.
+7. `u0-guard-review-checklist-doc` — Write the pull-request checklist: one packet per change, tests present, source ownership respected, generated files untouched, scene integration done.
+8. `u0-guard-violation-fixture` — Commit a fixture that deliberately violates the domain boundary, so the guard is proven to fire rather than assumed to.
+9. `u0-guard-ci-failure-route` — Run that fixture through CI and read the failure as a newcomer would. If the message does not name the file and the rule, fix the message before closing.
+10. `u0-guard-contributing-doc` — Write `unity/Docs/CONTRIBUTING.md` covering the one-packet workflow, the test commands, and how to run the guards locally before pushing.
 Checks: CI fails on a deliberate boundary violation.
 Evidence: none
 Remainder: none
@@ -650,11 +737,19 @@ Inputs: `lib/game/session.dart` (`advance`, `sleep`, `spendHoursAndGas`), produc
 Files: `Runtime/Domain/Clock`, `Resources`, `Difficulty`, tests.
 Do not touch: UI timers, MonoBehaviour.Update, final pacing art.
 Steps:
-1. Write a command table for advance, spend, collect, sleep, and rejection cases before implementing state changes.
-2. Implement immutable snapshot and command results with explicit before/after time and resource deltas.
-3. Port only the tested resource invariants; retain the Dart rule intent, not its object structure.
-4. Seed difficulty once at run creation and persist the seed in the snapshot.
-5. Add same-day, day-boundary, insufficient-resource, and replay tests with an expected event list.
+1. `u1-clock-command-table-doc` — Write the command table first: advance, spend, collect, sleep, and every rejection case, with the precondition and the resulting delta for each. Code follows the table.
+2. `u1-clock-state-rule` — Implement the session state as an immutable snapshot; a command returns a new snapshot plus a result, never mutates in place.
+3. `u1-clock-advance-rule` — Implement time advance with explicit before/after values in the result, so a caller never has to recompute what changed.
+4. `u1-clock-day-boundary-rule` — Handle the day boundary as its own transition: what resets, what carries, and what is emitted. This is where off-by-one errors live.
+5. `u1-clock-spend-atomic-rule` — Make hours, heat, and rations spend atomically — either the whole cost applies or the command is rejected and nothing changes.
+6. `u1-clock-ration-rule` — Implement ration collection on its authored run days only, rejecting collection attempts on any other day.
+7. `u1-clock-rejection-rule` — Return a typed rejection with a reason for every refused command. A silent no-op is a bug; the UI later needs the reason.
+8. `u1-clock-seed-create-rule` — Seed difficulty exactly once at run creation. Nothing else in the domain may create randomness.
+9. `u1-clock-seed-persist-rule` — Persist the seed inside the snapshot so a reload continues the same run rather than reseeding a new one.
+10. `u1-clock-session-port` — Port the resource invariants from `lib/game/session.dart` — the rule intent, not the object structure. Idiomatic C# is the goal, not a transliteration.
+11. `u1-clock-boundary-fixture` — Build a fixture covering same-day, day-boundary, and insufficient-resource cases as one ordered command list.
+12. `u1-clock-replay-test` — Replay that command list twice from the same seed and assert identical snapshots and identical event lists.
+13. `u1-clock-event-list-capture` — Attach both replay snapshots and the event list to the card, so determinism is shown rather than claimed.
 Checks: EditMode fixture replay produces the same snapshot and event list.
 Evidence: none
 Remainder: none
@@ -678,9 +773,19 @@ Inputs: `lib/game/session.dart` journal methods, canonical journal rules.
 Files: `Runtime/Domain/Journal`, tests.
 Do not touch: journal UI and prose authoring.
 Steps:
-1. Model entry status and citations with stable ordinals.
-2. Implement correction/lock rejection rules.
-3. Apply seeded drift only at the sleep boundary.
+1. `u1-journal-entry-schema` — Define the journal entry record: stable ordinal, day written, body, status, and citations.
+2. `u1-journal-status-rule` — Implement the status transitions — written, cited, corrected, verified, locked — and reject any transition not on that list.
+3. `u1-journal-citation-rule` — Implement citations as stable ordinals pointing at other entries, and reject a citation of a non-existent or later entry.
+4. `u1-journal-revision-rule` — Keep revisions append-only: a correction adds a revision, it never overwrites the original text.
+5. `u1-journal-correction-rule` — Implement the correction rule so the prior text stays readable; the entry's disagreement with the house is the horror, and erasing it removes the point.
+6. `u1-journal-lock-rule` — Implement locking, and make a write to a locked entry return a typed rejection rather than silently doing nothing.
+7. `u1-journal-attention-rule` — Implement the attention/steady-hand cost so writing well is a resource decision, not free.
+8. `u1-journal-drift-select-rule` — Select which entries drift purely from the stored seed and the day — never from frame time, UI state, or iteration order of a hash map.
+9. `u1-journal-drift-apply-rule` — Apply drift only at the sleep boundary, as one domain operation with an explicit list of what changed.
+10. `u1-journal-drift-port` — Port the drift kinds (insertion, contradiction, deletion) from the Dart journal rules, keeping the authored day schedule.
+11. `u1-journal-state-fixture` — Build a fixture that writes, cites, corrects, verifies, and locks entries in one ordered sequence.
+12. `u1-journal-lock-rejection-test` — Assert a locked entry cannot be changed and that the attempt returns a reason the UI can show.
+13. `u1-journal-drift-replay-test` — Replay two nights from the same seed and assert identical drifted text, then replay from a different seed and assert it differs.
 Checks: Replay fixture; locked entry cannot be silently changed.
 Evidence: none
 Remainder: none
@@ -704,9 +809,18 @@ Inputs: scenario/corpus import, `NarrativeEncounterDirector.resolveEncounter`, `
 Files: `Runtime/Story`, tests.
 Do not touch: hard-coded replacement schedules and prototype narrative directors.
 Steps:
-1. Resolve event by day/time/conditions.
-2. Present choices from imported content.
-3. Commit flags, residues, journal facts, and activity as one domain command.
+1. `u1-story-event-schema` — Define the runtime event record built from the imported schedule: event ID, day, window, conditions, and choice IDs.
+2. `u1-story-condition-rule` — Implement condition evaluation against day, time, and stable domain flags only. No scene state, no wall-clock time.
+3. `u1-story-resolver-rule` — Implement the resolver that picks at most one event for a given day and window, with a deterministic tie-break when two qualify.
+4. `u1-story-choice-commit-rule` — Commit the selected choice as a single domain operation — flags, residue, journal fact, and activity together, or none of them.
+5. `u1-story-flag-rule` — Implement callback flags with stable IDs so a later day can read a choice made earlier without string guessing.
+6. `u1-story-residue-rule` — Implement physical residue records with stable IDs, since the house must later show what the record does not.
+7. `u1-story-journal-fact-rule` — Emit the journal fact for the choice through the WARD-11 journal API rather than writing entry state directly.
+8. `u1-story-duplicate-guard` — Guard against delivering the same event twice, including across a save and reload in the same day.
+9. `u1-story-director-port` — Port the resolution and commit intent from `NarrativeEncounterDirector`, taking the rules and discarding the Dart object graph.
+10. `u1-story-single-event-fixture` — Build a fixture with exactly one imported event and drive it end to end before adding a second.
+11. `u1-story-roster-integrity-test` — Assert every scheduled event resolves to a real visitor and real corpus text, so a missing asset fails here rather than in front of a player.
+12. `u1-story-replay-test` — Replay the same seed and choice sequence and assert the same flags and residue IDs, then attach the run to the card.
 Checks: Same seed and choice sequence produces the same flags and residue IDs.
 Evidence: none
 Remainder: none
@@ -730,9 +844,15 @@ Inputs: domain packets and Dart session event-queue behaviour.
 Files: `Runtime/Domain/GameSession`, bootstrap composition, tests.
 Do not touch: global singletons and scene lookups.
 Steps:
-1. Compose clock, resources, journal, story, residues, and seed.
-2. Expose read-only snapshot and drained domain events.
-3. Add command rejection telemetry.
+1. `u1-session-compose-rule` — Compose clock, resources, journal, story, residues, and seed in one `GameSession` constructor. No scene lookup, no service locator, no static state.
+2. `u1-session-snapshot-rule` — Expose one read-only snapshot that every consumer reads. No consumer reaches past it into a subsystem.
+3. `u1-session-event-drain-rule` — Expose domain events as a drain-once stream, so a consumer cannot process the same event twice or miss one by reading late.
+4. `u1-session-rejection-telemetry-rule` — Record rejected commands with their reason, so the UI can explain a refusal and a test can assert one happened.
+5. `u1-session-bootstrap-adapter` — Wire one minimal Bootstrap consumer that creates the session and reads the snapshot — no gameplay in it yet.
+6. `u1-session-single-owner-guard` — Add the guard that makes a second session owner fail loudly at construction rather than quietly running two clocks.
+7. `u1-session-compose-test` — Test that construction and disposal are clean and that the composed session exposes every subsystem's state through the one snapshot.
+8. `u1-session-drain-test` — Test that draining events twice yields them once, and that an undrained event survives until it is read.
+9. `u1-session-probe-route` — Run the PlayMode bootstrap probe, confirm one session owner, and attach the probe output to the card.
 Checks: PlayMode bootstrap route; no duplicate session owner.
 Evidence: none
 Remainder: none
@@ -756,11 +876,20 @@ Inputs: `lib/game/save_store.dart` (`write`, `read`), save contract section 5.3.
 Files: `Runtime/Save`, EditMode and PlayMode save tests.
 Do not touch: hosted planner database or per-frame autosave.
 Steps:
-1. Define the envelope schema, version, payload digest, active-slot path, recovery-slot path, and upgrade policy.
-2. Serialize a known `GameSession` snapshot and verify a byte-for-byte round trip in an EditMode test.
-3. Write a temporary file, flush it, validate its checksum, then replace the active slot and retain recovery.
-4. Simulate interruption before replace, corrupted active data, unknown schema, and missing recovery data.
-5. Reject bad data without deleting good data, and expose a clear restore/new-run choice to the UI.
+1. `u2-save-envelope-schema` — Define the save envelope: schema version, run seed, written-at, payload, and checksum. Version goes first so an old file can always be identified before it is parsed.
+2. `u2-save-serialize-rule` — Serialize the domain snapshot only. No Unity object references, no scene paths, nothing that a rebuild would invalidate.
+3. `u2-save-checksum-rule` — Compute the checksum over the payload and store it in the envelope, so a truncated or edited file is detectable without parsing it.
+4. `u2-save-temp-write-adapter` — Write to a temporary file beside the target, flush it, and only then rename. Never write into the live slot directly.
+5. `u2-save-replace-rule` — Replace the active slot with an atomic rename, so an interrupted save leaves the previous slot intact rather than half-written.
+6. `u2-save-recovery-slot-rule` — Keep the previous good save as a recovery slot, so a corrupt active slot is an inconvenience rather than a lost run.
+7. `u2-save-schema-upgrade-rule` — Implement the upgrade path for an older schema version, and reject a newer one with a clear message instead of guessing.
+8. `u2-save-rejection-rule` — Return a typed reason for every refused load — bad checksum, unknown version, missing file — so the UI can offer recovery rather than a blank failure.
+9. `u2-save-store-port` — Port the read/write intent from `lib/game/save_store.dart`, keeping the atomicity rules and dropping the Dart structure.
+10. `u2-save-roundtrip-test` — Test that a full snapshot survives write and read unchanged, including the seed and the journal's locked entries.
+11. `u2-save-interrupt-fixture` — Build a fixture that interrupts the write between temp and rename, and assert the previous slot still loads.
+12. `u2-save-corrupt-fixture` — Build a fixture with a corrupted active slot and assert the recovery slot is offered and loads.
+13. `u2-save-restore-choice-adapter` — Add the restore prompt that lets a human choose the recovery slot, rather than silently loading it behind their back.
+14. `u2-save-recovery-route` — Run the full route in a build — new run, save, corrupt the slot, relaunch, recover — and attach the result.
 Checks: Interrupted-write fixture; build-path reload test.
 Evidence: none
 Remainder: none
@@ -784,11 +913,21 @@ Inputs: house JSON, inventory JSON, `HouseInventory.validateAgainst`.
 Files: `Runtime/World`, `Editor/Import`, `Scenes/Day01Greybox`.
 Do not touch: final production models and decorative dressing.
 Steps:
-1. Establish metres, eye height, floor, stair, doorway, and portal-plane conventions in one calibration scene.
-2. Add a source-to-scene binding manifest that maps each room/portal/focus ID to its generated object.
-3. Generate labeled proxy geometry from room data with debug labels available in development builds.
-4. Bind focus points and residues by ID, failing import when a referenced binding is absent.
-5. Walk the complete Day 1 route after every generated-world change and capture the room graph version.
+1. `u2-world-calibration-scene` — Build a calibration scene with a human-height reference and a door of known size. Every later spatial judgement is measured against it.
+2. `u2-world-scale-decide` — Decide and record one world unit per metre, eye height, and door dimensions. Changing these later invalidates every capture, so decide once and write it down.
+3. `u2-world-roomgraph-rule` — Construct the runtime room graph from imported data only. A room that exists in the scene but not the data is a bug, not a shortcut.
+4. `u2-world-portal-topology-rule` — Build portal topology from the data and assert every portal connects two rooms that exist and is reachable from both sides.
+5. `u2-world-stair-geometry-asset` — Build the stair geometry to the calibrated dimensions, since stairs are where movement and collision will first disagree.
+6. `u2-world-collision-layer-asset` — Set up the collision layers and the matrix once, and document which layer each kind of surface belongs to.
+7. `u2-world-proxy-generator-adapter` — Generate greybox proxies from room bounds so the whole house exists before any art does.
+8. `u2-world-binding-manifest-bind` — Bind generated proxies to their data IDs through a manifest, so a later art asset can replace a proxy without breaking references.
+9. `u2-world-focus-anchor-bind` — Place focus anchors from inventory placements, so WARD-22 has real targets rather than invented ones.
+10. `u2-world-residue-anchor-bind` — Place residue anchors from the story residue IDs, so WARD-12's committed residue has somewhere to appear.
+11. `u2-world-debug-label-adapter` — Add a toggleable debug label showing room ID and portal state, so a route failure is diagnosable from a screenshot.
+12. `u2-world-graph-validator-test` — Test the room graph for unreachable rooms, orphan portals, and IDs present in the scene but absent from the data.
+13. `u2-world-day1-route` — Walk the full Day 1 route in PlayMode and confirm every Day 1 target is reachable.
+14. `u2-world-route-capture` — Capture the route at the two required resolutions and attach the frames, naming `unity-windows` as the track.
+15. `u2-world-greybox-review` — Have a human walk the greybox and judge whether it reads as a house rather than a diagram. Record their name, date, and verdict — this packet is in a visible-change category and cannot close on a model's judgement.
 Checks: Room graph validator; PlayMode route reaches every Day 1 target.
 Evidence: none
 Remainder: none
@@ -812,11 +951,21 @@ Inputs: `lib/house/collision.dart` (`Capsule.move`, `_tryAxis`, `_moveOnStair`, 
 Files: `Runtime/World/Movement`, `Runtime/Interaction/Portals`, tests.
 Do not touch: story triggers hidden in movement code.
 Steps:
-1. Separate input sampling, desired displacement, collision resolution, and session notification into distinct components.
-2. Implement capsule sweep and axis-separated resolution against the generated collision layer.
-3. Implement stair enter/restore and portal-plane bounds with deliberate tests for clipping, backtracking, and blocked doors.
-4. Emit a room-change domain command only after a valid portal crossing; do not hide story triggers in physics callbacks.
-5. Compare the PlayMode route against fixed expected room IDs and movement rejection reasons.
+1. `u2-move-input-adapter` — Wire the input action map for move and look, keeping the adapter separate from the movement rules so input can be rebound without touching physics.
+2. `u2-move-look-adapter` — Implement look with sensitivity and inversion settings read from configuration, not constants.
+3. `u2-move-capsule-rule` — Implement the capsule with the calibrated radius, height, and eye offset from WARD-20. Do not re-derive these numbers here.
+4. `u2-move-axis-rule` — Resolve movement one axis at a time so a blocked X does not cancel a legal Z — this is what makes wall-sliding feel right.
+5. `u2-move-collision-port` — Port the sweep and resolve intent from `lib/house/collision.dart`, keeping the axis order and step tolerances.
+6. `u2-move-stairs-rule` — Implement stair traversal with the step tolerance, so a player walks up rather than catching on each riser.
+7. `u2-move-crouch-rule` — Implement crouch with its own capsule height and a stand-up check that refuses to stand under low geometry.
+8. `u2-move-portal-plane-rule` — Detect the portal crossing plane rather than a trigger volume, so a crossing cannot be missed at speed.
+9. `u2-move-portal-command-adapter` — Route the crossing through a domain command, so the door's state — not the collider — decides whether it is passable.
+10. `u2-move-rejection-rule` — Give a refused crossing a reason the UI can surface, so a locked door reads as locked rather than broken.
+11. `u2-move-clipping-test` — Test the collision fixture for clipping through walls at high speed and in corners.
+12. `u2-move-stairs-test` — Test ascent and descent on every staircase in the house, both directions.
+13. `u2-move-portal-test` — Test that a passable portal is crossed and an impassable one is refused with its reason.
+14. `u2-move-day1-route` — Run the ground, upper, and cellar route in PlayMode without clipping or getting stuck.
+15. `u2-move-route-capture` — Capture the route and attach it, naming the track and the build stamp.
 Checks: Collision fixture; PlayMode ground/upper/cellar route.
 Evidence: none
 Remainder: none
@@ -840,9 +989,20 @@ Inputs: inventory/focus data, interaction contract, `InventoryPhysics` bounds.
 Files: `Runtime/Interaction`, `Runtime/World` bindings, tests.
 Do not touch: generic event bus and hierarchy-name discovery.
 Steps:
-1. Cast the bounded focus query.
-2. Implement open/close/hold/drag/letterbox/chain actions.
-3. Send accepted action commands to `GameSession`.
+1. `u2-focus-query-rule` — Implement the focus query as a bounded cone plus distance, matching the interaction contract rather than an arbitrary raycast.
+2. `u2-focus-occlusion-rule` — Reject a focus target occluded by geometry, so a player cannot interact through a wall.
+3. `u2-focus-target-bind` — Bind focus targets to the anchors placed in WARD-20, resolving to the item's data ID rather than a scene reference.
+4. `u2-focus-prompt-adapter` — Show the prompt for the focused target with its available actions, and nothing when there is no target.
+5. `u2-focus-door-rule` — Implement door actions — open, close, lock, listen — routed through domain commands, since a door's state is game state.
+6. `u2-focus-chain-rule` — Implement the door chain as its own state, so a chained door offers a different action set than a locked one.
+7. `u2-focus-letterbox-rule` — Implement the letterbox interaction, since it is the threshold exchange the campaign leans on most.
+8. `u2-focus-hold-rule` — Implement press-and-hold for actions that should be deliberate, with a visible progress cue and a clean cancel.
+9. `u2-focus-drag-rule` — Implement constrained drag within the item's authored bounds, refusing motion that would push an item through geometry.
+10. `u2-focus-inventory-rule` — Implement pick up and place against the inventory rules, so a placement is data, not a parented transform.
+11. `u2-focus-feedback-adapter` — Give every action success and rejection feedback, so nothing a player does is silent.
+12. `u2-focus-rejection-doc` — Document each rejection reason and the wording the UI shows, so the vocabulary stays consistent across packets.
+13. `u2-focus-order-test` — Test focus order for accessibility: a keyboard user must reach every interactive target in a predictable sequence.
+14. `u2-focus-threshold-route` — Run the threshold route in PlayMode, capture it, and have a human confirm the interactions read clearly. This packet is in a visible-change category and needs that review to close.
 Checks: PlayMode threshold route; accessibility focus order test.
 Evidence: none
 Remainder: none
@@ -866,9 +1026,21 @@ Inputs: `lib/engine/audio_planner.dart` (`AudioPlanner._route`, `transmission`, 
 Files: `Runtime/Audio`, mixer setup, cue fixtures.
 Do not touch: locked final voice coverage.
 Steps:
-1. Build a bounded portal route from source room to listener room.
-2. Apply distance and portal transmission to mixer parameters.
-3. Provide text/caption fallback for every required cue.
+1. `u2-audio-cue-schema` — Define the cue record: cue ID, source emitter, gain, distance model, and caption text ID.
+2. `u2-audio-catalogue-doc` — Catalogue the Day 1 cues — visitor, broadcast, house bed — and name the source file for each before wiring anything.
+3. `u2-audio-route-rule` — Implement routing from emitter room to listener room through the portal graph, not through straight-line distance.
+4. `u2-audio-transmission-rule` — Implement transmission across portals so an open door carries sound differently than a closed one.
+5. `u2-audio-muffle-rule` — Implement the closed-door muffle as a filter plus gain change, matching the authored values rather than an eyeballed cutoff.
+6. `u2-audio-distance-rule` — Implement distance attenuation with the authored reference and max distances, so a cue does not vanish at the room boundary.
+7. `u2-audio-planner-port` — Port the routing intent from `lib/engine/audio_planner.dart`, keeping `_route`, `transmission`, and `muffleToGainDb` semantics.
+8. `u2-audio-mixer-asset` — Build the mixer groups once — bed, transient, voice, air — so later packets add cues without re-inventing the bus layout.
+9. `u2-audio-source-adapter` — Adapt planned cues onto Unity audio sources, keeping the plan itself testable without the engine.
+10. `u2-audio-caption-rule` — Emit a caption for every audible cue, so the audio route and the caption route cannot drift apart.
+11. `u2-audio-fallback-guard` — Guard against a missing audio asset: log the cue ID and continue silently rather than throwing mid-scene.
+12. `u2-audio-plan-fixture` — Build a fixture that produces a deterministic audio plan for a fixed listener and emitter position.
+13. `u2-audio-plan-test` — Test the plan fixture for stable gains and filter values, so a regression in routing is caught without listening.
+14. `u2-audio-hardware-route` — Listen to the route on both speakers and headphones on the supported machine; spatialisation errors show up on one and not the other.
+15. `u2-audio-mix-review` — Have a human approve the mix and the captions together, and record the verdict. Audio is a visible-change category for acceptance purposes.
 Checks: speaker/headphone PlayMode check; deterministic audio-plan fixture.
 Evidence: none
 Remainder: none
@@ -892,9 +1064,19 @@ Inputs: input/accessibility product rules.
 Files: `Runtime/UI`, UI Toolkit documents/styles, tests.
 Do not touch: story-specific text layout.
 Steps:
-1. Create one persistent UI root owned by bootstrap.
-2. Bind Input System actions and focus navigation.
-3. Save settings independently from run state.
+1. `u3-shell-ui-root-adapter` — Build the persistent UI root that survives scene changes, so the pause menu is never rebuilt mid-session.
+2. `u3-shell-panel-settings-asset` — Build the settings panel layout once, with room for the accessibility controls WARD-33 will add rather than a redesign later.
+3. `u3-shell-input-actions-asset` — Author the input action asset with every action the game needs named now, even where the binding is still placeholder.
+4. `u3-shell-remap-rule` — Implement rebinding with conflict detection, refusing a binding already taken rather than silently shadowing it.
+5. `u3-shell-pause-scene` — Implement pause that stops domain time without tearing down the session, and confirm resume continues the same run.
+6. `u3-shell-focus-order-rule` — Define UI focus order explicitly per panel. Do not rely on hierarchy order, which changes whenever someone reorders a prefab.
+7. `u3-shell-settings-schema` — Define the settings record with a version field, so a later added setting does not invalidate an existing profile.
+8. `u3-shell-settings-store-adapter` — Persist settings outside the save file, since they belong to the player and not to the run.
+9. `u3-shell-save-feedback-adapter` — Show explicit feedback when settings are saved, so a player is never left guessing whether a change took.
+10. `u3-shell-settings-persist-test` — Test that every setting survives a restart, including one deliberately non-default value per control.
+11. `u3-shell-keyboard-route` — Complete pause, change a setting, rebind a key, and resume using only the keyboard.
+12. `u3-shell-restart-route` — Restart the build and confirm the session resumes and the settings held.
+13. `u3-shell-usability-review` — Have a human who did not build it operate the shell and record what confused them. This packet is in a visible-change category and closes on that review, not on a passing test.
 Checks: keyboard-only PlayMode route; settings survive restart.
 Evidence: none
 Remainder: none
@@ -918,9 +1100,16 @@ Inputs: imported corpus, validated schedule, caption rules.
 Files: `Runtime/UI/Dialogue`, `Runtime/Story` presentation adapter, tests.
 Do not touch: generated voice assets.
 Steps:
-1. Render line/choice sequence from typed content.
-2. Keep callback commit in the domain command.
-3. Make captions timing-independent and readable.
+1. `u3-dialogue-presenter-adapter` — Build the presenter that renders authored lines from imported corpus data, with no prose written in C#.
+2. `u3-dialogue-line-bind` — Bind lines by stable text ID, so a corpus edit reaches the game without touching the scene.
+3. `u3-dialogue-choice-adapter` — Present choices from the imported schedule, in the authored order, with no invented options.
+4. `u3-dialogue-commit-rule` — Commit the chosen option through the WARD-12 domain command, so the UI never writes story state directly.
+5. `u3-dialogue-caption-rule` — Show a caption for every line, since this packet ships before voice and captions are the only channel.
+6. `u3-dialogue-timing-rule` — Implement reading-time pacing and a silence timer, so a conversation can proceed without the player being rushed or stalled.
+7. `u3-dialogue-lineid-test` — Test that every scheduled line ID resolves to real corpus text; a missing line must fail here, not in front of a player.
+8. `u3-dialogue-replay-fixture` — Build a fixture that replays a choice sequence and asserts the same flags and journal facts result.
+9. `u3-dialogue-textonly-route` — Run a full visitor conversation in PlayMode with audio off, confirming it is completable on text alone.
+10. `u3-dialogue-route-capture` — Capture the conversation and attach it, naming the track and build stamp.
 Checks: text-only PlayMode conversation; choice replay fixture.
 Evidence: none
 Remainder: none
@@ -944,9 +1133,18 @@ Inputs: journal domain snapshot and commands.
 Files: `Runtime/UI/Journal`, UI Toolkit templates, tests.
 Do not touch: duplicate UI-side journal state.
 Steps:
-1. Render immutable entries and uncertainty markers.
-2. Send edit/correct/verify/lock commands to the session.
-3. Show residues and citations without exposing hidden truth.
+1. `u3-record-view-adapter` — Build the journal view that reads the domain snapshot only, so the UI cannot hold its own copy of entry state.
+2. `u3-record-entry-template-asset` — Build the entry template with room for status, citations, and revisions without relayout.
+3. `u3-record-uncertainty-adapter` — Show uncertainty explicitly, since an entry that reads as certain when it is not defeats the game's central mechanic.
+4. `u3-record-citation-adapter` — Let a player cite another entry and see the citation resolved, refusing a citation of a later entry.
+5. `u3-record-residue-link-bind` — Link an entry to its residue anchor so the player can navigate from the record to the physical evidence that contradicts it.
+6. `u3-record-write-adapter` — Implement writing an entry through the domain command, with the attention cost visible before the player commits.
+7. `u3-record-correct-adapter` — Implement correction so the prior text remains visible; this is the point of the mechanic, not an implementation detail.
+8. `u3-record-lock-adapter` — Implement locking with a confirmation, since it is irreversible and the player should know that before doing it.
+9. `u3-record-rejection-doc` — Document every rejection the journal UI can show and its exact wording, matching the vocabulary from WARD-22.
+10. `u3-record-screenreader-test` — Test that every control carries a screen-reader label and that entry status is announced, not only coloured.
+11. `u3-record-reload-route` — Write, correct, lock, save, reload, and confirm every state survived exactly.
+12. `u3-record-route-capture` — Capture the route and attach it with the human review this visible-change category requires.
 Checks: PlayMode write/reload/lock route; screen-reader labels.
 Evidence: none
 Remainder: none
@@ -970,9 +1168,18 @@ Inputs: real human usability reviewer and accessibility checklist.
 Files: accessibility settings, UI tests, evidence capture.
 Do not touch: campaign expansion.
 Steps:
-1. Traverse every required action without pointer-only controls.
-2. Verify focus order, contrast, text scale, captions, and reduced motion.
-3. Fix the first confusing or unreachable step before adding polish.
+1. `u3-access-control-census-doc` — Census every interactive control in the game so far and record how each is reached without a mouse. Gaps found here are the packet's work list.
+2. `u3-access-text-scale-adapter` — Implement text scaling that reflows rather than clips, and check the longest authored string at the largest scale.
+3. `u3-access-caption-toggle-adapter` — Implement the caption toggle and make captions the default on, since the game ships text-first.
+4. `u3-access-motion-reduction-adapter` — Implement reduced motion covering camera shake, transitions, and any drift animation.
+5. `u3-access-hold-alternative-rule` — Give every press-and-hold action a tap alternative, so hold is a preference and never a requirement.
+6. `u3-access-brightness-adapter` — Implement a brightness/contrast control calibrated against the darkest authored scene, not a mid-tone one.
+7. `u3-access-focus-order-test` — Test focus order across every panel and the world, asserting no trap and no unreachable control.
+8. `u3-access-suite-test` — Run the accessibility suite in PlayMode as one command, so a regression is caught by CI and not by a person.
+9. `u3-access-keyboard-route` — Complete the whole Day 1 route keyboard-only, in a build, without touching the mouse once.
+10. `u3-access-contrast-review` — Measure contrast on every text surface against the darkest and brightest scenes, and record the numbers.
+11. `u3-access-route-capture` — Capture the keyboard route at both required resolutions and the narrow viewport.
+12. `u3-access-severity-doc` — Record every finding with a severity and an owning packet, so nothing is closed by being forgotten.
 Checks: human keyboard route; PlayMode accessibility suite.
 Evidence: none
 Remainder: none
@@ -996,11 +1203,16 @@ Inputs: canonical Day 1 content and human review.
 Files: integration scene, build script, evidence index.
 Do not touch: final house art, Acts II–III, locked voice.
 Steps:
-1. Define one scripted Day 1 acceptance route, including expected prompts, choices, journal states, resources, and room IDs.
-2. Run the complete route from a clean profile on the target Windows configuration.
-3. Save, quit, reload, and verify the residue, journal, resource state, and scheduled-event position.
-4. Collect visual, audio, accessibility, and comprehension feedback in one review record.
-5. Classify findings as blocker, follow-up, or observation; fix blockers and rerun the same route before closing.
+1. `u3-slice-script-doc` — Write the playthrough script a fresh player will follow, in their words rather than packet vocabulary.
+2. `u3-slice-expected-state-fixture` — Record the expected domain state at each checkpoint of that script, so a deviation is identifiable rather than a vague feeling.
+3. `u3-slice-regression-test` — Automate the script as a regression test, so the slice stays closed once it closes.
+4. `u3-slice-clean-profile-route` — Run the slice from a clean user profile with no prior save or settings, on the supported machine.
+5. `u3-slice-reload-route` — Reload mid-slice and confirm the consequence persisted, since a consequence that does not survive a reload is not a consequence.
+6. `u3-slice-route-capture` — Capture the full route and attach it with build stamp and track name.
+7. `u3-slice-human-review` — Have a fresh player — not the implementer — complete Day 1 unaided. Record where they hesitated.
+8. `u3-slice-comprehension-doc` — Ask them to explain what happened in their own words, and record it verbatim. If they cannot, the slice is not closed regardless of the tests.
+9. `u3-slice-triage-doc` — Triage every finding into fix-now or an owning packet, with a named reason for each deferral.
+10. `u3-slice-blocker-rerun-route` — Fix the blockers and rerun the whole route from a clean profile before closing.
 Checks: clean Windows development build; human playthrough approved.
 Evidence: none
 Remainder: none
@@ -1024,9 +1236,18 @@ Inputs: rights-cleared house sources, modeling plan, greybox bindings.
 Files: model import settings, room prefabs, material slots.
 Do not touch: domain rules and packet database.
 Steps:
-1. Replace one room pair at a time.
-2. Validate scale, collision, portal clearance, and focus IDs.
-3. Obtain human visual approval before the next batch.
+1. `u5-house-rights-ledger-doc` — Record the licence, source, and permitted use for every asset before it enters the repository. An asset without a ledger row does not get imported.
+2. `u5-house-intake-quarantine-guard` — Stage incoming assets in a quarantine folder that the build ignores, so nothing unvetted can reach a scene.
+3. `u5-house-intake-checksum-rule` — Checksum each source asset on intake and record it, so a later silent replacement is detectable.
+4. `u5-house-prop-batch-asset` — Prepare the first prop batch to the calibrated scale from WARD-20, checking each against the calibration scene.
+5. `u5-house-room-pair-asset` — Replace the first room pair's proxies, keeping every data ID identical — the swap is visual only.
+6. `u5-house-collision-refit-bind` — Refit collision to the new geometry rather than inheriting the proxy's, and re-run the movement tests.
+7. `u5-house-scale-verify-test` — Verify scale against the calibration reference; a door that reads slightly wrong here will read very wrong at eye height.
+8. `u5-house-portal-clearance-test` — Test portal clearance with the player capsule, since new geometry is where a passable door becomes impassable.
+9. `u5-house-focus-id-test` — Test that every focus target in the batch still resolves to its original data ID.
+10. `u5-house-hero-prop-doc` — Identify the hero props the room's meaning depends on and record why each one matters, so later batches do not dilute them.
+11. `u5-house-batch-capture` — Capture the room batch before and after at both resolutions.
+12. `u5-house-batch-review` — Have a human compare the captures and approve. Art batches close on human eyes, never on a passing import.
 Checks: room-batch PlayMode route and capture review.
 Evidence: none
 Remainder: none
@@ -1050,9 +1271,18 @@ Inputs: materials JSON, lighting references, accessibility profile.
 Files: URP assets, light profiles, shaders/materials, captures.
 Do not touch: experimental rupture effects until baseline approval.
 Steps:
-1. Establish exposure, shadow, fog, practical, and rain profiles.
-2. Add wetness/surface response only where it improves legibility.
-3. Measure frame time on the target Windows profile.
+1. `u5-light-urp-asset` — Configure the URP asset and quality tiers once, and record which tier the supported machine targets.
+2. `u5-light-exposure-calibration-scene` — Build the exposure calibration scene, so 'too dark' becomes a measurement rather than an argument.
+3. `u5-light-material-library-asset` — Build the material library from the imported material data, one material family at a time.
+4. `u5-light-practical-asset` — Author the practical lights — lamp, hearth, candle — as the room's actual sources, since the game is lit by what is in it.
+5. `u5-light-shadow-profile-decide` — Decide and record the shadow distance, cascade count, and resolution the target machine sustains.
+6. `u5-light-fog-asset` — Author the interior fog so depth reads without flattening the darks into grey.
+7. `u5-light-rain-asset` — Author rain as an exterior and window effect, keeping it off the interior surfaces it should not touch.
+8. `u5-light-wetness-asset` — Author surface wetness response for the window and threshold materials only, where weather can actually reach.
+9. `u5-light-quality-tier-guard` — Guard the quality tiers so a lower tier degrades readability last; darkness is atmosphere, illegibility is a bug.
+10. `u5-light-perf-capture` — Capture frame timings on the supported machine at both resolutions, and record the numbers rather than an impression.
+11. `u5-light-readability-review` — Have a human confirm every authored surface is readable at the accessibility brightness floor, not only at the artist's setting.
+12. `u5-light-baseline-doc` — Write the lighting baseline down — values, references, and what may not change — so later batches extend it rather than relitigate it.
 Checks: human baseline review; performance capture.
 Evidence: none
 Remainder: none
@@ -1076,9 +1306,16 @@ Inputs: canonical consequences, inventory, soundscape, approved baseline.
 Files: room prefabs, residue bindings, audio scenes, captures.
 Do not touch: unapproved story rewrites.
 Steps:
-1. Select one room pair and its consequence set.
-2. Bind residues and audio cues by stable ID.
-3. Review visual, route, and acoustic coherence together.
+1. `u5-expand-batch-selection-doc` — Select the next room batch by what the campaign needs next, and record why those rooms and not others.
+2. `u5-expand-room-pair-asset` — Build the room pair against the approved baseline, reusing the material library rather than adding one-off materials.
+3. `u5-expand-residue-asset` — Author the residue art for the consequences these rooms carry, since the house's disagreement with the record is the point.
+4. `u5-expand-residue-bind` — Bind residue art to the residue IDs committed by WARD-12, so a story consequence actually appears.
+5. `u5-expand-cue-bind` — Bind the room's audio cues to its emitters, keeping the routing rules from WARD-23.
+6. `u5-expand-soundscene-asset` — Author the room's sound bed so it is distinguishable from its neighbours with the door shut.
+7. `u5-expand-day-route` — Run the affected day's route in PlayMode and confirm the batch changed nothing about reachability.
+8. `u5-expand-batch-capture` — Capture the batch at both resolutions, before and after.
+9. `u5-expand-acoustic-review` — Have a human listen with the door open and shut and confirm the rooms read as different places.
+10. `u5-expand-visual-review` — Have a human approve the visual batch against the baseline and record the verdict.
 Checks: per-batch PlayMode and human review.
 Evidence: none
 Remainder: none
@@ -1102,11 +1339,18 @@ Inputs: closed story batches, approved room/audio batches.
 Files: campaign fixtures, event bindings, PlayMode scenarios.
 Do not touch: invented event timing and duplicate narrative authorities.
 Steps:
-1. Divide the canonical schedule into closed batches with explicit day ranges, required room bindings, and expected callbacks.
-2. Add one closed story batch at a time, importing rather than manually recreating line IDs or timing.
-3. Replay key choices from a known seed and compare journal, resources, residues, and callbacks to fixture expectations.
-4. Run a save/reload at the boundary of every story batch to catch persistence gaps early.
-5. Review pacing, restraint, and consequence readability after each act before enabling the next batch.
+1. `u4-act-batch-doc` — Plan the act batches and record which days each covers, so implementation order is decided once.
+2. `u4-act-one-bind` — Bind Act I days to their scheduled events, changing no rule — only wiring authored content.
+3. `u4-act-one-fixture` — Build the Act I fixture that drives those days end to end from a fixed seed.
+4. `u4-act-two-bind` — Bind Act II days, where callbacks from Act I first have to resolve.
+5. `u4-act-two-fixture` — Build the Act II fixture, asserting Act I's flags are visible in Act II's conditions.
+6. `u4-act-three-bind` — Bind Act III days, where the record and the house diverge most.
+7. `u4-act-three-fixture` — Build the Act III fixture, asserting residues authored earlier are still present and correct.
+8. `u4-act-consequence-test` — Test that a choice made in one act changes an outcome in a later one, which is the whole campaign's premise.
+9. `u4-act-callback-audit-doc` — Audit every callback flag for a reader; a flag written and never read is either dead or a missing scene.
+10. `u4-act-saveload-route` — Save and reload at each act boundary and confirm the campaign continues identically.
+11. `u4-act-pacing-review` — Have a human play consecutive days and report where pacing sags or rushes.
+12. `u4-act-batch-capture` — Capture each act's route and attach it.
 Checks: act fixtures, save/reload, human pacing review.
 Evidence: none
 Remainder: none
@@ -1130,9 +1374,16 @@ Inputs: ending acceptance rules, session snapshot, canonical final content.
 Files: ending domain rules, final scene, tests.
 Do not touch: arbitrary ending selection or hidden developer switches.
 Steps:
-1. Derive ending inputs from the session snapshot.
-2. Test all three outcomes and boundary cases.
-3. Present the final record without rewriting history.
+1. `u4-end-input-schema` — Define exactly which recorded values feed the ending: choices, journal state, residues. Nothing else may influence it.
+2. `u4-end-resolver-rule` — Implement the resolver as a pure function of that input, so an ending can be explained after the fact.
+3. `u4-end-compliance-fixture` — Build the fixture that reaches the compliance ending and assert it is reached for the documented reason.
+4. `u4-end-sync-fixture` — Build the fixture for the synchronisation ending with the same assertion.
+5. `u4-end-rupture-fixture` — Build the fixture for the rupture ending with the same assertion.
+6. `u4-end-boundary-test` — Test the boundary between endings, since a run one value away from a different ending is where the resolver breaks.
+7. `u4-end-final-record-adapter` — Present the final record so the player can see what their own journal said versus what happened.
+8. `u4-end-rupture-scene` — Build the Day 21 rupture presentation, keeping distortion to the rupture state as the masterplan requires.
+9. `u4-end-replay-test` — Replay each ending from its seed and assert identical outcomes.
+10. `u4-end-campaign-review` — Have a human complete a full campaign and confirm the ending felt earned by their own choices.
 Checks: deterministic ending fixture; human campaign review.
 Evidence: none
 Remainder: none
@@ -1156,9 +1407,16 @@ Inputs: locked script, rights records, approved performances.
 Files: voice assets, import metadata, mixer routes, caption timings.
 Do not touch: unapproved generated voice in release builds.
 Steps:
-1. Verify imported line IDs against the corpus.
-2. Import only rights-cleared files.
-3. Test missing/failed voice fallback and captions.
+1. `u5-voice-textlock-decide` — Lock the script before any recording. Recording against unlocked text guarantees rework and is the most expensive mistake available here.
+2. `u5-voice-rights-doc` — Record performer rights and permitted use per line before import, with no exceptions for placeholder takes.
+3. `u5-voice-lineid-test` — Test that every voice file maps to a real line ID and that no line ID has two files.
+4. `u5-voice-import-adapter` — Import approved takes with their line IDs, keeping the text as the source of truth.
+5. `u5-voice-caption-timing-bind` — Bind caption timing to the audio so captions track the performance rather than a guessed duration.
+6. `u5-voice-mixer-bind` — Route voice through its own mixer group so it can be balanced without moving the bed.
+7. `u5-voice-missing-fallback-test` — Test that a missing take falls back to text silently and does not stall the conversation.
+8. `u5-voice-audio-off-route` — Run a conversation with audio fully off and confirm nothing is lost, since text remains the canonical channel.
+9. `u5-voice-coverage-capture` — Capture coverage: which lines have approved audio and which do not, as a number rather than an impression.
+10. `u5-voice-hardware-review` — Have a human review the mix on headphones and speakers and record the verdict.
 Checks: voice audit; headphone/speaker human review.
 Evidence: none
 Remainder: none
@@ -1182,11 +1440,18 @@ Inputs: all closed packets, target hardware, release profile.
 Files: build scripts, release notes, evidence index, checksums.
 Do not touch: source authority files during packaging.
 Steps:
-1. Freeze the candidate source digest, package lock, generated-content manifest, and approved rights ledger.
-2. Run clean-checkout tests, content validation, database-plan audit, and a development build before release packaging.
-3. Measure boot, room transition, memory, frame time, save recovery, audio fallback, and keyboard navigation on target hardware.
-4. Install the packaged candidate on a clean Windows profile and complete the release route without developer tools.
-5. Package the candidate, record exact artifact digest, preserve logs/captures, and write rollback notes for any discovered blocker.
+1. `u6-rel-manifest-doc` — Write the release manifest: every content digest, the editor version, the packet set, and the target machine.
+2. `u6-rel-digest-freeze-rule` — Freeze source digests at candidate time, so the artifact can always be traced to exact inputs.
+3. `u6-rel-preflight-guard` — Implement the preflight that refuses to build when a required packet is open or a digest does not match.
+4. `u6-rel-build-adapter` — Produce the candidate through the same build command CI uses, never a local one-off configuration.
+5. `u6-rel-checksum-doc` — Publish the artifact checksum alongside the build so a tester can confirm what they installed.
+6. `u6-rel-clean-install-route` — Install on a clean machine with no editor and no prior profile, and complete a session.
+7. `u6-rel-no-devtools-route` — Confirm no debug overlay, developer console, or test scene ships in the candidate.
+8. `u6-rel-recovery-route` — Run the save-recovery drill on the candidate: corrupt the active slot, relaunch, recover, continue.
+9. `u6-rel-accessibility-route` — Re-run the keyboard-only and caption routes on the candidate, since a build can regress what the editor passed.
+10. `u6-rel-perf-capture` — Capture frame timings on the target machine at both resolutions and record them against the WARD-51 baseline.
+11. `u6-rel-rollback-doc` — Write the rollback procedure and the conditions that trigger it, before the release rather than during an incident.
+12. `u6-rel-human-review` — Have a human complete a full playthrough on the candidate and sign off. `unity-windows` release status comes from this review and certifies that track only.
 Checks: release preflight; human playthrough; recovery drill.
 Evidence: none
 Remainder: none
