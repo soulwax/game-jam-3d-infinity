@@ -264,7 +264,6 @@ Future<void> main(List<String> arguments) async {
   }
 
   await run('dart', ['run', 'tools/asset_audit.dart', '--build']);
-  await run('dart', ['run', 'tools/gen_shaders.dart']);
 
   await run(
     'dart',
