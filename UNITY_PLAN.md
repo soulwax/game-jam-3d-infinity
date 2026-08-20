@@ -586,7 +586,7 @@ Remainder: cannot close ahead of `WARD-00`. Windows x64 is unproven because the 
 ### WARD-02 — Define typed source schemas
 
 ID: WARD-02
-State: OPEN
+State: PARTIAL
 Owner: unassigned
 Category: Authored content and import
 Subcategory: Schemas and IDs
@@ -617,8 +617,8 @@ Steps:
 13. `u1-schema-suite-test` — Run the whole schema suite in EditMode with no scene access, asserting that every valid fixture passes and every invalid one fails with the expected field.
 14. `u1-schema-failure-report-capture` — Feed one malformed real source file through the suite and attach the report, proving path, ID, field, and message are actionable by someone who did not write the schema.
 Checks: EditMode schema suite; malformed fixture fails with path and ID.
-Evidence: none
-Remainder: none
+Evidence: `Docs/Evidence/WARD-02.md` and `Docs/Decisions/DEC-002-source-census.md` in the Unity repository — 49/49 EditMode tests; the real Dart authored tree at `bf6e0de` validates clean (3 levels, 8 rooms, 9 portals, 13 materials, 63 assets, 62 placements, 8 emitters); a malformed copy of the real sources yields three actionable diagnostics and exit 1. Commit `22d446c`.
+Remainder: cannot close ahead of `WARD-00`. `ScenarioValidator` and `CorpusValidator` are unit-tested but not yet run against the real `text/story.screenplay` — parsing that grammar is an importer, which `WARD-03` owns. DEC-002 §8 records five fields this packet names that the authored sources do not have; steps 4, 5, 8 and 10 below should be reworded to match what is actually authored.
 
 ### WARD-03 — Build deterministic content import
 
