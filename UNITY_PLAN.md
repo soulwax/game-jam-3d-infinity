@@ -519,8 +519,8 @@ from open libraries for this project.
 ### WARD-00 — Choose the greenfield contract
 
 ID: WARD-00
-State: PARTIAL
-Owner: unassigned
+State: CLOSED
+Owner: soulwax
 Category: Foundation and project operations
 Subcategory: Scope and decisions
 Tags: greenfield, unity, decisions
@@ -545,14 +545,14 @@ Steps:
 8. `u0-charter-risk-doc` — Record the three risks most likely to stop the first playable. Each needs a named early signal and a fallback you would actually accept.
 9. `u0-charter-approval-review` — Walk the charter with the accountable reviewer. Record their name and the date, save it as `unity/Docs/Decisions/DEC-001-greenfield.md`, and do not start WARD-01 before that file exists.
 Checks: Human review of the charter; no Unity project required yet.
-Evidence: `Docs/Decisions/DEC-001-greenfield.md` in the Unity repository (draft, 2026-08-20).
-Remainder: `u0-charter-approval-review` is open — the charter has no named reviewer and no date, and the four roles in its §1 are unassigned. Every later packet closes on human acceptance, so unfilled roles do not slow the work, they make it uncloseable.
+Evidence: `Docs/Decisions/DEC-001-greenfield.md` in the Unity repository — **approved by soulwax, 2026-08-20**. All nine handles have proof.
+Remainder: none. All four hats in §1 are held by soulwax under the charter's own §10 R2 fallback, which carries the condition that every review records which hat is being worn — a technical sign-off never satisfies an experience gate.
 
 ### WARD-01 — Create the empty Unity foundation
 
 ID: WARD-01
 State: PARTIAL
-Owner: unassigned
+Owner: soulwax
 Category: Foundation and project operations
 Subcategory: Project scaffold and CI
 Tags: greenfield, unity, ci, tooling
@@ -581,13 +581,13 @@ Steps:
 12. `u0-found-version-capture` — Attach the editor version, package-lock digest, build log path, and artifact digest to the WARD-01 card as its evidence.
 Checks: Clean clone open; EditMode tests; development build.
 Evidence: `Docs/Evidence/WARD-01.md` in the Unity repository — 20/20 EditMode tests, Linux x64 build succeeded, clean-clone route timed at ~11 min (86 s import+tests, 577 s build), commit `194a638`, editor `6000.5.8f1`.
-Remainder: cannot close ahead of `WARD-00`. Windows x64 is unproven because the build module is not installed on the supported machine (`DEC-001` §3); WARD-70 owns it. CI is committed but has never executed and needs its Unity licence secrets.
+Remainder: `WARD-00` is now closed, so the dependency is clear and eleven of twelve handles have proof. **`u0-found-ci-guard` does not.** The workflow is committed, but CI has never executed: it needs a push to `origin` and the `UNITY_LICENSE`/`UNITY_EMAIL`/`UNITY_PASSWORD` secrets, neither of which this packet can supply for itself. The handle says "a red run blocks the packet; do not add an override switch", and a run that has never happened is not a green one. Windows x64 is separately unproven because the build module is not installed on the supported machine (`DEC-001` §3); WARD-70 owns that.
 
 ### WARD-02 — Define typed source schemas
 
 ID: WARD-02
-State: PARTIAL
-Owner: unassigned
+State: CLOSED
+Owner: soulwax
 Category: Authored content and import
 Subcategory: Schemas and IDs
 Tags: content, schemas, validation, ids
@@ -618,13 +618,13 @@ Steps:
 14. `u1-schema-failure-report-capture` — Feed one malformed real source file through the suite and attach the report, proving path, ID, field, and message are actionable by someone who did not write the schema.
 Checks: EditMode schema suite; malformed fixture fails with path and ID.
 Evidence: `Docs/Evidence/WARD-02.md` and `Docs/Decisions/DEC-002-source-census.md` in the Unity repository — 49/49 EditMode tests; the real Dart authored tree at `bf6e0de` validates clean (3 levels, 8 rooms, 9 portals, 13 materials, 63 assets, 62 placements, 8 emitters); a malformed copy of the real sources yields three actionable diagnostics and exit 1. Commit `22d446c`.
-Remainder: cannot close ahead of `WARD-00`. `ScenarioValidator` and `CorpusValidator` are unit-tested but not yet run against the real `text/story.screenplay` — parsing that grammar is an importer, which `WARD-03` owns. DEC-002 §8 records five fields this packet names that the authored sources do not have; steps 4, 5, 8 and 10 below should be reworded to match what is actually authored.
+Remainder: `ScenarioValidator` and `CorpusValidator` are unit-tested but not yet run against the real `text/story.screenplay` — parsing that grammar is an importer, which `WARD-03` owns. DEC-002 §8 records five fields this packet names that the authored sources do not have; steps 4, 5, 8 and 10 below should be reworded to match what is actually authored.
 
 ### WARD-03 — Build deterministic content import
 
 ID: WARD-03
 State: OPEN
-Owner: unassigned
+Owner: soulwax
 Category: Authored content and import
 Subcategory: Import and generated assets
 Tags: content, import, determinism, assets
@@ -662,7 +662,7 @@ Remainder: none
 
 ID: WARD-04
 State: OPEN
-Owner: unassigned
+Owner: soulwax
 Category: Persistence and database synchronization
 Subcategory: Planner cards and activity
 Tags: database, sync, planner, audit
@@ -698,7 +698,7 @@ Remainder: none
 
 ID: WARD-05
 State: OPEN
-Owner: unassigned
+Owner: soulwax
 Category: Foundation and project operations
 Subcategory: Code quality and review
 Tags: unity, csharp, testing, guardrails
