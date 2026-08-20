@@ -661,7 +661,7 @@ Remainder: `Content/Generated` holds typed JSON documents rather than `Scriptabl
 ### WARD-04 — Synchronize the plan with the project database
 
 ID: WARD-04
-State: OPEN
+State: CLOSED
 Owner: soulwax
 Category: Persistence and database synchronization
 Subcategory: Planner cards and activity
@@ -691,8 +691,8 @@ Steps:
 12. `u0-sync-hosted-route` — Run the sync against the hosted database with one deliberately changed packet and confirm the change appears on the board.
 13. `u0-sync-audit-capture` — Capture the resulting activity row and the board state, and attach both to the card.
 Checks: Validation rejects duplicate/missing IDs before writes; website tests; hosted sync with a changed packet; repeat sync is a no-op; retry after transient failure.
-Evidence: none
-Remainder: none
+Evidence: `Docs/Evidence/WARD-04.md` in the Unity repository — `tests/unity-planner-sync.test.ts` in `external/project-agile-web` proves the no-op repeat, board-owned survival, plan- tag namespace, checklist merge, and a genuine mid-pass failure against the real database, isolated and fully cleaned up; the hosted route ran for real via `/projects/unity-plan` (6 cards changed, activity recorded, board-owned fields on the touched card left untouched); full website suite 258/258, up from 18 to 19 files.
+Remainder: `syncUnityPlannerCards` and its parser/validator largely predated this packet; the packet's contribution is the parameterization that made it testable, the id-collision bug that parameterization surfaced and fixed, and the six missing test/route handles. The `persistence.ts` fix is committed in `external/project-agile-web` but not pushed — that repo deploys via Vercel on push, a bigger action than this packet's scope.
 
 ### WARD-05 — Install human-sized code guardrails
 
