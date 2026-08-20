@@ -8,7 +8,8 @@
 >
 > Product authority: `external/docs/MASTERPLAN.md`
 >
-> Target: Unity 6.3 LTS, URP, Windows x64 first
+> Target: Unity **6000.5.8f1**, **HDRP 17.5.0**; Linux x64 for development and
+> CI, Windows x64 as the release target (see `DEC-001` §2, §3)
 >
 > Audience: developers working directly from the plan
 
@@ -180,7 +181,7 @@ Everything else waits behind this vertical slice.
 **Subcategories:** Unity version and packages; repository layout; scenes and
 bootstrap; coding rules; build profiles; CI and local setup.
 
-Create an empty Unity project, pin the editor/package versions, add only URP,
+Create an empty Unity project, pin the editor/package versions, add only HDRP,
 Input System, Test Framework, UI Toolkit, Audio Mixer, and localization-ready
 string support. The project must open, test, and build before game code grows.
 
@@ -266,10 +267,13 @@ only after text, timing, captions, and fallback are approved.
 
 ### 2.11 Rendering and presentation
 
-**Subcategories:** URP baseline; period lighting; practicals; rain and wetness;
+**Subcategories:** HDRP baseline; period lighting; practicals; rain and wetness;
 materials; camera treatment; performance profiles; rupture effects.
 
-Start with a clean, legible period baseline. Add stylization or reflective
+Start with a clean, legible period baseline. HDRP replaces URP per `DEC-001`
+§2: a dim candle-lit Victorian interior is what HDRP's volumetrics, area lights,
+and physical camera exist for. The largest risk this carries is performance on
+integrated graphics — see `DEC-001` §10 R1. Add stylization or reflective
 effects only when the player can still read rooms, objects, and thresholds.
 
 ### 2.12 Verification, telemetry, and release
@@ -304,6 +308,11 @@ class graph, or make Unity depend on the Dart build.
 | Weather profiles | `lib/sim/weather_physics.dart` — `WeatherParticleProfile.forKind` | Data-driven profile selection with bounded values |
 
 ## 4. Unity project shape
+
+The Unity project is its **own repository** at
+`engines/unity/the-quarantine-unity`, not a directory inside the Dart repo
+(`DEC-001` §5). Drop the `unity/` prefix from every path below and from the
+`Files` field of every packet.
 
 ```text
 unity/
@@ -510,7 +519,7 @@ from open libraries for this project.
 ### WARD-00 — Choose the greenfield contract
 
 ID: WARD-00
-State: OPEN
+State: PARTIAL
 Owner: unassigned
 Category: Foundation and project operations
 Subcategory: Scope and decisions
@@ -536,13 +545,13 @@ Steps:
 8. `u0-charter-risk-doc` — Record the three risks most likely to stop the first playable. Each needs a named early signal and a fallback you would actually accept.
 9. `u0-charter-approval-review` — Walk the charter with the accountable reviewer. Record their name and the date, save it as `unity/Docs/Decisions/DEC-001-greenfield.md`, and do not start WARD-01 before that file exists.
 Checks: Human review of the charter; no Unity project required yet.
-Evidence: none
-Remainder: none
+Evidence: `Docs/Decisions/DEC-001-greenfield.md` in the Unity repository (draft, 2026-08-20).
+Remainder: `u0-charter-approval-review` is open — the charter has no named reviewer and no date, and the four roles in its §1 are unassigned. Every later packet closes on human acceptance, so unfilled roles do not slow the work, they make it uncloseable.
 
 ### WARD-01 — Create the empty Unity foundation
 
 ID: WARD-01
-State: OPEN
+State: PARTIAL
 Owner: unassigned
 Category: Foundation and project operations
 Subcategory: Project scaffold and CI
@@ -571,8 +580,8 @@ Steps:
 11. `u0-found-clean-clone-route` — From a fresh clone with no `Library` cache, open the project, run the tests, and build. Time the first import: much over fifteen minutes is a finding to record, not to absorb.
 12. `u0-found-version-capture` — Attach the editor version, package-lock digest, build log path, and artifact digest to the WARD-01 card as its evidence.
 Checks: Clean clone open; EditMode tests; development build.
-Evidence: none
-Remainder: none
+Evidence: `Docs/Evidence/WARD-01.md` in the Unity repository — 20/20 EditMode tests, Linux x64 build succeeded, clean-clone route timed at ~11 min (86 s import+tests, 577 s build), commit `194a638`, editor `6000.5.8f1`.
+Remainder: cannot close ahead of `WARD-00`. Windows x64 is unproven because the build module is not installed on the supported machine (`DEC-001` §3); WARD-70 owns it. CI is committed but has never executed and needs its Unity licence secrets.
 
 ### WARD-02 — Define typed source schemas
 
