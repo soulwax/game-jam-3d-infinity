@@ -623,7 +623,7 @@ Remainder: `ScenarioValidator` and `CorpusValidator` are unit-tested but not yet
 ### WARD-03 — Build deterministic content import
 
 ID: WARD-03
-State: OPEN
+State: CLOSED
 Owner: soulwax
 Category: Authored content and import
 Subcategory: Import and generated assets
@@ -655,8 +655,8 @@ Steps:
 14. `u1-import-atomicity-test` — Run an import with one deliberately invalid source and assert the generated root is unchanged and no partial assets exist.
 15. `u1-import-manifest-capture` — Attach the manifest from a successful run to the card as the packet's evidence.
 Checks: Two identical imports produce identical IDs/digests; invalid import is atomic.
-Evidence: none
-Remainder: none
+Evidence: `Docs/Evidence/WARD-03.md` in the Unity repository — 57/57 EditMode tests; the real Dart tree imports end to end (63 assets, 21 branches, 33 corpus files, 8 emitters, 23 events, 3 levels, 13 materials, 62 placements, 9 portals, 8 rooms, 21 scenes from 38 sources); two consecutive real imports produce byte-identical output.
+Remainder: `Content/Generated` holds typed JSON documents rather than `ScriptableObject` assets. WARD-20 is the first packet that needs an asset type, and wrapping now would fix a shape before its consumer exists.
 
 ### WARD-04 — Synchronize the plan with the project database
 
